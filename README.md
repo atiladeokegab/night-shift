@@ -52,7 +52,8 @@ Every LLM call goes through Mubit, and Mubit trains a small commentator model on
 producer fixes. That smaller model is what would make a commentator for every match affordable.
 
 1. **Every call goes through Mubit.** Each line is one call to Mubit's Anthropic endpoint
-   (`claude-haiku-4-5`), with one session per match. No model is called from the browser.
+   (`claude-haiku-4-5`), or two when the agent uses its one permitted round of tools. There is one
+   session per match, and no model is called from the browser.
 2. **One task for every sport.** The system prompt, message template, tools and model are the same,
    byte for byte, for football, cricket, basketball and F1; the sport goes in the message. Mubit sees
    one task to learn from.
@@ -103,7 +104,7 @@ not yet measured says so.
 | Usefulness | Real matches from real event data in four sports, called the way a TV commentator would | 6 demo matches served | `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/matches` |
 | Technical execution | FastAPI server, durable store on Cloud Storage, server-sent event stream, commentary gated on the video player's clock, an offline test suite and a live smoke test on every deploy | Health: ok | `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/health` |
 | Demo | A 2-minute live demo on the deployed URL, scripted in [docs/demo.md](docs/demo.md) | To be rehearsed and recorded | |
-| Track: quality, cost and latency side by side | The proof panel and `GET /stats` show latency, cost per line, lines, fixes and the trained model's result | Big model, 197 lines: first word p50 529 ms, p95 951 ms; full line p50 821 ms, p95 1,187 ms; $0.0015 a line. The trained model: not trained or tried yet | `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/stats` |
+| Track: quality, cost and latency side by side | The proof panel and `GET /stats` show latency, cost per line, lines, fixes and the trained model's result | Big model, 197 lines: first word of the model's text (not the audio) p50 529 ms, p95 951 ms; full line p50 821 ms, p95 1,187 ms; $0.0015 a line. The trained model: not trained or tried yet | `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/stats` |
 
 ### Quality, cost and latency, side by side
 
@@ -112,7 +113,7 @@ not yet measured says so.
 | Agreement with the big model on held-out moments | baseline | not tried yet |
 | Cost per line | $0.0015 | not tried yet |
 | Tokens per line, in / out | about 1,415 / 25 (278,720 / 5,006 over 197 lines) | not tried yet |
-| First word, p50 / p95 | 529 ms / 951 ms | not tried yet |
+| First word of the model's text, p50 / p95 | 529 ms / 951 ms | not tried yet |
 | Full line, p50 / p95 | 821 ms / 1,187 ms | not tried yet |
 
 ### Status
@@ -125,7 +126,7 @@ As of 23 October 2026, 23:40 UTC.
 | One task for every sport; facts from tools, never from later in the match (A-1.2, A-1.4, A-10.3) | Live |
 | Expressive voice per sport, with a voice setting (A-6.3, A-6.6) | Live |
 | Proof panel: latency, cost per line, lines, fixes and the adapter's result (A-7.1) | Live |
-| Producer fix: the server stores it and sends it through Mubit (A-4.1) | Live; the page's Fix button is merged and goes live with the next deploy |
+| Producer fix: the server stores it and sends it through Mubit (A-4.1) | Live, with the Fix button on the page |
 | The home page as a wall of all six matches playing at once (A-6.5) | In progress |
 | Mubit's trained commentator against the big model on held-out moments (R-8) | Not trained or tried yet; about 336 requests are in Mubit's console |
 
@@ -148,7 +149,8 @@ Or open the live URL, <https://night-shift-5zvig7nbvq-ew.a.run.app>, or its back
   lines to the page over server-sent events, takes producer fixes and serves `GET /stats`.
 - **Moment picker** (`agent/feed.py`): turns StatsBomb, Cricsheet, NBA and OpenF1 data into key
   moments, never reading ahead of the moment it emits.
-- **Commentator agent** (`agent/`): one fixed prompt and its tools; one call through Mubit per line.
+- **Commentator agent** (`agent/`): one fixed prompt and its tools; one call through Mubit per line,
+  or two after its one permitted round of tools.
 - **Store**: lines and fixes as JSON lines on Cloud Storage; on Cloud Run the server refuses to start
   without it.
 - **Live page** (`web/`): the YouTube highlights player drives the clock; each line is shown and
