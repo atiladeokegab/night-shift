@@ -20,7 +20,7 @@
   </defs>
   <rect width="1280" height="400" fill="url(#bnw)"/><rect width="1280" height="400" fill="url(#bnf)"/>
   <g font-family="Outfit, 'Avenir Next', 'Segoe UI', Helvetica, Arial, sans-serif" text-anchor="middle">
-    <text x="868" y="214" text-anchor="end" font-size="104" font-weight="700" letter-spacing="-3" fill="#F6F4EF">Touchline</text>
+    <text x="868" y="214" text-anchor="end" font-size="104" font-weight="700" letter-spacing="-3" fill="#FFB547">Touchline</text>
     <circle cx="884" cy="205" r="9" fill="#FFB547"/>
     <text x="640" y="268" font-size="26" font-weight="500" fill="#F6F4EF" fill-opacity=".72">A live AI commentator for matches nobody calls.</text>
     <g transform="translate(578 306)"><rect width="124" height="30" rx="15" fill="#0E121F" fill-opacity=".7" stroke="#fff" stroke-opacity=".14"/>
