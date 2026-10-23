@@ -1,5 +1,7 @@
 """The moment picker on hand-built feeds: no network."""
 
+import json
+
 from agent import feed
 
 HEADER = {"sport": "football", "match_id": "1", "home": "Reds", "away": "Blues"}
@@ -61,6 +63,12 @@ def test_players_go_by_their_lineup_nickname_else_their_full_name():
     ]
     moments = feed.football_moments(HEADER, events, {5503: "Lionel Messi"})
     assert [m["players"]["shooter"] for m in moments] == ["Lionel Messi", "Hugo Lloris"]
+
+
+def test_name_overrides_beat_statsbomb_nicknames(monkeypatch):
+    lineups = [{"lineup": [{"player_id": 22097, "player_nickname": "Randal Kolo"}]}]
+    monkeypatch.setattr(feed, "_fetch", lambda *a, **k: json.dumps(lineups).encode())
+    assert feed.statsbomb_nicknames("3869685")[22097] == "Kolo Muani"
 
 
 def ball(batter=0, extras=None, wicket=None, ball="0.1"):

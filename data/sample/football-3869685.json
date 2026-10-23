@@ -242,7 +242,7 @@
    "team": "France",
    "players": {
     "off": "Ousmane Dembélé",
-    "on": "Randal Kolo"
+    "on": "Kolo Muani"
    },
    "outcome": "Tactical",
    "score": {
@@ -455,7 +455,7 @@
    "type": "Shot",
    "team": "France",
    "players": {
-    "shooter": "Randal Kolo"
+    "shooter": "Kolo Muani"
    },
    "outcome": "Off T",
    "score": {
@@ -1287,7 +1287,7 @@
    "type": "Shot",
    "team": "France",
    "players": {
-    "shooter": "Randal Kolo",
+    "shooter": "Kolo Muani",
     "keeper": "Emiliano Martínez"
    },
    "outcome": "Saved",
@@ -1537,7 +1537,7 @@
    "type": "Shot",
    "team": "France",
    "players": {
-    "shooter": "Randal Kolo"
+    "shooter": "Kolo Muani"
    },
    "outcome": "Goal",
    "score": {

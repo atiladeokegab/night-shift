@@ -62,6 +62,10 @@ def statsbomb_events(match_id: str) -> list[dict]:
     return json.loads(_fetch(f"{STATSBOMB}/events/{match_id}.json", f"sb_e_{match_id}.json"))
 
 
+# StatsBomb player id -> the name commentators use, where StatsBomb's own nickname is wrong.
+NAME_OVERRIDES = {22097: "Kolo Muani"}  # StatsBomb's nickname is "Randal Kolo"
+
+
 def statsbomb_nicknames(match_id: str) -> dict[int, str]:
     """Player id -> the name a commentator uses ("Lionel Messi"), from the match's lineups."""
     teams = json.loads(_fetch(f"{STATSBOMB}/lineups/{match_id}.json", f"sb_l_{match_id}.json"))
@@ -72,7 +76,7 @@ def statsbomb_nicknames(match_id: str) -> dict[int, str]:
         for p in team.get("lineup") or []
         if isinstance(p, dict)
         if isinstance(p.get("player_id"), int) and _s(p.get("player_nickname"))
-    }
+    } | NAME_OVERRIDES
 
 
 def football_header(meta: dict) -> dict:
