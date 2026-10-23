@@ -8,9 +8,10 @@ The adapter is tested only when it can be: the latest adapter record in the stor
 MUBIT_API_KEY is set. Otherwise this prints "not tested: <reason>" and calls nothing. Both models
 run with recording off, so held-out moments never become training examples.
 
-Per moment the two lines agree when both exist, neither is late, the adapter names the same players
-from the match as the big model, and it states no number that neither the big model's line nor the
-moment has. An empty, skipped or late line on either side is a disagreement.
+Per moment the two lines agree only when their facts provably match: both exist, neither is late,
+and they state the same numbers in the same order, name the same players in the same order and
+carry the same outcome terms (goal, saved, out, not out, six, overtake, pit, ...). Anything
+uncertain, and an empty, skipped or late line on either side, is a disagreement.
 """
 
 from __future__ import annotations
@@ -35,21 +36,105 @@ def _fold(text: str) -> str:
     return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode().lower()
 
 
-def _names(text: str, cast: set[str]) -> set[str]:
-    """The players the line names, each matched by surname."""
-    words = set(re.findall(r"[a-z]+", _fold(text)))
-    return {n for n in cast if set(_fold(n).split()[-1:]) <= words}
+# Outcome terms, longest first so "not out" and "own goal" win over "out" and "goal". A negation
+# just before a term ("doesn't score", "no goal") makes it "not <term>".
+OUTCOMES = {
+    "not out": r"not out",
+    "run out": r"run out",
+    "own goal": r"own goal",
+    "no-ball": r"no[- ]ball",
+    "free hit": r"free hit",
+    "free throw": r"free throws?",
+    "lights out": r"lights out",
+    "safety car": r"safety car",
+    "red flag": r"red flag",
+    "flag": r"chequered flag|checkered flag",
+    "last lap": r"last lap",
+    "yellow card": r"yellow card|booked",
+    "red card": r"red card|sent off",
+    "three": r"three[- ]pointer|from three|from deep",
+    "pit": r"pit stop|pits|pitted|pitting",
+    "goal": r"goals?|scores?|scored|scoring|nets|netted",
+    "miss": r"miss|misses|missed|off target|over the bar",
+    "saved": r"save|saves|saved",
+    "woodwork": r"post|crossbar|woodwork",
+    "wide": r"wide|wides",
+    "lbw": r"lbw",
+    "caught": r"caught",
+    "bowled": r"bowled",
+    "stumped": r"stumped",
+    "wicket": r"wickets?",
+    "out": r"out",
+    "six": r"six|sixes",
+    "four": r"four|fours|boundary",
+    "overtake": r"overtakes?|overtaken|overtaking",
+    "lead": r"leads?|lead change|ahead",
+    "win": r"wins?|won|winner|champions?",
+    "penalty": r"penalty|penalties|spot kick",
+    "dunk": r"dunks?|slams?",
+    "steal": r"steals?|stolen",
+    "block": r"blocks?|blocked",
+    "foul": r"fouls?|fouled",
+    "substitution": r"substitut\w*|comes on|replaces",
+    "injury": r"injur\w*",
+    "offside": r"offside",
+    "rain": r"rain\w*|wet",
+    "final": r"buzzer|final whistle|full time",
+}
+_OUTCOME = re.compile(
+    r"\b(?:" + "|".join(f"(?P<t{i}>{p})" for i, p in enumerate(OUTCOMES.values())) + r")\b"
+)
+_TERMS = list(OUTCOMES)
+_NEGATED = re.compile(r"(?:\bnot|\bno|\bnever|n't)\s+(?:\w+\s+)?$")
 
 
-def _numbers(text: str) -> set[str]:
-    return set(re.findall(r"\d+(?:\.\d+)?", text))
+def _outcomes(text: str) -> set[str]:
+    folded, found = _fold(text), set()
+    for m in _OUTCOME.finditer(folded):
+        term = _TERMS[int(m.lastgroup[1:])]
+        found.add(
+            f"not {term}" if term != "not out" and _NEGATED.search(folded[: m.start()]) else term
+        )
+    return found
+
+
+def _numbers(text: str) -> list[str]:
+    return re.findall(r"\d+(?:\.\d+)?", text)
+
+
+def _names(text: str, cast: set[str]) -> list[str] | None:
+    """The players the line names, in order of first mention: a full name, or a surname only one
+    player has. None when a surname could be more than one player."""
+    folded, found, taken = _fold(text), [], []
+    for name in sorted(cast, key=len, reverse=True):
+        for m in re.finditer(rf"\b{re.escape(_fold(name))}\b", folded):
+            if not any(m.start() in r for r in taken):
+                found.append((m.start(), name))
+                taken.append(range(m.start(), m.end()))
+    surnames: dict[str, list[str]] = {}
+    for name in cast:
+        surnames.setdefault(_fold(name).split()[-1], []).append(name)
+    for surname, names in surnames.items():
+        for m in re.finditer(rf"\b{re.escape(surname)}\b", folded):
+            if any(m.start() in r for r in taken):
+                continue
+            if len(names) > 1:
+                return None
+            found.append((m.start(), names[0]))
+    order: list[str] = []
+    for _, name in sorted(found):
+        if name not in order:
+            order.append(name)
+    return order
 
 
 def disagreement(
     moment: dict, big: dict | None, adapter: dict | None, cast: set[str] | None = None
 ) -> str | None:
-    """Why the adapter's line disagrees with the big model's, or None when they agree. `cast` is
-    every player in the match, so naming the wrong one counts; the moment's players by default."""
+    """Why the adapter's line disagrees with the big model's, or None when their facts provably
+    match: the same numbers in the same order, the same players in the same order and the same
+    outcome terms. Anything uncertain disagrees. `cast` is every player in the match, so naming the
+    wrong one counts; the moment's players by default."""
     for side, line in (("big model", big), ("adapter", adapter)):
         if line is None:
             return f"{side} skipped"
@@ -59,13 +144,19 @@ def disagreement(
         ms = line.get("latency_ms") if ms is None else ms
         if ms is not None and ms > LATE_MS:
             return f"{side} late ({ms} ms)"
+    said, want = adapter["text"], big["text"]
+    if _numbers(said) != _numbers(want):
+        return f"numbers {_numbers(said)}, big model {_numbers(want)}"
     cast = cast or set(moment.get("players", {}).values())
-    said, want = _names(adapter["text"], cast), _names(big["text"], cast)
-    if said != want:
-        return f"names {sorted(said)}, big model {sorted(want)}"
-    known = _numbers(big["text"]) | _numbers(json.dumps([moment.get("score"), moment.get("clock")]))
-    if extra := _numbers(adapter["text"]) - known:
-        return f"states {sorted(extra)}"
+    names, wanted = _names(said, cast), _names(want, cast)
+    if names is None or wanted is None:
+        return "a surname that could be more than one player"
+    if names != wanted:
+        return f"names {names}, big model {wanted}"
+    if not _outcomes(want):
+        return "no outcome to compare"
+    if _outcomes(said) != _outcomes(want):
+        return f"outcome {sorted(_outcomes(said))}, big model {sorted(_outcomes(want))}"
     return None
 
 
