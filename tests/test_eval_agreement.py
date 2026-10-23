@@ -42,23 +42,90 @@ class Adapter(FakeProvider):
         return reply
 
 
-def test_the_same_facts_in_other_words_agree():
-    big = line("Messi! Argentina lead 1-0 at 22:24!")
-    assert disagreement(GOAL, big, line("Lionel Messi scores, 1-0 Argentina!")) is None
+CAST = {
+    "Lionel Messi",
+    "Kylian Mbappé",
+    "Raphaël Varane",
+    "Emiliano Martínez",
+    "Cristian Romero",
+    "Mohammad Rizwan",
+    "Arshdeep Singh",
+    "B Kumar",
+    "V Kohli",
+    "Chris Smith",
+    "Alex Smith",
+    "Lewis Hamilton",
+    "Max Verstappen",
+    "Michael Jordan",
+}
+
+
+@pytest.mark.parametrize(
+    "big, adapter",
+    [
+        ("Lionel Messi scores! 1-0!", "Messi scores, 1-0 to Argentina!"),
+        (
+            "Rizwan is out, caught by Kumar! Wicket!",
+            "Caught! Mohammad Rizwan is out, Kumar takes it, wicket!",
+        ),
+        ("Lewis Hamilton wins at Silverstone by 1.5 seconds!", "Hamilton wins by 1.5 seconds!"),
+        ("Rizwan is not out!", "Not out! Mohammad Rizwan survives!"),
+        ("Jordan doesn't score, 86-87!", "Michael Jordan can't... no, he doesn't score! 86-87!"),
+    ],
+)
+def test_the_same_facts_in_other_words_agree(big, adapter):
+    assert disagreement(GOAL, line(big), line(adapter), CAST) is None
+
+
+# Prometheus's after-merge finding on #75: each pair contradicts itself, and each once scored as
+# agreement. Score order, outcome, negation, who did what, and which of two Smiths.
+CONTRADICTIONS = [
+    ("Messi! 1-0 Argentina!", "Messi! 0-1 Argentina!"),
+    ("Bulls lead 87-86!", "Bulls lead 86-87!"),
+    ("Kohli hits 6 off 3 balls, six!", "Kohli hits 3 off 6 balls, six!"),
+    ("Hamilton wins by 1.5 seconds!", "Hamilton wins by 15 seconds!"),
+    ("Messi scores! 1-0!", "Messi misses! 1-0!"),
+    ("Messi scores!", "Messi's shot is saved!"),
+    ("Messi scores!", "Messi hits the post!"),
+    ("Rizwan is out!", "Rizwan is not out!"),
+    ("Jordan scores!", "Jordan doesn't score!"),
+    ("Goal! Varane!", "Own goal! Varane!"),
+    ("Six for Kohli!", "Four for Kohli!"),
+    ("Wicket! Rizwan caught!", "Wicket! Rizwan bowled!"),
+    ("No-ball from Arshdeep!", "Wide from Arshdeep!"),
+    ("Yellow card for Romero!", "Red card for Romero!"),
+    ("Arshdeep Singh to Mohammad Rizwan, out!", "Mohammad Rizwan to Arshdeep Singh, out!"),
+    ("Hamilton overtakes Verstappen!", "Verstappen overtakes Hamilton!"),
+    ("Martínez saves from Mbappé!", "Mbappé saves from Martínez!"),
+    ("Chris Smith takes the wicket!", "Alex Smith takes the wicket!"),
+    ("Smith takes the wicket!", "Smith takes the wicket!"),
+    ("Hamilton pits!", "Hamilton wins!"),
+]
+
+
+@pytest.mark.parametrize("big, adapter", CONTRADICTIONS)
+def test_contradictory_lines_disagree(big, adapter):
+    assert disagreement(GOAL, line(big), line(adapter), CAST) is not None
+
+
+def test_lines_with_no_outcome_to_compare_disagree():
+    why = disagreement(GOAL, line("What a moment for Messi!"), line("What a moment for Messi!"))
+    assert why == "no outcome to compare"
 
 
 @pytest.mark.parametrize(
     "adapter, why",
     [
         (line("Di María scores, 1-0!"), "names [], big model ['Lionel Messi']"),
-        (line("Messi makes it 2-0!"), "states ['2']"),
+        (line("Messi scores, 2-0!"), "numbers ['2', '0'], big model ['1', '0']"),
+        (line("Messi misses, 1-0!"), "outcome ['miss'], big model ['goal']"),
         (line("   "), "adapter empty"),
         (None, "adapter skipped"),
-        (line("Messi! 1-0!", first_word_ms=2400), "adapter late (2400 ms)"),
+        (line("Messi scores, 1-0!", first_word_ms=2400), "adapter late (2400 ms)"),
     ],
 )
 def test_a_wrong_empty_skipped_or_late_adapter_line_disagrees(adapter, why):
-    assert disagreement(GOAL, line("Messi! 1-0!"), adapter) == why
+    assert disagreement(GOAL, line("Messi scores, 1-0!"), adapter) == why
 
 
 def test_a_skipped_or_late_big_model_line_disagrees_too():
