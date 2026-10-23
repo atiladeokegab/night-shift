@@ -8,11 +8,11 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-live%20stream-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![Mubit](https://img.shields.io/badge/Mubit-trains%20the%20commentator-FFB547)](https://mubit.ai)
 [![ElevenLabs](https://img.shields.io/badge/ElevenLabs-commentator%20voice-000000?logo=elevenlabs&logoColor=white)](https://elevenlabs.io)
-[![Cloud Run](https://img.shields.io/badge/Cloud%20Run-deployed-4285F4?logo=googlecloud&logoColor=white)](https://cloud.google.com/run)
+[![Cloud Run](https://img.shields.io/badge/Cloud%20Run-live-4285F4?logo=googlecloud&logoColor=white)](https://night-shift-5zvig7nbvq-ew.a.run.app)
 
-**One live AI commentator for football and cricket, trained on its own corrected calls.**
+**A live AI commentator for every match nobody calls, trained through Mubit on its own calls and every producer fix.**
 
-[**For judges**](#for-judges) · [**What it does**](#what-it-does) · [**Requirements (PRD)**](docs/PRD.md) · [**Run it**](#run-it) · [**How it uses Mubit**](#how-it-uses-mubit) · [**Team**](#team)
+[**Try it live**](https://night-shift-5zvig7nbvq-ew.a.run.app) · [**The six screens**](#the-six-screens) · [**How it uses Mubit**](#how-it-uses-mubit) · [**For judges**](#for-judges) · [**Run it**](#run-it) · [**Demo script**](docs/demo.md)
 
 <img src="docs/img/live.png" alt="The live page, from the design mockup. A drawn night stadium stands in for the highlights video. Top left, the score bar reads ESP 1-0 ENG, 28:29, 1st half, REPLAY. Top right, a red ON AIR pill names the British commentator. In the lower third, the moment tag 28:29 GOAL sits above the large subtitle: Olga Carmona! Low across Earps and in! Spain lead the World Cup final! Under it, a dock with Fixtures, a Football and Cricket switch and Voice: British, and a video timeline with a small Synced to video label. On the right, a Lines card lists each line with its clock, its first-word time and a Fix button, and a Proof card shows first word p50 and p95, cost per line, lines, fixes and the adapter's result." width="100%">
 
@@ -24,37 +24,6 @@ highlights play where the drawn stadium is; the numbers in this picture are samp
 ---
 
 Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026. Track: Own your intelligence layer.
-Requirements: [docs/PRD.md](docs/PRD.md); each one has an ID such as A-6.4 and a test.
-
-## For judges
-
-Staging URL: <https://night-shift-staging-5zvig7nbvq-ew.a.run.app> (Cloud Run, real Mubit calls). Every number below was read from that service or
-from our traffic log on 23 October 2026; anything not yet measured says so.
-
-| Criterion | Evidence | Measured | Check it |
-|---|---|---|---|
-| Use of Mubit | Every model call goes through Mubit's Anthropic endpoint (`claude-haiku-4-5`), one session per match, one task for every sport. The traffic runner replays real matches through it | 16 real matches (8 football, 8 cricket), 160 lines. 38 Mubit requests counted on staging by their Mubit request ids | `curl -s https://night-shift-staging-5zvig7nbvq-ew.a.run.app/stats` (field `mubit_requests`) |
-| Use of Mubit: a correction becomes a model update | A producer's fix goes back through the same Mubit task and session (A-4.1) | To be measured: the fix route is not built yet | Not yet available |
-| Usefulness | Most matches have no commentator; Touchline calls real football and cricket matches from real event data (StatsBomb, Cricsheet) | 2 demo matches served on staging | `curl -s https://night-shift-staging-5zvig7nbvq-ew.a.run.app/matches` |
-| Technical execution | FastAPI server, durable store on Cloud Storage, server-sent event stream, an offline test suite and a live smoke test on every deploy | Staging health: ok. Live smoke on deploy: 36 moments, 36 lines | `curl -s https://night-shift-staging-5zvig7nbvq-ew.a.run.app/health` |
-| Demo | A 3-minute live demo on the deployed URL: the World Cup final called in a British voice, one live fix, then India v Pakistan in an Indian voice | To be recorded | Not yet available |
-| Track: quality, cost and latency side by side | The proof panel and `GET /stats` show the big model and our trained commentator on the same held-out moments | First word p50 524 ms, p95 789 ms; full line p50 835 ms, p95 1,051 ms (big model, 36 lines on staging). Cost per line and the trained model's agreement: to be measured | `curl -s https://night-shift-staging-5zvig7nbvq-ew.a.run.app/stats` |
-
-## What it does
-
-Status as of 23 October 2026, 22:00 UTC.
-
-| Capability | What it means | Status |
-|---|---|---|
-| Football and cricket | Real matches from StatsBomb open data and Cricsheet, replayed moment by moment | Running on staging |
-| Basketball, F1 and the 2022 World Cup final (Messi v Mbappé) | Iconic extra screens from real play-by-play and timing data, called by the same commentator (A-10) | Planned, after the core |
-| Commentary synced to the broadcast highlights | The page plays the match's broadcast highlights (embedded YouTube, muted). The player's own clock drives the commentary, so a line is shown and spoken when its moment plays and never runs ahead of the picture (A-6.4) | In progress |
-| Emotional commentary | A goal, a saved penalty, a six or a wicket is called with a broadcast commentator's excitement, at most 20 words, with every name and score right (A-3.6) | In progress |
-| Voice setting | Cricket defaults to an Indian commentator voice, football to a British one; a change applies from the next line without a reload (A-6.3). Voices from ElevenLabs, with the browser's speech as a fallback | In progress |
-| Producer fix loop | A producer corrects or rejects a line in one tap; the fix is stored beside the original and sent back through the same Mubit task and session (A-4.1) | Planned |
-| Proof panel | First-word latency p50 and p95, cost per line, lines, fixes and the trained model's result, matching `GET /stats` (A-7.1) | In progress |
-| One Mubit task for every sport | One system prompt, one message template, one tool set, one model; the sport goes in the message (A-1.2, A-10.3) | Built |
-| Facts from tools, not memory | The commentator looks up the score, the player and recent play with tools, and never sees anything later in the match (A-1.4, A-3.1) | Built |
 
 ## The problem
 
@@ -66,72 +35,134 @@ cricket. Fans following a stream or a live score get a bare ticker, or nothing.
 A big model could commentate them. But it is too slow to call a moment while the moment is still on
 screen, and too expensive to run for every moment of every match.
 
-**Touchline** is one live AI commentator for every sport it covers. It plays a match's broadcast highlights,
-and as each key moment plays it calls it in one short, emotional line, read aloud in a commentator's
-voice and shown as a large subtitle. A producer fixes any line that's wrong, the fix goes back through
-Mubit, and Mubit trains a smaller commentator. The aim is that it calls the same moments as well as
-the big model, at lower cost; the table below shows how far that is measured.
+## What Touchline is
 
-## The demo, in one line
+**Touchline** gives every match a commentator. It plays a match's broadcast highlights, and as each
+key moment plays it calls it in one short, emotional line, read aloud in a commentator's voice and
+shown as a large subtitle. A line is never shown or spoken before its moment reaches the picture.
 
-The 2023 Women's World Cup final plays on screen and Touchline calls each moment aloud, in a British
-voice, about a second after it happens; the producer fixes one wrong line on stage; our own trained
-commentator calls a moment beside the big model; then one tap switches to Kohli's last overs against
-Pakistan in 2022 and the same commentator calls the cricket in an Indian voice.
+One agent calls every sport. It reads the match's real event feed, looks up the score, the player and
+recent play with tools, and never sees anything from later in the match than the moment it is
+calling. A producer fixes any line that's wrong in one tap, and the fix goes back through Mubit to
+train the commentator.
 
 ## How it uses Mubit
 
-- Every model call goes through Mubit's Anthropic endpoint (`claude-haiku-4-5`), one session per match.
-  No model is called from the browser.
-- Real traffic only: `scripts/replay_matches.py` replays distinct real matches of both sports, never
-  padded or repeated calls. Held-out matches and the two demo matches are never replayed, so the
-  trained model is judged on matches it never saw.
-- Each line stores the Mubit request id of every call it made, and `GET /stats` counts calls from those
-  ids.
-- Producer fixes go back through Mubit in the same task and session.
-- Mubit trains the adapted commentator; we compare it with the big model on held-out matches.
+Every LLM call goes through Mubit, and Mubit trains a small commentator model on our traffic and on
+producer fixes. That smaller model is what would make a commentator for every match affordable.
 
-## Quality, cost and latency, side by side
+1. **Every call goes through Mubit.** Each line is one call to Mubit's Anthropic endpoint
+   (`claude-haiku-4-5`), with one session per match. No model is called from the browser.
+2. **One task for every sport.** The system prompt, message template, tools and model are the same,
+   byte for byte, for football, cricket, basketball and F1; the sport goes in the message. Mubit sees
+   one task to learn from.
+3. **Real traffic only.** `scripts/replay_matches.py` replays distinct real football and cricket
+   matches, never padded or repeated calls. Held-out matches and the demo matches are never replayed,
+   so the trained model is judged only on matches it never saw.
+4. **A producer's fix is training signal.** A fix is stored beside the original line and sent back
+   through the same Mubit task and session.
+5. **Counted at Mubit.** Each line stores the Mubit request id of every call it made, and
+   `GET /stats` counts calls from those ids.
+6. **The trained model is measured, not assumed.** We compare Mubit's trained commentator with the
+   big model on held-out moments. That result is **in progress**: the adapter has not finished
+   training. The aim is that it matches the big model at lower cost; we make no claim that it beats it.
+
+## The six screens
+
+Six famous matches, each replayed from real event data over its broadcast highlights and called by
+the same commentator with the same prompt.
+
+| Screen | Sport and data | Voice | What it calls |
+|---|---|---|---|
+| Spain v England, 2023 Women's World Cup final | Football, StatsBomb | British | Carmona's winner, Earps's penalty save, the chances at both ends |
+| Argentina v France, 2022 World Cup final | Football, StatsBomb | British | Messi's two goals, Di María, Mbappé's three, the shoot-out |
+| India v Pakistan, 2022 T20 World Cup | Cricket, Cricsheet | Indian | The wickets, the sixes, Kohli's two sixes off Rauf, the last ball |
+| Michael Jordan's last shot, 1998 NBA Finals Game 6 | Basketball, NBA play-by-play | American play-by-play | The fourth quarter's baskets, Jordan's steal from Malone, the winning shot, the buzzer |
+| Kobe Bryant's 81 against Toronto, 2006 | Basketball, NBA play-by-play | American play-by-play | His baskets through the second half, the record-breaking points, the buzzer |
+| Lewis Hamilton's 2024 British Grand Prix win | F1, OpenF1 timing | British announcer | Overtakes and lead changes, pit stops, the rain, the last lap, the flag |
+
+The voice is a setting on the page, and a change applies from the next line. Lines are voiced by
+ElevenLabs `eleven_v3` with an audio tag per moment: shouting for a goal or a wicket, hushed for the
+build-up ([docs/voice.md](docs/voice.md)). The browser's own speech is the fallback.
+
+## For judges
+
+Live URL: <https://night-shift-5zvig7nbvq-ew.a.run.app> (Cloud Run, real Mubit calls).
+Every number below was read from that service's `GET /stats` on 23 October 2026 at 23:25 UTC; anything
+not yet measured says so.
+
+| Criterion | Evidence | Measured | Check it |
+|---|---|---|---|
+| Use of Mubit | Every call goes through Mubit's Anthropic endpoint, one session per match, one task for every sport | 189 lines; 198 Mubit calls, counted by their request ids | `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/stats` (`mubit_requests`) |
+| Use of Mubit: a correction becomes a model update | `POST /lines/{line_id}/fix` stores the fix beside the original and sends it through the same task and session | 0 fixes on the live service so far; the first is made in the demo | `fixes` in `/stats` |
+| Usefulness | Real matches from real event data in four sports, called the way a TV commentator would | 6 demo matches served | `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/matches` |
+| Technical execution | FastAPI server, durable store on Cloud Storage, server-sent event stream, commentary gated on the video player's clock, an offline test suite and a live smoke test on every deploy | Health: ok | `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/health` |
+| Demo | A 3-minute live demo on the deployed URL, scripted in [docs/demo.md](docs/demo.md) | To be recorded | |
+| Track: quality, cost and latency side by side | The proof panel and `GET /stats` show latency, cost per line, lines, fixes and the trained model's result | Big model, 189 lines: first word p50 529 ms, p95 984 ms; full line p50 821 ms, p95 1,332 ms; $0.0015 a line. The trained model's agreement: in progress | `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/stats` |
+
+### Quality, cost and latency, side by side
 
 | | Big model (`claude-haiku-4-5` via Mubit) | Our trained commentator |
 |---|---|---|
-| Agreement with the big model on held-out moments | baseline | to be measured |
-| Cost per line | to be measured | to be measured |
-| Tokens per line, in / out | 45,595 / 1,025 over 36 lines (about 1,267 / 28) | to be measured |
-| First word, p50 / p95 | 524 ms / 789 ms | to be measured |
-| Full line, p50 / p95 | 835 ms / 1,051 ms | to be measured |
+| Agreement with the big model on held-out moments | baseline | in progress |
+| Cost per line | $0.0015 | in progress |
+| Tokens per line, in / out | about 1,408 / 26 (266,051 / 4,846 over 189 lines) | in progress |
+| First word, p50 / p95 | 529 ms / 984 ms | in progress |
+| Full line, p50 / p95 | 821 ms / 1,332 ms | in progress |
 
-Big-model figures: 36 lines on the staging service, read from `GET /stats` on 23 October 2026.
+### Status
+
+As of 23 October 2026, 23:30 UTC.
+
+| Capability | Status |
+|---|---|
+| The six screens, replayed from real data and synced to the broadcast highlights (A-6.4, A-10) | Live |
+| One task for every sport; facts from tools, never from later in the match (A-1.2, A-1.4, A-10.3) | Live |
+| Expressive voice per sport, with a voice setting (A-6.3, A-6.6) | Live |
+| Proof panel: latency, cost per line, lines, fixes and the adapter's result (A-7.1) | Live |
+| Producer fix: the server stores it and sends it through Mubit (A-4.1) | Live; the page's Fix button is in review |
+| The home page as a wall of all six matches playing at once (A-6.5) | In progress |
+| Mubit's trained commentator against the big model on held-out moments (R-8) | In progress |
 
 ## Run it
 
 Needs [uv](https://docs.astral.sh/uv/) and `make`.
 
 ```bash
-make smoke   # offline: replays one sample match per sport with a fake model, no keys needed
+make smoke   # offline: replays every sample match with a fake model, no keys needed
 make check   # lint and the test suite, offline
 make dev     # the server on localhost; set MUBIT_API_KEY in .env for real commentary
 ```
 
-## Data
+Or open the live URL: <https://night-shift-5zvig7nbvq-ew.a.run.app>.
+
+## Architecture
+
+- **Match server** (`core/`, FastAPI on Cloud Run): replays a match's event feed, streams moments and
+  lines to the page over server-sent events, takes producer fixes and serves `GET /stats`.
+- **Moment picker** (`agent/feed.py`): turns StatsBomb, Cricsheet, NBA and OpenF1 data into key
+  moments, never reading ahead of the moment it emits.
+- **Commentator agent** (`agent/`): one fixed prompt and its tools; one call through Mubit per line.
+- **Store**: lines and fixes as JSON lines on Cloud Storage; on Cloud Run the server refuses to start
+  without it.
+- **Live page** (`web/`): the YouTube highlights player drives the clock; each line is shown and
+  spoken when the picture reaches its moment.
+
+C4 diagrams: [context](docs/architecture/c4_context.png), [containers](docs/architecture/c4_container.png),
+[components](docs/architecture/c4_component.png). They were drawn before the video redesign: where they
+say "stickman replay", the page now plays the broadcast highlights.
+
+## Data and video
 
 - Football: [StatsBomb open data](https://github.com/statsbomb/open-data), used under its licence.
 - Cricket: ball-by-ball data from [Cricsheet](https://cricsheet.org).
 - Basketball: stats.nba.com play-by-play, via the [shufinskiy/nba_data](https://github.com/shufinskiy/nba_data) mirror (Apache-2.0).
-- Video: Highlights: broadcast highlights on YouTube (ITV for the final, the TV feed for India v Pakistan, the NBA's own channel for the two basketball games), embedded, muted. These are re-uploads of the TV coverage, not
-  uploads by FIFA or the ICC. Never downloaded or rehosted; the commentator reads the event feed, not
-  the video.
-
-## Architecture
-
-These diagrams were drawn before the video redesign: where they say "stickman replay", the page now
-plays the broadcast highlights.
-
-![C4 system context diagram: a fan watches and listens and a producer fixes lines in Touchline. Touchline reads events from StatsBomb and Cricsheet and sends every model call and every fix to Mubit, which passes calls on to the model provider.](docs/architecture/c4_context.png)
-
-![C4 container diagram: the live match page (browser) gets events and lines from the match server by server-sent events and posts fixes to it. The traffic runner drives replays on the match server. The match server writes lines and fixes to the store, sends commentator calls and corrected lines to Mubit, and reads StatsBomb and Cricsheet.](docs/architecture/c4_container.png)
-
-![C4 component diagram of the match server: the replayer feeds events to the moment filter, which passes key moments to the commentator agent. The agent calls tools for score, player facts and recent play, makes its model call through the Mubit client, saves the line to the store and pushes it to the live stream. The fix handler saves fixes and sends corrected lines through the Mubit client.](docs/architecture/c4_component.png)
+- F1: timing data from the [OpenF1](https://openf1.org) API.
+- Video: broadcast highlights on YouTube, embedded and muted, never downloaded or rehosted; the
+  commentator reads the event feed, not the video. Argentina v France is from FIFA's own channel, the
+  two basketball games from the NBA's and Silverstone from Formula 1's. The Women's World Cup final
+  (ITV's coverage) and India v Pakistan (the TV feed) are re-uploads by others: no FIFA, ICC or
+  broadcaster upload of those highlights exists.
 
 ## Pre-existing work
 
@@ -154,4 +185,5 @@ Next:
 - Atilade ([@atiladeokegab](https://github.com/atiladeokegab)): lead and design
 - Persia ([@PersiaF04](https://github.com/PersiaF04)): full stack
 
-How the team works, the rules for our AI agents and the build process: [TEAMWORK.md](TEAMWORK.md).
+Requirements: [docs/PRD.md](docs/PRD.md); each one has an ID such as A-6.4 and a test. How the team
+works, the rules for our AI agents and the build process: [TEAMWORK.md](TEAMWORK.md).
