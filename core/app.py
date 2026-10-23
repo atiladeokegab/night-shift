@@ -25,16 +25,17 @@ class Deps:
     list_matches: Callable[[], list[dict]]
     load_moments: Callable[[str], list[dict]]
     commentate: Callable[[dict, list[dict]], dict]
+    video_map: Callable[[str], dict | None] = lambda match_id: None
 
 
 def default_deps() -> Deps:
     """Wire #13's loaders and commentator; None until they land, and the replay routes say 503."""
     try:
         from agent.commentator import commentate
-        from data.matches import list_matches, load_moments
+        from data.matches import list_matches, load_moments, video_map
     except ImportError:
         return None
-    return Deps(list_matches, load_moments, commentate)
+    return Deps(list_matches, load_moments, commentate, video_map)
 
 
 class ReplayRequest(BaseModel):
@@ -71,7 +72,8 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
             raise HTTPException(404, f"no match {req.match_id!r}") from exc
         replay = Replay(req.match_id, req.speed)
         replays[replay.id] = replay
-        task = asyncio.create_task(run_replay(replay, moments, d.commentate, store))
+        video = d.video_map(req.match_id)
+        task = asyncio.create_task(run_replay(replay, moments, d.commentate, store, video))
         tasks.add(task)
         task.add_done_callback(tasks.discard)
         return {"replay_id": replay.id}

@@ -17,10 +17,11 @@ tap switches to India v Pakistan 2022 and the same commentator calls cricket.
 | Piece | Where | Use it for |
 |---|---|---|
 | App factory | `core/app.py`, `create_app(store=None, deps=None)` | every route |
-| Store | `core/store.py`: `all(kind)`, `append(kind, record)`; kinds `lines`, `fixes` | all state |
+| Store | `core/store.py`: `all(kind)`, `append(kind, record)`; kinds `lines`, `fixes`, `adapter` | all state |
 | Replayer | `core/replay.py`: `run_replay` publishes `moment`, `line`, `stats` | the live stream |
 | Stats | `core/stats.py`: `stats(store)` | proof panel numbers, from the store only |
 | Seam to #13 | `data.matches.list_matches()`, `data.matches.load_moments(match_id)`, `agent.commentator.commentate(moment, history)` | wired by `core.app.default_deps()` |
+| Video map | `data.matches.video_map(match_id)` over `data/video/<sport>-<match_id>.json` | a demo match's YouTube video (A-6.4) |
 
 Store: JSON-lines files under `STORE_DIR` (default `data/`). `MODE=cloud` keeps them as GCS objects
 and refuses to start without `STORE_URL=gs://bucket/prefix`.
@@ -37,7 +38,11 @@ and refuses to start without `STORE_URL=gs://bucket/prefix`.
   and latency summed over the whole tool loop; each id from `x-middleware-request-id`.
 - **Fix** (core/): `{line_id, corrected_text, reason, created_at, mubit_request_id,
   reply_matched: bool}`.
-- **Match** (data/): `{match_id, sport, title?, sample: bool}`; `sample` marks `data/sample/`.
+- **Match** (data/): `{match_id, sport, title?, sample: bool, youtube_id?}`; `sample` marks
+  `data/sample/`; `youtube_id` is there when the match has a video map.
+- **Video map** (data/video/): `{youtube_id, source, moments: [{idx, video_t}]}`; `idx` is a Moment's
+  `idx`, `video_t` the seconds into the video of that moment's first showing, increasing with `idx`.
+  Only moments matched with confidence are listed.
 
 ## HTTP
 
@@ -48,6 +53,9 @@ Errors: 404 not found, 422 bad input, 503 commentator not configured.
 - `POST /replays {match_id, speed>0}` → `{replay_id}` (core)
 - `GET /replays/{id}/stream` → SSE: per moment `moment`, `line`, `stats` in that order; `error`
   `{detail}` if the commentator fails; `end` last. A late subscriber gets the whole replay. (core)
+  For a match with a video map, only mapped moments are called, the `moment` and `line` events carry
+  `video_t` (seconds), and they are sent as soon as each line is ready rather than paced by `speed`:
+  the page shows and speaks each line when the player reaches `video_t`.
 - `POST /lines/{line_id}/fix {corrected_text, reason}` → Fix (core, P1, not built yet)
 - `GET /stage` → the backup live page (`core/stage.html`, static HTML over the routes here) (core)
 - `GET /voices` → `[{id, label, default_for: "cricket"|"football"|null, lang: "en-IN"|"en-GB"}]`, the page's voice
@@ -59,7 +67,16 @@ Errors: 404 not found, 422 bad input, 503 commentator not configured.
   or an upstream failure, and the page then uses browser speech. The key never reaches the browser;
   each call logs `voice line=<id> first_byte_ms=<n>`. (core)
 - `GET /stats` → `{lines, fixes, mubit_requests, first_word_ms_p50, first_word_ms_p95,
-  latency_ms_p50, latency_ms_p95, tokens_in, tokens_out}` (core)
+  latency_ms_p50, latency_ms_p95, tokens_in, tokens_out, cost_per_line_usd, adapter}` (core). The
+  `stats` SSE event carries the same object.
+  - `cost_per_line_usd: number | null`: mean cost of the stored lines, tokens × the model's list
+    price; null when no line's model has a known price.
+  - `adapter: {status: "not_trained"|"training"|"ready", kept: int|null, needed, agree: int|null,
+    total: int|null, cost_measurable: bool}`: `needed` is 25. `status`, `kept`, `agree` and `total`
+    come from the latest `adapter` record in the store, which `python -m eval.record_adapter` appends
+    from Mubit's console; before one exists, `not_trained` and nulls. `kept` is never inferred from
+    stored lines, since a stored line doesn't prove Mubit kept it. `cost_measurable` is false while
+    the app can't call the adapter.
 
 ## Agent
 
