@@ -124,7 +124,7 @@ voice speaks. Cards lift 3px on hover and their artwork scales 3.5% over 1.2s. S
 | Lines card | Every line so far, newest first: clock, line, first-word time, "Fix" | "Fix" opens the producer fix |
 | Proof card | First word p50 and p95, cost per line, lines, fixes, the adapter's result | Read only |
 | Fix sheet | The original line, an editable box, the reason chips, "Send fix", "Reject line", "Cancel" | See States |
-| Voice setting | A Voice on/off switch, then per sport the choices British, Indian and Australian commentator, the default marked | A change applies from the next line with no reload; a toast confirms |
+| Voice setting | A Voice on/off switch, then per sport the choices British, Indian and Australian, the default marked | A change applies from the next line with no reload; a toast confirms |
 | Toast | One short sentence in a glass pill at the bottom | Leaves after 2.4s |
 
 The speed choice (Real time, 4x, 16x) is gone: the highlights set the pace, and each mapped moment
@@ -180,7 +180,7 @@ flowchart LR
 | ON AIR pill | "ON AIR" and "<voice> commentator"; "VOICE OFF" and "Subtitles only"; "VOICE UNAVAILABLE" and "Subtitles carry on" |
 | Timeline caption | "Official highlights · YouTube · muted" |
 | Dock | "← Fixtures", "Football", "Cricket", "Voice: <British, Indian, Australian, Off or Unavailable>" |
-| Voice setting | "Commentator voice" / "Each line is spoken in this voice. A change applies from the next line, without reloading." / "Voice" / "British commentator", "Indian commentator", "Australian commentator" / "Default" / "Done" |
+| Voice setting | "Commentator voice" / "Each line is spoken in this voice. A change applies from the next line, without reloading." / "Voice" / "Football", "Cricket" / "British", "Indian", "Australian" / "Default" / "Done" |
 | Voice toast | "<voice> commentator from the next line." |
 | Lines card | "Lines", "<n> called", "Fix", "first word 0.58 s", "Fixed", "Rejected" |
 | Fix sheet | "Fix this line" / "Touchline said" / "Corrected line" / "What was wrong" / "Wrong fact", "Wrong player", "Wrong score", "Tone", "Other" / "Send fix", "Reject line", "Cancel" / "Your fix goes back through Mubit and is kept beside the original." |

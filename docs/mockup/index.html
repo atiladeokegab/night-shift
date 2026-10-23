@@ -18,6 +18,7 @@
   --display: "Outfit", ui-sans-serif, system-ui, sans-serif;
   --body: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --ease: cubic-bezier(.2, .7, .2, 1);
+  --mic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='5' y='1' width='6' height='9' rx='3'/%3E%3Cpath d='M3 7.5a5 5 0 0 0 10 0M8 12.5V15' fill='none' stroke='black' stroke-width='1.5'/%3E%3C/svg%3E");
   --mock: 32px; --stage-h: 100svh; --side-w: 384px; --gut: 32px;
   color-scheme: dark;
 }
@@ -89,9 +90,9 @@ h1 { font: 600 clamp(2.5rem, 5.2vw, 4.25rem)/1 var(--display); letter-spacing: -
 .card h2 { font: 600 2.1rem/1.05 var(--display); letter-spacing: -.025em; margin: 6px 0 0; }
 .card .detail { margin: 0; color: var(--muted); font-size: .92rem; }
 .card .result { margin: 6px 0 0; font: 600 1.15rem/1.3 var(--display); }
-.meta { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: auto 0 8px; padding-top: 18px; color: var(--muted); font-size: .82rem; }
+.meta { display: grid; gap: 6px; margin: auto 0 8px; padding-top: 18px; color: var(--muted); font-size: .82rem; }
 .meta span { display: inline-flex; align-items: center; gap: 6px; }
-.meta span + span::before { content: ""; width: 3px; height: 3px; border-radius: 50%; background: var(--faint); margin-right: 8px; }
+.meta span + span::before { content: ""; width: 12px; height: 12px; background: currentColor; -webkit-mask: var(--mic) center / contain no-repeat; mask: var(--mic) center / contain no-repeat; }
 .card .btn { align-self: flex-start; }
 .card.ghost { min-height: 400px; background: linear-gradient(100deg, #0B0F1C 30%, #141a2c 50%, #0B0F1C 70%); background-size: 300% 100%; animation: shimmer 1.6s linear infinite; }
 @keyframes shimmer { to { background-position: -150% 0; } }
@@ -124,6 +125,7 @@ h1 { font: 600 clamp(2.5rem, 5.2vw, 4.25rem)/1 var(--display); letter-spacing: -
 .sep { width: 1px; height: 20px; background: var(--line-hi); }
 .clock { color: var(--amber); font-size: 1.15rem; }
 .period { color: var(--muted); font: 500 .85rem/1 var(--body); }
+.opp { display: inline-flex; align-items: center; gap: 10px; }
 .need { color: var(--fg); font: 600 .85rem/1 var(--body); padding: 6px 10px; border-radius: 8px; background: rgba(255, 181, 71, .14); border: 1px solid rgba(255, 181, 71, .3); }
 .replay { font: 600 .65rem/1 var(--body); letter-spacing: .18em; color: var(--muted); border: 1px solid var(--line-hi); border-radius: 6px; padding: 5px 7px; }
 .onair { display: inline-flex; align-items: center; gap: 10px; padding: 9px 14px 9px 12px; border-radius: 999px; font: 600 .7rem/1 var(--body); letter-spacing: .16em; }
@@ -141,7 +143,8 @@ h1 { font: 600 clamp(2.5rem, 5.2vw, 4.25rem)/1 var(--display); letter-spacing: -
   background: rgba(255, 181, 71, .1); border: 1px solid rgba(255, 181, 71, .28); }
 .subtitle .tag.fixed { color: var(--fix); background: rgba(124, 212, 255, .1); border-color: rgba(124, 212, 255, .3); }
 .subtitle .tag.rejected { color: var(--err); background: rgba(255, 107, 107, .1); border-color: rgba(255, 107, 107, .3); }
-.subtitle p { margin: 0; max-width: 24ch; font: 600 clamp(1.6rem, 3.3vw, 3.3rem)/1.1 var(--display); letter-spacing: -.02em; text-wrap: balance;
+.subtitle::before { content: ""; position: absolute; inset: -40px -10% -30px; z-index: -1; pointer-events: none; background: radial-gradient(closest-side, rgba(4, 6, 12, .6), transparent); }
+.subtitle p { margin: 0; max-width: 34ch; font: 600 clamp(1.6rem, 3vw, 3rem)/1.12 var(--display); letter-spacing: -.02em; text-wrap: balance;
   text-shadow: 0 2px 30px rgba(0, 0, 0, .65); animation: rise .38s var(--ease); }
 .subtitle.fixed p { color: var(--fix); }
 .subtitle.rejected p { color: var(--faint); text-decoration: line-through; text-decoration-thickness: 2px; }
@@ -177,7 +180,7 @@ h1 { font: 600 clamp(2.5rem, 5.2vw, 4.25rem)/1 var(--display); letter-spacing: -
 
 .side { position: absolute; top: 84px; right: var(--gut); bottom: 26px; width: var(--side-w); z-index: 2; display: flex; flex-direction: column; gap: 16px; }
 .panel { padding: 20px; }
-.panel.lines { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.panel.lines { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .panel-h { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
 .panel h3 { margin: 0; font: 600 1.05rem/1 var(--display); letter-spacing: -.01em; }
 .panel .hint { margin: 0; color: var(--faint); font-size: .85rem; }
@@ -197,6 +200,7 @@ h1 { font: 600 clamp(2.5rem, 5.2vw, 4.25rem)/1 var(--display); letter-spacing: -
 .pill.rejected { color: #2a0808; background: var(--err); }
 .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px 12px; margin: 0; }
 .stats div { display: grid; gap: 8px; align-content: start; }
+.stats dt { letter-spacing: .1em; line-height: 1.3; }
 .stats dd { margin: 0; font: 600 1.45rem/1 var(--display); letter-spacing: -.02em; }
 .stats .wide { grid-column: 1 / -1; padding-top: 14px; border-top: 1px solid var(--line); }
 .stats .wide dd { font: 500 .95rem/1.4 var(--body); letter-spacing: 0; }
@@ -260,17 +264,18 @@ h1 { font: 600 clamp(2.5rem, 5.2vw, 4.25rem)/1 var(--display); letter-spacing: -
   .wrap { padding-top: 16px; }
   h1 { margin-bottom: 24px; }
   .cards { grid-template-columns: 1fr; gap: 16px; }
-  .card { min-height: 460px; }
-  .card .art::after { background: linear-gradient(0deg, rgba(6, 8, 15, .96) 38%, rgba(6, 8, 15, .35) 70%, rgba(6, 8, 15, .05) 100%); }
-  .card-body { max-width: none; justify-content: flex-end; padding: 22px; }
+  .card { min-height: 0; }
+  .card .art { bottom: auto; aspect-ratio: 8 / 5; }
+  .card .art::after { background: linear-gradient(0deg, #0A0E1A 0%, rgba(10, 14, 26, 0) 50%); }
+  .card-body { max-width: none; padding: calc(62.5% - 24px) 22px 22px; }
   .card h2 { font-size: 1.8rem; }
   .meta { margin-top: 4px; padding-top: 8px; }
   .hud { top: 60px; }
   .scorebar { gap: 10px; padding: 8px 12px; font-size: .95rem; }
   .score { font-size: 1.25rem; }
-  .period, .replay, .onair .who { display: none; }
+  .period, .replay, .opp, .onair .who, .dock .back { display: none; }
   .subtitle { bottom: 132px; gap: 12px; }
-  .subtitle p { font-size: 1.6rem; }
+  .subtitle p { font-size: 1.45rem; }
   .dock { bottom: 56px; }
   .dock .btn { padding: 0 10px; }
   .seg button { padding: 0 12px; }
@@ -402,7 +407,7 @@ function stadium({ id, w, h, sport, seed, figures = [], extra = "" }) {
     const x = R() * w, top = roof(x) + 10, y = top + R() * (hz - top - 14);
     s += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(.7 + R() * 2.1).toFixed(2)}" fill="${crowd[(R() * crowd.length) | 0]}" opacity="${(.1 + R() * .45).toFixed(2)}"/>`;
   }
-  s += `<rect y="${hz - h * .026}" width="${w}" height="${h * .022}" fill="url(#${id}l)" opacity=".45"/>
+  s += `<rect y="${hz - h * .026}" width="${w}" height="${h * .022}" fill="url(#${id}l)" opacity=".22"/>
     <rect y="${hz}" width="${w}" height="${ph}" fill="url(#${id}p)"/>`;
   for (let i = 0; i < 10; i += 2) {
     const y0 = hz + ph * (i / 10) ** 1.5, y1 = hz + ph * ((i + 1) / 10) ** 1.5;
@@ -414,7 +419,7 @@ function stadium({ id, w, h, sport, seed, figures = [], extra = "" }) {
       <ellipse cx="${w * .475}" cy="${hz + ph * .42}" rx="${w * .15}" ry="${ph * .17}"/>
       <path d="M${w} ${hz + ph * .1} L${w * .86} ${hz + ph * .1} L${w * .8} ${hz + ph * .62} L${w} ${hz + ph * .62}"/></g>`;
   } else {
-    const t = hz + ph * .2, b = hz + ph * .8, cx = w * .5;
+    const t = hz + ph * .06, b = hz + ph * .52, cx = w * .5;
     s += `<ellipse cx="${cx}" cy="${hz + ph * .56}" rx="${w * .66}" ry="${ph * .62}" stroke="#fff" stroke-opacity=".3" fill="none" stroke-width="${w / 600}"/>
       <ellipse cx="${cx}" cy="${hz + ph * .5}" rx="${w * .3}" ry="${ph * .36}" stroke="#fff" stroke-opacity=".18" stroke-dasharray="6 8" fill="none"/>
       <polygon points="${cx - w * .018},${t} ${cx + w * .018},${t} ${cx + w * .04},${b} ${cx - w * .04},${b}" fill="url(#${id}t)" opacity=".85"/>
@@ -443,19 +448,19 @@ function shirt(x, y, scale, rot, fill, trim, label, ink, size) {
 const SHADE = `<defs><linearGradient id="shade" x2="1"><stop offset="0" stop-color="#fff" stop-opacity=".16"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".35"/></linearGradient></defs>`;
 const ART = {
   football: stadium({ id: "cf", w: 800, h: 500, sport: "football", seed: 11, extra: SHADE
-    + shirt(430, 170, 1.15, -8, "#C8102E", "#F1BF00", "10", "#F1BF00", 96) + shirt(590, 190, 1.15, 7, "#F4F4F4", "#1B2A5A", "9", "#1B2A5A", 96) }),
+    + shirt(405, 175, 1.05, -8, "#C8102E", "#F1BF00", "10", "#F1BF00", 96) + shirt(560, 195, 1.05, 7, "#F4F4F4", "#1B2A5A", "9", "#1B2A5A", 96) }),
   cricket: stadium({ id: "cc", w: 800, h: 500, sport: "cricket", seed: 23, extra: SHADE
-    + shirt(600, 175, 1.15, 7, "#0F8A4C", "#D9F2E4", "PAK", "#F4F4F4", 44) + shirt(440, 160, 1.15, -8, "#2F7DE1", "#FF9933", "IND", "#F4F4F4", 44)
+    + shirt(565, 180, 1.05, 7, "#0F8A4C", "#D9F2E4", "PAK", "#F4F4F4", 44) + shirt(410, 165, 1.05, -8, "#2F7DE1", "#FF9933", "IND", "#F4F4F4", 44)
     + `<circle cx="720" cy="430" r="17" fill="#B3262E"/><path d="M706 422 Q720 432 734 422" stroke="#F4D9C0" stroke-width="2" fill="none"/>` }),
 };
 const STAGE = {
   football: () => stadium({ id: "sf", w: 1600, h: 900, sport: "football", seed: 5, figures: [
-    [.83, .36, "#F4D03F", "#222"], [.7, .45, "#C8102E", "#1B2A5A"], [.63, .55, "#F4F4F4", "#1B2A5A"], [.76, .6, "#C8102E", "#1B2A5A"],
-    [.57, .7, "#C8102E", "#1B2A5A"], [.68, .78, "#F4F4F4", "#1B2A5A"], [.47, .62, "#F4F4F4", "#1B2A5A"], [.88, .7, "#F4F4F4", "#1B2A5A"], [.38, .82, "#C8102E", "#1B2A5A"]],
-    extra: `<circle cx="${1600 * .65}" cy="${900 * .47 + 477 * .57}" r="7" fill="#fff"/>` }),
+    [.86, .12, "#F4D03F", "#222"], [.71, .2, "#C8102E", "#1B2A5A"], [.64, .27, "#F4F4F4", "#1B2A5A"], [.78, .3, "#C8102E", "#1B2A5A"],
+    [.55, .2, "#C8102E", "#1B2A5A"], [.69, .38, "#F4F4F4", "#1B2A5A"], [.47, .3, "#F4F4F4", "#1B2A5A"], [.9, .26, "#F4F4F4", "#1B2A5A"], [.38, .36, "#C8102E", "#1B2A5A"]],
+    extra: `<circle cx="${1600 * .67}" cy="${900 * .47 + 477 * .3}" r="5" fill="#fff"/>` }),
   cricket: () => stadium({ id: "sc", w: 1600, h: 900, sport: "cricket", seed: 9, figures: [
-    [.5, .14, "#0F8A4C", "#0F8A4C"], [.505, .7, "#2F7DE1", "#1E4FA0"], [.5, .86, "#0F8A4C", "#0F8A4C"], [.47, .24, "#2F7DE1", "#1E4FA0"],
-    [.25, .45, "#0F8A4C", "#0F8A4C"], [.78, .38, "#0F8A4C", "#0F8A4C"], [.15, .78, "#0F8A4C", "#0F8A4C"], [.86, .74, "#0F8A4C", "#0F8A4C"], [.56, .26, "#EDEDED", "#333"]] }),
+    [.5, .03, "#0F8A4C", "#0F8A4C"], [.505, .44, "#2F7DE1", "#1E4FA0"], [.5, .56, "#0F8A4C", "#0F8A4C"], [.475, .1, "#2F7DE1", "#1E4FA0"],
+    [.27, .26, "#0F8A4C", "#0F8A4C"], [.76, .22, "#0F8A4C", "#0F8A4C"], [.16, .46, "#0F8A4C", "#0F8A4C"], [.86, .44, "#0F8A4C", "#0F8A4C"], [.545, .12, "#EDEDED", "#333"]] }),
 };
 const stageCache = {};
 
@@ -476,7 +481,7 @@ function pickerView() {
     const m = MATCHES[sp];
     return `<article class="card"><div class="art">${ART[sp]}</div><div class="card-body">
       <span class="label">${m.sport}</span><h2>${m.title}</h2><p class="detail">${m.detail}</p><p class="result">${m.result}</p>
-      <div class="meta"><span class="num">Highlights ${mmss(m.length)}</span><span>${m.moments.length} key moments</span><span>${DEFAULT_VOICE[sp]} commentator</span></div>
+      <div class="meta"><span class="num">Highlights ${mmss(m.length)} · ${m.moments.length} key moments</span><span>${DEFAULT_VOICE[sp]} commentator</span></div>
       <button class="btn primary" data-act="start" data-sport="${sp}">Start replay <span class="arr" aria-hidden="true">→</span></button></div></article>`;
   }).join("")}</div>`;
   return `<div class="page">${nav("picker")}<main class="wrap"><p class="eyebrow">A live AI commentator for matches nobody calls.</p>
@@ -501,7 +506,7 @@ function liveView() {
        <span class="clock num">${m ? m.clock : "00:00"}</span><span class="period">${m ? m.period : "1st half"}</span>`
     : `${team(h, hc)}<span class="score num">${m ? m.score : "0/0"}</span><span class="sep"></span>
        <span class="clock num">Over ${m ? m.clock : "0.0"}</span><span class="need num">${m ? m.need : "need 160 off 120"}</span>
-       <span class="period">${team(a, ac)} <span class="num">159/8</span></span>`;
+       <span class="opp">${team(a, ac)}<span class="period num">159/8</span></span>`;
   const voiceName = `${S.voices[S.sport]} commentator`;
   const onair = S.voice === "on"
     ? `<span class="onair glass ${S.speaking ? "on" : ""}" role="status"><span class="rec"></span>ON AIR<span class="bars" aria-hidden="true"><span></span><span></span><span></span><span></span></span><span class="who">${voiceName}</span></span>`
@@ -531,7 +536,7 @@ function liveView() {
   }
   const busy = !ok;
   const dock = `<div class="lane dock"><div class="glass">
-    <button class="btn" data-act="fixtures">← Fixtures</button>
+    <button class="btn back" data-act="fixtures">← Fixtures</button>
     <div class="seg" role="group" aria-label="Sport">${["football", "cricket"].map((s) =>
       `<button data-act="sport" data-sport="${s}" aria-pressed="${S.sport === s}" ${busy ? "disabled" : ""}>${MATCHES[s].sport}</button>`).join("")}</div>
     <button class="btn" data-act="voice" ${busy ? "disabled" : ""} aria-haspopup="dialog">Voice: ${S.voice === "on" ? S.voices[S.sport] : S.voice === "off" ? "Off" : "Unavailable"}</button></div></div>`;
@@ -618,7 +623,7 @@ function voiceView() {
   const off = S.voice !== "on";
   const group = (sp) => `<div role="radiogroup" aria-label="${MATCHES[sp].sport} voice"><span class="label">${MATCHES[sp].sport}</span><div class="opts">${Object.keys(VOICES).map((v) =>
     `<label class="opt"><input type="radio" name="voice-${sp}" value="${v}" data-sport="${sp}" ${S.voices[sp] === v ? "checked" : ""} ${off ? "disabled" : ""}>
-     <span>${v} commentator${DEFAULT_VOICE[sp] === v ? "<em>Default</em>" : ""}</span></label>`).join("")}</div></div>`;
+     <span>${v}${DEFAULT_VOICE[sp] === v ? "<em>Default</em>" : ""}</span></label>`).join("")}</div></div>`;
   return `<div class="scrim" data-act="scrim"><div class="sheet glass" role="dialog" aria-modal="true" aria-labelledby="voice-h">
     <h2 id="voice-h">Commentator voice</h2>
     <p class="lede">Each line is spoken in this voice. A change applies from the next line, without reloading.</p>
