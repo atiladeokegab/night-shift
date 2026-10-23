@@ -9,3 +9,4 @@
 | Model | `claude-haiku-4-5` through Mubit's Anthropic endpoint | Decided | fastest measured first word; one Mubit task |
 | Offline | `FakeProvider`, no keys, no network | Decided | `make smoke` is the merge gate |
 | Check | ruff, pytest | Decided | `make check` |
+| Web build | Node 22 (`node:22-slim` build stage in the Dockerfile), `npm ci && npm run build` of web/ | Decided | builds the React + Vite page (web/, Persia) into the image; the API serves `web/dist` |
