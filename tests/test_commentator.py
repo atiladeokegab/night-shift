@@ -248,3 +248,26 @@ def test_one_untemplated_prompt_asks_for_a_broadcast_call_on_big_moments():
     for rule in ("changes the score, the lead or the result", "emotion", "20 words"):
         assert rule in system
     assert "calmly" in system  # routine moments stay calm
+
+
+@pytest.mark.parametrize(
+    "said, line",
+    [
+        ("BAD Manenti hits four! Italy 98 for 5.", "Manenti hits four! Italy 98 for 5."),
+        (
+            "Miedema takes the shot from the right foot in open play, Mackenzie Arnold is equal to"
+            " it! Arsenal still leading seven to one.",
+            "Miedema takes the shot from the right foot in open play, Mackenzie Arnold is equal to"
+            " it!",
+        ),
+        ("GOAL! Ann! Reds one, Blues nil!", "GOAL! Ann! Reds one, Blues nil!"),
+    ],
+)
+def test_line_is_trimmed_to_whole_sentences_within_20_words(said, line):
+    assert line_for(FOOT, [moment(FOOT, 0)], 0, Scripted(text(said)))["text"] == line
+
+
+def test_one_sentence_over_20_words_is_no_line():
+    said = " ".join(["word"] * 21) + "!"
+    with pytest.raises(commentator.NoLine):
+        line_for(FOOT, [moment(FOOT, 0)], 0, Scripted(text(said)))
