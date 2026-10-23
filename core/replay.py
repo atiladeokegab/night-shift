@@ -1,5 +1,6 @@
-"""The replayer: walks a match's Moments at `speed`, asks the commentator for a Line per moment,
-stores each Line and publishes moment, line and stats events for the SSE stream."""
+"""The replayer: walks a match's Moments at `speed` (or, for a match with a video map, its mapped
+moments ahead of time), asks the commentator for a Line per moment, stores each Line and publishes
+moment, line and stats events for the SSE stream."""
 
 import asyncio
 import uuid
@@ -53,22 +54,37 @@ class Replay:
 
 
 async def run_replay(
-    replay: Replay, moments: list[dict], commentate: Callable[[dict, list[dict]], dict], store
+    replay: Replay,
+    moments: list[dict],
+    commentate: Callable[[dict, list[dict]], dict],
+    store,
+    video: dict | None = None,
 ) -> None:
+    # A video map: only mapped moments are called, each tagged with its video time and sent as
+    # soon as it is ready; the page holds each line until the player reaches that time.
+    video_t = {m["idx"]: m["video_t"] for m in video["moments"]} if video else None
     try:
         last = None
         history: list[dict] = []
         for moment in moments:
-            at = moment_seconds(moment)
-            if last is not None and at > last:
-                await asyncio.sleep((at - last) / replay.speed)
-            last = at
-            await replay.publish("moment", moment)
+            tag = {}
+            if video_t is None:
+                at = moment_seconds(moment)
+                if last is not None and at > last:
+                    await asyncio.sleep((at - last) / replay.speed)
+                last = at
+            elif moment["idx"] in video_t:
+                tag = {"video_t": video_t[moment["idx"]]}
+            else:  # not in the video: no call, but still recent play for later lines
+                history.append(moment)
+                continue
+            await replay.publish("moment", {**moment, **tag})
             # commentate sees only moments up to this one: later events never reach the model
             line = await asyncio.to_thread(commentate, moment, list(history))
             history.append(moment)
             if line is None:  # the commentator had nothing usable to say: the moment stays silent
                 continue
+            line = {**line, **tag}
             store.append("lines", line)
             await replay.publish("line", line)
             await replay.publish("stats", stats(store))

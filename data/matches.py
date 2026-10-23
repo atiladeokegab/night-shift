@@ -10,6 +10,7 @@ import json
 from pathlib import Path
 
 SAMPLE = Path(__file__).resolve().parent / "sample"
+VIDEO = Path(__file__).resolve().parent / "video"
 
 
 def _path(match_id: str) -> Path:
@@ -28,12 +29,22 @@ def list_matches() -> list[dict]:
     for path in sorted(SAMPLE.glob("*.json")):
         h = json.loads(path.read_text(encoding="utf-8"))["header"]
         title = f"{h['home']} v {h['away']}, {h['competition']} {h['stage']}".strip()
-        out.append({"match_id": h["match_id"], "sport": h["sport"], "title": title, "sample": True})
+        match = {"match_id": h["match_id"], "sport": h["sport"], "title": title, "sample": True}
+        if vmap := video_map(h["match_id"]):
+            match["youtube_id"] = vmap["youtube_id"]
+        out.append(match)
     return out
 
 
 def load_moments(match_id: str) -> list[dict]:
     return _read(match_id)["moments"]
+
+
+def video_map(match_id: str) -> dict | None:
+    """data/video/<sport>-<match_id>.json: {youtube_id, source, moments: [{idx, video_t}]}."""
+    match_id = str(match_id)
+    found = sorted(VIDEO.glob(f"*-{match_id}.json")) if match_id.isalnum() else []
+    return json.loads(found[0].read_text(encoding="utf-8")) if found else None
 
 
 def match_header(match_id: str) -> dict:
