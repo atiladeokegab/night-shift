@@ -24,9 +24,9 @@ FALLBACK_RESERVE_S = 1.5  # v3 stops this long before the moment, so flash still
 LIVE_BUDGET_S = 4.0  # a line with no video time is spoken as it arrives
 CONCURRENCY = 3  # a whole match's lines arrive in seconds; ElevenLabs caps concurrent requests
 
-# The page's voice setting. ids are ours; eleven_id never leaves the server. VOICE_<SPORT>=<id>
-# picks the sport's default (the lead's pick from docs/voice.md is config, not code). Viraj and
-# Connor are ElevenLabs library voices: the first call on each is slow (13-16 s measured
+# The page's voice setting. ids are ours; eleven_id never leaves the server. VOICE_<SPORT> takes an
+# id here or any ElevenLabs voice id (all_voices) as the sport's default: the lead's pick from
+# docs/voice.md is config, not code. Viraj and Connor are ElevenLabs library voices: the first call on each is slow (13-16 s measured
 # 2026-10-23), so run `uv run python -m core.voice` before the demo.
 VOICES = [
     {
@@ -69,9 +69,21 @@ def tag_for(moment: dict) -> str | None:
     return "[shouting]" if moment.get("outcome") == "Goal" else TAGS.get(moment.get("type"))
 
 
+def all_voices(env=os.environ) -> list[dict]:
+    """VOICES, plus `<sport>-pick` for each VOICE_<SPORT> set to a raw ElevenLabs voice id."""
+    picks = []
+    for v in VOICES:
+        sport = v["default_for"]
+        chosen = env.get(f"VOICE_{sport.upper()}") if sport else None
+        if chosen and all(chosen not in (x["id"], x["eleven_id"]) for x in VOICES):
+            label = f"{sport.title()} pick"
+            picks.append({**v, "id": f"{sport}-pick", "label": label, "eleven_id": chosen})
+    return VOICES + picks
+
+
 def default_voice(sport: str | None, env=os.environ) -> dict:
     chosen = env.get(f"VOICE_{str(sport).upper()}")
-    return next((v for v in VOICES if v["id"] == chosen), None) or next(
+    return next((v for v in all_voices(env) if chosen in (v["id"], v["eleven_id"])), None) or next(
         (v for v in VOICES if v["default_for"] == sport), VOICES[0]
     )
 
@@ -156,7 +168,7 @@ def warm(key: str, transport: httpx.BaseTransport | None = None) -> dict[str, in
     """Speak one short line in every voice on both models; ms per voice, None if one failed."""
     took = {}
     with httpx.Client(transport=transport, timeout=30) as client:
-        for v in VOICES:
+        for v in all_voices():
             started = time.perf_counter()
             ok = True
             for model in (MODEL, FALLBACK_MODEL):
@@ -183,7 +195,7 @@ def voice_router(store, speaker: Speaker) -> APIRouter:
         default = {default_voice(s)["id"]: s for s in sports}  # one sport per voice
         return [
             {**{k: v[k] for k in ("id", "label", "lang")}, "default_for": default.get(v["id"])}
-            for v in VOICES
+            for v in all_voices()
         ]
 
     @router.get("/lines/{line_id}/audio")
@@ -193,7 +205,7 @@ def voice_router(store, speaker: Speaker) -> APIRouter:
         if line is None:
             raise HTTPException(404, f"no line {line_id!r}")
         if voice:
-            chosen = next((v for v in VOICES if v["id"] == voice), None)
+            chosen = next((v for v in all_voices() if v["id"] == voice), None)
             if chosen is None:
                 raise HTTPException(404, f"no voice {voice!r}")
         else:

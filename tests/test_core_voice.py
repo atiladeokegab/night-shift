@@ -252,3 +252,18 @@ def test_voice_and_model_per_sport_come_from_env(tmp_path, monkeypatch):
     george = next(v for v in VOICES if v["id"] == "george")
     assert voice_in(seen[0]) == george["eleven_id"] and b"eleven_flash_v2_5" in seen[0].content
     assert defaults == {"george": "football", "connor": None, "viraj": "cricket"}
+
+
+def test_a_raw_elevenlabs_voice_id_is_a_config_only_pick(tmp_path, monkeypatch):
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    monkeypatch.setenv("VOICE_FOOTBALL", "gU0LNdkMOQCOrPrwtbee")
+    seen = []
+    line = {"line_id": "f1", "sport": "football", "text": "Goal!"}
+    with client_for(tmp_path, upstream(seen=seen), line) as client:
+        voices = {v["id"]: v for v in client.get("/voices").json()}
+        assert client.get("/lines/f1/audio").status_code == 200
+        assert client.get("/lines/f1/audio?voice=football-pick").status_code == 200
+    assert voices["football-pick"]["default_for"] == "football"
+    assert voices["football-pick"]["lang"] == "en-GB" and voices["connor"]["default_for"] is None
+    assert "gU0LNdkMOQCOrPrwtbee" not in json.dumps(list(voices.values()))
+    assert [voice_in(r) for r in seen] == ["gU0LNdkMOQCOrPrwtbee"]  # the second request is cached
