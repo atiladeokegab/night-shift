@@ -241,6 +241,8 @@ def test_one_untemplated_prompt_asks_for_a_broadcast_call_on_big_moments():
     # A-3.6 offline: the live check (a judge on real lines) is tests/acceptance/test_A_3_6.py.
     system = commentator.SYSTEM
     assert "$" not in system and "{" not in system  # fixed text, never templated per sport
-    for big in ("goal", "saved or missed penalty", "six", "wicket", "emotion", "20 words"):
-        assert big in system
+    for sport in ("football", "cricket", "basketball", "formula"):
+        assert sport not in system.lower()  # the sport goes in the message, never the prompt
+    for rule in ("changes the score, the lead or the result", "emotion", "20 words"):
+        assert rule in system
     assert "calmly" in system  # routine moments stay calm
