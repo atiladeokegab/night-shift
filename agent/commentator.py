@@ -8,6 +8,7 @@ from __future__ import annotations
 import copy
 import json
 import os
+import re
 import time
 import uuid
 from datetime import UTC, datetime
@@ -117,6 +118,25 @@ def run_tool(name: str, args: dict, header: dict, past: list[dict]) -> str:
     return f"Unknown tool {name}."
 
 
+class NoLine(ValueError):
+    """The model gave no usable commentary for a moment."""
+
+
+# The model talking about its task, not the match: "I have all the information I need ...".
+_PREAMBLE = re.compile(
+    r"^(?:I\b|I'(?:m|ve|ll|d)\b|Let me\b|Let's (?:see|check|look)\b|Based on\b"
+    r"|Here(?:'s| is)\b|(?:Okay|OK|Sure|Great|Alright),)[^.!?:\n]*[.!?:]*\s*"
+)
+
+
+def spoken(text: str) -> str:
+    """The line as it should be spoken: leading preamble sentences dropped."""
+    text = text.strip()
+    while (m := _PREAMBLE.match(text)) and m.end():
+        text = text[m.end() :].lstrip()
+    return text
+
+
 def commentate(
     moment: dict, history: list[dict], header: dict | None = None, provider=None
 ) -> dict:
@@ -126,7 +146,10 @@ def commentate(
 
         header = match_header(moment["match_id"])
     moments = [*history, moment]
-    return line_for(header, moments, len(history), provider or default_provider())
+    try:
+        return line_for(header, moments, len(history), provider or default_provider())
+    except NoLine:
+        return None  # the replay skips the moment
 
 
 _provider = None
@@ -166,7 +189,9 @@ def line_for(header: dict, moments: list[dict], idx: int, provider) -> dict:
         offset = (time.monotonic() - start) * 1000
         reply = provider.call(request)  # the last round: any further tool request is dropped
         replies.append(reply)
-    text = " ".join(b["text"] for b in reply["content"] if b["type"] == "text").strip()
+    text = spoken(" ".join(b["text"] for b in reply["content"] if b["type"] == "text"))
+    if not text:  # a tool-only or preamble-only reply: no line beats a blank or a wrong one
+        raise NoLine(f"no commentary for moment {past[-1]['idx']}")
     first = reply.get("first_word_ms")
     return {
         "line_id": uuid.uuid4().hex,

@@ -2,6 +2,8 @@
 
 import json
 
+import pytest
+
 from agent import commentator, feed
 from agent.commentator import FakeProvider, build_request, commentate, line_for
 from scripts import replay_matches
@@ -171,3 +173,63 @@ def test_server_seam_on_the_bundled_samples(monkeypatch):
             raise AssertionError(bad)
         except KeyError:
             pass
+
+
+class Scripted:
+    """Answers each call with the next scripted content list."""
+
+    def __init__(self, *contents):
+        self.contents = list(contents)
+
+    def call(self, request):
+        return {
+            "content": self.contents.pop(0),
+            "usage": {"input_tokens": 1, "output_tokens": 1},
+            "request_id": f"r{len(self.contents)}",
+            "first_word_ms": 5.0,
+        }
+
+
+TOOL = [{"type": "tool_use", "id": "t1", "name": "get_score", "input": {}}]
+
+
+def text(t):
+    return [{"type": "text", "text": t}]
+
+
+def test_a_tool_only_last_reply_is_no_line_not_a_blank_one():
+    moments = [moment(FOOT, 0)]
+    with pytest.raises(commentator.NoLine):
+        line_for(FOOT, moments, 0, Scripted(TOOL, TOOL))
+    assert commentate(moments[0], [], header=FOOT, provider=Scripted(TOOL, TOOL)) is None
+
+
+@pytest.mark.parametrize(
+    "said",
+    [
+        "I have all the information I need from your message.",
+        "Let me check the score first.",
+        "",
+    ],
+)
+def test_preamble_alone_is_no_line(said):
+    with pytest.raises(commentator.NoLine):
+        line_for(FOOT, [moment(FOOT, 0)], 0, Scripted(text(said)))
+
+
+@pytest.mark.parametrize(
+    "said",
+    [
+        "I have all the information I need from your message.\n\nGoal! Ann buries it.",
+        "I have all the information I need from your message. Goal! Ann buries it.",
+        "Based on the score, here goes: Goal! Ann buries it.",
+    ],
+)
+def test_preamble_never_becomes_the_line(said):
+    line = line_for(FOOT, [moment(FOOT, 0)], 0, Scripted(text(said)))
+    assert line["text"] == "Goal! Ann buries it."
+
+
+def test_a_line_starting_with_now_is_kept():
+    line = line_for(FOOT, [moment(FOOT, 0)], 0, Scripted(text("Now that is a strike from Ann!")))
+    assert line["text"] == "Now that is a strike from Ann!"

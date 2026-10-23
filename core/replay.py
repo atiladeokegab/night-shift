@@ -67,6 +67,8 @@ async def run_replay(
             # commentate sees only moments up to this one: later events never reach the model
             line = await asyncio.to_thread(commentate, moment, list(history))
             history.append(moment)
+            if line is None:  # the commentator had nothing usable to say: the moment stays silent
+                continue
             store.append("lines", line)
             await replay.publish("line", line)
             await replay.publish("stats", stats(store))
