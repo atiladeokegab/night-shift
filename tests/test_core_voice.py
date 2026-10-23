@@ -173,6 +173,14 @@ def hoop(kind, outcome, period=2, clock="06:00", **detail):
         (hoop("Steal", "Steal", period=4, clock="00:18"), "[excited]"),
         (hoop("Free throw", "1 point", period=4, clock="00:43"), "[excited]"),
         (hoop("Field goal", "2 points"), None),  # a routine basket mid-game stays plain
+        ({"sport": "f1", "type": "Lead change", "outcome": "P1 on track"}, "[shouting]"),
+        ({"sport": "f1", "type": "Red flag", "outcome": "Red flag"}, "[shouting]"),
+        ({"sport": "f1", "type": "Finish", "outcome": "chequered flag"}, "[shouting]"),
+        ({"sport": "f1", "type": "Overtake", "outcome": "P3 on track"}, "[excited]"),
+        ({"sport": "f1", "type": "Pit stop", "outcome": "pits for soft tyres"}, "[excited]"),
+        ({"sport": "f1", "type": "Safety car", "outcome": "Safety car deployed"}, "[excited]"),
+        ({"sport": "f1", "type": "Last lap", "outcome": "final lap"}, "[hushed]"),
+        ({"sport": "f1", "type": "Retirement", "outcome": "out on lap 34"}, None),
     ],
 )
 def test_moment_kind_sets_the_audio_tag(moment, tag):

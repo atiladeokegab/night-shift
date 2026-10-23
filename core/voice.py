@@ -80,13 +80,15 @@ TAGS = {
     "End of game": "[shouting]",
     "Steal": "[excited]",
     "Free throw": "[excited]",
+    "Lead change": "[shouting]",  # f1: an overtake for the lead
+    "Red flag": "[shouting]",  # a crash stops the race
+    "Finish": "[shouting]",
     "Lights out": "[excited]",
     "Overtake": "[excited]",
-    "Lead change": "[shouting]",
+    "Pit stop": "[excited]",
     "Safety car": "[excited]",
-    "Red flag": "[excited]",
-    "Last lap": "[excited]",
-    "Finish": "[shouting]",
+    "Conditions": "[hushed]",  # build-up: rain and low grip
+    "Last lap": "[hushed]",
 }
 
 

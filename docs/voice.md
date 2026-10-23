@@ -9,8 +9,9 @@ Lines are spoken by ElevenLabs **`eleven_v3`**, its most expressive model. It re
 | Goal, wicket, six, last ball | `[shouting]` |
 | Shot saved or missed, four, card | `[excited]` |
 | Chase build-up | `[hushed]` |
-| F1: lead change, chequered flag | `[shouting]` |
-| F1: lights out, overtake, safety car, red flag, last lap | `[excited]` |
+| F1: lead change, red flag (a crash), chequered flag | `[shouting]` |
+| F1: lights out, other overtakes, pit stop, safety car | `[excited]` |
+| F1 build-up: low grip, last lap | `[hushed]` |
 | Anything else (substitution, injury) | none |
 
 The tag goes into the text sent to ElevenLabs and nowhere else. The stored line, the page and Mubit only ever see the line as the commentator wrote it.
