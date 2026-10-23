@@ -24,11 +24,13 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const speech = useSpeech()
 
-  // The stream callback reads the latest `say` through a ref, so toggling the voice never restarts a replay.
+  // The stream reads the latest `say` and `hush` through refs, so toggling the voice never restarts a replay.
   const say = useRef(speech.say)
+  const hush = useRef(speech.hush)
   useEffect(() => {
     say.current = speech.say
-  }, [speech.say])
+    hush.current = speech.hush
+  }, [speech.say, speech.hush])
 
   useEffect(() => {
     listMatches()
@@ -50,7 +52,7 @@ export default function App() {
       }
       if (e.type === 'line') {
         setLines((prev) => [e.line, ...prev])
-        say.current(e.line.text)
+        say.current(e.line)
       }
       if (e.type === 'error') setError(e.detail)
       if (e.type === 'end') setEnded(true)
@@ -60,7 +62,7 @@ export default function App() {
     return () => {
       cancelled = true
       stop?.()
-      window.speechSynthesis?.cancel()
+      hush.current()
     }
   }, [running, matchId, speed])
 
@@ -90,7 +92,6 @@ export default function App() {
   const latest = lines[0]
   const latestMoment = latest ? moments.find((m) => m.idx === latest.moment_idx) : undefined
 
-  const names = { home: match?.home ?? teams[0] ?? 'Home', away: match?.away ?? teams[1] ?? 'Away' }
   const ours = match && moment ? COLORS[sideOf(moment.team, match, teams[0] ?? null)] : COLORS.home
   const theirs = ours === COLORS.home ? COLORS.away : COLORS.home
   const label = match?.title ?? match?.match_id ?? ''
@@ -143,14 +144,14 @@ export default function App() {
             >
               {running ? 'Stop' : 'Start replay'}
             </button>
-            {speech.supported && (
+            {(
               <button onClick={() => speech.setOn(!speech.on)} aria-pressed={speech.on}>
                 {speech.on ? 'Voice on' : 'Voice off'}
               </button>
             )}
           </div>
 
-          <ScoreBar match={match} moment={moment} names={names} colors={COLORS} />
+          <ScoreBar match={match} moment={moment} colors={COLORS} />
 
           <div className="stage">
             {sport === 'football'
