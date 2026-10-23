@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react'
 import { createReplay, followReplay, type StreamStatus } from './api'
 import { release } from './gate'
-import type { Line, Moment, Stats } from './types'
+import type { Fix, Line, Moment, Stats } from './types'
 
 export interface ReplayState {
   phase: 'idle' | 'starting' | 'live' | 'failed'
   stream: StreamStatus
   gated: boolean // the match has a video: items wait for the player's clock (A-6.4@2)
   now: number // where the picture is, in video seconds (gated only)
+  duration: number // the video's length in seconds, once the player knows it
   moments: Moment[] // presented, in order
   lines: Line[] // presented, newest first
   late: string[] // line_ids released after the picture had moved past them: logged, never spoken
@@ -16,6 +17,7 @@ export interface ReplayState {
   ended: boolean
   error: string | null // a server `error` event: the commentator failed mid-replay
   stats: Stats | null // the latest `stats` event; store-wide, so it outlives a single replay
+  fixes: Record<string, Fix> // by line_id: from the `fixed` event or the fix request's answer
 }
 
 type Action =
@@ -24,15 +26,16 @@ type Action =
   | { type: 'failed' }
   | { type: 'moment'; moment: Moment }
   | { type: 'line'; line: Line }
-  | { type: 'tick'; t: number; playing: boolean }
+  | { type: 'tick'; t: number; playing: boolean; duration: number }
   | { type: 'stats'; stats: Stats }
+  | { type: 'fixed'; fix: Fix }
   | { type: 'stream'; status: StreamStatus }
   | { type: 'error'; detail: string }
   | { type: 'end' }
 
 const initial: ReplayState = {
-  phase: 'idle', stream: 'ok', gated: false, now: 0, moments: [], lines: [], late: [], queuedMoments: [], queuedLines: [],
-  ended: false, error: null, stats: null,
+  phase: 'idle', stream: 'ok', gated: false, now: 0, duration: 0, moments: [], lines: [], late: [], queuedMoments: [], queuedLines: [],
+  ended: false, error: null, stats: null, fixes: {},
 }
 
 const waits = (s: ReplayState, item: { video_t?: number }) => s.gated && item.video_t !== undefined
@@ -61,11 +64,12 @@ function reduce(s: ReplayState, a: Action): ReplayState {
     case 'tick': {
       // The picture's time always moves `now` (a paused seek too); only a moving picture releases.
       // Moments update the score whether live or late; only live lines become the subtitle and voice.
-      const at = { ...s, now: a.t }
-      if (!a.playing) return s.now === a.t ? s : at
+      const moved = s.now !== a.t || s.duration !== a.duration
+      const at = { ...s, now: a.t, duration: a.duration }
+      if (!a.playing) return moved ? at : s
       const m = release(s.queuedMoments, a.t)
       const l = release(s.queuedLines, a.t)
-      if (m.waiting.length === s.queuedMoments.length && l.waiting.length === s.queuedLines.length) return s.now === a.t ? s : at
+      if (m.waiting.length === s.queuedMoments.length && l.waiting.length === s.queuedLines.length) return moved ? at : s
       const released = [...l.late, ...l.live] // reversed below, so the newest live line ends up first
       return {
         ...at,
@@ -76,6 +80,7 @@ function reduce(s: ReplayState, a: Action): ReplayState {
         queuedLines: l.waiting,
       }
     }
+    case 'fixed': return { ...s, fixes: { ...s.fixes, [a.fix.line_id]: a.fix } }
     case 'stream': return { ...s, stream: a.status }
     case 'error': return { ...s, error: a.detail }
     case 'end': return { ...s, ended: true, stream: 'ok' }
@@ -91,7 +96,7 @@ export function onScreen(s: ReplayState): { moments: Moment[]; lines: Line[] } {
 }
 
 // The player's clock: where the picture is, and whether it is moving. Paused or buffering = hold.
-export type Clock = () => { t: number; playing: boolean }
+export type Clock = () => { t: number; playing: boolean; duration: number }
 
 const TICK_MS = 100
 
@@ -139,7 +144,7 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
     const timer = window.setInterval(() => {
       const now = clock.current?.()
       // Rounded down, never up: a line tagged 8.0 s must not show while the picture is at 7.96 s.
-      if (now) dispatch({ type: 'tick', t: Math.floor(now.t * 10) / 10, playing: now.playing })
+      if (now) dispatch({ type: 'tick', t: Math.floor(now.t * 10) / 10, playing: now.playing, duration: Math.round(now.duration) })
     }, TICK_MS)
     return () => window.clearInterval(timer)
   }, [watching])
@@ -157,6 +162,7 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
         if (e.type === 'moment') dispatch({ type: 'moment', moment: e.moment })
         if (e.type === 'line') dispatch({ type: 'line', line: e.line })
         if (e.type === 'stats') dispatch({ type: 'stats', stats: e.stats })
+        if (e.type === 'fixed') dispatch({ type: 'fixed', fix: e.fix })
         if (e.type === 'error') dispatch({ type: 'error', detail: e.detail })
         if (e.type === 'end') dispatch({ type: 'end' })
       },
@@ -200,5 +206,8 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
 
   useEffect(() => () => stop.current?.(), [])
 
-  return { state, start, reconnect, leave, setClock }
+  // A fix's answer marks the line at once; the `fixed` event that follows on the stream is the same Fix.
+  const markFixed = useCallback((fix: Fix) => dispatch({ type: 'fixed', fix }), [])
+
+  return { state, start, reconnect, leave, setClock, markFixed }
 }

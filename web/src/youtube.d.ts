@@ -17,7 +17,7 @@ declare namespace YT {
     videoId: string
     host?: string
     playerVars?: Record<string, string | number>
-    events?: { onReady?: (e: PlayerEvent) => void }
+    events?: { onReady?: (e: PlayerEvent) => void; onError?: (e: PlayerEvent) => void }
   }
 
   class Player {
@@ -25,6 +25,7 @@ declare namespace YT {
     playVideo(): void
     mute(): void
     getCurrentTime(): number
+    getDuration(): number
     getPlayerState(): PlayerState
     destroy(): void
   }
