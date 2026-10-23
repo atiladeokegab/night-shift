@@ -112,12 +112,13 @@ def tag_for(moment: dict) -> str | None:
 
 
 def all_voices(env=os.environ) -> list[dict]:
-    """VOICES, plus `<sport>-pick` for each VOICE_<SPORT> set to a raw ElevenLabs voice id."""
+    """VOICES, plus `<sport>-pick` for each VOICE_<SPORT> set to a raw ElevenLabs voice id, even one
+    another voice already uses: /voices names one sport per voice, so a shared voice needs its own entry."""
     picks = []
     for v in VOICES:
         sport = v["default_for"]
         chosen = env.get(f"VOICE_{sport.upper()}") if sport else None
-        if chosen and all(chosen not in (x["id"], x["eleven_id"]) for x in VOICES):
+        if chosen and all(chosen != x["id"] for x in VOICES):
             label = f"{sport.title()} pick"
             picks.append({**v, "id": f"{sport}-pick", "label": label, "eleven_id": chosen})
     return VOICES + picks
@@ -125,7 +126,7 @@ def all_voices(env=os.environ) -> list[dict]:
 
 def default_voice(sport: str | None, env=os.environ) -> dict:
     chosen = env.get(f"VOICE_{str(sport).upper()}")
-    return next((v for v in all_voices(env) if chosen in (v["id"], v["eleven_id"])), None) or next(
+    return next((v for v in all_voices(env) if v["id"] in (chosen, f"{sport}-pick")), None) or next(
         (v for v in VOICES if v["default_for"] == sport), VOICES[0]
     )
 
