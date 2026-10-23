@@ -33,7 +33,10 @@ def _score(header: dict, m: dict) -> str:
     s = m["score"]
     if m["sport"] == "f1":
         return f"Lap {s['lap']} of {s['laps']}: " + ", ".join(
-            f"P{c['pos']} {c['driver']}" + (f" {c['gap']}" if c["gap"] else "") for c in s["top"]
+            (f"P{c['pos']} " if c["pos"] else "")
+            + c["driver"]
+            + (f" {c['gap']}" if c["gap"] else "")
+            for c in s["top"]
         )
     if "home" in s:  # football and basketball
         text = f"{header['home']} {s['home']}, {header['away']} {s['away']}"

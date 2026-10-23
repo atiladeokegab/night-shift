@@ -1,6 +1,7 @@
 """The moment picker on hand-built feeds: no network."""
 
 import json
+from datetime import timedelta
 
 from agent import feed
 
@@ -268,8 +269,9 @@ def at(seconds: float) -> str:
 
 
 def race_rows():
-    """Three cars, three laps: a pass sent in reverse order, one handed straight back, one where
-    the passed car drops first, a pit stop for softs and a stop that swaps places below P1."""
+    """Four cars, three laps: a pass sent in reverse order, one handed straight back, one where
+    the passed car drops first, a pit stop for softs that swaps places below P1, and Gasly out
+    on lap 1."""
     drivers = [
         {"driver_number": n, "first_name": f, "last_name": last, "team_name": t}
         for n, f, last, t in [
@@ -285,6 +287,7 @@ def race_rows():
         "race_control": [
             {"date": at(0), "category": "Other", "message": "SESSION STARTED"},
             {"date": at(100), "category": "SafetyCar", "message": "SAFETY CAR DEPLOYED"},
+            {"date": at(110), "category": "Other", "message": "LOW GRIP CONDITIONS"},
             {"date": at(170), "category": "Flag", "flag": "CHEQUERED", "message": "CHEQUERED FLAG"},
         ],
         "position": [
@@ -294,10 +297,10 @@ def race_rows():
             pos(-5, 10, 4),
             pos(20, 1, 2),
             pos(20, 44, 1),  # one timestamp, the passed car's row first
-            pos(40, 4, 1),
-            pos(40, 44, 3),
-            pos(45, 4, 3),
-            pos(45, 44, 1),  # handed back in 5 s
+            pos(25, 4, 1),
+            pos(25, 44, 3),
+            pos(28, 4, 3),
+            pos(28, 44, 1),  # handed back in 3 s
             pos(60, 1, 3),
             pos(64, 4, 2),  # Verstappen drops, Norris moves up 4 s later
             pos(114, 4, 3),
@@ -307,9 +310,13 @@ def race_rows():
             {"date": at(150), "driver_number": 44, "gap_to_leader": 0.0},
             {"date": at(150), "driver_number": 1, "gap_to_leader": 2.1},
             {"date": at(150), "driver_number": 4, "gap_to_leader": 1.0},  # stale: behind P2
+            {"date": at(180), "driver_number": 1, "gap_to_leader": 1.2},  # over the line
         ],
-        "pit": [{"date": at(108), "driver_number": 4, "lap_number": 2, "pit_duration": 21.5}],
-        "stints": [{"driver_number": 4, "lap_start": 3, "compound": "SOFT"}],
+        "pit": [{"date": at(108), "driver_number": 4, "lap_number": 2, "pit_duration": 21.0}],
+        "stints": [
+            {"driver_number": n, "lap_start": 1, "compound": "MEDIUM"} for n in (1, 4, 10, 44)
+        ]
+        + [{"driver_number": 4, "lap_start": 3, "compound": "SOFT"}],
         "laps": [
             {
                 "date_start": at(60 * (k - 1) + 1),
@@ -321,12 +328,6 @@ def race_rows():
             for n in (1, 4, 44)
         ]
         + [{"date_start": at(1), "driver_number": 10, "lap_number": 1, "lap_duration": None}],
-        "session_result": [
-            {"driver_number": 44, "position": 1, "gap_to_leader": 0},
-            {"driver_number": 1, "position": 2, "gap_to_leader": 1.234},
-            {"driver_number": 4, "position": 3, "gap_to_leader": 9.87},
-            {"driver_number": 10, "position": None, "dns": True},
-        ],
     }
 
 
@@ -335,48 +336,74 @@ def test_f1_calls_passes_pit_stops_the_safety_car_and_the_flag():
     calls = [(m["clock"], m["type"], m["players"].get("driver"), m["outcome"]) for m in ms]
     assert calls == [
         ("00:00", "Lights out", None, "race start"),
-        ("00:20", "Lead change", "Lewis Hamilton", "P1 on track"),
-        ("01:04", "Overtake", "Lando Norris", "P2 on track"),
+        ("00:40", "Lead change", "Lewis Hamilton", "P1 on track"),  # once it has held 20 s
+        ("01:24", "Overtake", "Lando Norris", "P2 on track"),
         ("01:40", "Safety car", None, "Safety car deployed"),
-        ("01:48", "Pit stop", "Lando Norris", "pits for soft tyres"),
+        ("01:50", "Conditions", None, "Low grip conditions"),
+        ("02:01", "Retirement", "Pierre Gasly", "out on lap 1"),  # the others are a lap on
         ("02:01", "Last lap", None, "final lap"),
-        ("02:50", "Finish", None, "chequered flag"),
-    ]  # no flap at 00:40, no overtake from the stop, and Gasly did not start: no retirement
+        ("02:09", "Pit stop", "Lando Norris", "pits for soft tyres"),  # at pit exit
+        ("03:10", "Finish", None, "chequered flag"),
+    ]  # no flap at 00:25, and no overtake from the stop
     assert ms[1]["players"] == {"driver": "Lewis Hamilton", "passed": "Max Verstappen"}
     assert ms[2]["players"]["passed"] == "Max Verstappen" and ms[2]["period"] == 2
-    assert ms[4]["team"] == "McLaren" and ms[4]["detail"] == {
+    assert ms[7]["team"] == "McLaren" and ms[7]["detail"] == {
         "tyres": "soft",
-        "pit_lane_time": "21.5 seconds in the pit lane",  # never read as the stop itself
+        "pit_lane_time": "21.0 seconds in the pit lane",  # never read as the stop itself
     }
     assert ms[-1]["players"] == {"winner": "Lewis Hamilton"}
-    assert ms[-1]["score"]["top"] == [
-        {"pos": 1, "driver": "Lewis Hamilton", "gap": "leader"},
-        {"pos": 2, "driver": "Max Verstappen", "gap": "1.2 seconds"},  # "+1.2s" was misread
-        {"pos": 3, "driver": "Lando Norris", "gap": "9.9 seconds"},
-    ]
 
 
-def test_f1_standing_at_a_pit_stop_counts_the_stop_before_the_feed_catches_up():
+def test_f1_standing_puts_a_pitting_car_in_the_pit_lane_without_reading_ahead():
     ms = feed.f1_moments(RACE, race_rows())  # Norris pits at 01:48, his new place lands 6 s later
-    stop = next(m for m in ms if m["type"] == "Pit stop")
-    assert [c["driver"] for c in stop["score"]["top"][:3]] == [
-        "Lewis Hamilton",
-        "Max Verstappen",
-        "Lando Norris",
-    ]
-    before = next(m for m in ms if m["type"] == "Safety car")  # 8 s earlier: no stop yet
+    during = next(m for m in ms if m["type"] == "Conditions")  # 01:50
+    top = [(c["pos"], c["driver"], c["gap"]) for c in during["score"]["top"]]
+    assert top[:2] == [(1, "Lewis Hamilton", "leader"), (3, "Max Verstappen", "")]  # A-1.4
+    assert top[-1] == (None, "Lando Norris", "in the pit lane")
+    before = next(m for m in ms if m["type"] == "Safety car")  # 01:40: no stop yet
     assert before["score"]["top"][1]["driver"] == "Lando Norris"
 
 
 def test_f1_standing_leaves_out_a_gap_that_lags_the_car_ahead():
-    rows = race_rows()
-    rows["session_result"] = []  # no classification: the flag reads the live gaps
-    top = feed.f1_moments(RACE, rows)[-1]["score"]["top"][:3]
+    top = feed.f1_moments(RACE, race_rows())[-1]["score"]["top"][:3]  # the flag: live gaps
     assert [(c["driver"], c["gap"]) for c in top] == [
         ("Lewis Hamilton", "leader"),
-        ("Max Verstappen", "2.1 seconds"),
+        ("Max Verstappen", "1.2 seconds"),  # "+1.2s" was misread
         ("Lando Norris", ""),
     ]
+
+
+def known(rows: dict, t) -> dict:
+    """The feed as it stood at t: rows dated after t are not sent yet, a lap's duration is
+    never known in time, and a stop's lane time and new tyre arrive as the car leaves."""
+    by = lambda key: [r for r in rows[key[0]] if feed._when(r[key[1]]) <= t]  # noqa: E731
+    out = {"drivers": rows["drivers"]}
+    for name in ("position", "intervals", "race_control"):
+        out[name] = by((name, "date"))
+    out["laps"] = [{**r, "lap_duration": None} for r in by(("laps", "date_start"))]
+    out["pit"], done = [], set()
+    for r in by(("pit", "date")):
+        if feed._when(r["date"]) + timedelta(seconds=r["pit_duration"]) <= t:
+            out["pit"].append(r)
+            done.add((r["driver_number"], r["lap_number"] + 1))
+        else:
+            out["pit"].append({**r, "pit_duration": None})
+    out["stints"] = [
+        r
+        for r in rows["stints"]
+        if r["lap_start"] == 1 or (r["driver_number"], r["lap_start"]) in done
+    ]
+    return out
+
+
+def test_f1_no_moment_reads_a_row_from_later_in_the_feed():
+    rows = race_rows()
+    start = feed._when(rows["race_control"][0]["date"])
+    ms = feed.f1_moments(RACE, rows)
+    secs = lambda m: 60 * int(m["clock"][:2]) + int(m["clock"][3:])  # noqa: E731
+    for t in range(200):  # A-1.4: what is called by t comes from the feed as it stood at t
+        then = feed.f1_moments(RACE, known(rows, start + timedelta(seconds=t)))
+        assert [m for m in then if secs(m) <= t] == [m for m in ms if secs(m) <= t], t
 
 
 def test_openf1_rejects_a_session_key_that_is_not_a_number():

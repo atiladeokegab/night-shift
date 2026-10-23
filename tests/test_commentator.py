@@ -290,21 +290,20 @@ def test_kobes_81st_point_reaches_the_model():
 def test_hamiltons_win_reaches_the_model_with_places_and_gaps():
     moments, header = load_moments("9558"), match_header("9558")
     message = commentator.render_message(header, moments)
-    assert "Sport: f1" in message and "Moment: lap 52, 82:26" in message
+    assert "Sport: f1" in message and "Moment: lap 52, 82:46" in message
     assert "Match: Formula 1 British Grand Prix, Silverstone, 2024-07-07" in message
     assert "winner: Lewis Hamilton" in message
     assert (
         "Score after this moment: Lap 52 of 52: P1 Lewis Hamilton leader, "
         "P2 Max Verstappen 1.5 seconds, P3 Lando Norris 7.5 seconds" in message
     )
-    stop = next(m for m in moments if m["type"] == "Pit stop" and m["period"] == 40)
-    assert stop["players"] == {"driver": "Lando Norris"}  # Hamilton leads as Norris stops
-    assert [c["driver"] for c in stop["score"]["top"][:2]] == ["Lewis Hamilton", "Lando Norris"]
-    assert "pit_lane_time: 30.3 seconds in the pit lane" in commentator.render_message(
-        header, moments[: stop["idx"] + 1]
-    )
     lead = next(m for m in moments if m["type"] == "Lead change" and m["period"] == 40)
     assert lead["players"] == {"driver": "Lewis Hamilton", "passed": "Lando Norris"}
+    stop = moments[lead["idx"] + 1]  # called as he leaves the pit lane, after the lead change
+    assert (stop["type"], stop["players"]) == ("Pit stop", {"driver": "Lando Norris"})
+    message = commentator.render_message(header, moments[: stop["idx"] + 1])
+    assert "pit_lane_time: 30.3 seconds in the pit lane" in message
+    assert "P1 Lewis Hamilton leader" in message and "P1 Lando Norris" not in message
     race = build_request(header, moments)  # A-10.3: the same frozen model, prompt and tools
     assert (race["model"], race["system"]) == (commentator.MODEL, commentator.SYSTEM)
     assert (race["tools"], race["tool_choice"]) == (commentator.TOOLS, commentator.TOOL_CHOICE)

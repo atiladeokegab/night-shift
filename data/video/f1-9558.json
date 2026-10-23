@@ -6,7 +6,7 @@
   {"idx": 1, "video_t": 29.0},
   {"idx": 2, "video_t": 94.5},
   {"idx": 3, "video_t": 130.0},
-  {"idx": 4, "video_t": 166.0},
+  {"idx": 5, "video_t": 166.0},
   {"idx": 6, "video_t": 192.5},
   {"idx": 7, "video_t": 213.5},
   {"idx": 8, "video_t": 236.0},
@@ -17,8 +17,7 @@
   {"idx": 16, "video_t": 310.0},
   {"idx": 17, "video_t": 330.5},
   {"idx": 18, "video_t": 339.0},
-  {"idx": 20, "video_t": 345.0},
-  {"idx": 21, "video_t": 372.0},
+  {"idx": 20, "video_t": 372.0},
   {"idx": 23, "video_t": 402.0},
   {"idx": 25, "video_t": 407.0},
   {"idx": 26, "video_t": 417.0}
