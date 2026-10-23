@@ -38,7 +38,7 @@ def test_line_streams_audio_and_logs_first_byte(tmp_path, monkeypatch, caplog):
     assert resp.content == AUDIO
     req = seen[0]
     assert req.headers["xi-api-key"] == KEY
-    assert b"Kohli! Six over long-on!" in req.content and b"eleven_flash_v2_5" in req.content
+    assert b"Kohli! Six over long-on!" in req.content and b"eleven_v3" in req.content
     assert "voice line=l1 first_byte_ms=" in caplog.text
     assert KEY not in caplog.text and KEY.encode() not in resp.content
 
