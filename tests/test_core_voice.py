@@ -82,7 +82,9 @@ def test_voices_lists_one_default_per_sport(tmp_path):
     with client_for(tmp_path, upstream()) as client:
         voices = client.get("/voices").json()
     assert {v["default_for"] for v in voices} >= {"cricket", "football"}
-    assert all(set(v) == {"id", "label", "default_for"} for v in voices)
+    assert all(set(v) == {"id", "label", "default_for", "lang"} for v in voices)
+    lang = {v["default_for"]: v["lang"] for v in voices}
+    assert lang["cricket"] == "en-IN" and lang["football"] == "en-GB"
     assert all(v["id"].isascii() and " " not in v["id"] for v in voices)
 
 

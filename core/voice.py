@@ -19,18 +19,21 @@ MODEL = "eleven_flash_v2_5"
 VOICES = [
     {
         "id": "viraj",
+        "lang": "en-IN",
         "label": "Viraj: Indian English, energetic",
         "default_for": "cricket",
         "eleven_id": "PdJQAOWyIMAQwD7gQcSc",
     },
     {
         "id": "connor",
+        "lang": "en-GB",
         "label": "Connor: British, energetic",
         "default_for": "football",
         "eleven_id": "xtw8E1CXDMtNKx4sgP7u",
     },
     {
         "id": "george",
+        "lang": "en-GB",
         "label": "George: British, warm",
         "default_for": None,
         "eleven_id": "JBFqnCBsd6RMkjVDRZzb",
@@ -43,7 +46,7 @@ def voice_router(store, transport: httpx.AsyncBaseTransport | None = None) -> AP
 
     @router.get("/voices")
     def voices():
-        return [{k: v[k] for k in ("id", "label", "default_for")} for v in VOICES]
+        return [{k: v[k] for k in ("id", "label", "default_for", "lang")} for v in VOICES]
 
     @router.get("/lines/{line_id}/audio")
     async def line_audio(line_id: str, voice: str | None = None):
