@@ -9,12 +9,15 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from core.replay import Replay, run_replay
 from core.stats import stats
 from core.store import open_store
 from core.voice import voice_router
+
+WEB = Path(__file__).resolve().parent.parent / "web" / "dist"
 
 
 @dataclass
@@ -96,4 +99,7 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
         return FileResponse(Path(__file__).with_name("stage.html"), media_type="text/html")
 
     app.include_router(voice_router(store, tts_transport))
+    # the built page (web/, #18) at /, mounted last so every API route above wins
+    if WEB.is_dir():
+        app.mount("/", StaticFiles(directory=WEB, html=True), name="web")
     return app
