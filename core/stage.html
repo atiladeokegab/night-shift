@@ -286,10 +286,15 @@ function loadVideo(id) {
   });
 }
 
+// Each tap takes a new token: a slower earlier tap never opens a stream, and a stale stream is closed.
+let run = 0;
+
 async function start(sport) {
   const m = matches.find((x) => x.match_id === DEMO[sport]) || matches.find((x) => x.sport === sport);
   if (!m) return;
+  const token = ++run;
   if (es) es.close();
+  es = null;
   stopVoice();
   match = m; ytFailed = apiFailed; moments = {}; seen = new Set(); held = []; queue = []; logged = new Map(); lastT = 0;
   $("log").replaceChildren();
@@ -299,13 +304,16 @@ async function start(sport) {
   loadVideo(m.youtube_id);
   const r = await fetch("/replays", { method: "POST", headers: { "content-type": "application/json" },
     body: JSON.stringify({ match_id: m.match_id, speed: 10 }) }).catch(() => null);
+  if (token !== run) return;
   if (!r || !r.ok) return subtitle(`Could not start the replay (${r ? r.status : "offline"})`, "err");
   const { replay_id } = await r.json();
-  es = new EventSource(`/replays/${replay_id}/stream`);
-  es.addEventListener("moment", (e) => { const mo = JSON.parse(e.data); moments[mo.idx] = mo; });
-  es.addEventListener("line", (e) => arrive(JSON.parse(e.data)));
-  es.addEventListener("error", (e) => { if (e.data) subtitle(JSON.parse(e.data).detail, "err", "Commentator error"); });
-  es.addEventListener("end", () => es.close());
+  if (token !== run) return;
+  const src = (es = new EventSource(`/replays/${replay_id}/stream`));
+  const live = (fn) => (e) => (token === run ? fn(e) : src.close());
+  src.addEventListener("moment", live((e) => { const mo = JSON.parse(e.data); moments[mo.idx] = mo; }));
+  src.addEventListener("line", live((e) => arrive(JSON.parse(e.data))));
+  src.addEventListener("error", live((e) => { if (e.data) subtitle(JSON.parse(e.data).detail, "err", "Commentator error"); }));
+  src.addEventListener("end", () => src.close());
 }
 
 async function init() {
