@@ -1,0 +1,25 @@
+/* Dark broadcast look from the storyboard (issue #4), until docs/mockup/ merges (#1). */
+:root {
+  --bg: #0b0f14;
+  --panel: #141a22;
+  --line: #2a3442;
+  --text: #eef2f6;
+  --muted: #8a97a8;
+  --accent: #ffd23f;
+  --grass: #13361f;
+  --markings: rgba(255, 255, 255, 0.55);
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+body {
+  margin: 0;
+}
+
+h1,
+.scorebar,
+.subtitle .who {
+  font-family: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif;
+}
