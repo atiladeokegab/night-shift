@@ -36,7 +36,7 @@ Described in words, never copied in.
   Fonts; the live page self-hosts them.
 
 Our own pages use no match photographs, broadcast stills or player likenesses. The night stadium and
-the kit shirts in the mockup are drawn in SVG; in the product, the only footage is the embedded
+the team crests in the mockup are drawn in SVG; in the product, the only footage is the embedded
 official YouTube highlights.
 
 ## Look
@@ -56,12 +56,12 @@ official YouTube highlights.
 | `--faint` | `#F6F4EF` at 42% | Labels, footnotes |
 | `--glass` | `rgba(14, 18, 31, .55)` under a white sheen from 7% to 1.5% | Every card, bar and sheet |
 | `--line` / `--line-hi` | white at 10% / 20% | Glass borders and dividers / hover |
-| `--amber` | `#FFB547`; buttons a gradient `#FFC56B` → `#F5A524` with text `#1B1203` | The accent: the wordmark's full stop, primary buttons, the clock, the moment tag, timeline markers |
+| `--amber` | `#FFB547`; buttons a gradient `#FFC56B` → `#F5A524` with text `#1B1203` | The accent: the wordmark, primary buttons, the selected speed chip, the clock, the moment tag, timeline markers |
 | `--air` | `#FF4D4F` | The ON AIR dot only |
 | `--live` | `#3DDC84` | The nav's live dot and the adapter's result dot only |
 | `--fix` | `#7CD4FF` | Fixed lines |
 | `--err` | `#FF6B6B` | Errors, rejected lines |
-| Teams | Spain `#C8102E`, England `#F4F4F4`, India `#2F7DE1`, Pakistan `#0F8A4C` | Team bars in the score bar and kit artwork only |
+| Teams | Spain `#C8102E`, England `#F4F4F4`, India `#2F7DE1`, Pakistan `#0F8A4C` | Team bars in the score bar and the card crests only |
 
 Glass: the `--glass` fill, `backdrop-filter: blur(22px) saturate(150%)`, a 1px `--line` border, a 1px
 inner top highlight, and a long soft shadow (`0 24px 64px -28px`, black at 70%).
@@ -70,7 +70,7 @@ inner top highlight, and a long soft shadow (`0 24px 64px -28px`, black at 70%).
 
 | Role | Font | Size, weight, line height |
 |---|---|---|
-| Wordmark | Outfit | 1.55rem, 700, tracking −0.025em; "Touchline" and an amber "." |
+| Wordmark | Outfit | 1.55rem, 700, tracking −0.025em; "Touchline." all in `--amber` |
 | Page heading | Outfit | clamp(2.5rem, 5.2vw, 4.25rem), 600, 1.0, tracking −0.035em |
 | Card title | Outfit | 2.1rem, 600 (1.8rem on phones) |
 | Subtitle | Outfit | clamp(1.6rem, 3.3vw, 3.3rem), 600, 1.1, at most 24 characters a line, balanced, two lines at most |
@@ -105,30 +105,33 @@ voice speaks. Cards lift 3px on hover and their artwork scales 3.5% over 1.2s. S
   over the video. A dark wash at the top and bottom keeps the overlays legible.
 - **Live, tablet (760 to 1100px).** The stage is 74% of the screen height; Lines and Proof sit under it
   side by side.
-- **Live, phone (under 760px).** The stage is 76% of the screen height; the score bar drops the period
-  and the REPLAY tag, the ON AIR pill drops the voice name, the subtitle is 1.6rem, the timeline drops
-  its caption; Lines then Proof stack under the stage. Sheets dock to the bottom edge.
+- **Live, phone (under 760px).** The stage is 76% of the screen height, with the artwork anchored to
+  the bottom so the pitch, not the sky, fills it. The score bar keeps the period and REPLAY and may wrap
+  inside itself; the ON AIR pill stays on the same row and drops the voice name and bars. The subtitle
+  is 1.6rem and sits above the dock, never under it; the timeline drops its caption; Lines then Proof
+  stack under the stage. Sheets dock to the bottom edge.
 
 ## Components
 
 | Component | Shows | Behaviour |
 |---|---|---|
 | Nav | "Touchline." left; "Live" (green dot), "Fixtures", "About" right; the current page tinted | Live opens the live page; Fixtures is the match picker |
-| Match card | Night-stadium artwork with kit shirts, sport label, title, detail, result, a meta row (highlights length, key moments, default voice), "Start replay →" | Starts the replay |
-| Video stage | The official highlights: an embedded YouTube player, muted, full-bleed. In the mockup an SVG night stadium stands in | Plays from the start; a moment's line never shows before that moment plays |
-| Score bar | Team colour bars and codes, the score, the clock (football "69:01" and the half; cricket "Over 19.4", "need 6 off 3" in an amber chip, the other side's total), "REPLAY" | Updates with each moment |
+| Match card | Night-stadium artwork with the two teams' crests (shield in team colour, three-letter code), sport label, title, detail (the date never wraps), result, a meta row (highlights length, key moments, default voice), the speed chips, "Start replay →" | Starts the replay |
+| Video stage | The official highlights: an embedded YouTube player, muted, full-bleed. In the mockup an SVG night stadium stands in | Plays from the start. The player's current time drives the commentary, so a line never runs ahead of the picture (A-6.4@2) |
+| Score bar | Team colour bars and codes, the score, the clock (football "69:01" and the half; cricket "Over 19.4", "need 6 off 3" in an amber chip, with both teams' totals at the same weight: "IND 154/5 PAK 159/8"), "REPLAY" | Updates with each moment |
 | ON AIR pill | Red dot, "ON AIR", four amber bars, the voice ("British commentator") | Dot and bars move only while speaking; "VOICE OFF" or "VOICE UNAVAILABLE" otherwise |
-| Subtitle | The moment tag ("28:29 · Goal", "Over 19.4 · No-ball · Six") above the line in large type | Replaced by the next moment's line; a fixed line turns `--fix` with a "Fixed" tag |
+| Subtitle | Over a soft dark scrim so it never sits on the players: the moment tag ("28:29 · Goal", "Over 19.4 · No-ball · Six") above the line in large type | Replaced by the next moment's line; a fixed line turns `--fix` with a "Fixed" tag |
 | Dock | "← Fixtures", the Football / Cricket switch, "Voice: British" | The switch starts the other demo match; Voice opens the voice setting |
-| Timeline | "Official highlights · YouTube · muted", the progress track with a marker per mapped moment (amber once called), "3:05 / 4:56" | Read only |
-| Lines card | Every line so far, newest first: clock, line, first-word time, "Fix" | "Fix" opens the producer fix |
+| Timeline | "Official highlights · YouTube · muted", the progress track with a marker per mapped moment (amber once called), a small "Synced to video" chip, "3:05 / 4:56" | Read only |
+| Lines card | Every line so far, newest first: clock, line, first-word time, "Fix". Sized to its content; the oldest line fades out at the bottom rather than being cut | "Fix" opens the producer fix |
 | Proof card | First word p50 and p95, cost per line, lines, fixes, the adapter's result | Read only |
 | Fix sheet | The original line, an editable box, the reason chips, "Send fix", "Reject line", "Cancel" | See States |
 | Voice setting | A Voice on/off switch, then per sport the choices British, Indian and Australian, the default marked | A change applies from the next line with no reload; a toast confirms |
 | Toast | One short sentence in a glass pill at the bottom | Leaves after 2.4s |
 
-The speed choice (Real time, 4x, 16x) is gone: the highlights set the pace, and each mapped moment
-is emitted at its video time (A-6.4).
+Speed chips (Real time, 4x, 16x) on each card set the replay speed. Whatever the speed, the video
+clock drives the commentary (A-6.4@2). Open point: YouTube's player plays at most 2x, so 4x and 16x
+need another mechanism in the product, such as jumping from one mapped moment to the next.
 
 ## Flow
 
