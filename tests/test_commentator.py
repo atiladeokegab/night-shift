@@ -80,7 +80,7 @@ class AskEverything(FakeProvider):
 def test_frozen_parts_are_byte_identical_across_sports():
     f = build_request(FOOT, [moment(FOOT, 0)])
     c = build_request(CRIC, [moment(CRIC, 0)])
-    for key in ("model", "max_tokens", "system", "tools", "tool_choice"):
+    for key in ("model", "max_tokens", "temperature", "system", "tools", "tool_choice"):
         assert json.dumps(f[key]) == json.dumps(c[key])
     assert f["metadata"] == {"user_id": "match-football-7"}
     assert c["metadata"] == {"user_id": "match-cricket-8"}
@@ -246,3 +246,4 @@ def test_one_untemplated_prompt_asks_for_a_broadcast_call_on_big_moments():
     for rule in ("changes the score, the lead or the result", "emotion", "20 words"):
         assert rule in system
     assert "calmly" in system  # routine moments stay calm
+    assert build_request(FOOT, [moment(FOOT, 0)])["temperature"] == 0
