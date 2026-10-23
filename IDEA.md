@@ -1,6 +1,6 @@
 # The idea
 
-The full, current requirements are in `docs/PRD.md` (PRD v2, 2026-10-23). Build and review against it.
+The full, current requirements are in `docs/PRD.md` (PRD v5, 2026-10-23). Build and review against it.
 
 The lead writes this once the team has agreed the idea, and no issue is created before it is
 complete. If your task doesn't fit this page, open a change-request (AGENTS.md §7).
@@ -40,12 +40,14 @@ commentary for every match possible.
 - Side by side: the big model and our trained commentator calling the same moment (Mubit's Try
   models, unless Mubit lets the app call the adapter).
 
+- Iconic extra screens, after the core works: Messi v Mbappé (2022 World Cup final), Michael Jordan's last shot (1998 NBA Finals), Lewis Hamilton's 2024 Silverstone win. Same commentator, same prompt.
+
 ## What we don't build
 
 - Video or vision input to the model: the commentator reads event data; the highlights video is display only.
 - A live real-world match feed: replays of real matches only.
 - A system prompt per sport, or more than one commentator persona: either splits the Mubit task.
-- Sports beyond football and cricket this weekend, and any sport without real event data.
+- Sports beyond football, cricket, basketball and F1 this weekend, and any sport without real event data.
 - Unsourced statistics in the pitch.
 - Our own fine-tuning or model hosting: Mubit trains the model.
 - Any claim that our model beats the big one: it matches it, at lower cost.
