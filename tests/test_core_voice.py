@@ -323,6 +323,20 @@ def test_the_deployed_picks_give_every_sport_its_own_default(tmp_path, monkeypat
     assert [voice_in(r) for r in seen] == ["gU0LNdkMOQCOrPrwtbee"]
 
 
+def test_a_pick_by_another_sports_default_id_gets_its_own_entry(tmp_path, monkeypatch):
+    # docs/voice.md's own id for the pick: the announcer is already f1's default
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    monkeypatch.setenv("VOICE_FOOTBALL", "announcer")
+    seen = []
+    line = {"line_id": "f1", "sport": "football", "text": "Goal!"}
+    with client_for(tmp_path, upstream(seen=seen), line) as client:
+        voices = client.get("/voices").json()
+        assert client.get("/lines/f1/audio").status_code == 200
+    defaults = {v["default_for"]: v["id"] for v in voices if v["default_for"]}
+    assert defaults["football"] == "football-pick" and defaults["f1"] == "announcer"
+    assert [voice_in(r) for r in seen] == ["gU0LNdkMOQCOrPrwtbee"]
+
+
 def test_empty_voice_settings_from_env_example_keep_the_defaults(monkeypatch):
     from core.voice import default_voice, model_for
 
