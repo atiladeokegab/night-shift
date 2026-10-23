@@ -636,14 +636,8 @@ def f1_moments(header: dict, rows: dict[str, list[dict]]) -> list[dict]:
             continue
         events.append((when, kind, message.capitalize(), None, {}, {}))
 
-    # a top-five car is out once another car starts its second lap after the car's last one
-    last = {}
-    for when, n, lap in laps:
-        last[n] = (when, lap)
-    for n, (when, lap) in last.items():
-        gone = next((w for w, _, k in laps if k >= lap + 2), None)
-        if gone is not None and lap + 2 <= total and order_at(when).get(n, 99) <= F1_FIELD:
-            events.append((gone, "Retirement", f"out on lap {lap}", n, {"driver": who(n)}, {}))
+    # no retirements: OpenF1 sends no row confirming one, and a car's missing laps can be a slow
+    # car's later rows, so inferring it would read ahead (A-1.4)
 
     final = next((x[0] for x in laps if x[2] == total), None)
     if final is not None:

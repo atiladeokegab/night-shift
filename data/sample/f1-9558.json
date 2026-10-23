@@ -749,51 +749,6 @@
    "sport": "f1",
    "match_id": "9558",
    "idx": 16,
-   "period": 36,
-   "clock": "56:01",
-   "type": "Retirement",
-   "team": "Mercedes",
-   "players": {
-    "driver": "George Russell"
-   },
-   "outcome": "out on lap 34",
-   "score": {
-    "lap": 36,
-    "laps": 52,
-    "top": [
-     {
-      "pos": 1,
-      "driver": "Lando Norris",
-      "gap": "leader"
-     },
-     {
-      "pos": 2,
-      "driver": "Lewis Hamilton",
-      "gap": "2.5 seconds"
-     },
-     {
-      "pos": 3,
-      "driver": "Max Verstappen",
-      "gap": "10.1 seconds"
-     },
-     {
-      "pos": 4,
-      "driver": "Carlos Sainz",
-      "gap": "20.0 seconds"
-     },
-     {
-      "pos": 5,
-      "driver": "Oscar Piastri",
-      "gap": "21.9 seconds"
-     }
-    ]
-   },
-   "detail": {}
-  },
-  {
-   "sport": "f1",
-   "match_id": "9558",
-   "idx": 17,
    "period": 39,
    "clock": "61:57",
    "type": "Pit stop",
@@ -841,7 +796,7 @@
   {
    "sport": "f1",
    "match_id": "9558",
-   "idx": 18,
+   "idx": 17,
    "period": 39,
    "clock": "62:00",
    "type": "Pit stop",
@@ -889,7 +844,7 @@
   {
    "sport": "f1",
    "match_id": "9558",
-   "idx": 19,
+   "idx": 18,
    "period": 39,
    "clock": "62:15",
    "type": "Pit stop",
@@ -937,7 +892,7 @@
   {
    "sport": "f1",
    "match_id": "9558",
-   "idx": 20,
+   "idx": 19,
    "period": 40,
    "clock": "63:28",
    "type": "Lead change",
@@ -983,7 +938,7 @@
   {
    "sport": "f1",
    "match_id": "9558",
-   "idx": 21,
+   "idx": 20,
    "period": 40,
    "clock": "63:33",
    "type": "Pit stop",
@@ -1031,7 +986,7 @@
   {
    "sport": "f1",
    "match_id": "9558",
-   "idx": 22,
+   "idx": 21,
    "period": 40,
    "clock": "63:52",
    "type": "Pit stop",
@@ -1079,7 +1034,7 @@
   {
    "sport": "f1",
    "match_id": "9558",
-   "idx": 23,
+   "idx": 22,
    "period": 49,
    "clock": "76:36",
    "type": "Overtake",
@@ -1125,7 +1080,7 @@
   {
    "sport": "f1",
    "match_id": "9558",
-   "idx": 24,
+   "idx": 23,
    "period": 51,
    "clock": "80:45",
    "type": "Pit stop",
@@ -1173,7 +1128,7 @@
   {
    "sport": "f1",
    "match_id": "9558",
-   "idx": 25,
+   "idx": 24,
    "period": 52,
    "clock": "80:57",
    "type": "Last lap",
@@ -1218,7 +1173,7 @@
   {
    "sport": "f1",
    "match_id": "9558",
-   "idx": 26,
+   "idx": 25,
    "period": 52,
    "clock": "82:46",
    "type": "Finish",

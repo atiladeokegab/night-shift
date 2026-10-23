@@ -14,12 +14,11 @@
   {"idx": 12, "video_t": 264.0},
   {"idx": 13, "video_t": 268.5},
   {"idx": 15, "video_t": 288.0},
-  {"idx": 16, "video_t": 321.0},
-  {"idx": 17, "video_t": 338.0},
-  {"idx": 18, "video_t": 343.0},
-  {"idx": 20, "video_t": 386.0},
-  {"idx": 23, "video_t": 405.5},
-  {"idx": 25, "video_t": 408.0},
-  {"idx": 26, "video_t": 425.0}
+  {"idx": 16, "video_t": 338.0},
+  {"idx": 17, "video_t": 343.0},
+  {"idx": 19, "video_t": 386.0},
+  {"idx": 22, "video_t": 405.5},
+  {"idx": 24, "video_t": 408.0},
+  {"idx": 25, "video_t": 425.0}
  ]
 }
