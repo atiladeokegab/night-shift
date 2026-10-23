@@ -19,8 +19,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from agent import feed
-from agent.commentator import FakeProvider, MubitProvider, line_for
+from agent import feed  # noqa: E402
+from agent.commentator import FakeProvider, MubitProvider, line_for  # noqa: E402
 
 # Hand-picked StatsBomb competition-seasons, men's and women's, one match from each in turn.
 FOOTBALL = [
@@ -65,7 +65,7 @@ def football_candidates(seen: set):
     for comp, season in FOOTBALL:
         try:
             matches = feed.statsbomb_matches(comp, season)
-        except Exception as exc:  # noqa: BLE001 - one missing competition must not stop the run
+        except Exception as exc:  # one missing competition must not stop the run
             print(f"skip football {comp}/{season}: {exc!r}", file=sys.stderr)
             continue
         ids = sorted(matches, key=lambda m: m["match_id"])
@@ -171,7 +171,7 @@ def main(argv=None) -> int:
             print(f"{sport} {match_id}")
             try:
                 written = replay(sport, match_id, meta, provider, args.per_match, args.out)
-            except Exception as exc:  # noqa: BLE001 - a bad match is skipped, not fatal
+            except Exception as exc:  # a bad match is skipped, not fatal
                 print(f"skip {sport} {match_id}: {exc!r}", file=sys.stderr)
                 broken += 1
                 if broken >= 3:  # three matches in a row: the provider is down or the key is bad
