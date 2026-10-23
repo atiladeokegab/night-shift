@@ -9,6 +9,7 @@ import type { Screen } from './components/Nav'
 import { Picker } from './components/Picker'
 import type { VideoState } from './components/VideoStage'
 import { VoiceSheet } from './components/VoiceSheet'
+import { Wall } from './components/Wall'
 import { defaultVoice, voiceName } from './teams'
 import { SPORTS, type Line, type Match, type Sport, type Voice } from './types'
 import { useReplay } from './useReplay'
@@ -17,7 +18,7 @@ import { useSpeech } from './useSpeech'
 const TOAST_MS = 2400
 
 export default function App() {
-  const [screen, setScreen] = useState<Screen>('picker')
+  const [screen, setScreen] = useState<Screen>('wall')
   const [matches, setMatches] = useState<Match[] | null>(null)
   const [loadFailed, setLoadFailed] = useState(false)
   const [current, setCurrent] = useState<{ match: Match; speed: number; key: number; switching: boolean } | null>(null)
@@ -84,6 +85,15 @@ export default function App() {
     if (next && current) start(next, current.speed, true)
   }
 
+  // A-6.5: one tap from the stage opens the wall's next match; the old one's commentary stops at once
+  // (start() hushes the voice, and replay.start() drops every event from the replaced run).
+  const next = () => {
+    if (!matches?.length || !current) return
+    const i = matches.findIndex((m) => m.match_id === current.match.match_id)
+    const m = matches[(i + 1) % matches.length]
+    start(m, m.youtube_id ? 1 : current.speed)
+  }
+
   const go = (to: Screen) => {
     if (to === 'live') {
       if (current) setScreen('live')
@@ -130,6 +140,7 @@ export default function App() {
           onVideo={setVideo}
           onClock={replay.setClock}
           onSport={switchSport}
+          onNext={(matches?.length ?? 0) > 1 ? next : null}
           onVoiceSheet={() => setVoiceSheet(true)}
           onFix={(line) => setFixing({ line, phase: 'edit' })}
           onRetry={() => start(current.match, current.speed)}
@@ -138,6 +149,18 @@ export default function App() {
         />
       ) : screen === 'about' ? (
         <About onGo={go} />
+      ) : screen === 'wall' ? (
+        <Wall
+          matches={matches}
+          error={loadFailed}
+          onRetry={() => {
+            setLoadFailed(false)
+            setMatches(null)
+            load()
+          }}
+          onOpen={(m) => start(m, m.youtube_id ? 1 : 4)}
+          onGo={go}
+        />
       ) : (
         <Picker
           matches={matches}

@@ -20,6 +20,7 @@ interface Props {
   onVideo: (state: VideoState) => void
   onClock: (clock: Clock | null) => void
   onSport: (sport: Sport) => void
+  onNext: (() => void) | null // the wall's next match (A-6.5), when there is more than one
   onVoiceSheet: () => void
   onFix: (line: Line) => void
   onRetry: () => void
@@ -31,7 +32,7 @@ interface Props {
 // the score bar and ON AIR pill, the moment tag and subtitle, the dock and the video timeline; the Lines
 // and Proof cards stand in a glass column on the right (under the stage below 1100px).
 export function Live(props: Props) {
-  const { match, replay, replayKey, switching, sports, voice, video, onVideo, onClock, onSport, onVoiceSheet, onFix, onRetry, onReconnect, onGo } = props
+  const { match, replay, replayKey, switching, sports, voice, video, onVideo, onClock, onSport, onNext, onVoiceSheet, onFix, onRetry, onReconnect, onGo } = props
   const shown = onScreen(replay)
   const moment = shown.moments.at(-1) ?? null
   const latest = shown.lines.find((l) => !replay.late.includes(l.line_id))
@@ -53,7 +54,7 @@ export function Live(props: Props) {
         <span>Couldn't start the replay.</span>
         <span className="actions">
           <button className="btn primary" onClick={onRetry}>Try again</button>
-          <button className="btn" onClick={() => onGo('picker')}>Back to matches</button>
+          <button className="btn" onClick={() => onGo('wall')}>Back to matches</button>
         </span>
       </div>
     )
@@ -104,7 +105,7 @@ export function Live(props: Props) {
         )}
         <div className="lane dock">
           <div className="glass">
-            <button className="btn back" onClick={() => onGo('picker')}>← Fixtures</button>
+            <button className="btn back" onClick={() => onGo('wall')}>← Wall</button>
             <div className="seg" role="group" aria-label="Sport">
               {sports.map((s) => (
                 <button key={s} aria-pressed={match.sport === s} disabled={busy} onClick={() => s !== match.sport && onSport(s)}>
@@ -115,6 +116,7 @@ export function Live(props: Props) {
             <button className="btn" disabled={busy} aria-haspopup="dialog" onClick={onVoiceSheet}>
               Voice: {voice.status === 'on' ? voice.name : voice.status === 'off' ? 'Off' : 'Unavailable'}
             </button>
+            {onNext && <button className="btn" disabled={busy} onClick={onNext}>Next match →</button>}
           </div>
         </div>
         {gated && <Timeline replay={replay} />}

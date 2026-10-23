@@ -17,6 +17,8 @@ export interface Match {
   away?: string
   // PRD v2 (A-6.1@2, A-6.4@1): the match's official highlights, from data/video/ (#33).
   youtube_id?: string
+  // A-6.5: seconds into the video of its first mapped moment, where a wall tile starts (asked in #69).
+  first_video_t?: number
 }
 
 // Football and basketball: {home, away}; cricket: runs and wickets; f1: the lap and the top five.

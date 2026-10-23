@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { Clock } from '../useReplay'
+import { loadYouTube } from '../ytApi'
 
 export type VideoState = 'loading' | 'ok' | 'unavailable'
 
@@ -63,22 +64,4 @@ export function VideoStage({ youtubeId, onClock, onState }: Props) {
   }, [youtubeId, onClock, onState])
 
   return <div className="player" ref={host} />
-}
-
-// The IFrame API script defines window.YT and calls onYouTubeIframeAPIReady once; load it once.
-let api: Promise<typeof YT> | null = null
-
-function loadYouTube(): Promise<typeof YT> {
-  if (window.YT?.Player) return Promise.resolve(window.YT)
-  api ??= new Promise((resolve) => {
-    const before = window.onYouTubeIframeAPIReady
-    window.onYouTubeIframeAPIReady = () => {
-      before?.()
-      resolve(window.YT!)
-    }
-    const script = document.createElement('script')
-    script.src = 'https://www.youtube.com/iframe_api'
-    document.head.appendChild(script)
-  })
-  return api
 }
