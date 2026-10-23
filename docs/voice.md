@@ -32,12 +32,17 @@ Run `uv run python -m core.voice` before the demo. It speaks one line in every v
 
 ## Voices
 
-| Sport | Default | ElevenLabs voice |
-|---|---|---|
-| Football | `connor` | Connor: British, energetic |
-| Cricket | `viraj` | Viraj: Indian English, energetic |
-| F1 | `announcer` | British Football Announcer (`VOICE_F1` changes it) |
-| Any (page setting) | `george` | George: British, warm |
+The lead picked these on 2026-10-23, after the listening test below: Raju, Cricket Match Commentator, for cricket and the British Football Announcer for football, both on `eleven_v3`.
+
+| Sport | The pick | On the page (`GET /voices`) | Set by | With no setting |
+|---|---|---|---|---|
+| Football | British Football Announcer (`gU0LNdkMOQCOrPrwtbee`) | `football-pick` | `VOICE_FOOTBALL` | `connor`, Connor: British, energetic |
+| Cricket | Raju, Cricket Match Commentator (`IX4AgWzTnD6q0cNvHqvK`) | `cricket-pick` | `VOICE_CRICKET` | `viraj`, Viraj: Indian English, energetic |
+| Basketball | Sam, Engaging Game Narrator | `sam` | the code default | `sam` |
+| F1 | British Football Announcer | `announcer` | the code default | `announcer` (`VOICE_F1` changes it) |
+| Any (page setting) | | `george`, George: British, warm | | |
+
+Football's pick is the same ElevenLabs voice as F1's `announcer`, so it gets its own `football-pick` entry: `GET /voices` names one sport per voice, and the page needs a default for each.
 
 ## Changing the pick (config, not code)
 
@@ -45,7 +50,7 @@ The lead picks the final voice and model per sport from the listening test. The 
 
 ```bash
 VOICE_FOOTBALL=gU0LNdkMOQCOrPrwtbee   # an id from GET /voices, or any ElevenLabs voice id
-VOICE_CRICKET=viraj
+VOICE_CRICKET=IX4AgWzTnD6q0cNvHqvK
 VOICE_MODEL_FOOTBALL=eleven_v3        # or eleven_flash_v2_5: no tags, fastest
 VOICE_MODEL_CRICKET=eleven_v3
 ```
@@ -69,4 +74,4 @@ The listening test, on 2026-10-23, compared these 10 voices on `eleven_v3` with 
 | Cricket | Chris, Sports Commentator | `Anr9GtYh2VRXxiPplzxM` | en-IN | library |
 | Cricket | Pavan M, Energetic Sports Commentator | `BbDDnkbyQUUuTAZbQNEu` | en-IN | library |
 
-The pick: not made yet. Until the lead picks, the defaults are Connor for football and Viraj for cricket, both on `eleven_v3`.
+The pick: the British Football Announcer for football and Raju, Cricket Match Commentator, for cricket, both on `eleven_v3` (see Voices above).
