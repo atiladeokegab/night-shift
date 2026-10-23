@@ -33,10 +33,10 @@ and refuses to start without `STORE_URL=gs://bucket/prefix`.
   {lap, laps, top: [{pos, driver, gap}]}, x?, y?, detail: {}}`. `clock` is `"mm:ss"` for football,
   `"over.ball"` for cricket, `"mm:ss"` left in the quarter for basketball and `"mm:ss"` since the
   start for f1; `period` is the half, the innings, the quarter (5+ is overtime) or the lap; f1's
-  `top` is the top five, `gap` to the leader (`"leader"`, `"+1.5s"`, or `""` when timing lags);
+  `top` is the top five, `gap` to the leader (`"leader"`, `"1.5 seconds"`, or `""` when timing lags);
   roles e.g. `shooter`, `keeper` / `batter`, `bowler`, `fielder` / `shooter`, `assist`, `stealer`,
   `lost_by` / `driver`, `passed`, `leader`, `winner`; `detail` holds sport fields (runs, extras,
-  wicket kind, xG, card, play, player_points, lead_change, tyres, pit_lane_s); `x, y` on StatsBomb's 120 x 80 when known.
+  wicket kind, xG, card, play, player_points, lead_change, tyres, pit_lane_time); `x, y` on StatsBomb's 120 x 80 when known.
 - **Line** (agent/): `{line_id, sport, match_id, moment_idx, text, model, latency_ms,
   first_word_ms, tokens_in, tokens_out, mubit_request_ids: [], tool_calls: [], created_at}`; tokens
   and latency summed over the whole tool loop; each id from `x-middleware-request-id`.

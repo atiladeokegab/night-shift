@@ -295,7 +295,13 @@ def test_hamiltons_win_reaches_the_model_with_places_and_gaps():
     assert "winner: Lewis Hamilton" in message
     assert (
         "Score after this moment: Lap 52 of 52: P1 Lewis Hamilton leader, "
-        "P2 Max Verstappen +1.5s, P3 Lando Norris +7.5s" in message
+        "P2 Max Verstappen 1.5 seconds, P3 Lando Norris 7.5 seconds" in message
+    )
+    stop = next(m for m in moments if m["type"] == "Pit stop" and m["period"] == 40)
+    assert stop["players"] == {"driver": "Lando Norris"}  # Hamilton leads as Norris stops
+    assert [c["driver"] for c in stop["score"]["top"][:2]] == ["Lewis Hamilton", "Lando Norris"]
+    assert "pit_lane_time: 30.3 seconds in the pit lane" in commentator.render_message(
+        header, moments[: stop["idx"] + 1]
     )
     lead = next(m for m in moments if m["type"] == "Lead change" and m["period"] == 40)
     assert lead["players"] == {"driver": "Lewis Hamilton", "passed": "Lando Norris"}

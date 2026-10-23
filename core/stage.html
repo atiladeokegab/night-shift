@@ -164,7 +164,8 @@ function period(m) {
 function raceParts(m) {
   if (!m) return [[match.title, "team"]];
   const s = m.score, last = (name) => name.split(" ").slice(-1)[0];
-  const top = s.top.slice(0, 3).map((c) => [`P${c.pos} ${last(c.driver)}${c.pos > 1 && c.gap ? ` ${c.gap}` : ""}`, "team"]);
+  const short = (gap) => gap.replace(/^([\d.]+) seconds$/, "+$1s");
+  const top = s.top.slice(0, 3).map((c) => [`P${c.pos} ${last(c.driver)}${c.pos > 1 && c.gap ? ` ${short(c.gap)}` : ""}`, "team"]);
   return [...top, [null, "sep"], [`Lap ${s.lap}/${s.laps}`, "period"]];
 }
 

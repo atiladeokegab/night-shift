@@ -484,7 +484,7 @@ def f1_header(session_key: str, meta: dict | None = None) -> dict:
 
 
 def _gap(value) -> str:
-    return f"+{value:.1f}s" if _num(value) is not None else _s(value, 12)
+    return f"{value:.1f} seconds" if _num(value) is not None else _s(value, 12)  # not "+3.3s"
 
 
 def f1_moments(header: dict, rows: dict[str, list[dict]]) -> list[dict]:
@@ -531,14 +531,24 @@ def f1_moments(header: dict, rows: dict[str, list[dict]]) -> list[dict]:
             pos[n] = p
         return pos
 
+    def settled(t):
+        """t, or the moment a top-five car that has pitted by t gets its new place in the feed."""
+        window, order, out = timedelta(seconds=F1_PIT_WINDOW), order_at(t), t
+        for when, n, *_ in pits:
+            if when <= t < when + window and order.get(n, 99) <= F1_FIELD:
+                moved = next((w for w, m, _ in positions if m == n and w >= when - window), None)
+                if moved is not None and t < moved <= when + window:
+                    out = max(out, moved)
+        return out
+
     def standing(t) -> dict:
-        gap = {}
+        at, gap = settled(t), {}
         for when, n, g in gaps:
-            if when > t:
+            if when > at:
                 break
             gap[n] = g
         top, ahead = [], 0.0
-        for p, n in sorted((p, n) for n, p in order_at(t).items())[:F1_FIELD]:
+        for p, n in sorted((p, n) for n, p in order_at(at).items())[:F1_FIELD]:
             g = gap.get(n)
             if _num(g) is not None:  # behind the car ahead or it lags a pit stop: left out
                 g, ahead = (g if g > ahead else None), max(ahead, g)
@@ -599,7 +609,11 @@ def f1_moments(header: dict, rows: dict[str, list[dict]]) -> list[dict]:
             ),
             "",
         )
-        detail = {"tyres": tyre, "pit_lane_s": _num(lane)}
+        lane = _num(lane)  # pit entry to exit, not the stationary stop
+        detail = {
+            "tyres": tyre,
+            "pit_lane_time": f"{lane:.1f} seconds in the pit lane" if lane else "",
+        }
         outcome = f"pits for {tyre} tyres" if tyre else "pit stop"
         events.append((when, "Pit stop", outcome, n, {"driver": who(n)}, detail))
 

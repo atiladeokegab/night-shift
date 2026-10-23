@@ -300,8 +300,8 @@ def race_rows():
             pos(45, 44, 1),  # handed back in 5 s
             pos(60, 1, 3),
             pos(64, 4, 2),  # Verstappen drops, Norris moves up 4 s later
-            pos(110, 4, 3),
-            pos(110, 1, 2),  # Norris pits: Verstappen's P2 is not an overtake
+            pos(114, 4, 3),
+            pos(114, 1, 2),  # Norris pits (the feed lags 6 s): Verstappen's P2 is not an overtake
         ],
         "intervals": [
             {"date": at(150), "driver_number": 44, "gap_to_leader": 0.0},
@@ -346,14 +346,26 @@ def test_f1_calls_passes_pit_stops_the_safety_car_and_the_flag():
     assert ms[2]["players"]["passed"] == "Max Verstappen" and ms[2]["period"] == 2
     assert ms[4]["team"] == "McLaren" and ms[4]["detail"] == {
         "tyres": "soft",
-        "pit_lane_s": 21.5,
+        "pit_lane_time": "21.5 seconds in the pit lane",  # never read as the stop itself
     }
     assert ms[-1]["players"] == {"winner": "Lewis Hamilton"}
     assert ms[-1]["score"]["top"] == [
         {"pos": 1, "driver": "Lewis Hamilton", "gap": "leader"},
-        {"pos": 2, "driver": "Max Verstappen", "gap": "+1.2s"},
-        {"pos": 3, "driver": "Lando Norris", "gap": "+9.9s"},
+        {"pos": 2, "driver": "Max Verstappen", "gap": "1.2 seconds"},  # "+1.2s" was misread
+        {"pos": 3, "driver": "Lando Norris", "gap": "9.9 seconds"},
     ]
+
+
+def test_f1_standing_at_a_pit_stop_counts_the_stop_before_the_feed_catches_up():
+    ms = feed.f1_moments(RACE, race_rows())  # Norris pits at 01:48, his new place lands 6 s later
+    stop = next(m for m in ms if m["type"] == "Pit stop")
+    assert [c["driver"] for c in stop["score"]["top"][:3]] == [
+        "Lewis Hamilton",
+        "Max Verstappen",
+        "Lando Norris",
+    ]
+    before = next(m for m in ms if m["type"] == "Safety car")  # 8 s earlier: no stop yet
+    assert before["score"]["top"][1]["driver"] == "Lando Norris"
 
 
 def test_f1_standing_leaves_out_a_gap_that_lags_the_car_ahead():
@@ -362,7 +374,7 @@ def test_f1_standing_leaves_out_a_gap_that_lags_the_car_ahead():
     top = feed.f1_moments(RACE, rows)[-1]["score"]["top"][:3]
     assert [(c["driver"], c["gap"]) for c in top] == [
         ("Lewis Hamilton", "leader"),
-        ("Max Verstappen", "+2.1s"),
+        ("Max Verstappen", "2.1 seconds"),
         ("Lando Norris", ""),
     ]
 
