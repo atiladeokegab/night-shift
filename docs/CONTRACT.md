@@ -28,11 +28,15 @@ and refuses to start without `STORE_URL=gs://bucket/prefix`.
 
 ## Shapes
 
-- **Moment** (data/): `{sport: "football"|"cricket", match_id, idx, period, clock, type, team,
-  players: {role: name}, outcome, score: {home, away} | {runs, wickets, target?}, x?, y?, detail: {}}`.
-  `clock` is `"mm:ss"` for football and `"over.ball"` for cricket; `period` is the half or the
-  innings; roles e.g. `shooter`, `keeper` / `batter`, `bowler`, `fielder`; `detail` holds sport
-  fields (runs, extras, wicket kind, xG, card); `x, y` on StatsBomb's 120 x 80 when known.
+- **Moment** (data/): `{sport: "football"|"cricket"|"basketball"|"f1", match_id, idx, period, clock,
+  type, team, players: {role: name}, outcome, score: {home, away} | {runs, wickets, target?} |
+  {lap, laps, top: [{pos, driver, gap}]}, x?, y?, detail: {}}`. `clock` is `"mm:ss"` for football,
+  `"over.ball"` for cricket, `"mm:ss"` left in the quarter for basketball and `"mm:ss"` since the
+  start for f1; `period` is the half, the innings, the quarter (5+ is overtime) or the lap; f1's
+  `top` is the top five, `gap` to the leader (`"leader"`, `"+1.5s"`, or `""` when timing lags);
+  roles e.g. `shooter`, `keeper` / `batter`, `bowler`, `fielder` / `shooter`, `assist`, `stealer`,
+  `lost_by` / `driver`, `passed`, `leader`, `winner`; `detail` holds sport fields (runs, extras,
+  wicket kind, xG, card, play, player_points, lead_change, tyres, pit_lane_s); `x, y` on StatsBomb's 120 x 80 when known.
 - **Line** (agent/): `{line_id, sport, match_id, moment_idx, text, model, latency_ms,
   first_word_ms, tokens_in, tokens_out, mubit_request_ids: [], tool_calls: [], created_at}`; tokens
   and latency summed over the whole tool loop; each id from `x-middleware-request-id`.
@@ -62,14 +66,19 @@ Errors: 404 not found, 422 bad input, 503 commentator not configured.
   line, 422 blank `corrected_text` (trimmed), 503 no commentator or the Mubit call failed (nothing
   stored, so the page can send it again).
 - `GET /stage` → the backup live page (`core/stage.html`, static HTML over the routes here) (core)
-- `GET /voices` → `[{id, label, default_for: "cricket"|"football"|null, lang: "en-IN"|"en-GB"}]`, the page's voice
-  setting: an Indian English commentator for cricket, a British one for football; `lang` is
-  the BCP 47 tag the browser-speech fallback uses. (core)
-- `GET /lines/{line_id}/audio[?voice=<id>]` → `audio/mpeg` stream of the stored line read by
-  ElevenLabs (`eleven_flash_v2_5`) in the chosen voice, or by default the voice for the line's
-  sport. 404 for an unknown line or voice; 503 with no `ELEVENLABS_API_KEY`
-  or an upstream failure, and the page then uses browser speech. The key never reaches the browser;
-  each call logs `voice line=<id> first_byte_ms=<n>`. (core)
+- `GET /voices` → `[{id, label, default_for: "cricket"|"football"|"basketball"|"f1"|null, lang: "en-IN"|"en-GB"|"en-US"}]`, the page's voice
+  setting: an Indian English commentator for cricket, a British one for football, an American
+  play-by-play voice (Sam) for basketball, a British announcer for f1; `lang` is
+  the BCP 47 tag the browser-speech fallback uses. `VOICE_<SPORT>` picks a sport's default: an id
+  here, or a raw ElevenLabs voice id, listed as `<sport>-pick` (docs/voice.md). (core)
+- `GET /lines/{line_id}/audio[?voice=<id>]` → `audio/mpeg` of the stored line read by ElevenLabs
+  in the chosen voice, or by default the voice for the line's sport. `eleven_v3` with an audio tag
+  for the moment's kind (in the TTS text only, never the stored line); one retry, then
+  `eleven_flash_v2_5` without the tag; `VOICE_MODEL_<SPORT>` overrides the model. The audio is
+  made when the replay stores the line and cached, due before the video reaches its moment.
+  404 for an unknown line or voice; 503 with no `ELEVENLABS_API_KEY` or every attempt failed,
+  and the page then uses browser speech. The key never reaches the browser; each call logs
+  `voice line=<id> first_byte_ms=<n> model=<model>`. (core)
 - `GET /stats` → `{lines, fixes, mubit_requests, first_word_ms_p50, first_word_ms_p95,
   latency_ms_p50, latency_ms_p95, tokens_in, tokens_out, cost_per_line_usd, adapter}` (core). The
   `stats` SSE event carries the same object.

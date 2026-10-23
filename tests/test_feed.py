@@ -146,6 +146,8 @@ def test_close_chase_in_the_last_two_overs_calls_every_ball():
 def test_held_out_and_demo_matches():
     assert feed.held_out("football", "105") and not feed.held_out("football", "106")
     assert ("cricket", "1298150") in feed.DEMO and ("football", "3906390") in feed.DEMO
+    assert {("basketball", "0049700088"), ("basketball", "0020500591")} <= feed.DEMO
+    assert ("f1", "9558") in feed.DEMO
 
 
 def test_cricket_clock_counts_legal_balls_within_each_over():
@@ -173,3 +175,201 @@ def test_cricket_clock_counts_legal_balls_within_each_over():
         + ["1.1", "1.1", "1.2", "1.2", "1.3", "1.4", "1.5", "1.6"]
         + [f"2.{b}" for b in range(1, 7)]
     )
+
+
+BALL = {
+    "sport": "basketball",
+    "match_id": "0049700088",
+    "home": "Utah Jazz",
+    "away": "Chicago Bulls",
+}
+
+
+def play(n, kind, clock, desc, side="away", p1="Michael Jordan", p2="", period=4, other=""):
+    home, away = ("Utah", "Jazz"), ("Chicago", "Bulls")
+    t1, t2 = (away, home) if side == "away" else (home, away)
+    return {
+        "EVENTNUM": str(n),
+        "EVENTMSGTYPE": str(kind),
+        "PERIOD": str(period),
+        "PCTIMESTRING": clock,
+        "HOMEDESCRIPTION": desc if side == "home" else other,
+        "VISITORDESCRIPTION": desc if side == "away" else other,
+        "PLAYER1_NAME": p1,
+        "PLAYER1_TEAM_CITY": t1[0],
+        "PLAYER1_TEAM_NICKNAME": t1[1],
+        "PLAYER2_NAME": p2,
+        "PLAYER2_TEAM_CITY": t2[0] if p2 else "",
+        "PLAYER2_TEAM_NICKNAME": t2[1] if p2 else "",
+    }
+
+
+def test_basketball_picks_lead_changes_steals_and_the_buzzer():
+    rows = [
+        # an opening basket is no moment: no tie, no lead change, not the closing minutes
+        play(1, 1, "11:30", "Malone Jump Shot (2 PTS)", side="home", p1="Karl Malone"),
+        play(2, 2, "11:10", "MISS Jordan Jump Shot"),
+        play(3, 3, "10:50", "Jordan Free Throw 1 of 2 (1 PTS)"),
+        play(4, 1, "10:40", "Pippen 3PT Jump Shot (3 PTS)", p1="Scottie Pippen"),
+        # the turnover is on Utah's side, the steal on Chicago's: a steal, credited to Jordan
+        play(
+            5,
+            5,
+            "0:18",
+            "Malone Turnover",
+            side="home",
+            p1="Karl Malone",
+            p2="Michael Jordan",
+            other="Jordan STEAL (1 STL)",
+        ),
+        play(6, 1, "0:05", "Jordan 17' Jump Shot (3 PTS)"),
+        play(7, 13, "0:00", ""),
+    ]
+    rows[4]["PLAYER2_TEAM_CITY"], rows[4]["PLAYER2_TEAM_NICKNAME"] = "Chicago", "Bulls"
+    ms = feed.basketball_moments(BALL, rows)
+    assert [m["type"] for m in ms] == ["Field goal", "Steal", "Field goal", "End of game"]
+    assert ms[0]["detail"]["lead_change"] and ms[0]["score"] == {"home": 2, "away": 4}
+    assert ms[1]["players"] == {"stealer": "Michael Jordan", "lost_by": "Karl Malone"}
+    assert ms[1]["team"] == "Chicago Bulls" and ms[1]["detail"]["play"] == "Jordan STEAL (1 STL)"
+    assert ms[2]["players"] == {"shooter": "Michael Jordan"} and ms[2]["clock"] == "00:05"
+    assert ms[2]["detail"]["player_points"] == 3 and ms[-1]["score"] == {"home": 2, "away": 6}
+
+
+def test_basketball_keeps_every_basket_of_a_big_night_and_the_record_free_throw():
+    rows, pts = [], 0
+    for n in range(41):  # 41 two-pointers in the 1st quarter: 82 points
+        pts += 2
+        rows.append(
+            play(n, 1, "11:00", f"Bryant Jump Shot ({pts} PTS)", p1="Kobe Bryant", period=1)
+        )
+    rows.append(play(99, 3, "0:43", "Bryant Free Throw 1 of 2 (83 PTS)", p1="Kobe Bryant"))
+    ms = feed.basketball_moments(BALL, rows)
+    points = [m["detail"]["player_points"] for m in ms]
+    assert points[0] == 30 and points[-1] == 83  # the 30 milestone first, the record FT last
+    assert all(p in points for p in range(40, 83, 2))
+
+
+def test_nba_rows_rejects_an_id_that_is_not_a_game():
+    import pytest
+
+    for bad in ("49700088", "00497000ab", "0019700088", "../etc/passwd"):
+        with pytest.raises(KeyError):
+            feed.nba_rows(bad)
+
+
+# --- f1 ---
+
+RACE = {"sport": "f1", "match_id": "9", "laps": 3}
+
+
+def at(seconds: float) -> str:
+    seconds += 60  # the grid is read a few seconds before the start
+    return f"2024-07-07T14:{int(seconds) // 60:02d}:{seconds % 60:06.3f}+00:00"
+
+
+def race_rows():
+    """Three cars, three laps: a pass sent in reverse order, one handed straight back, one where
+    the passed car drops first, a pit stop for softs and a stop that swaps places below P1."""
+    drivers = [
+        {"driver_number": n, "first_name": f, "last_name": last, "team_name": t}
+        for n, f, last, t in [
+            (44, "Lewis", "Hamilton", "Mercedes"),
+            (1, "Max", "Verstappen", "Red Bull Racing"),
+            (4, "Lando", "Norris", "McLaren"),
+            (10, "Pierre", "Gasly", "Alpine"),
+        ]
+    ]
+    pos = lambda t, n, p: {"date": at(t), "driver_number": n, "position": p}  # noqa: E731
+    return {
+        "drivers": drivers,
+        "race_control": [
+            {"date": at(0), "category": "Other", "message": "SESSION STARTED"},
+            {"date": at(100), "category": "SafetyCar", "message": "SAFETY CAR DEPLOYED"},
+            {"date": at(170), "category": "Flag", "flag": "CHEQUERED", "message": "CHEQUERED FLAG"},
+        ],
+        "position": [
+            pos(-5, 1, 1),
+            pos(-5, 44, 2),
+            pos(-5, 4, 3),
+            pos(-5, 10, 4),
+            pos(20, 1, 2),
+            pos(20, 44, 1),  # one timestamp, the passed car's row first
+            pos(40, 4, 1),
+            pos(40, 44, 3),
+            pos(45, 4, 3),
+            pos(45, 44, 1),  # handed back in 5 s
+            pos(60, 1, 3),
+            pos(64, 4, 2),  # Verstappen drops, Norris moves up 4 s later
+            pos(110, 4, 3),
+            pos(110, 1, 2),  # Norris pits: Verstappen's P2 is not an overtake
+        ],
+        "intervals": [
+            {"date": at(150), "driver_number": 44, "gap_to_leader": 0.0},
+            {"date": at(150), "driver_number": 1, "gap_to_leader": 2.1},
+            {"date": at(150), "driver_number": 4, "gap_to_leader": 1.0},  # stale: behind P2
+        ],
+        "pit": [{"date": at(108), "driver_number": 4, "lap_number": 2, "pit_duration": 21.5}],
+        "stints": [{"driver_number": 4, "lap_start": 3, "compound": "SOFT"}],
+        "laps": [
+            {
+                "date_start": at(60 * (k - 1) + 1),
+                "driver_number": n,
+                "lap_number": k,
+                "lap_duration": 60.0,
+            }
+            for k in (1, 2, 3)
+            for n in (1, 4, 44)
+        ]
+        + [{"date_start": at(1), "driver_number": 10, "lap_number": 1, "lap_duration": None}],
+        "session_result": [
+            {"driver_number": 44, "position": 1, "gap_to_leader": 0},
+            {"driver_number": 1, "position": 2, "gap_to_leader": 1.234},
+            {"driver_number": 4, "position": 3, "gap_to_leader": 9.87},
+            {"driver_number": 10, "position": None, "dns": True},
+        ],
+    }
+
+
+def test_f1_calls_passes_pit_stops_the_safety_car_and_the_flag():
+    ms = feed.f1_moments(RACE, race_rows())
+    calls = [(m["clock"], m["type"], m["players"].get("driver"), m["outcome"]) for m in ms]
+    assert calls == [
+        ("00:00", "Lights out", None, "race start"),
+        ("00:20", "Lead change", "Lewis Hamilton", "P1 on track"),
+        ("01:04", "Overtake", "Lando Norris", "P2 on track"),
+        ("01:40", "Safety car", None, "Safety car deployed"),
+        ("01:48", "Pit stop", "Lando Norris", "pits for soft tyres"),
+        ("02:01", "Last lap", None, "final lap"),
+        ("02:50", "Finish", None, "chequered flag"),
+    ]  # no flap at 00:40, no overtake from the stop, and Gasly did not start: no retirement
+    assert ms[1]["players"] == {"driver": "Lewis Hamilton", "passed": "Max Verstappen"}
+    assert ms[2]["players"]["passed"] == "Max Verstappen" and ms[2]["period"] == 2
+    assert ms[4]["team"] == "McLaren" and ms[4]["detail"] == {
+        "tyres": "soft",
+        "pit_lane_s": 21.5,
+    }
+    assert ms[-1]["players"] == {"winner": "Lewis Hamilton"}
+    assert ms[-1]["score"]["top"] == [
+        {"pos": 1, "driver": "Lewis Hamilton", "gap": "leader"},
+        {"pos": 2, "driver": "Max Verstappen", "gap": "+1.2s"},
+        {"pos": 3, "driver": "Lando Norris", "gap": "+9.9s"},
+    ]
+
+
+def test_f1_standing_leaves_out_a_gap_that_lags_the_car_ahead():
+    rows = race_rows()
+    rows["session_result"] = []  # no classification: the flag reads the live gaps
+    top = feed.f1_moments(RACE, rows)[-1]["score"]["top"][:3]
+    assert [(c["driver"], c["gap"]) for c in top] == [
+        ("Lewis Hamilton", "leader"),
+        ("Max Verstappen", "+2.1s"),
+        ("Lando Norris", ""),
+    ]
+
+
+def test_openf1_rejects_a_session_key_that_is_not_a_number():
+    import pytest
+
+    for bad in ("latest", "9558&x=1", "../etc"):
+        with pytest.raises(KeyError):
+            feed.openf1("laps", bad)

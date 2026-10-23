@@ -281,3 +281,47 @@ def test_one_sentence_over_20_words_is_no_line():
     said = " ".join(["word"] * 21) + "!"
     with pytest.raises(commentator.NoLine):
         line_for(FOOT, [moment(FOOT, 0)], 0, Scripted(text(said)))
+
+
+def test_cricket_score_reads_runs_for_wickets():
+    # "10/2" was read aloud backwards ("two for ten"); the message spells the order out.
+    past = [moment(CRIC, 2, score={"runs": 10, "wickets": 2})]
+    message = build_request(CRIC, past)["messages"][0]["content"]
+    assert "Score after this moment: A 10 for 2\n" in message
+    assert commentator.run_tool("get_score", {}, CRIC, past).startswith("A 10 for 2;")
+    assert "10/2" not in json.dumps(build_request(CRIC, past))
+
+
+def test_jordans_last_shot_reaches_the_model_with_names_and_score():
+    moments = load_moments("0049700088")
+    shot = next(m for m in moments if m["clock"] == "00:05" and m["period"] == 4)
+    message = commentator.render_message(match_header("0049700088"), moments[: shot["idx"] + 1])
+    assert "Sport: basketball" in message and "Moment: quarter 4, 00:05" in message
+    assert "shooter: Michael Jordan" in message
+    assert "Score after this moment: Utah Jazz 86, Chicago Bulls 87" in message
+
+
+def test_kobes_81st_point_reaches_the_model():
+    moments = load_moments("0020500591")
+    record = next(m for m in moments if m["detail"].get("player_points") == 81)
+    assert record["players"] == {"shooter": "Kobe Bryant"}
+    assert record["score"] == {"home": 122, "away": 102}
+    assert moments[-1]["type"] == "End of game"
+    assert moments[-1]["score"] == {"home": 122, "away": 104}
+
+
+def test_hamiltons_win_reaches_the_model_with_places_and_gaps():
+    moments, header = load_moments("9558"), match_header("9558")
+    message = commentator.render_message(header, moments)
+    assert "Sport: f1" in message and "Moment: lap 52, 82:26" in message
+    assert "Match: Formula 1 British Grand Prix, Silverstone, 2024-07-07" in message
+    assert "winner: Lewis Hamilton" in message
+    assert (
+        "Score after this moment: Lap 52 of 52: P1 Lewis Hamilton leader, "
+        "P2 Max Verstappen +1.5s, P3 Lando Norris +7.5s" in message
+    )
+    lead = next(m for m in moments if m["type"] == "Lead change" and m["period"] == 40)
+    assert lead["players"] == {"driver": "Lewis Hamilton", "passed": "Lando Norris"}
+    race = build_request(header, moments)  # A-10.3: the same frozen model, prompt and tools
+    assert (race["model"], race["system"]) == (commentator.MODEL, commentator.SYSTEM)
+    assert (race["tools"], race["tool_choice"]) == (commentator.TOOLS, commentator.TOOL_CHOICE)

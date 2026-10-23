@@ -1,4 +1,4 @@
-"""Match feeds to Moments: StatsBomb open data (football) and Cricsheet (cricket).
+"""Match feeds to Moments: StatsBomb open data (football), Cricsheet (cricket) and OpenF1 (F1).
 
 Downloads are untrusted: every field that reaches a Moment is coerced to a short string or a
 number, and the match header never carries the result. The picker follows the day spec (R11).
@@ -6,10 +6,15 @@ number, and the match header never carries the result. The picker follows the da
 
 from __future__ import annotations
 
+import csv
 import hashlib
 import io
 import json
+import tarfile
+import time
 import zipfile
+from datetime import datetime, timedelta
+from itertools import groupby
 from pathlib import Path
 
 import httpx
@@ -17,10 +22,20 @@ import httpx
 CACHE = Path(__file__).resolve().parent.parent / "data" / "cache"
 STATSBOMB = "https://raw.githubusercontent.com/statsbomb/open-data/master/data"
 CRICSHEET_ZIP = "https://cricsheet.org/downloads/t20s_json.zip"
+# stats.nba.com play-by-play (playbyplayv2), one archive per season, from the Apache-2.0 mirror
+# shufinskiy/nba_data: stats.nba.com itself times out from cloud IPs.
+NBA_PBP = "https://github.com/shufinskiy/nba_data/raw/main/datasets/{name}.tar.xz"
 TIMEOUT = httpx.Timeout(30.0, connect=10.0)
 
 # WWC 2023 final; Ind v Pak 2022; WC 2022 final
-DEMO = {("football", "3906390"), ("cricket", "1298150"), ("football", "3869685")}
+DEMO = {
+    ("football", "3906390"),
+    ("cricket", "1298150"),
+    ("football", "3869685"),
+    ("basketball", "0049700088"),  # Jordan, 1998 Finals Game 6
+    ("basketball", "0020500591"),  # Kobe's 81 v Toronto
+    ("f1", "9558"),  # Hamilton, 2024 British Grand Prix
+}
 
 
 def held_out(sport: str, match_id: str) -> bool:
@@ -297,12 +312,382 @@ def cricket_moments(header: dict, match: dict) -> list[dict]:
     return moments
 
 
+# --- basketball ---------------------------------------------------------------------------
+
+CLOSING = 120  # the last two minutes of the 4th quarter or overtime: every basket and steal
+BIG_NIGHT = 40  # from 40 points, every field goal (and closing free throw) of that player
+
+
+def nba_rows(game_id: str) -> list[dict]:
+    """playbyplayv2 rows for one game; the season archive comes from the game id
+    (00 + type + season: "0049700088" is the 1997-98 playoffs, "0020500591" 2005-06)."""
+    if not (len(game_id) == 10 and game_id.isdigit() and game_id[2] in "24"):
+        raise KeyError(game_id)
+    yy = int(game_id[3:5])
+    name = f"nbastats_{'po_' if game_id[2] == '4' else ''}{(1900 if yy >= 46 else 2000) + yy}"
+    timeout = httpx.Timeout(120.0, connect=10.0)
+    data = _fetch(NBA_PBP.format(name=name), f"{name}.tar.xz", timeout=timeout)
+    want = str(int(game_id))  # the archive drops the leading zeros
+    with tarfile.open(fileobj=io.BytesIO(data), mode="r:xz") as tar:
+        member = next(m for m in tar.getmembers() if m.isfile() and m.name.endswith(".csv"))
+        text = io.TextIOWrapper(tar.extractfile(member), encoding="utf-8", newline="")
+        rows = [r for r in csv.DictReader(text) if r.get("GAME_ID") == want]
+    return sorted(rows, key=lambda r: (_int(r.get("PERIOD")), _int(r.get("EVENTNUM"))))
+
+
+def _int(value) -> int:
+    return int(value) if str(value or "").strip().isdigit() else 0
+
+
+def _team(row: dict, n: int) -> str:
+    return _s(
+        f"{row.get(f'PLAYER{n}_TEAM_CITY') or ''} {row.get(f'PLAYER{n}_TEAM_NICKNAME') or ''}"
+    )
+
+
+def basketball_header(game_id: str, rows: list[dict], meta: dict | None = None) -> dict:
+    """Teams from the feed; competition, stage and date from meta. Never the score or result."""
+    meta = meta or {}
+    home = next((_team(r, 1) for r in rows if r.get("HOMEDESCRIPTION") and _team(r, 1)), "")
+    away = next((_team(r, 1) for r in rows if r.get("VISITORDESCRIPTION") and _team(r, 1)), "")
+    return {
+        "sport": "basketball",
+        "match_id": _s(game_id),
+        "home": home,
+        "away": away,
+        "competition": _s(meta.get("competition")),
+        "stage": _s(meta.get("stage")),
+        "date": _s(meta.get("date"), 10),
+    }
+
+
+def basketball_moments(header: dict, rows: list[dict]) -> list[dict]:
+    score = {"home": 0, "away": 0}
+    points: dict[str, int] = {}
+    leader = None  # the side that last led, through ties
+    last_period = max((_int(r.get("PERIOD")) for r in rows), default=0)
+    moments = []
+    for r in rows:
+        kind_no, period = _int(r.get("EVENTMSGTYPE")), _int(r.get("PERIOD"))
+        mm, _, ss = str(r.get("PCTIMESTRING") or "0:00").partition(":")
+        left = _int(mm) * 60 + _int(ss)
+        closing = period >= 4 and left <= CLOSING
+        home_side = _team(r, 1) == header["home"]
+        play = _s(r.get("HOMEDESCRIPTION") or r.get("VISITORDESCRIPTION"), 80)
+        shooter = _s(r.get("PLAYER1_NAME"))
+        players, detail, keep = {}, {}, False
+        if kind_no == 1 or (kind_no == 3 and play and "MISS" not in play.upper()):
+            made = 1 if kind_no == 3 else 3 if "3PT" in play.upper() else 2
+            score["home" if home_side else "away"] += made
+            after = score["home"] - score["away"]
+            had = points.get(shooter, 0)
+            points[shooter] = had + made
+            kind = "Free throw" if kind_no == 3 else "Field goal"
+            outcome = f"{made} point{'s' if made > 1 else ''}"
+            team = _team(r, 1)
+            players = {"shooter": shooter}
+            if kind_no == 1 and _s(r.get("PLAYER2_NAME")):
+                players["assist"] = _s(r.get("PLAYER2_NAME"))
+            detail = {"play": play, "player_points": points[shooter]}
+            if after == 0:
+                detail["tied"] = True
+            else:
+                now = "home" if after > 0 else "away"
+                if leader not in (None, now):
+                    detail["lead_change"] = True
+                leader = now
+            milestone = points[shooter] // 10 > had // 10 and points[shooter] >= 30
+            big = points[shooter] >= BIG_NIGHT and (kind_no == 1 or closing)
+            keep = (
+                (closing and kind_no == 1)
+                or milestone
+                or big
+                or "tied" in detail
+                or "lead_change" in detail
+            )
+        elif kind_no == 5 and closing and _s(r.get("PLAYER2_NAME")):
+            # the steal is told on the stealer's side, the turnover on the other
+            sides = (r.get("HOMEDESCRIPTION"), r.get("VISITORDESCRIPTION"))
+            play = next((_s(d, 80) for d in sides if "STEAL" in str(d or "").upper()), "")
+            kind, outcome, team, keep = "Steal", "Steal", _team(r, 2), bool(play)
+            players = {"stealer": _s(r.get("PLAYER2_NAME")), "lost_by": shooter}
+            detail = {"play": play}
+        elif kind_no == 13 and period == last_period:
+            kind, outcome, team, keep = "End of game", "Final buzzer", "", True
+        if not keep:
+            continue
+        moments.append(
+            {
+                "sport": "basketball",
+                "match_id": header["match_id"],
+                "idx": len(moments),
+                "period": period,
+                "clock": f"{left // 60:02d}:{left % 60:02d}",
+                "type": kind,
+                "team": team,
+                "players": {k: v for k, v in players.items() if v},
+                "outcome": outcome,
+                "score": dict(score),
+                "detail": detail,
+            }
+        )
+    return moments
+
+
+# --- f1 -----------------------------------------------------------------------------------
+
+OPENF1 = "https://api.openf1.org/v1"
+F1_ENDPOINTS = (
+    "drivers",
+    "position",
+    "intervals",
+    "pit",
+    "stints",
+    "laps",
+    "race_control",
+    "session_result",
+)
+F1_TOP = 3  # overtakes and lead changes are called in the top three
+F1_FIELD = 5  # pit stops of the top five; the standing gives the top five with gaps
+F1_PIT_WINDOW = 40.0  # s: a place changing hands while either car is in the pits is a pit cycle
+F1_FLAP = 10.0  # s: a pass must hold this long, and not undo one this recent
+
+
+def openf1(endpoint: str, session_key: str) -> list[dict]:
+    if not session_key.isdigit():
+        raise KeyError(session_key)
+    name = f"of1_{endpoint}_{session_key}.json"
+    if not (CACHE / name).exists():
+        time.sleep(0.4)  # OpenF1 allows 3 requests a second
+    rows = json.loads(_fetch(f"{OPENF1}/{endpoint}?session_key={session_key}", name))
+    return [r for r in rows if isinstance(r, dict)] if isinstance(rows, list) else []
+
+
+def _when(value) -> datetime | None:
+    try:
+        return datetime.fromisoformat(str(value or ""))
+    except ValueError:
+        return None
+
+
+def f1_header(session_key: str, meta: dict | None = None) -> dict:
+    """The event, date and race distance from meta. Never the result."""
+    meta = meta or {}
+    return {
+        "sport": "f1",
+        "match_id": _s(session_key),
+        "competition": "Formula 1",
+        "stage": _s(meta.get("stage")),
+        "date": _s(meta.get("date"), 10),
+        "laps": _num(meta.get("laps")) or 0,
+    }
+
+
+def _gap(value) -> str:
+    return f"+{value:.1f}s" if _num(value) is not None else _s(value, 12)
+
+
+def f1_moments(header: dict, rows: dict[str, list[dict]]) -> list[dict]:
+    """Moments from OpenF1 rows ({endpoint: rows}), each with the lap and the top five then."""
+    drivers = {}
+    for d in rows.get("drivers") or []:
+        if (n := _num(d.get("driver_number"))) is not None:
+            name = _s(f"{d.get('first_name') or ''} {d.get('last_name') or ''}")
+            drivers[n] = (name or _s(d.get("full_name")) or f"car {n}", _s(d.get("team_name")))
+
+    def who(n) -> str:
+        return drivers.get(n, (f"car {n}" if n is not None else "", ""))[0]
+
+    def timed(kind: str, value: str, *fields: str) -> list[tuple]:
+        out = []
+        for r in rows.get(kind) or []:
+            t = _when(r.get(value))
+            if t is not None:
+                out.append((t, *(r.get(f) for f in fields)))
+        return sorted(out, key=lambda x: x[0])
+
+    positions = [x for x in timed("position", "date", "driver_number", "position") if _num(x[2])]
+    gaps = timed("intervals", "date", "driver_number", "gap_to_leader")
+    laps = [x for x in timed("laps", "date_start", "driver_number", "lap_number") if _num(x[2])]
+    control = timed("race_control", "date", "category", "flag", "message")
+    pits = timed("pit", "date", "driver_number", "lap_number", "pit_duration")
+    stints = [r for r in rows.get("stints") or [] if _num(r.get("lap_start"))]
+    result = {r.get("driver_number"): r for r in rows.get("session_result") or []}
+    total = header.get("laps") or max((x[2] for x in laps), default=0)
+    start = next((x[0] for x in control if _s(x[3]) == "SESSION STARTED"), None)
+    if start is None:
+        start = laps[0][0] if laps else None
+    if start is None:
+        return []
+
+    def lap_at(t) -> int:
+        return max((x[2] for x in laps if x[0] <= t), default=1)
+
+    def order_at(t) -> dict:
+        pos = {}
+        for when, n, p in positions:
+            if when > t:
+                break
+            pos[n] = p
+        return pos
+
+    def standing(t) -> dict:
+        gap = {}
+        for when, n, g in gaps:
+            if when > t:
+                break
+            gap[n] = g
+        top, ahead = [], 0.0
+        for p, n in sorted((p, n) for n, p in order_at(t).items())[:F1_FIELD]:
+            g = gap.get(n)
+            if _num(g) is not None:  # behind the car ahead or it lags a pit stop: left out
+                g, ahead = (g if g > ahead else None), max(ahead, g)
+            top.append({"pos": p, "driver": who(n), "gap": "leader" if p == 1 else _gap(g)})
+        return {"lap": lap_at(t), "laps": total, "top": top}
+
+    def pitting(n, t) -> bool:
+        window = timedelta(seconds=F1_PIT_WINDOW)
+        return any(p == n and abs(when - t) <= window for when, p, *_ in pits)
+
+    events = []  # (time, type, outcome, driver number, players, detail)
+    grid = order_at(start)
+    pole = min(grid, key=grid.get, default=None)
+    events.append((start, "Lights out", "race start", pole, {"leader": who(pole)}, {}))
+
+    # overtakes and lead changes: a car moving up into the top three past the car that held it
+    # OpenF1 sends both cars of a pass with one timestamp, so compare whole timestamps; the
+    # passed car can also drop a few seconds before the other moves up, so dropped places are kept
+    held, passes, dropped = dict(grid), [], {}
+    flap = timedelta(seconds=F1_FLAP)
+    for when, group in groupby((x for x in positions if x[0] > start), key=lambda x: x[0]):
+        before = dict(held)
+        held.update({n: p for _, n, p in group})
+        for n, p in held.items():
+            if p <= F1_TOP and p < before.get(n, p):
+                passed = next((m for m, q in before.items() if q == p and m != n), None)
+                if passed is None and p in dropped and when - dropped[p][1] <= flap:
+                    passed = dropped[p][0]
+                if passed is not None and held.get(passed, 0) >= p:  # it may move a beat later
+                    passes.append((when, n, passed, p))
+        dropped.update({q: (m, when) for m, q in before.items() if held[m] > q})
+
+    def ahead(n, m, t) -> bool:
+        order = order_at(t)
+        return order.get(n, 99) < order.get(m, 99)
+
+    for when, n, passed, p in passes:
+        # timing noise: a place handed straight back, or a car only taking its place back
+        undone = any(m == passed and o == n and when < w <= when + flap for w, m, o, _ in passes)
+        if undone or ahead(n, passed, when - flap):
+            continue
+        pit = pitting(n, when) or pitting(passed, when)
+        if pit and p > 1:  # places swapped by stops below the lead are not overtakes
+            continue
+        outcome = f"P{p} " + ("in the pit stops" if pit else "on track")
+        kind = "Lead change" if p == 1 else "Overtake"
+        events.append((when, kind, outcome, n, {"driver": who(n), "passed": who(passed)}, {}))
+
+    for when, n, lap, lane in pits:
+        if order_at(when).get(n, 99) > F1_FIELD:
+            continue
+        lap = _num(lap) or 0
+        tyre = next(
+            (
+                _s(r.get("compound")).lower()
+                for r in stints
+                if r.get("driver_number") == n and r.get("lap_start") == lap + 1
+            ),
+            "",
+        )
+        detail = {"tyres": tyre, "pit_lane_s": _num(lane)}
+        outcome = f"pits for {tyre} tyres" if tyre else "pit stop"
+        events.append((when, "Pit stop", outcome, n, {"driver": who(n)}, detail))
+
+    for when, category, flag, message in control:
+        message = _s(message, 80)
+        if _s(category) == "SafetyCar" and ("DEPLOYED" in message or "ENDING" in message):
+            kind = "Safety car"
+        elif _s(flag) == "RED":
+            kind = "Red flag"
+        elif message == "LOW GRIP CONDITIONS":
+            kind = "Conditions"
+        else:
+            continue
+        events.append((when, kind, message.capitalize(), None, {}, {}))
+
+    last = {}  # each car's last lap row: no time on it before the distance means it stopped
+    for r in rows.get("laps") or []:
+        if _num(r.get("lap_number")) and _when(r.get("date_start")):
+            last[r.get("driver_number")] = r
+    for n, r in last.items():
+        dns = (result.get(n) or {}).get("dns")
+        if r.get("lap_duration") is None and r["lap_number"] < total and not dns:
+            when = _when(r["date_start"])
+            events.append(
+                (when, "Retirement", f"out on lap {r['lap_number']}", n, {"driver": who(n)}, {})
+            )
+
+    final = next((x[0] for x in laps if x[2] == total), None)
+    if final is not None:
+        leader = min(order_at(final).items(), key=lambda x: x[1], default=(None, 0))[0]
+        events.append((final, "Last lap", "final lap", leader, {"leader": who(leader)}, {}))
+    flag = next((x[0] for x in control if _s(x[2]) == "CHEQUERED"), None)
+    if flag is not None:
+        # the classification gives the finishing gaps; without it they are read just after
+        winner = min(order_at(flag + timedelta(seconds=F1_FLAP)).items(), key=lambda x: x[1])[0]
+        events.append((flag, "Finish", "chequered flag", winner, {"winner": who(winner)}, {}))
+
+    classified = sorted((r["position"], n) for n, r in result.items() if _num(r.get("position")))
+    finish = {
+        "lap": total,
+        "laps": total,
+        "top": [
+            {
+                "pos": p,
+                "driver": who(n),
+                "gap": "leader" if p == 1 else _gap(result[n].get("gap_to_leader")),
+            }
+            for p, n in classified[:F1_FIELD]
+        ],
+    }
+
+    moments = []
+    for when, kind, outcome, n, players, detail in sorted(events, key=lambda e: e[0]):
+        secs = int((when - start).total_seconds())
+        moments.append(
+            {
+                "sport": "f1",
+                "match_id": header["match_id"],
+                "idx": len(moments),
+                "period": lap_at(when),
+                "clock": f"{secs // 60:02d}:{secs % 60:02d}",
+                "type": kind,
+                "team": drivers.get(n, ("", ""))[1],
+                "players": {k: v for k, v in players.items() if v},
+                "outcome": outcome,
+                "score": finish
+                if kind == "Finish" and classified
+                else standing(when + timedelta(seconds=F1_FLAP) if kind == "Finish" else when),
+                "detail": {k: v for k, v in detail.items() if v not in ("", None)},
+            }
+        )
+    return moments
+
+
 def load(sport: str, match_id: str, meta: dict | None = None) -> tuple[dict, list[dict]]:
-    """(header, moments) for one match. Football needs its StatsBomb match record as meta."""
+    """(header, moments) for one match. Football needs its StatsBomb match record as meta;
+    basketball takes competition, stage and date from meta; f1 its stage, date and laps."""
     if sport == "football":
         header = football_header(meta or {"match_id": match_id})
         events, nicknames = statsbomb_events(match_id), statsbomb_nicknames(match_id)
         return header, football_moments(header, events, nicknames)
+    if sport == "basketball":
+        rows = nba_rows(match_id)
+        header = basketball_header(match_id, rows, meta)
+        return header, basketball_moments(header, rows)
+    if sport == "f1":
+        header = f1_header(match_id, meta)
+        return header, f1_moments(header, {e: openf1(e, match_id) for e in F1_ENDPOINTS})
     match = cricsheet_match(match_id)
     header = cricket_header(match_id, match)
     return header, cricket_moments(header, match)

@@ -28,7 +28,8 @@ def list_matches() -> list[dict]:
     out = []
     for path in sorted(SAMPLE.glob("*.json")):
         h = json.loads(path.read_text(encoding="utf-8"))["header"]
-        title = f"{h['home']} v {h['away']}, {h['competition']} {h['stage']}".strip()
+        sides = f"{h['home']} v {h['away']}, " if "home" in h else ""  # a race has no sides
+        title = f"{sides}{h['competition']} {h['stage']}".strip()
         match = {"match_id": h["match_id"], "sport": h["sport"], "title": title, "sample": True}
         if vmap := video_map(h["match_id"]):
             match["youtube_id"] = vmap["youtube_id"]
@@ -69,3 +70,9 @@ if __name__ == "__main__":
     final = next(m for m in feed.statsbomb_matches(43, 106) if m["match_id"] == 3869685)
     _bundle("football", "3869685", final)  # 2022 World Cup final, Messi v Mbappé
     _bundle("cricket", "1298150")  # India v Pakistan, T20 World Cup 2022
+    finals = {"competition": "NBA Finals", "stage": "Game 6", "date": "1998-06-14"}
+    _bundle("basketball", "0049700088", finals)  # Jordan's last shot as a Bull
+    season = {"competition": "NBA", "stage": "Regular season", "date": "2006-01-22"}
+    _bundle("basketball", "0020500591", season)  # Kobe's 81 v Toronto
+    race = {"stage": "British Grand Prix, Silverstone", "date": "2024-07-07", "laps": 52}
+    _bundle("f1", "9558", race)  # Hamilton's 2024 British Grand Prix win

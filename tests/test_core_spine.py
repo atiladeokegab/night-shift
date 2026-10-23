@@ -99,3 +99,7 @@ def test_cloud_mode_refuses_without_gcs():
 def test_moment_seconds():
     assert moment_seconds({"sport": "football", "clock": "41:02"}) == 2462
     assert moment_seconds({"sport": "cricket", "clock": "19.6"}) == (19 * 6 + 6) * 30
+    assert moment_seconds({"sport": "basketball", "period": 1, "clock": "11:30"}) == 30
+    assert moment_seconds({"sport": "basketball", "period": 4, "clock": "00:05"}) == 4 * 720 - 5
+    assert moment_seconds({"sport": "basketball", "period": 5, "clock": "04:00"}) == 4 * 720 + 60
+    assert moment_seconds({"sport": "f1", "period": 52, "clock": "82:26"}) == 82 * 60 + 26

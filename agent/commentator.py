@@ -1,4 +1,4 @@
-"""The commentator: one frozen prompt, template and tool set for both sports, via Mubit.
+"""The commentator: one frozen prompt, template and tool set for every sport, via Mubit.
 
 Only the moments up to and including the current one ever reach the request or the tools.
 """
@@ -31,13 +31,17 @@ def session_id(sport: str, match_id: str) -> str:
 
 def _score(header: dict, m: dict) -> str:
     s = m["score"]
-    if m["sport"] == "football":
+    if m["sport"] == "f1":
+        return f"Lap {s['lap']} of {s['laps']}: " + ", ".join(
+            f"P{c['pos']} {c['driver']}" + (f" {c['gap']}" if c["gap"] else "") for c in s["top"]
+        )
+    if "home" in s:  # football and basketball
         text = f"{header['home']} {s['home']}, {header['away']} {s['away']}"
         if "shootout" in m["detail"]:
             so = m["detail"]["shootout"]
             text += f" (penalties {so['home']}-{so['away']})"
         return text
-    text = f"{m['team']} {s['runs']}/{s['wickets']}"
+    text = f"{m['team']} {s['runs']} for {s['wickets']}"  # said as written: runs, then wickets
     if "target" in s:
         need = max(0, s["target"] - s["runs"])
         text += f", target {s['target']}, need {need} from {m['detail']['balls_left']} balls"
@@ -58,8 +62,12 @@ def _detail(m: dict) -> str:
 
 
 def _period(m: dict) -> str:
+    if m["sport"] == "f1":
+        return f"lap {m['period']}"
     if m["sport"] == "cricket":
         return f"innings {m['period']}"
+    if m["sport"] == "basketball":
+        return f"quarter {m['period']}" if m["period"] <= 4 else f"overtime {m['period'] - 4}"
     return "penalty shootout" if m["period"] == 5 else f"period {m['period']}"
 
 
@@ -67,13 +75,17 @@ def describe(m: dict) -> str:
     return f"{m['clock']} {m['type']}, {m['outcome']} ({m['team']}; {_players(m)})"
 
 
+def _match(header: dict) -> str:
+    event = f"{header['competition']} {header['stage']}, {header['date']}"
+    return event if header["sport"] == "f1" else f"{header['home']} v {header['away']}, {event}"
+
+
 def render_message(header: dict, past: list[dict]) -> str:
     m = past[-1]
     recent = [describe(p) for p in past[-4:-1]] or ["none yet"]
     return Template(MESSAGE).substitute(
         sport=m["sport"],
-        match=f"{header['home']} v {header['away']}, {header['competition']} {header['stage']}, "
-        f"{header['date']}",
+        match=_match(header),
         period=_period(m),
         clock=m["clock"],
         type=m["type"],
