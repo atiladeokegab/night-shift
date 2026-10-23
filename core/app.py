@@ -5,12 +5,13 @@ import asyncio
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from core.replay import Replay, run_replay
 from core.stats import stats
@@ -25,21 +26,29 @@ class Deps:
     list_matches: Callable[[], list[dict]]
     load_moments: Callable[[str], list[dict]]
     commentate: Callable[[dict, list[dict]], dict]
+    video_map: Callable[[str], dict | None] = lambda match_id: None
+    correct: Callable[[dict, str], dict] | None = None
 
 
 def default_deps() -> Deps:
     """Wire #13's loaders and commentator; None until they land, and the replay routes say 503."""
     try:
-        from agent.commentator import commentate
-        from data.matches import list_matches, load_moments
+        from agent.commentator import commentate, correct
+        from data.matches import list_matches, load_moments, video_map
     except ImportError:
         return None
-    return Deps(list_matches, load_moments, commentate)
+    return Deps(list_matches, load_moments, commentate, video_map, correct)
 
 
 class ReplayRequest(BaseModel):
     match_id: str
     speed: float = Field(10.0, gt=0)
+
+
+class FixRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    corrected_text: str = Field(min_length=1)
+    reason: str = ""
 
 
 def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> FastAPI:
@@ -71,7 +80,8 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
             raise HTTPException(404, f"no match {req.match_id!r}") from exc
         replay = Replay(req.match_id, req.speed)
         replays[replay.id] = replay
-        task = asyncio.create_task(run_replay(replay, moments, d.commentate, store))
+        video = d.video_map(req.match_id)
+        task = asyncio.create_task(run_replay(replay, moments, d.commentate, store, video))
         tasks.add(task)
         task.add_done_callback(tasks.discard)
         return {"replay_id": replay.id}
@@ -88,6 +98,37 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
             yield "event: end\ndata: {}\n\n"
 
         return StreamingResponse(sse(), media_type="text/event-stream")
+
+    @app.post("/lines/{line_id}/fix")
+    async def fix_line(line_id: str, req: FixRequest):
+        d = need_deps()
+        line = next((ln for ln in store.all("lines") if ln.get("line_id") == line_id), None)
+        if line is None:
+            raise HTTPException(404, f"no line {line_id!r}")
+        if d.correct is None:
+            raise HTTPException(503, "commentator not configured")
+        try:
+            sent = await asyncio.to_thread(d.correct, line, req.corrected_text)
+        except Exception as exc:  # nothing is stored, so the page can send the fix again
+            raise HTTPException(503, f"correction not sent: {exc}") from exc
+        fix = store.append(
+            "fixes",
+            {
+                "line_id": line_id,
+                "corrected_text": req.corrected_text,
+                "reason": req.reason,
+                "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
+                "mubit_request_id": sent["mubit_request_id"],
+                "reply_matched": sent["reply_matched"],
+            },
+        )
+        for replay in replays.values():
+            if any(
+                e["data"].get("line_id") == line_id for e in replay.events if e["event"] == "line"
+            ):
+                await replay.publish("fixed", fix)
+                await replay.publish("stats", stats(store))
+        return fix
 
     @app.get("/stats")
     def get_stats():
