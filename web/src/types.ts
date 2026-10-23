@@ -57,7 +57,7 @@ export interface Line {
   moment_idx: number
   text: string
   latency_ms: number
-  first_word_ms?: number
+  first_word_ms?: number | null // null when the provider reported no first text word
   video_t?: number // A-6.4@2: shown and spoken when the player reaches it (#47)
 }
 

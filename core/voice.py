@@ -58,6 +58,13 @@ VOICES = [
         "default_for": "basketball",
         "eleven_id": "gnPxliFHTp6OK6tcoA6i",
     },
+    {
+        "id": "announcer",
+        "lang": "en-GB",
+        "label": "Announcer: British, big-occasion",
+        "default_for": "f1",
+        "eleven_id": "gU0LNdkMOQCOrPrwtbee",
+    },
 ]
 
 # A moment's kind to the eleven_v3 audio tag it is read with; anything else is read plainly.
@@ -73,6 +80,15 @@ TAGS = {
     "End of game": "[shouting]",
     "Steal": "[excited]",
     "Free throw": "[excited]",
+    "Lead change": "[shouting]",  # f1: an overtake for the lead
+    "Red flag": "[shouting]",  # a crash stops the race
+    "Finish": "[shouting]",
+    "Lights out": "[excited]",
+    "Overtake": "[excited]",
+    "Pit stop": "[excited]",
+    "Safety car": "[excited]",
+    "Conditions": "[hushed]",  # build-up: rain and low grip
+    "Last lap": "[hushed]",
 }
 
 

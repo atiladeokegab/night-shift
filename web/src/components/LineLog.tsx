@@ -27,7 +27,7 @@ export function LineLog({ lines, late, fixes, moments, onFix }: Props) {
             const m = moments.find((x) => x.idx === l.moment_idx)
             const fix = fixes[l.line_id]
             const isLate = late.includes(l.line_id)
-            const firstWord = l.first_word_ms !== undefined
+            const firstWord = l.first_word_ms != null // undefined or null: only the whole reply was timed
             const ms = l.first_word_ms ?? l.latency_ms
             return (
               <li key={l.line_id} className={fix ? 'fixed' : isLate ? 'late' : undefined}>

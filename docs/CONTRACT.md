@@ -28,13 +28,15 @@ and refuses to start without `STORE_URL=gs://bucket/prefix`.
 
 ## Shapes
 
-- **Moment** (data/): `{sport: "football"|"cricket"|"basketball", match_id, idx, period, clock, type,
-  team, players: {role: name}, outcome, score: {home, away} | {runs, wickets, target?}, x?, y?,
-  detail: {}}`. `clock` is `"mm:ss"` for football, `"over.ball"` for cricket and `"mm:ss"` left in
-  the quarter for basketball; `period` is the half, the innings or the quarter (5+ is overtime);
+- **Moment** (data/): `{sport: "football"|"cricket"|"basketball"|"f1", match_id, idx, period, clock,
+  type, team, players: {role: name}, outcome, score: {home, away} | {runs, wickets, target?} |
+  {lap, laps, top: [{pos, driver, gap}]}, x?, y?, detail: {}}`. `clock` is `"mm:ss"` for football,
+  `"over.ball"` for cricket, `"mm:ss"` left in the quarter for basketball and `"mm:ss"` since the
+  start for f1; `period` is the half, the innings, the quarter (5+ is overtime) or the lap; f1's
+  `top` is the top five, `gap` to the leader (`"leader"`, `"+1.5s"`, or `""` when timing lags);
   roles e.g. `shooter`, `keeper` / `batter`, `bowler`, `fielder` / `shooter`, `assist`, `stealer`,
-  `lost_by`; `detail` holds sport fields (runs, extras, wicket kind, xG, card, play, player_points,
-  lead_change); `x, y` on StatsBomb's 120 x 80 when known.
+  `lost_by` / `driver`, `passed`, `leader`, `winner`; `detail` holds sport fields (runs, extras,
+  wicket kind, xG, card, play, player_points, lead_change, tyres, pit_lane_s); `x, y` on StatsBomb's 120 x 80 when known.
 - **Line** (agent/): `{line_id, sport, match_id, moment_idx, text, model, latency_ms,
   first_word_ms, tokens_in, tokens_out, mubit_request_ids: [], tool_calls: [], created_at}`; tokens
   and latency summed over the whole tool loop; each id from `x-middleware-request-id`.
@@ -64,9 +66,9 @@ Errors: 404 not found, 422 bad input, 503 commentator not configured.
   line, 422 blank `corrected_text` (trimmed), 503 no commentator or the Mubit call failed (nothing
   stored, so the page can send it again).
 - `GET /stage` → the backup live page (`core/stage.html`, static HTML over the routes here) (core)
-- `GET /voices` → `[{id, label, default_for: "cricket"|"football"|"basketball"|null, lang: "en-IN"|"en-GB"|"en-US"}]`, the page's voice
+- `GET /voices` → `[{id, label, default_for: "cricket"|"football"|"basketball"|"f1"|null, lang: "en-IN"|"en-GB"|"en-US"}]`, the page's voice
   setting: an Indian English commentator for cricket, a British one for football, an American
-  play-by-play voice (Sam) for basketball; `lang` is
+  play-by-play voice (Sam) for basketball, a British announcer for f1; `lang` is
   the BCP 47 tag the browser-speech fallback uses. `VOICE_<SPORT>` picks a sport's default: an id
   here, or a raw ElevenLabs voice id, listed as `<sport>-pick` (docs/voice.md). (core)
 - `GET /lines/{line_id}/audio[?voice=<id>]` → `audio/mpeg` of the stored line read by ElevenLabs

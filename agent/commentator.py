@@ -31,6 +31,10 @@ def session_id(sport: str, match_id: str) -> str:
 
 def _score(header: dict, m: dict) -> str:
     s = m["score"]
+    if m["sport"] == "f1":
+        return f"Lap {s['lap']} of {s['laps']}: " + ", ".join(
+            f"P{c['pos']} {c['driver']}" + (f" {c['gap']}" if c["gap"] else "") for c in s["top"]
+        )
     if "home" in s:  # football and basketball
         text = f"{header['home']} {s['home']}, {header['away']} {s['away']}"
         if "shootout" in m["detail"]:
@@ -58,6 +62,8 @@ def _detail(m: dict) -> str:
 
 
 def _period(m: dict) -> str:
+    if m["sport"] == "f1":
+        return f"lap {m['period']}"
     if m["sport"] == "cricket":
         return f"innings {m['period']}"
     if m["sport"] == "basketball":
@@ -69,13 +75,17 @@ def describe(m: dict) -> str:
     return f"{m['clock']} {m['type']}, {m['outcome']} ({m['team']}; {_players(m)})"
 
 
+def _match(header: dict) -> str:
+    event = f"{header['competition']} {header['stage']}, {header['date']}"
+    return event if header["sport"] == "f1" else f"{header['home']} v {header['away']}, {event}"
+
+
 def render_message(header: dict, past: list[dict]) -> str:
     m = past[-1]
     recent = [describe(p) for p in past[-4:-1]] or ["none yet"]
     return Template(MESSAGE).substitute(
         sport=m["sport"],
-        match=f"{header['home']} v {header['away']}, {header['competition']} {header['stage']}, "
-        f"{header['date']}",
+        match=_match(header),
         period=_period(m),
         clock=m["clock"],
         type=m["type"],
@@ -131,6 +141,10 @@ _PREAMBLE = re.compile(
 )
 
 
+# A stray grade word the model put before the line: "BAD Manenti with a boundary!".
+_STRAY = re.compile(r"^BAD\s+(?=[A-Z])")
+MAX_WORDS = 20
+
 # The model questioning its input instead of calling the moment: "There's a discrepancy here ...".
 _META = re.compile(
     r"\b(?:your message|the message|you say|you said|could you|clarify|discrepancy|the tools?"
@@ -146,9 +160,21 @@ def spoken(text: str) -> str:
         para = para.strip()
         while (m := _PREAMBLE.match(para)) and m.end():
             para = para[m.end() :].lstrip()
+        para = _STRAY.sub("", para)
         if para and not _META.search(para):
             kept.append(para)
-    return " ".join(kept)
+    return _fit(" ".join(kept))
+
+
+def _fit(text: str, limit: int = MAX_WORDS) -> str:
+    """The whole line, else its first and last sentences (the score usually closes it), else the
+    first sentence; one long first sentence is no line."""
+    # a sentence ends at punctuation before a space, so "19.4 overs" stays whole
+    s = re.split(r"(?<=[.!?…])\s+", text.strip())
+    for out in (s, s[:1] + s[-1:], s[:1]):
+        if len(" ".join(out).split()) <= limit:
+            return " ".join(out)
+    return ""
 
 
 def commentate(

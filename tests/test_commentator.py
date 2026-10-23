@@ -260,6 +260,53 @@ def test_one_untemplated_prompt_asks_for_a_broadcast_call_on_big_moments():
     assert "calmly" in system  # routine moments stay calm
 
 
+@pytest.mark.parametrize(
+    "said, line",
+    [
+        ("BAD Manenti hits four! Italy 98 for 5.", "Manenti hits four! Italy 98 for 5."),
+        (
+            "Miedema takes the shot from the right foot in open play, Mackenzie Arnold is equal to"
+            " it! Arsenal still leading seven to one.",
+            "Miedema takes the shot from the right foot in open play, Mackenzie Arnold is equal to"
+            " it!",
+        ),
+        ("GOAL! Ann! Reds one, Blues nil!", "GOAL! Ann! Reds one, Blues nil!"),
+        (  # the score closes the line, so the middle goes
+            "What a header from Alexandra Popp! She climbs above everyone at the near post and"
+            " buries it past the keeper! Germany extend it to four.",
+            "What a header from Alexandra Popp! Germany extend it to four.",
+        ),
+        (  # a decimal point never ends a sentence
+            "Bowled him at 19.4 overs! The stumps go cartwheeling back towards the keeper and the"
+            " crowd erupts in noise! India 150 for 7.",
+            "Bowled him at 19.4 overs! India 150 for 7.",
+        ),
+    ],
+)
+def test_line_is_trimmed_to_whole_sentences_within_20_words(said, line):
+    assert line_for(FOOT, [moment(FOOT, 0)], 0, Scripted(text(said)))["text"] == line
+
+
+def test_26_word_f1_line_keeps_its_call_and_the_gap():
+    said = (
+        "Hamilton sweeps past Norris into Stowe! What a move from the champion in front of his"
+        " home crowd! Lap 40, Hamilton leads Norris by 1.5 seconds."
+    )
+    assert len(said.split()) == 26
+    moments = load_moments("9558")
+    line = line_for(match_header("9558"), moments, len(moments) - 1, Scripted(text(said)))
+    assert (
+        line["text"]
+        == "Hamilton sweeps past Norris into Stowe! Lap 40, Hamilton leads Norris by 1.5 seconds."
+    )
+
+
+def test_one_sentence_over_20_words_is_no_line():
+    said = " ".join(["word"] * 21) + "!"
+    with pytest.raises(commentator.NoLine):
+        line_for(FOOT, [moment(FOOT, 0)], 0, Scripted(text(said)))
+
+
 def test_cricket_score_reads_runs_for_wickets():
     # "10/2" was read aloud backwards ("two for ten"); the message spells the order out.
     past = [moment(CRIC, 2, score={"runs": 10, "wickets": 2})]
@@ -285,3 +332,20 @@ def test_kobes_81st_point_reaches_the_model():
     assert record["score"] == {"home": 122, "away": 102}
     assert moments[-1]["type"] == "End of game"
     assert moments[-1]["score"] == {"home": 122, "away": 104}
+
+
+def test_hamiltons_win_reaches_the_model_with_places_and_gaps():
+    moments, header = load_moments("9558"), match_header("9558")
+    message = commentator.render_message(header, moments)
+    assert "Sport: f1" in message and "Moment: lap 52, 82:26" in message
+    assert "Match: Formula 1 British Grand Prix, Silverstone, 2024-07-07" in message
+    assert "winner: Lewis Hamilton" in message
+    assert (
+        "Score after this moment: Lap 52 of 52: P1 Lewis Hamilton leader, "
+        "P2 Max Verstappen +1.5s, P3 Lando Norris +7.5s" in message
+    )
+    lead = next(m for m in moments if m["type"] == "Lead change" and m["period"] == 40)
+    assert lead["players"] == {"driver": "Lewis Hamilton", "passed": "Lando Norris"}
+    race = build_request(header, moments)  # A-10.3: the same frozen model, prompt and tools
+    assert (race["model"], race["system"]) == (commentator.MODEL, commentator.SYSTEM)
+    assert (race["tools"], race["tool_choice"]) == (commentator.TOOLS, commentator.TOOL_CHOICE)
