@@ -1,42 +1,63 @@
 // The only module that talks to the match server (docs/CONTRACT.md, "HTTP"):
 // GET /matches, POST /replays {match_id, speed} -> {replay_id},
-// GET /replays/{id}/stream (SSE: moment, line, stats per moment; error; end last).
+// GET /replays/{id}/stream (SSE: moment, line, stats per moment; error; end last),
+// GET /lines/{id}/audio (the line read by ElevenLabs, 503 when the voice isn't configured).
 import { demoMatches, streamDemo } from './demo'
 import type { Line, Match, Moment, StreamEvent } from './types'
 
 export const isDemo = new URLSearchParams(window.location.search).has('demo')
 
+export type StreamStatus = 'ok' | 'reconnecting' | 'disconnected'
+
+// The design's "Disconnected after 3 tries".
+const MAX_TRIES = 3
+
 export async function listMatches(): Promise<Match[]> {
   if (isDemo) return demoMatches
   const res = await fetch('/matches')
-  if (!res.ok) throw new Error(await failure('GET /matches', res))
+  if (!res.ok) throw new Error(`GET /matches failed (${res.status})`)
   return res.json()
 }
 
-// Starts a replay and streams its events; returns a function that stops listening.
-export async function startReplay(
-  matchId: string,
-  speed: number,
-  onEvent: (e: StreamEvent) => void,
-): Promise<() => void> {
-  if (isDemo) return streamDemo(matchId, onEvent)
-
+export async function createReplay(matchId: string, speed: number): Promise<string> {
+  if (isDemo) return matchId
   const res = await fetch('/replays', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ match_id: matchId, speed }),
   })
-  if (!res.ok) throw new Error(await failure('POST /replays', res))
-  const { replay_id } = (await res.json()) as { replay_id: string }
+  if (!res.ok) throw new Error(`POST /replays failed (${res.status})`)
+  return ((await res.json()) as { replay_id: string }).replay_id
+}
 
-  const source = new EventSource(`/replays/${encodeURIComponent(replay_id)}/stream`)
+// Follows a replay's stream from the start; a late or reconnected subscriber gets every event again,
+// so the caller drops moments and lines it already has. Returns a function that stops listening.
+export function followReplay(
+  replayId: string,
+  onEvent: (e: StreamEvent) => void,
+  onStatus: (s: StreamStatus) => void,
+): () => void {
+  if (isDemo) return streamDemo(replayId, onEvent)
+
+  const source = new EventSource(`/replays/${encodeURIComponent(replayId)}/stream`)
+  let tries = 0
+  source.addEventListener('open', () => {
+    if (tries > 0) onStatus('ok')
+    tries = 0
+  })
   source.addEventListener('moment', (e) => onEvent({ type: 'moment', moment: JSON.parse(e.data) as Moment }))
   source.addEventListener('line', (e) => onEvent({ type: 'line', line: JSON.parse(e.data) as Line }))
   source.addEventListener('error', (e) => {
     // A server `error` event carries {detail}; a dropped connection is a plain Event with no data.
     const data = (e as MessageEvent).data
-    if (data) onEvent({ type: 'error', detail: (JSON.parse(data) as { detail: string }).detail })
-    else if (source.readyState === EventSource.CLOSED) onEvent({ type: 'error', detail: 'Lost the match stream.' })
+    if (data) return onEvent({ type: 'error', detail: (JSON.parse(data) as { detail: string }).detail })
+    tries += 1
+    if (tries >= MAX_TRIES || source.readyState === EventSource.CLOSED) {
+      source.close()
+      onStatus('disconnected')
+    } else {
+      onStatus('reconnecting')
+    }
   })
   source.addEventListener('end', () => {
     // Close before the server does, or EventSource reconnects and replays the whole match again.
@@ -46,13 +67,6 @@ export async function startReplay(
   return () => source.close()
 }
 
-// The line read aloud by the server's voice (#25): audio/mpeg, or 503 when the voice isn't configured.
 export function lineAudioUrl(lineId: string): string {
   return `/lines/${encodeURIComponent(lineId)}/audio`
-}
-
-async function failure(what: string, res: Response): Promise<string> {
-  const body = (await res.json().catch(() => null)) as { detail?: string } | null
-  if (res.status === 503) return 'The commentator is not configured on the server.'
-  return `${what} failed (${res.status})${body?.detail ? `: ${body.detail}` : ''}`
 }

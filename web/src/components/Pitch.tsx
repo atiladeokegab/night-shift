@@ -1,33 +1,31 @@
-import { cardColor, isGoal } from '../moment'
+import { caption, cardKind, isGoal, leadPlayer, shortName } from '../moment'
 import type { Moment } from '../types'
+import { BallPath } from './BallPath'
 import { Stickman, type Pose } from './Stickman'
 
 interface Props {
   moment: Moment | null
-  attack: string // colour of the moment's team
-  defend: string
+  ours: string // colour of the moment's team
+  theirs: string
   label: string
 }
 
-// StatsBomb coordinates: 120 x 80, the team in the moment always attacking left to right.
-// Background players stand in a 4-3-3 each; the player in the moment moves to the event spot.
-const ATTACK: [number, number][] = [
-  [8, 40], [30, 12], [26, 30], [26, 50], [30, 68], [50, 24], [46, 40], [50, 56], [74, 16], [78, 40], [74, 64],
-]
-// Mirrored, and outfielders shifted down so the two midfields don't stand on the same spots.
-const DEFEND: [number, number][] = ATTACK.map(([x, y], i) => [120 - x, i === 0 ? y : y + 6])
-
-export function Pitch({ moment, attack, defend, label }: Props) {
+// StatsBomb's pitch, 120 x 80, the team in the moment always attacking left to right. Only the
+// players in the moment are drawn, at the event's x and y, as in the mockup.
+export function Pitch({ moment, ours, theirs, label }: Props) {
   const placed = moment?.x !== undefined && moment?.y !== undefined
   const x = moment?.x ?? 60
   const y = moment?.y ?? 40
-  const ball = ballSpot(moment, x, y)
-  const saved = moment?.type === 'Shot' && moment.outcome === 'Saved'
-  const card = moment ? cardColor(moment) : null
+  const shot = moment?.type === 'Shot'
+  const goalY = Math.min(Math.max(y, 37), 43)
+  const keeper = moment?.players.keeper
+  const card = moment ? cardKind(moment) : null
+  const word = moment ? caption(moment) : null
+  const key = moment ? `${moment.match_id}-${moment.idx}` : 'none'
 
   return (
     <svg className="field" viewBox="-4 -4 128 88" role="img" aria-label={`${label}: pitch`}>
-      <g className="markings" fill="none">
+      <g className="markings">
         <rect x={0} y={0} width={120} height={80} />
         <line x1={60} y1={0} x2={60} y2={80} />
         <circle cx={60} cy={40} r={10} />
@@ -38,12 +36,18 @@ export function Pitch({ moment, attack, defend, label }: Props) {
         <rect x={-2} y={36} width={2} height={8} />
         <rect x={120} y={36} width={2} height={8} />
       </g>
-      {ATTACK.map(([px, py], i) => <Stickman key={`a${i}`} x={px} y={py} color={attack} faded />)}
-      {DEFEND.map(([px, py], i) => <Stickman key={`d${i}`} x={px} y={py} color={defend} faded />)}
-      {saved && <Stickman x={116} y={ball[1] + 3} color={defend} pose="dive" />}
-      {moment && placed && <Stickman x={x} y={y} color={attack} pose={poseFor(moment)} />}
-      {card && placed && <rect x={x + 2} y={y - 12} width={2.4} height={3.4} rx={0.3} fill={card} />}
-      <circle className="ball" r={1.1} style={{ transform: `translate(${ball[0]}px, ${ball[1]}px)` }} />
+      {word && <text key={`c${key}`} className="caption" x={60} y={11} textAnchor="middle">{word}</text>}
+      {moment && shot && (
+        <Stickman x={117} y={goalY + 4} color={theirs} pose={moment.outcome === 'Saved' ? 'dive' : 'stand'}
+          label={keeper ? shortName(keeper) : undefined} labelBelow />
+      )}
+      {moment && placed && (
+        <Stickman x={x} y={y} color={ours} pose={poseFor(moment)} label={shortName(leadPlayer(moment))} />
+      )}
+      {moment && placed && card && (
+        <rect x={x + 2.4} y={y - 15} width={2.6} height={3.6} rx={0.3} fill={card.startsWith('Yellow') ? '#FFD23F' : '#FF6B6B'} />
+      )}
+      {moment && placed && shot && <BallPath key={key} id={key} from={[x + 1.5, y - 1]} to={shotEnd(moment, y, goalY)} />}
     </svg>
   )
 }
@@ -54,10 +58,9 @@ function poseFor(m: Moment): Pose {
   return 'stand'
 }
 
-function ballSpot(moment: Moment | null, x: number, y: number): [number, number] {
-  if (!moment) return [60, 40]
-  const gy = Math.min(Math.max(y, 37), 43)
-  if (isGoal(moment)) return [121, gy]
-  if (moment.type === 'Shot') return moment.outcome === 'Saved' ? [115, gy] : [118, Math.min(Math.max(y, 32), 48)]
-  return [x + 2, y - 0.5]
+function shotEnd(m: Moment, y: number, goalY: number): [number, number] {
+  if (m.outcome === 'Goal') return [121, goalY]
+  if (m.outcome === 'Saved') return [115.5, goalY - 2]
+  if (m.outcome === 'Post') return [120, y < 40 ? 36 : 44]
+  return [120, y < 40 ? Math.max(y - 6, 26) : Math.min(y + 6, 54)] // wide, blocked or over
 }

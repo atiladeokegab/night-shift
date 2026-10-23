@@ -1,185 +1,78 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import './App.css'
-import { isDemo, listMatches, startReplay } from './api'
-import { Ground } from './components/Ground'
-import { Pitch } from './components/Pitch'
-import { ScoreBar } from './components/ScoreBar'
-import { clockText, leadPlayer, sideOf } from './moment'
-import type { Line, Match, Moment, Sport } from './types'
+import { isDemo, listMatches } from './api'
+import { Live } from './components/Live'
+import { Picker } from './components/Picker'
+import type { Match, Sport } from './types'
+import { useReplay } from './useReplay'
 import { useSpeech } from './useSpeech'
 
-const COLORS = { home: '#ff6b5e', away: '#5eb8ff' }
-const SPORTS: Sport[] = ['football', 'cricket']
-const SPEEDS = [1, 4, 10]
-
 export default function App() {
-  const [matches, setMatches] = useState<Match[]>([])
-  const [matchId, setMatchId] = useState<string | null>(null)
-  const [speed, setSpeed] = useState(4)
-  const [running, setRunning] = useState(false)
-  const [moments, setMoments] = useState<Moment[]>([])
-  const [lines, setLines] = useState<Line[]>([])
-  const [teams, setTeams] = useState<string[]>([])
-  const [ended, setEnded] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [matches, setMatches] = useState<Match[] | null>(null)
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [current, setCurrent] = useState<{ match: Match; speed: number } | null>(null)
   const speech = useSpeech()
+  const replay = useReplay(speech.say)
 
-  // The stream reads the latest `say` and `hush` through refs, so toggling the voice never restarts a replay.
-  const say = useRef(speech.say)
-  const hush = useRef(speech.hush)
-  useEffect(() => {
-    say.current = speech.say
-    hush.current = speech.hush
-  }, [speech.say, speech.hush])
-
-  useEffect(() => {
+  const load = useCallback(() => {
     listMatches()
       .then((all) => {
-        setMatches(all)
-        setMatchId(all[0]?.match_id ?? null)
+        // The design lists football first; the server sorts by file name.
+        setMatches([...all].sort((a, b) => (a.sport === b.sport ? 0 : a.sport === 'football' ? -1 : 1)))
+        setLoadFailed(false)
       })
-      .catch((e: Error) => setError(e.message))
+      .catch(() => setLoadFailed(true))
   }, [])
 
-  useEffect(() => {
-    if (!running || !matchId) return
-    let stop: (() => void) | null = null
-    let cancelled = false
-    startReplay(matchId, speed, (e) => {
-      if (e.type === 'moment') {
-        setMoments((prev) => [...prev, e.moment])
-        setTeams((prev) => (e.moment.team && !prev.includes(e.moment.team) ? [...prev, e.moment.team] : prev))
-      }
-      if (e.type === 'line') {
-        setLines((prev) => [e.line, ...prev])
-        say.current(e.line)
-      }
-      if (e.type === 'error') setError(e.detail)
-      if (e.type === 'end') setEnded(true)
-    })
-      .then((s) => (cancelled ? s() : (stop = s)))
-      .catch((e: Error) => setError(e.message))
-    return () => {
-      cancelled = true
-      stop?.()
-      hush.current()
-    }
-  }, [running, matchId, speed])
+  useEffect(load, [load])
 
-  // Every change that starts a new replay clears the old one's moments, lines and errors first.
-  const clear = () => {
-    setMoments([])
-    setLines([])
-    setTeams([])
-    setEnded(false)
-    setError(null)
-  }
-  const pickMatch = (id: string) => {
-    clear()
-    setMatchId(id)
+  const start = (match: Match, speed: number) => {
+    speech.hush()
+    setCurrent({ match, speed })
+    replay.start(match.match_id, speed)
   }
 
-  // One tap: pick the first match of the other sport; a running replay follows to it.
-  const switchSport = (next: Sport) => {
-    const first = matches.find((m) => m.sport === next)
-    if (first) pickMatch(first.match_id)
+  // One tap starts the other sport's first match at the same speed; the whole page follows it.
+  const firstOf = (sport: Sport) => matches?.find((m) => m.sport === sport)
+  const switchSport = (sport: Sport) => {
+    const next = firstOf(sport)
+    if (next && current) start(next, current.speed)
   }
 
-  const match = matches.find((m) => m.match_id === matchId) ?? null
-  const sport = match?.sport ?? 'football'
-  const ofSport = matches.filter((m) => m.sport === sport)
-  const moment = moments.at(-1) ?? null
-  const latest = lines[0]
-  const latestMoment = latest ? moments.find((m) => m.idx === latest.moment_idx) : undefined
-
-  const ours = match && moment ? COLORS[sideOf(moment.team, match, teams[0] ?? null)] : COLORS.home
-  const theirs = ours === COLORS.home ? COLORS.away : COLORS.home
-  const label = match?.title ?? match?.match_id ?? ''
+  const back = () => {
+    replay.leave()
+    speech.hush()
+    setCurrent(null)
+  }
 
   return (
     <div className="page">
       <header className="top">
-        <h1>Touchline</h1>
-        <nav className="sports" aria-label="Sport">
-          {SPORTS.map((s) => (
-            <button
-              key={s}
-              className={s === sport ? 'active' : ''}
-              aria-pressed={s === sport}
-              disabled={!matches.some((m) => m.sport === s)}
-              onClick={() => switchSport(s)}
-            >
-              {s === 'football' ? 'Football' : 'Cricket'}
-            </button>
-          ))}
-        </nav>
+        <h1>Touchline<span className="dot" aria-hidden /></h1>
         {isDemo && <span className="badge">Demo data</span>}
       </header>
-
-      {error && <p className="error" role="alert">{error}</p>}
-      {!match && !error && <p className="empty">Loading matches…</p>}
-
-      {match && (
-        <main>
-          <div className="controls">
-            <select value={match.match_id} onChange={(e) => pickMatch(e.target.value)} aria-label="Match">
-              {ofSport.map((m) => <option key={m.match_id} value={m.match_id}>{m.title ?? m.match_id}</option>)}
-            </select>
-            <select
-              value={speed}
-              onChange={(e) => {
-                clear()
-                setSpeed(Number(e.target.value))
-              }}
-              aria-label="Replay speed"
-            >
-              {SPEEDS.map((s) => <option key={s} value={s}>{s}× speed</option>)}
-            </select>
-            <button
-              className="primary"
-              onClick={() => {
-                if (!running) clear()
-                setRunning(!running)
-              }}
-            >
-              {running ? 'Stop' : 'Start replay'}
-            </button>
-            {(
-              <button onClick={() => speech.setOn(!speech.on)} aria-pressed={speech.on}>
-                {speech.on ? 'Voice on' : 'Voice off'}
-              </button>
-            )}
-          </div>
-
-          <ScoreBar match={match} moment={moment} colors={COLORS} />
-
-          <div className="stage">
-            {sport === 'football'
-              ? <Pitch moment={moment} attack={ours} defend={theirs} label={label} />
-              : <Ground moment={moment} bat={ours} field={theirs} label={label} />}
-            <div className="subtitle" aria-live="assertive">
-              {latest ? (
-                <>
-                  {latestMoment && <span className="who">{leadPlayer(latestMoment)} · {clockText(latestMoment)}</span>}
-                  <span className="text">{latest.text}</span>
-                </>
-              ) : (
-                <span className="text muted">{running ? 'Waiting for the first moment…' : 'Press Start replay.'}</span>
-              )}
-            </div>
-          </div>
-
-          {ended && <p className="empty">Full time. Pick another match or switch sport.</p>}
-
-          <ol className="log" aria-label="Commentary so far">
-            {lines.map((l) => (
-              <li key={l.line_id}>
-                <span className="text">{l.text}</span>
-                <span className="latency">{l.latency_ms} ms</span>
-              </li>
-            ))}
-          </ol>
-        </main>
+      {current ? (
+        <Live
+          match={current.match}
+          replay={replay.state}
+          speech={speech}
+          canSwitchTo={(s) => !!firstOf(s)}
+          onSwitch={switchSport}
+          onRetry={() => start(current.match, current.speed)}
+          onReconnect={replay.reconnect}
+          onBack={back}
+        />
+      ) : (
+        <Picker
+          matches={matches}
+          error={loadFailed}
+          onRetry={() => {
+            setLoadFailed(false)
+            setMatches(null)
+            load()
+          }}
+          onStart={start}
+        />
       )}
     </div>
   )

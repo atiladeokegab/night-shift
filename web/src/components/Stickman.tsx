@@ -5,25 +5,28 @@ interface Props {
   y: number // where the feet are
   color: string
   pose?: Pose
-  faded?: boolean
+  label?: string
+  labelBelow?: boolean
 }
 
-// A stickman 9 units tall, drawn around its feet so it can be placed on event coordinates.
-// Moves with a CSS transition, so a new position animates from the old one.
-export function Stickman({ x, y, color, pose = 'stand', faded = false }: Props) {
+// A stickman drawn at 1.5x (the mockup's size, readable from the back of a room) around its feet, so
+// it stands on event coordinates. Moves with a CSS transition (600ms, docs/design.md "Motion").
+// Its name is pulled in from the field's edges so it is never cut off (both fields are 120 wide).
+export function Stickman({ x, y, color, pose = 'stand', label, labelBelow = false }: Props) {
   const limbs = POSES[pose]
+  const half = (label?.length ?? 0) * 0.85 // about half the name's width at the label's size
+  const labelX = Math.min(0, 112 - half - x) + Math.max(0, half + 2 - x)
   return (
-    <g
-      className="stickman"
-      style={{ transform: `translate(${x}px, ${y}px)` }}
-      stroke={color}
-      strokeWidth={0.9}
-      strokeLinecap="round"
-      fill="none"
-      opacity={faded ? 0.35 : 1}
-    >
-      <circle cx={limbs.head[0]} cy={limbs.head[1]} r={1.4} fill={color} />
-      <path d={limbs.path} />
+    <g className="stickman" style={{ transform: `translate(${x}px, ${y}px)` }}>
+      <g transform="scale(1.5)" stroke={color} strokeWidth={0.9} strokeLinecap="round" fill="none">
+        <circle cx={limbs.head[0]} cy={limbs.head[1]} r={1.4} fill={color} />
+        <path d={limbs.path} />
+      </g>
+      {label && (
+        <text className="name" x={labelX} y={labelBelow ? 5.5 : -15.5} textAnchor="middle">
+          {label}
+        </text>
+      )}
     </g>
   )
 }
