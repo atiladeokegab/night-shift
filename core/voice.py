@@ -113,7 +113,7 @@ def tag_for(moment: dict) -> str | None:
 
 def all_voices(env=os.environ) -> list[dict]:
     """VOICES, plus `<sport>-pick` for each VOICE_<SPORT> set to a raw ElevenLabs voice id, even one
-    another voice already uses: /voices names one sport per voice, so a shared voice needs its own entry."""
+    another voice already uses: /voices names one sport per voice, so a shared one needs its own."""
     picks = []
     for v in VOICES:
         sport = v["default_for"]
