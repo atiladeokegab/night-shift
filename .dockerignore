@@ -1,0 +1,17 @@
+.git
+.venv
+.env
+.env.*
+**/.env*
+data/*.jsonl
+data/cache
+web/dist
+.worktrees
+**/.worktrees
+*.tfvars
+*.tfstate
+*.tfstate.*
+**/__pycache__
+.pytest_cache
+.ruff_cache
+**/node_modules

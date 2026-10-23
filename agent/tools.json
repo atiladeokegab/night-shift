@@ -1,0 +1,25 @@
+[
+  {
+    "name": "get_score",
+    "description": "The score after the current moment, with the period and clock.",
+    "input_schema": {"type": "object", "properties": {}}
+  },
+  {
+    "name": "get_player",
+    "description": "What one player has done in this match so far, up to the current moment.",
+    "input_schema": {
+      "type": "object",
+      "properties": {"name": {"type": "string", "description": "The player's name as given."}},
+      "required": ["name"]
+    }
+  },
+  {
+    "name": "get_recent_play",
+    "description": "The key moments just before the current one, oldest first.",
+    "input_schema": {
+      "type": "object",
+      "properties": {"count": {"type": "integer", "minimum": 1, "maximum": 10}},
+      "required": ["count"]
+    }
+  }
+]
