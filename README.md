@@ -14,9 +14,9 @@
 
 [**For judges**](#for-judges) · [**What it does**](#what-it-does) · [**Requirements (PRD)**](docs/PRD.md) · [**Run it**](#run-it) · [**How it uses Mubit**](#how-it-uses-mubit) · [**Team**](#team)
 
-<img src="docs/img/live.png" alt="The live page, from the design mockup. A drawn night stadium stands in for the official highlights video. Top left, the score bar reads ESP 1-0 ENG, 28:29, 1st half, REPLAY. Top right, a red ON AIR pill names the British commentator. In the lower third, the moment tag 28:29 GOAL sits above the large subtitle: Olga Carmona! Low across Earps and in! Spain lead the World Cup final! Under it, a dock with Fixtures, a Football and Cricket switch and Voice: British, and a video timeline with a small Synced to video label. On the right, a Lines card lists each line with its clock, its first-word time and a Fix button, and a Proof card shows first word p50 and p95, cost per line, lines, fixes and the adapter's result." width="100%">
+<img src="docs/img/live.png" alt="The live page, from the design mockup. A drawn night stadium stands in for the highlights video. Top left, the score bar reads ESP 1-0 ENG, 28:29, 1st half, REPLAY. Top right, a red ON AIR pill names the British commentator. In the lower third, the moment tag 28:29 GOAL sits above the large subtitle: Olga Carmona! Low across Earps and in! Spain lead the World Cup final! Under it, a dock with Fixtures, a Football and Cricket switch and Voice: British, and a video timeline with a small Synced to video label. On the right, a Lines card lists each line with its clock, its first-word time and a Fix button, and a Proof card shows first word p50 and p95, cost per line, lines, fixes and the adapter's result." width="100%">
 
-<sub>The live page as designed (<code>docs/mockup/index.html</code>). In the product the official
+<sub>The live page as designed (<code>docs/mockup/index.html</code>). In the product the broadcast
 highlights play where the drawn stadium is; the numbers in this picture are samples, not measurements.</sub>
 
 </div>
@@ -48,7 +48,7 @@ Status as of 23 October 2026, 22:00 UTC.
 |---|---|---|
 | Football and cricket | Real matches from StatsBomb open data and Cricsheet, replayed moment by moment | Running on staging |
 | Basketball, F1 and the 2022 World Cup final (Messi v Mbappé) | Iconic extra screens from real play-by-play and timing data, called by the same commentator (A-10) | Planned, after the core |
-| Commentary synced to the official highlights | The page plays the match's official highlights (embedded YouTube, muted). The player's own clock drives the commentary, so a line is shown and spoken when its moment plays and never runs ahead of the picture (A-6.4) | In progress |
+| Commentary synced to the broadcast highlights | The page plays the match's broadcast highlights (embedded YouTube, muted). The player's own clock drives the commentary, so a line is shown and spoken when its moment plays and never runs ahead of the picture (A-6.4) | In progress |
 | Emotional commentary | A goal, a saved penalty, a six or a wicket is called with a broadcast commentator's excitement, at most 20 words, with every name and score right (A-3.6) | In progress |
 | Voice setting | Cricket defaults to an Indian commentator voice, football to a British one; a change applies from the next line without a reload (A-6.3). Voices from ElevenLabs, with the browser's speech as a fallback | In progress |
 | Producer fix loop | A producer corrects or rejects a line in one tap; the fix is stored beside the original and sent back through the same Mubit task and session (A-4.1) | Planned |
@@ -66,7 +66,7 @@ cricket. Fans following a stream or a live score get a bare ticker, or nothing.
 A big model could commentate them. But it is too slow to call a moment while the moment is still on
 screen, and too expensive to run for every moment of every match.
 
-**Touchline** is one live AI commentator for every sport it covers. It plays a match's official highlights,
+**Touchline** is one live AI commentator for every sport it covers. It plays a match's broadcast highlights,
 and as each key moment plays it calls it in one short, emotional line, read aloud in a commentator's
 voice and shown as a large subtitle. A producer fixes any line that's wrong, the fix goes back through
 Mubit, and Mubit trains a smaller commentator. The aim is that it calls the same moments as well as
@@ -117,13 +117,14 @@ make dev     # the server on localhost; set MUBIT_API_KEY in .env for real comme
 
 - Football: [StatsBomb open data](https://github.com/statsbomb/open-data), used under its licence.
 - Cricket: ball-by-ball data from [Cricsheet](https://cricsheet.org).
-- Video: each demo match's official highlights, embedded from the competition's YouTube channel and
-  played muted; never downloaded or rehosted. The commentator reads the event feed, not the video.
+- Video: Highlights: broadcast highlights on YouTube (ITV for the final, the TV feed for India v Pakistan), embedded, muted. These are re-uploads of the TV coverage, not
+  uploads by FIFA or the ICC. Never downloaded or rehosted; the commentator reads the event feed, not
+  the video.
 
 ## Architecture
 
 These diagrams were drawn before the video redesign: where they say "stickman replay", the page now
-plays the official highlights.
+plays the broadcast highlights.
 
 ![C4 system context diagram: a fan watches and listens and a producer fixes lines in Touchline. Touchline reads events from StatsBomb and Cricsheet and sends every model call and every fix to Mubit, which passes calls on to the model provider.](docs/architecture/c4_context.png)
 
@@ -139,7 +140,7 @@ commit names its source.
 
 ## What we'd build next
 
-Today Touchline calls replays of real matches, with the commentary synced to the official footage.
+Today Touchline calls replays of real matches, with the commentary synced to the broadcast footage.
 Next:
 
 - **More sports, then esports.** Any sport with real event data, through the same agent, tools and

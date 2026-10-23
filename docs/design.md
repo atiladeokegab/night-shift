@@ -9,7 +9,7 @@ Open it in a browser; the thin bar at its top ("Mockup") jumps to each screen an
 part of the product. Add `?still` to the URL to hide that bar (the README's still uses it).
 
 This is the second look (PRD v2). The first, a stickman replay on a flat dark set, is retired: the
-live page now plays the match's official highlights and Touchline calls each key moment over them.
+live page now plays the match's broadcast highlights and Touchline calls each key moment over them.
 
 ## References
 
@@ -36,8 +36,8 @@ Described in words, never copied in.
   Fonts; the live page self-hosts them.
 
 Our own pages use no match photographs, broadcast stills or player likenesses. The night stadium and
-the team crests in the mockup are drawn in SVG; in the product, the only footage is the embedded
-official YouTube highlights.
+the team crests in the mockup are drawn in SVG; in the product, the only footage is the
+broadcast highlights embedded from YouTube (ITV for the final, the TV feed for India v Pakistan).
 
 ## Look
 
@@ -117,12 +117,12 @@ voice speaks. Cards lift 3px on hover and their artwork scales 3.5% over 1.2s. S
 |---|---|---|
 | Nav | "Touchline." left; "Live" (green dot), "Fixtures", "About" right; the current page tinted | Live opens the live page; Fixtures is the match picker |
 | Match card | Night-stadium artwork with the two teams' crests (shield in team colour, three-letter code), sport label, title, detail (the date never wraps), result, a meta row (highlights length, key moments, default voice), the speed chips, "Start replay →" | Starts the replay |
-| Video stage | The official highlights: an embedded YouTube player, muted, full-bleed. In the mockup an SVG night stadium stands in | Plays from the start. The player's current time drives the commentary, so a line never runs ahead of the picture (A-6.4@2) |
+| Video stage | The broadcast highlights (re-uploads of the TV coverage on YouTube): an embedded YouTube player, muted, full-bleed. In the mockup an SVG night stadium stands in | Plays from the start. The player's current time drives the commentary, so a line never runs ahead of the picture (A-6.4@2) |
 | Score bar | Team colour bars and codes, the score, the clock (football "69:01" and the half; cricket "Over 19.4", "need 6 off 3" in an amber chip, with both teams' totals at the same weight: "IND 154/5 PAK 159/8"), "REPLAY" | Updates with each moment |
 | ON AIR pill | Red dot, "ON AIR", four amber bars, the voice ("British commentator") | Dot and bars move only while speaking; "VOICE OFF" or "VOICE UNAVAILABLE" otherwise |
 | Subtitle | Over a soft dark scrim so it never sits on the players: the moment tag ("28:29 · Goal", "Over 19.4 · No-ball · Six") above the line in large type | Replaced by the next moment's line; a fixed line turns `--fix` with a "Fixed" tag |
 | Dock | "← Fixtures", the Football / Cricket switch, "Voice: British" | The switch starts the other demo match; Voice opens the voice setting |
-| Timeline | "Official highlights · YouTube · muted", the progress track with a marker per mapped moment (amber once called), a small "Synced to video" chip, "3:05 / 4:56" | Read only |
+| Timeline | "Broadcast highlights · YouTube · muted", the progress track with a marker per mapped moment (amber once called), a small "Synced to video" chip, "3:05 / 4:56" | Read only |
 | Lines card | Every line so far, newest first: clock, line, first-word time, "Fix". Sized to its content; the oldest line fades out at the bottom rather than being cut | "Fix" opens the producer fix |
 | Proof card | First word p50 and p95, cost per line, lines, fixes, the adapter's result | Read only |
 | Fix sheet | The original line, an editable box, the reason chips, "Send fix", "Reject line", "Cancel" | See States |
@@ -173,15 +173,15 @@ flowchart LR
 | Cricket card | "Cricket" / "India v Pakistan" / "T20 World Cup · MCG, Melbourne · 23 Oct 2022" / "India won by 4 wickets, off the last ball" |
 | Card meta | "Highlights 4:56", "4 key moments", "British commentator" (cricket: "Highlights 4:48", "5 key moments", "Indian commentator") |
 | Card button | "Start replay →" |
-| Picker footer | "Match data: StatsBomb open data and Cricsheet. Highlights: the competitions' official YouTube channels. Commentary is AI-generated." |
+| Picker footer | "Match data: StatsBomb open data and Cricsheet. Highlights: broadcast highlights on YouTube (ITV for the final, the TV feed for India v Pakistan), embedded, muted. Commentary is AI-generated." |
 | About heading | "Every match deserves a commentator." |
-| About text | "Most matches are played with nobody calling them. Touchline watches a match's event feed and calls each key moment in one emotional spoken line, about a second after it happens, over the official highlights." / "One commentator, two sports. The same agent calls football and cricket; switch sport and it follows." / "It learns from its producer. A wrong line is fixed in one tap. Every call and every fix goes through Mubit, which trains a smaller commentator that matches the big one at lower cost." |
+| About text | "Most matches are played with nobody calling them. Touchline watches a match's event feed and calls each key moment in one emotional spoken line, about a second after it happens, over the broadcast highlights." / "One commentator, two sports. The same agent calls football and cricket; switch sport and it follows." / "It learns from its producer. A wrong line is fixed in one tap. Every call and every fix goes through Mubit, which trains a smaller commentator that matches the big one at lower cost." |
 | Score bar tag | "REPLAY" |
 | Football clock | "69:01" with "1st half" or "2nd half" |
 | Cricket clock | "Over 19.4" with "need 6 off 3", and "PAK 159/8" |
 | Moment tag | "<clock> · <moment>": "Goal", "Penalty", "Off the woodwork", "Stoppage", "Six", "Wicket", "No-ball · Six", "India win" |
 | ON AIR pill | "ON AIR" and "<voice> commentator"; "VOICE OFF" and "Subtitles only"; "VOICE UNAVAILABLE" and "Subtitles carry on" |
-| Timeline caption | "Official highlights · YouTube · muted" |
+| Timeline caption | "Broadcast highlights · YouTube · muted" |
 | Dock | "← Fixtures", "Football", "Cricket", "Voice: <British, Indian, Australian, Off or Unavailable>" |
 | Voice setting | "Commentator voice" / "Each line is spoken in this voice. A change applies from the next line, without reloading." / "Voice" / "Football", "Cricket" / "British", "Indian", "Australian" / "Default" / "Done" |
 | Voice toast | "<voice> commentator from the next line." |
