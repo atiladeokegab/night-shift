@@ -1,6 +1,6 @@
-<!-- Generated from the team PRD (v2, change C-001, approved 2026-10-23 21:36 UTC). This copy is what every agent builds and reviews against; it is refreshed whenever the PRD changes. The model's input is event data; the highlights video is display only. -->
+<!-- Generated from the team PRD (v3, changes C-001 and C-002, approved 2026-10-23). This copy is what every agent builds and reviews against; it is refreshed whenever the PRD changes. The model's input is event data; the highlights video is display only. -->
 
-# night-shift: PRD v2
+# night-shift: PRD v3
 
 ## Problem
 Most matches in most sports are played with nobody calling them: grassroots and lower-league football, most of the women's game, club and county cricket. A clever model could commentate them, but it is too slow to call a moment while it is still on screen and too expensive to run for every moment of every match.
@@ -108,7 +108,7 @@ Why: What the judges see and hear
 - A-6.1@2 Scenario: the live page plays the match's official highlights (embedded YouTube player, muted) and, as each mapped key moment plays, shows its line as a large subtitle and speaks it; a moment's line is never shown before that moment plays in the video (`tests/acceptance/test_A_6_1.py`)
 - A-6.2@1 Scenario: one tap switches sport mid-demo, and the score bar, field and commentary follow (`tests/acceptance/test_A_6_2.py`)
 - A-6.3@1 Scenario: the voice is a setting on the page; by default cricket is called in an Indian commentator voice and football in a British one, and changing the voice changes the next line's audio without reloading (`tests/acceptance/test_A_6_3.py`)
-- A-6.4@1 Scenario: each demo match has a video map (YouTube id plus video time for each key moment) checked into data/, and the replay emits each mapped moment at its video time to within 0.5 s (`tests/acceptance/test_A_6_4.py`)
+- A-6.4@2 Scenario: each demo match has a video map (YouTube id plus the video time of the first showing of each key moment) checked into data/; the server sends each mapped moment's line ahead of time tagged with its video time, and the page shows and speaks it when the YouTube player's current time reaches that video time (within 0.5 s); when the video buffers, pauses or is sought, the commentary waits for the player and never runs ahead of the picture (`tests/acceptance/test_A_6_4.py`)
 
 ### R-7 [P2 · Proof] The proof panel shows quality, cost and latency
 rank 7 · state proposed · needs R-2, R-4 · touches `web/`, `core/`

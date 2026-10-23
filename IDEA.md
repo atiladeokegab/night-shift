@@ -1,6 +1,6 @@
 # The idea
 
-The full, current requirements are in `docs/PRD.md` (PRD v2, 2026-10-23). Build and review against it.
+The full, current requirements are in `docs/PRD.md` (PRD v3, 2026-10-23). Build and review against it.
 
 The lead writes this once the team has agreed the idea, and no issue is created before it is
 complete. If your task doesn't fit this page, open a change-request (AGENTS.md §7).
