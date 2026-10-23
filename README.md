@@ -117,7 +117,8 @@ make dev     # the server on localhost; set MUBIT_API_KEY in .env for real comme
 
 - Football: [StatsBomb open data](https://github.com/statsbomb/open-data), used under its licence.
 - Cricket: ball-by-ball data from [Cricsheet](https://cricsheet.org).
-- Video: Highlights: broadcast highlights on YouTube (ITV for the final, the TV feed for India v Pakistan), embedded, muted. These are re-uploads of the TV coverage, not
+- Basketball: stats.nba.com play-by-play, via the [shufinskiy/nba_data](https://github.com/shufinskiy/nba_data) mirror (Apache-2.0).
+- Video: Highlights: broadcast highlights on YouTube (ITV for the final, the TV feed for India v Pakistan, the NBA's own channel for the two basketball games), embedded, muted. These are re-uploads of the TV coverage, not
   uploads by FIFA or the ICC. Never downloaded or rehosted; the commentator reads the event feed, not
   the video.
 
