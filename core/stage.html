@@ -119,8 +119,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 // The picker: one button per demo match (label, sport, match id).
 const PICKS = [["Football", "football", "3906390"], ["Messi v Mbappé", "football", "3869685"],
   ["Cricket", "cricket", "1298150"], ["Jordan", "basketball", "0049700088"],
-  ["Kobe", "basketball", "0020500591"]];
-const LANG = { football: "en-GB", cricket: "en-IN", basketball: "en-US" };
+  ["Kobe", "basketball", "0020500591"], ["Hamilton", "f1", "9558"]];
+const LANG = { football: "en-GB", cricket: "en-IN", basketball: "en-US", f1: "en-GB" };
 const WINDOW = 0.5; // a line plays only within this many seconds after its video_t
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => Object.assign(document.createElement(tag), cls ? { className: cls } : {}, text != null ? { textContent: text } : {});
@@ -160,7 +160,19 @@ function period(m) {
   return m.period > 4 ? `OT ${m.period - 4}` : `Q${m.period}`;
 }
 
+// F1: the lap and the top three, each with the gap to the leader.
+function raceParts(m) {
+  if (!m) return [[match.title, "team"]];
+  const s = m.score, last = (name) => name.split(" ").slice(-1)[0];
+  const top = s.top.slice(0, 3).map((c) => [`P${c.pos} ${last(c.driver)}${c.pos > 1 && c.gap ? ` ${c.gap}` : ""}`, "team"]);
+  return [...top, [null, "sep"], [`Lap ${s.lap}/${s.laps}`, "period"]];
+}
+
 function scorebar(m) {
+  if (match.sport === "f1") {
+    $("score").replaceChildren(...raceParts(m).map(([text, cls]) => el("span", cls, text)));
+    return;
+  }
   const t = teams(), s = (m && m.score) || {};
   const parts = match.sport === "cricket"
     ? [[m ? m.team : `${t.home} v ${t.away}`, "team"], [m ? `${s.runs}/${s.wickets}` : "–", "score"],
