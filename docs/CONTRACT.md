@@ -64,8 +64,9 @@ Errors: 404 not found, 422 bad input, 503 commentator not configured.
   line, 422 blank `corrected_text` (trimmed), 503 no commentator or the Mubit call failed (nothing
   stored, so the page can send it again).
 - `GET /stage` → the backup live page (`core/stage.html`, static HTML over the routes here) (core)
-- `GET /voices` → `[{id, label, default_for: "cricket"|"football"|null, lang: "en-IN"|"en-GB"}]`, the page's voice
-  setting: an Indian English commentator for cricket, a British one for football; `lang` is
+- `GET /voices` → `[{id, label, default_for: "cricket"|"football"|"basketball"|null, lang: "en-IN"|"en-GB"|"en-US"}]`, the page's voice
+  setting: an Indian English commentator for cricket, a British one for football, an American
+  play-by-play voice (Sam) for basketball; `lang` is
   the BCP 47 tag the browser-speech fallback uses. `VOICE_<SPORT>` picks a sport's default: an id
   here, or a raw ElevenLabs voice id, listed as `<sport>-pick` (docs/voice.md). (core)
 - `GET /lines/{line_id}/audio[?voice=<id>]` → `audio/mpeg` of the stored line read by ElevenLabs
