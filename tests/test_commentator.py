@@ -225,6 +225,8 @@ def test_preamble_alone_is_no_line(said):
         "I have all the information I need from your message. Goal! Ann buries it.",
         "Based on the score, here goes: Goal! Ann buries it.",
         "I have all the information I need from your message… Goal! Ann buries it.",
+        "The score confirms Reds 1, Blues 0, so despite being labeled a save, it went in.\n\n"
+        "Goal! Ann buries it.",
     ],
 )
 def test_preamble_never_becomes_the_line(said):
