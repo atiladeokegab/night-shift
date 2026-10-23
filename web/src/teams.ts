@@ -1,25 +1,30 @@
-import type { Match } from './types'
+import type { Match, Sport, Voice } from './types'
 
-// Team chips and stickmen colours from docs/design.md ("Colour"); any other team gets a neutral chip.
-const KNOWN: [string, string, string][] = [
-  ['Spain', 'ESP', '#E8414C'],
-  ['England', 'ENG', '#F4F4F4'],
-  ['India', 'IND', '#4FA3FF'],
-  ['Pakistan', 'PAK', '#2FBF71'],
+// Team colours and crest ink from docs/design.md ("Tokens") and the mockup's crests; any other team
+// gets a neutral one.
+const KNOWN: [string, string, string, string][] = [
+  ['Spain', 'ESP', '#C8102E', '#F1BF00'],
+  ['England', 'ENG', '#F4F4F4', '#1B2A5A'],
+  ['India', 'IND', '#2F7DE1', '#FFFFFF'],
+  ['Pakistan', 'PAK', '#0F8A4C', '#FFFFFF'],
 ]
-const OTHER = ['#C9D2E3', '#8FA3C7']
+const OTHER: [string, string][] = [['#C9D2E3', '#0E1524'], ['#8FA3C7', '#0E1524']]
 
 export interface TeamStyle {
   name: string
   code: string
-  color: string
+  color: string // the team bar and crest
+  ink: string // letters on the crest
 }
 
-// StatsBomb names women's sides "Spain Women's"; the chip and colour follow the country.
+// StatsBomb names women's sides "Spain Women's"; the code and colour follow the country.
 export function teamStyle(name: string, fallback = 0): TeamStyle {
   const hit = KNOWN.find(([country]) => name.startsWith(country))
-  if (hit) return { name, code: hit[1], color: hit[2] }
-  return { name, code: name.replace(/[^A-Za-z]/g, '').slice(0, 3).toUpperCase() || '—', color: OTHER[fallback % 2] }
+  if (hit) return { name, code: hit[1], color: hit[2], ink: hit[3] }
+  const [color, ink] = OTHER[fallback % 2]
+  // Clubs are known by their last word ("Los Angeles Lakers" -> LAK); countries by their name.
+  const word = name.trim().split(/\s+/).at(-1) ?? ''
+  return { name, code: word.replace(/[^A-Za-z]/g, '').slice(0, 3).toUpperCase() || '—', color, ink }
 }
 
 // [home, away]: from the match when the server names them, else from data/'s title "Home v Away, ...".
@@ -36,7 +41,8 @@ export function sides(match: Match, team: string): { ours: TeamStyle; theirs: Te
   return team === away.name ? { ours: away, theirs: home } : { ours: home, theirs: away }
 }
 
-// The two demo matches' card copy, exactly as docs/design.md ("Copy") gives it.
+// The two demo matches' card copy from docs/design.md ("Copy"). The design's "Highlights 4:56 · 4 key
+// moments" is a mockup placeholder (data/video/ maps 15 and 32 moments), so it is left out: no unmeasured figures.
 export const CARD_COPY: Record<string, { title: string; detail: string; result: string }> = {
   '3906390': {
     title: 'Spain v England',
@@ -48,4 +54,16 @@ export const CARD_COPY: Record<string, { title: string; detail: string; result: 
     detail: 'T20 World Cup · MCG, Melbourne · 23 Oct 2022',
     result: 'India won by 4 wickets, off the last ball',
   },
+}
+
+// The design's short voice name ("British", "Indian") from GET /voices' label
+// ("Connor: British, energetic", "Viraj: Indian English, energetic") or a browser voice's ("British (browser)").
+export function voiceName(v: Voice | null): string {
+  if (!v) return ''
+  const desc = v.label.includes(':') ? v.label.split(':')[1] : v.label
+  return desc.trim().split(/[\s,(]/)[0]
+}
+
+export function defaultVoice(voices: Voice[], sport: Sport): Voice | null {
+  return voices.find((v) => v.default_for === sport) ?? voices[0] ?? null
 }
