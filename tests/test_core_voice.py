@@ -122,3 +122,20 @@ def test_unknown_voice_is_404_before_calling_upstream(tmp_path, monkeypatch):
     with client_for(tmp_path, upstream(seen=seen)) as client:
         resp = client.get("/lines/l1/audio?voice=JBFqnCBsd6RMkjVDRZzb")
     assert resp.status_code == 404 and seen == []
+
+
+def test_warm_speaks_once_in_every_voice():
+    from core.voice import VOICES, warm
+
+    seen = []
+    took = warm(KEY, transport=upstream(seen=seen))
+    assert set(took) == {v["id"] for v in VOICES}
+    assert {r.url.path.split("/")[3] for r in seen} == {v["eleven_id"] for v in VOICES}
+    assert all(r.headers["xi-api-key"] == KEY for r in seen)
+
+
+def test_warm_reports_a_voice_that_fails():
+    from core.voice import warm
+
+    took = warm(KEY, transport=upstream(status=401))
+    assert all(ms is None for ms in took.values())
