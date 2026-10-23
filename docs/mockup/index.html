@@ -60,7 +60,7 @@ body.still #mock { display: none; }
 
 /* Top nav */
 .nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px var(--gut); }
-.wordmark { font: 700 1.55rem/1 var(--display); letter-spacing: -.025em; border: 0; background: none; padding: 0; }
+.wordmark { font: 700 1.55rem/1 var(--display); letter-spacing: -.025em; border: 0; background: none; padding: 0; color: var(--amber); }
 .wordmark i { font-style: normal; color: var(--amber); }
 .links { display: flex; align-items: center; gap: 4px; }
 .links button { border: 0; background: none; padding: 8px 12px; border-radius: 10px; font: 500 .9rem/1 var(--body); color: var(--muted); display: inline-flex; align-items: center; gap: 8px; }
@@ -69,14 +69,16 @@ body.still #mock { display: none; }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--live); box-shadow: 0 0 0 3px rgba(61, 220, 132, .18); }
 
 /* Picker and About */
-.page { position: relative; min-height: calc(100svh - var(--mock)); overflow: hidden; }
+.page { position: relative; min-height: calc(100svh - var(--mock)); overflow: hidden; display: flex; flex-direction: column; }
+.page .nav { width: 100%; max-width: 1240px; margin: 0 auto; }
 .page::before { content: ""; position: absolute; inset: 0; pointer-events: none;
   background: radial-gradient(60% 50% at 18% -10%, rgba(140, 170, 255, .16), transparent 70%),
               radial-gradient(50% 45% at 85% -5%, rgba(255, 196, 120, .10), transparent 70%); }
 .page > * { position: relative; }
-.wrap { max-width: 1240px; margin: 0 auto; padding: 32px var(--gut) 48px; }
+.wrap { width: 100%; max-width: 1240px; margin: 0 auto; padding: 32px var(--gut) 32px; flex: 1; display: flex; flex-direction: column; }
 .eyebrow { margin: 0; color: var(--muted); font-size: 1.05rem; }
-h1 { font: 600 clamp(2.5rem, 5.2vw, 4.25rem)/1 var(--display); letter-spacing: -.035em; margin: 14px 0 40px; }
+h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing: -.03em; margin: 10px 0 32px; }
+.nw { white-space: nowrap; }
 .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; }
 .card { position: relative; min-height: 400px; border-radius: 24px; overflow: hidden; border: 1px solid var(--line); background: #0A0E1A;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 30px 80px -40px rgba(0, 0, 0, .9); transition: transform .5s var(--ease), border-color .3s; }
@@ -90,7 +92,9 @@ h1 { font: 600 clamp(2.5rem, 5.2vw, 4.25rem)/1 var(--display); letter-spacing: -
 .card h2 { font: 600 2.1rem/1.05 var(--display); letter-spacing: -.025em; margin: 6px 0 0; }
 .card .detail { margin: 0; color: var(--muted); font-size: .92rem; }
 .card .result { margin: 6px 0 0; font: 600 1.15rem/1.3 var(--display); }
-.meta { display: grid; gap: 6px; margin: auto 0 8px; padding-top: 18px; color: var(--muted); font-size: .82rem; }
+.meta { display: grid; gap: 6px; margin: auto 0 4px; padding-top: 18px; color: rgba(246, 244, 239, .82); font-size: .82rem; }
+.speeds { margin-bottom: 8px; }
+.speeds span { padding: 6px 12px; font-size: .82rem; background: rgba(6, 8, 15, .4); }
 .meta span { display: inline-flex; align-items: center; gap: 6px; }
 .meta span + span::before { content: ""; width: 12px; height: 12px; background: currentColor; -webkit-mask: var(--mic) center / contain no-repeat; mask: var(--mic) center / contain no-repeat; }
 .card .btn { align-self: flex-start; }
@@ -99,7 +103,8 @@ h1 { font: 600 clamp(2.5rem, 5.2vw, 4.25rem)/1 var(--display); letter-spacing: -
 .notice { padding: 32px; display: grid; gap: 18px; justify-items: start; font: 500 1.2rem/1.4 var(--display); max-width: 640px; }
 .notice.err { border-color: rgba(255, 107, 107, .4); }
 .status-line { color: var(--muted); margin: 0 0 16px; }
-.foot { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--faint); font-size: .82rem; }
+.cards, .notice, .about { margin-bottom: 40px; }
+.foot { margin: auto 0 0; padding-top: 20px; border-top: 1px solid var(--line); color: var(--faint); font-size: .82rem; }
 .about { max-width: 720px; display: grid; gap: 20px; font-size: 1.1rem; color: var(--muted); }
 .about p { margin: 0; }
 .about strong { color: var(--fg); font-weight: 500; }
@@ -125,7 +130,6 @@ h1 { font: 600 clamp(2.5rem, 5.2vw, 4.25rem)/1 var(--display); letter-spacing: -
 .sep { width: 1px; height: 20px; background: var(--line-hi); }
 .clock { color: var(--amber); font-size: 1.15rem; }
 .period { color: var(--muted); font: 500 .85rem/1 var(--body); }
-.opp { display: inline-flex; align-items: center; gap: 10px; }
 .need { color: var(--fg); font: 600 .85rem/1 var(--body); padding: 6px 10px; border-radius: 8px; background: rgba(255, 181, 71, .14); border: 1px solid rgba(255, 181, 71, .3); }
 .replay { font: 600 .65rem/1 var(--body); letter-spacing: .18em; color: var(--muted); border: 1px solid var(--line-hi); border-radius: 6px; padding: 5px 7px; }
 .onair { display: inline-flex; align-items: center; gap: 10px; padding: 9px 14px 9px 12px; border-radius: 999px; font: 600 .7rem/1 var(--body); letter-spacing: .16em; }
@@ -143,7 +147,7 @@ h1 { font: 600 clamp(2.5rem, 5.2vw, 4.25rem)/1 var(--display); letter-spacing: -
   background: rgba(255, 181, 71, .1); border: 1px solid rgba(255, 181, 71, .28); }
 .subtitle .tag.fixed { color: var(--fix); background: rgba(124, 212, 255, .1); border-color: rgba(124, 212, 255, .3); }
 .subtitle .tag.rejected { color: var(--err); background: rgba(255, 107, 107, .1); border-color: rgba(255, 107, 107, .3); }
-.subtitle::before { content: ""; position: absolute; inset: -40px -10% -30px; z-index: -1; pointer-events: none; background: radial-gradient(closest-side, rgba(4, 6, 12, .6), transparent); }
+.subtitle::before { content: ""; position: absolute; inset: -64px -18% -40px; z-index: -1; pointer-events: none; background: radial-gradient(closest-side, rgba(4, 6, 12, .82), rgba(4, 6, 12, .5) 62%, transparent); }
 .subtitle p { margin: 0; max-width: 34ch; font: 600 clamp(1.6rem, 3vw, 3rem)/1.12 var(--display); letter-spacing: -.02em; text-wrap: balance;
   text-shadow: 0 2px 30px rgba(0, 0, 0, .65); animation: rise .38s var(--ease); }
 .subtitle.fixed p { color: var(--fix); }
@@ -162,6 +166,8 @@ h1 { font: 600 clamp(2.5rem, 5.2vw, 4.25rem)/1 var(--display); letter-spacing: -
 .track .played { position: absolute; inset: 0 auto 0 0; border-radius: 2px; background: rgba(255, 255, 255, .7); transition: width .6s var(--ease); }
 .track .mk { position: absolute; top: 50%; width: 7px; height: 7px; border-radius: 50%; transform: translate(-50%, -50%); background: rgba(255, 255, 255, .3); }
 .track .mk.done { background: var(--amber); box-shadow: 0 0 10px rgba(255, 181, 71, .7); }
+.clockline { display: inline-flex; align-items: center; gap: 10px; }
+.sync { padding: 4px 8px; border-radius: 999px; border: 1px solid var(--line-hi); color: var(--muted); }
 .yt { display: inline-flex; align-items: center; gap: 8px; }
 .yt svg { width: 14px; height: 14px; }
 .overlay { position: absolute; inset: 0; z-index: 4; display: grid; place-content: center; justify-items: center; gap: 18px; text-align: center; padding: 24px;
@@ -184,7 +190,8 @@ h1 { font: 600 clamp(2.5rem, 5.2vw, 4.25rem)/1 var(--display); letter-spacing: -
 .panel-h { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
 .panel h3 { margin: 0; font: 600 1.05rem/1 var(--display); letter-spacing: -.01em; }
 .panel .hint { margin: 0; color: var(--faint); font-size: .85rem; }
-.log { list-style: none; margin: 0 -6px; padding: 0 6px; display: grid; gap: 4px; overflow: auto; min-height: 0; scrollbar-width: thin; }
+.log { list-style: none; margin: 0 -6px; padding: 0 6px 28px; display: grid; gap: 4px; overflow: auto; min-height: 0; scrollbar-width: thin;
+  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 44px), transparent); mask-image: linear-gradient(180deg, #000 calc(100% - 44px), transparent); }
 .log li { display: grid; grid-template-columns: 52px 1fr auto; gap: 4px 10px; padding: 12px 0; border-top: 1px solid var(--line); }
 .log li:first-child { border-top: 0; padding-top: 2px; }
 .log li.new .text > span:first-child { animation: rise .38s var(--ease); }
@@ -270,11 +277,13 @@ h1 { font: 600 clamp(2.5rem, 5.2vw, 4.25rem)/1 var(--display); letter-spacing: -
   .card-body { max-width: none; padding: calc(62.5% - 24px) 22px 22px; }
   .card h2 { font-size: 1.8rem; }
   .meta { margin-top: 4px; padding-top: 8px; }
-  .hud { top: 60px; }
-  .scorebar { gap: 10px; padding: 8px 12px; font-size: .95rem; }
+  .hud { top: 60px; flex-wrap: nowrap; }
+  .scorebar { flex: 1 1 auto; min-width: 0; gap: 6px 10px; padding: 8px 12px; font-size: .95rem; }
+  .onair { flex: none; padding: 9px 12px; }
+  #video svg { position: absolute; left: 0; bottom: 0; height: 150%; }
   .score { font-size: 1.25rem; }
-  .period, .replay, .opp, .onair .who, .dock .back { display: none; }
-  .subtitle { bottom: 132px; gap: 12px; }
+  .onair .who, .onair .bars, .dock .back { display: none; }
+  .subtitle { bottom: 136px; gap: 12px; }
   .subtitle p { font-size: 1.45rem; }
   .dock { bottom: 56px; }
   .dock .btn { padding: 0 10px; }
@@ -436,22 +445,17 @@ function stadium({ id, w, h, sport, seed, figures = [], extra = "" }) {
   return s + extra + `</svg>`;
 }
 
-function shirt(x, y, scale, rot, fill, trim, label, ink, size) {
-  return `<g transform="translate(${x} ${y}) rotate(${rot}) scale(${scale})">
-    <ellipse cx="100" cy="120" rx="150" ry="130" fill="${fill}" opacity=".22" filter="blur(28px)"/>
-    <path d="M62 12 L82 4 Q100 22 118 4 L138 12 L192 42 L172 92 L150 80 L150 212 Q100 222 50 212 L50 80 L28 92 L8 42 Z" fill="${fill}"/>
-    <path d="M62 12 L82 4 Q100 22 118 4 L138 12 L192 42 L172 92 L150 80 L150 212 Q100 222 50 212 L50 80 L28 92 L8 42 Z" fill="url(#shade)"/>
-    <path d="M82 4 Q100 22 118 4" stroke="${trim}" stroke-width="5" fill="none"/>
-    <path d="M10 46 L28 54 M190 46 L172 54" stroke="${trim}" stroke-width="4"/>
-    <text x="100" y="${size > 60 ? 150 : 132}" text-anchor="middle" font-family="Outfit, sans-serif" font-weight="700" font-size="${size}" fill="${ink}" letter-spacing="-2">${label}</text></g>`;
+function crest(x, y, fill, ink, code) {
+  const shield = "M0 8 Q60 -8 120 8 V78 Q120 138 60 162 Q0 138 0 78 Z";
+  return `<g transform="translate(${x} ${y})"><ellipse cx="60" cy="80" rx="100" ry="100" fill="${fill}" opacity=".3" filter="blur(30px)"/>
+    <path d="${shield}" fill="${fill}"/><path d="${shield}" fill="url(#shade)"/>
+    <path d="M10 16 Q60 2 110 16 V78 Q110 130 60 151 Q10 130 10 78 Z" fill="none" stroke="${ink}" stroke-opacity=".5" stroke-width="2"/>
+    <text x="60" y="94" text-anchor="middle" font-family="Outfit, sans-serif" font-weight="700" font-size="36" fill="${ink}">${code}</text></g>`;
 }
-const SHADE = `<defs><linearGradient id="shade" x2="1"><stop offset="0" stop-color="#fff" stop-opacity=".16"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".35"/></linearGradient></defs>`;
+const SHADE = `<defs><linearGradient id="shade" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".3"/></linearGradient></defs>`;
 const ART = {
-  football: stadium({ id: "cf", w: 800, h: 500, sport: "football", seed: 11, extra: SHADE
-    + shirt(405, 175, 1.05, -8, "#C8102E", "#F1BF00", "10", "#F1BF00", 96) + shirt(560, 195, 1.05, 7, "#F4F4F4", "#1B2A5A", "9", "#1B2A5A", 96) }),
-  cricket: stadium({ id: "cc", w: 800, h: 500, sport: "cricket", seed: 23, extra: SHADE
-    + shirt(565, 180, 1.05, 7, "#0F8A4C", "#D9F2E4", "PAK", "#F4F4F4", 44) + shirt(410, 165, 1.05, -8, "#2F7DE1", "#FF9933", "IND", "#F4F4F4", 44)
-    + `<circle cx="720" cy="430" r="17" fill="#B3262E"/><path d="M706 422 Q720 432 734 422" stroke="#F4D9C0" stroke-width="2" fill="none"/>` }),
+  football: stadium({ id: "cf", w: 800, h: 500, sport: "football", seed: 11, extra: SHADE + crest(478, 150, "#C8102E", "#F1BF00", "ESP") + crest(618, 150, "#F4F4F4", "#1B2A5A", "ENG") }),
+  cricket: stadium({ id: "cc", w: 800, h: 500, sport: "cricket", seed: 23, extra: SHADE + crest(478, 150, "#2F7DE1", "#FFFFFF", "IND") + crest(618, 150, "#0F8A4C", "#FFFFFF", "PAK") }),
 };
 const STAGE = {
   football: () => stadium({ id: "sf", w: 1600, h: 900, sport: "football", seed: 5, figures: [
@@ -480,8 +484,10 @@ function pickerView() {
   else body = `<div class="cards">${["football", "cricket"].map((sp) => {
     const m = MATCHES[sp];
     return `<article class="card"><div class="art">${ART[sp]}</div><div class="card-body">
-      <span class="label">${m.sport}</span><h2>${m.title}</h2><p class="detail">${m.detail}</p><p class="result">${m.result}</p>
+      <span class="label">${m.sport}</span><h2>${m.title}</h2><p class="detail">${m.detail.split(" · ").map((x) => `<span class="nw">${x}</span>`).join(" · ")}</p><p class="result">${m.result}</p>
       <div class="meta"><span class="num">Highlights ${mmss(m.length)} · ${m.moments.length} key moments</span><span>${DEFAULT_VOICE[sp]} commentator</span></div>
+      <div class="chips speeds" role="radiogroup" aria-label="Speed">${["Real time", "4x", "16x"].map((x, k) =>
+        `<label><input type="radio" name="speed-${sp}" value="${x}" ${k === 0 ? "checked" : ""}><span>${x}</span></label>`).join("")}</div>
       <button class="btn primary" data-act="start" data-sport="${sp}">Start replay <span class="arr" aria-hidden="true">→</span></button></div></article>`;
   }).join("")}</div>`;
   return `<div class="page">${nav("picker")}<main class="wrap"><p class="eyebrow">A live AI commentator for matches nobody calls.</p>
@@ -504,9 +510,8 @@ function liveView() {
   const bar = S.sport === "football"
     ? `${team(h, hc)}<span class="score num">${m ? m.score : "0–0"}</span>${team(a, ac)}<span class="sep"></span>
        <span class="clock num">${m ? m.clock : "00:00"}</span><span class="period">${m ? m.period : "1st half"}</span>`
-    : `${team(h, hc)}<span class="score num">${m ? m.score : "0/0"}</span><span class="sep"></span>
-       <span class="clock num">Over ${m ? m.clock : "0.0"}</span><span class="need num">${m ? m.need : "need 160 off 120"}</span>
-       <span class="opp">${team(a, ac)}<span class="period num">159/8</span></span>`;
+    : `${team(h, hc)}<span class="score num">${m ? m.score : "0/0"}</span>${team(a, ac)}<span class="score num">159/8</span><span class="sep"></span>
+       <span class="clock num">Over ${m ? m.clock : "0.0"}</span><span class="need num">${m ? m.need : "need 160 off 120"}</span>`;
   const voiceName = `${S.voices[S.sport]} commentator`;
   const onair = S.voice === "on"
     ? `<span class="onair glass ${S.speaking ? "on" : ""}" role="status"><span class="rec"></span>ON AIR<span class="bars" aria-hidden="true"><span></span><span></span><span></span><span></span></span><span class="who">${voiceName}</span></span>`
@@ -544,7 +549,7 @@ function liveView() {
   const timeline = `<div class="lane timeline"><span class="yt"><svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="3" width="14" height="10" rx="3" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M6.5 5.8v4.4L10.3 8z" fill="currentColor"/></svg>Official highlights · YouTube · muted</span>
     <div class="track" aria-hidden="true"><span class="played" style="width:${(now / match.length) * 100}%"></span>${match.moments.map((mo, i) =>
       `<span class="mk ${ok && i <= S.idx ? "done" : ""}" style="left:${(mo.vt / match.length) * 100}%"></span>`).join("")}</div>
-    <span class="num">${mmss(now)} / ${mmss(match.length)}</span></div>`;
+    <span class="clockline"><span class="sync">Synced to video</span><span class="num">${mmss(now)} / ${mmss(match.length)}</span></span></div>`;
 
   return `<div class="live"><section class="stage" aria-label="${match.title} highlights"><div class="shade"></div>${nav("live")}
     <div class="lane hud"><div class="scorebar glass" role="status">${bar}<span class="replay">REPLAY</span></div>${onair}</div>
