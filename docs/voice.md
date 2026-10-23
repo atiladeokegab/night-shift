@@ -9,6 +9,8 @@ Lines are spoken by ElevenLabs **`eleven_v3`**, its most expressive model. It re
 | Goal, wicket, six, last ball | `[shouting]` |
 | Shot saved or missed, four, card | `[excited]` |
 | Chase build-up | `[hushed]` |
+| F1: lead change, chequered flag | `[shouting]` |
+| F1: lights out, overtake, safety car, red flag, last lap | `[excited]` |
 | Anything else (substitution, injury) | none |
 
 The tag goes into the text sent to ElevenLabs and nowhere else. The stored line, the page and Mubit only ever see the line as the commentator wrote it.
@@ -33,6 +35,7 @@ Run `uv run python -m core.voice` before the demo. It speaks one line in every v
 |---|---|---|
 | Football | `connor` | Connor: British, energetic |
 | Cricket | `viraj` | Viraj: Indian English, energetic |
+| F1 | `announcer` | British Football Announcer (`VOICE_F1` changes it) |
 | Any (page setting) | `george` | George: British, warm |
 
 ## Changing the pick (config, not code)
