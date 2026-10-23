@@ -15,7 +15,9 @@ log = logging.getLogger("night_shift.voice")
 TTS_URL = "https://api.elevenlabs.io/v1/text-to-speech/{voice}/stream"
 MODEL = "eleven_flash_v2_5"
 # The page's voice setting. ids are ours; eleven_id never leaves the server. Viraj and Connor are
-# ElevenLabs library voices: the first call on each takes ~15 s cold, ~0.15 s after.
+# ElevenLabs library voices: the first call on each took 13-16 s to first byte (measured
+# 2026-10-23), ~0.15 s after. That cold call exceeds the 10 s timeout, answers 503 and the page
+# falls back to browser speech, so the demo plays one line in each voice beforehand to warm it.
 VOICES = [
     {
         "id": "viraj",
