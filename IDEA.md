@@ -61,10 +61,10 @@ contracts; only the lead changes it.
 
 | Area | Directories | Owner | Issues |
 |---|---|---|---|
-| core | core/, docs/CONTRACT.md | — | — |
-| commentator | agent/ | — | — |
-| web | web/ | — | — |
-| data and eval | data/, eval/ | — | — |
+| backend: core, commentator, data, eval, deploy | `core/`, `agent/`, `data/`, `eval/`, `scripts/`, `docs/`, `Makefile`, `pyproject.toml`, `Dockerfile`, `.dockerignore` | — | — |
+| web | `web/` | — | — |
+| tests | `tests/`, `data/sample/` | — | — |
+| submission | `README.md`, `docs/` | — | — |
 
 Deploy owner: @atiladeokegab (Zeus). Only they run `make deploy`, from `main` after it moves; two
 laptops deploying undo each other.
