@@ -18,7 +18,7 @@
    "type": "Shot",
    "team": "Argentina",
    "players": {
-    "shooter": "Alexis Mac Allister",
+    "shooter": "Alexis MacAllister",
     "keeper": "Hugo Lloris"
    },
    "outcome": "Saved",
@@ -44,7 +44,7 @@
    "type": "Shot",
    "team": "Argentina",
    "players": {
-    "shooter": "Rodrigo Javier De Paul"
+    "shooter": "Rodrigo De Paul"
    },
    "outcome": "Blocked",
    "score": {
@@ -87,7 +87,7 @@
    "type": "Injury Stoppage",
    "team": "Argentina",
    "players": {
-    "injured": "Damián Emiliano Martínez"
+    "injured": "Emiliano Martínez"
    },
    "outcome": "Injury stoppage",
    "score": {
@@ -105,7 +105,7 @@
    "type": "Shot",
    "team": "Argentina",
    "players": {
-    "shooter": "Ángel Fabián Di María Hernández"
+    "shooter": "Ángel Di María"
    },
    "outcome": "Off T",
    "score": {
@@ -130,7 +130,7 @@
    "type": "Shot",
    "team": "Argentina",
    "players": {
-    "shooter": "Lionel Andrés Messi Cuccittini"
+    "shooter": "Lionel Messi"
    },
    "outcome": "Goal",
    "score": {
@@ -155,7 +155,7 @@
    "type": "Injury Stoppage",
    "team": "France",
    "players": {
-    "injured": "Theo Bernard François Hernández"
+    "injured": "Theo Hernández"
    },
    "outcome": "Injury stoppage",
    "score": {
@@ -173,7 +173,7 @@
    "type": "Injury Stoppage",
    "team": "Argentina",
    "players": {
-    "injured": "Lionel Andrés Messi Cuccittini"
+    "injured": "Lionel Messi"
    },
    "outcome": "Injury stoppage",
    "score": {
@@ -191,7 +191,7 @@
    "type": "Shot",
    "team": "Argentina",
    "players": {
-    "shooter": "Alexis Mac Allister"
+    "shooter": "Alexis MacAllister"
    },
    "outcome": "Wayward",
    "score": {
@@ -216,7 +216,7 @@
    "type": "Shot",
    "team": "Argentina",
    "players": {
-    "shooter": "Ángel Fabián Di María Hernández"
+    "shooter": "Ángel Di María"
    },
    "outcome": "Goal",
    "score": {
@@ -242,7 +242,7 @@
    "team": "France",
    "players": {
     "off": "Ousmane Dembélé",
-    "on": "Randal Kolo Muani"
+    "on": "Randal Kolo"
    },
    "outcome": "Tactical",
    "score": {
@@ -301,7 +301,7 @@
    "type": "Shot",
    "team": "Argentina",
    "players": {
-    "shooter": "Rodrigo Javier De Paul",
+    "shooter": "Rodrigo De Paul",
     "keeper": "Hugo Lloris"
    },
    "outcome": "Saved",
@@ -349,7 +349,7 @@
    "type": "Injury Stoppage",
    "team": "Argentina",
    "players": {
-    "injured": "Rodrigo Javier De Paul"
+    "injured": "Rodrigo De Paul"
    },
    "outcome": "Injury stoppage",
    "score": {
@@ -367,7 +367,7 @@
    "type": "Injury Stoppage",
    "team": "Argentina",
    "players": {
-    "injured": "Rodrigo Javier De Paul"
+    "injured": "Rodrigo De Paul"
    },
    "outcome": "Injury stoppage",
    "score": {
@@ -411,7 +411,7 @@
    "type": "Shot",
    "team": "Argentina",
    "players": {
-    "shooter": "Lionel Andrés Messi Cuccittini"
+    "shooter": "Lionel Messi"
    },
    "outcome": "Off T",
    "score": {
@@ -436,8 +436,8 @@
    "type": "Substitution",
    "team": "Argentina",
    "players": {
-    "off": "Ángel Fabián Di María Hernández",
-    "on": "Marcos Javier Acuña"
+    "off": "Ángel Di María",
+    "on": "Marcos Acuña"
    },
    "outcome": "Tactical",
    "score": {
@@ -455,7 +455,7 @@
    "type": "Shot",
    "team": "France",
    "players": {
-    "shooter": "Randal Kolo Muani"
+    "shooter": "Randal Kolo"
    },
    "outcome": "Off T",
    "score": {
@@ -480,7 +480,7 @@
    "type": "Shot",
    "team": "France",
    "players": {
-    "shooter": "Kylian Mbappé Lottin"
+    "shooter": "Kylian Mbappé"
    },
    "outcome": "Off T",
    "score": {
@@ -505,7 +505,7 @@
    "type": "Substitution",
    "team": "France",
    "players": {
-    "off": "Theo Bernard François Hernández",
+    "off": "Theo Hernández",
     "on": "Eduardo Camavinga"
    },
    "outcome": "Tactical",
@@ -569,7 +569,7 @@
    "type": "Shot",
    "team": "France",
    "players": {
-    "shooter": "Kylian Mbappé Lottin"
+    "shooter": "Kylian Mbappé"
    },
    "outcome": "Goal",
    "score": {
@@ -594,7 +594,7 @@
    "type": "Shot",
    "team": "France",
    "players": {
-    "shooter": "Kylian Mbappé Lottin"
+    "shooter": "Kylian Mbappé"
    },
    "outcome": "Goal",
    "score": {
@@ -702,7 +702,7 @@
    "type": "Shot",
    "team": "France",
    "players": {
-    "shooter": "Kylian Mbappé Lottin"
+    "shooter": "Kylian Mbappé"
    },
    "outcome": "Blocked",
    "score": {
@@ -728,7 +728,7 @@
    "team": "France",
    "players": {
     "shooter": "Adrien Rabiot",
-    "keeper": "Damián Emiliano Martínez"
+    "keeper": "Emiliano Martínez"
    },
    "outcome": "Saved",
    "score": {
@@ -773,7 +773,7 @@
    "type": "Shot",
    "team": "Argentina",
    "players": {
-    "shooter": "Lionel Andrés Messi Cuccittini",
+    "shooter": "Lionel Messi",
     "keeper": "Hugo Lloris"
    },
    "outcome": "Saved",
@@ -799,7 +799,7 @@
    "type": "Foul Committed",
    "team": "Argentina",
    "players": {
-    "offender": "Marcos Javier Acuña"
+    "offender": "Marcos Acuña"
    },
    "outcome": "Yellow Card",
    "score": {
@@ -821,8 +821,8 @@
    "type": "Substitution",
    "team": "Argentina",
    "players": {
-    "off": "Nahuel Molina Lucero",
-    "on": "Gonzalo Ariel Montiel"
+    "off": "Nahuel Molina",
+    "on": "Gonzalo Montiel"
    },
    "outcome": "Tactical",
    "score": {
@@ -840,7 +840,7 @@
    "type": "Shot",
    "team": "Argentina",
    "players": {
-    "shooter": "Alexis Mac Allister"
+    "shooter": "Alexis MacAllister"
    },
    "outcome": "Off T",
    "score": {
@@ -927,8 +927,8 @@
    "type": "Substitution",
    "team": "Argentina",
    "players": {
-    "off": "Rodrigo Javier De Paul",
-    "on": "Leandro Daniel Paredes"
+    "off": "Rodrigo De Paul",
+    "on": "Leandro Paredes"
    },
    "outcome": "Tactical",
    "score": {
@@ -947,7 +947,7 @@
    "team": "Argentina",
    "players": {
     "off": "Julián Álvarez",
-    "on": "Lautaro Javier Martínez"
+    "on": "Lautaro Martínez"
    },
    "outcome": "Tactical",
    "score": {
@@ -965,7 +965,7 @@
    "type": "Shot",
    "team": "Argentina",
    "players": {
-    "shooter": "Lautaro Javier Martínez"
+    "shooter": "Lautaro Martínez"
    },
    "outcome": "Blocked",
    "score": {
@@ -990,7 +990,7 @@
    "type": "Shot",
    "team": "Argentina",
    "players": {
-    "shooter": "Gonzalo Ariel Montiel"
+    "shooter": "Gonzalo Montiel"
    },
    "outcome": "Blocked",
    "score": {
@@ -1015,7 +1015,7 @@
    "type": "Shot",
    "team": "Argentina",
    "players": {
-    "shooter": "Lautaro Javier Martínez"
+    "shooter": "Lautaro Martínez"
    },
    "outcome": "Off T",
    "score": {
@@ -1040,7 +1040,7 @@
    "type": "Shot",
    "team": "Argentina",
    "players": {
-    "shooter": "Lionel Andrés Messi Cuccittini",
+    "shooter": "Lionel Messi",
     "keeper": "Hugo Lloris"
    },
    "outcome": "Saved",
@@ -1066,7 +1066,7 @@
    "type": "Shot",
    "team": "Argentina",
    "players": {
-    "shooter": "Lautaro Javier Martínez",
+    "shooter": "Lautaro Martínez",
     "keeper": "Hugo Lloris"
    },
    "outcome": "Saved",
@@ -1092,7 +1092,7 @@
    "type": "Shot",
    "team": "Argentina",
    "players": {
-    "shooter": "Lionel Andrés Messi Cuccittini"
+    "shooter": "Lionel Messi"
    },
    "outcome": "Goal",
    "score": {
@@ -1136,7 +1136,7 @@
    "type": "Foul Committed",
    "team": "Argentina",
    "players": {
-    "offender": "Leandro Daniel Paredes"
+    "offender": "Leandro Paredes"
    },
    "outcome": "Yellow Card",
    "score": {
@@ -1158,8 +1158,8 @@
    "type": "Substitution",
    "team": "Argentina",
    "players": {
-    "off": "Alexis Mac Allister",
-    "on": "Germán Alejandro Pezzella"
+    "off": "Alexis MacAllister",
+    "on": "Germán Pezzella"
    },
    "outcome": "Tactical",
    "score": {
@@ -1177,7 +1177,7 @@
    "type": "Shot",
    "team": "France",
    "players": {
-    "shooter": "Kylian Mbappé Lottin"
+    "shooter": "Kylian Mbappé"
    },
    "outcome": "Blocked",
    "score": {
@@ -1202,7 +1202,7 @@
    "type": "Foul Committed",
    "team": "Argentina",
    "players": {
-    "offender": "Gonzalo Ariel Montiel"
+    "offender": "Gonzalo Montiel"
    },
    "outcome": "Yellow Card",
    "score": {
@@ -1224,7 +1224,7 @@
    "type": "Shot",
    "team": "France",
    "players": {
-    "shooter": "Kylian Mbappé Lottin"
+    "shooter": "Kylian Mbappé"
    },
    "outcome": "Goal",
    "score": {
@@ -1268,8 +1268,8 @@
    "type": "Substitution",
    "team": "Argentina",
    "players": {
-    "off": "Nicolás Alejandro Tagliafico",
-    "on": "Paulo Bruno Exequiel Dybala"
+    "off": "Nicolás Tagliafico",
+    "on": "Paulo Dybala"
    },
    "outcome": "Tactical",
    "score": {
@@ -1287,8 +1287,8 @@
    "type": "Shot",
    "team": "France",
    "players": {
-    "shooter": "Randal Kolo Muani",
-    "keeper": "Damián Emiliano Martínez"
+    "shooter": "Randal Kolo",
+    "keeper": "Emiliano Martínez"
    },
    "outcome": "Saved",
    "score": {
@@ -1313,7 +1313,7 @@
    "type": "Shot",
    "team": "Argentina",
    "players": {
-    "shooter": "Lautaro Javier Martínez"
+    "shooter": "Lautaro Martínez"
    },
    "outcome": "Off T",
    "score": {
@@ -1338,7 +1338,7 @@
    "type": "Shot",
    "team": "France",
    "players": {
-    "shooter": "Kylian Mbappé Lottin"
+    "shooter": "Kylian Mbappé"
    },
    "outcome": "Goal",
    "score": {
@@ -1367,7 +1367,7 @@
    "type": "Shot",
    "team": "Argentina",
    "players": {
-    "shooter": "Lionel Andrés Messi Cuccittini"
+    "shooter": "Lionel Messi"
    },
    "outcome": "Goal",
    "score": {
@@ -1397,7 +1397,7 @@
    "team": "France",
    "players": {
     "shooter": "Kingsley Coman",
-    "keeper": "Damián Emiliano Martínez"
+    "keeper": "Emiliano Martínez"
    },
    "outcome": "Saved",
    "score": {
@@ -1426,7 +1426,7 @@
    "type": "Shot",
    "team": "Argentina",
    "players": {
-    "shooter": "Paulo Bruno Exequiel Dybala"
+    "shooter": "Paulo Dybala"
    },
    "outcome": "Goal",
    "score": {
@@ -1455,7 +1455,7 @@
    "type": "Shot",
    "team": "France",
    "players": {
-    "shooter": "Aurélien Djani Tchouaméni"
+    "shooter": "Aurélien Tchouaméni"
    },
    "outcome": "Off T",
    "score": {
@@ -1484,7 +1484,7 @@
    "type": "Shot",
    "team": "Argentina",
    "players": {
-    "shooter": "Leandro Daniel Paredes"
+    "shooter": "Leandro Paredes"
    },
    "outcome": "Goal",
    "score": {
@@ -1513,7 +1513,7 @@
    "type": "Bad Behaviour",
    "team": "Argentina",
    "players": {
-    "offender": "Damián Emiliano Martínez"
+    "offender": "Emiliano Martínez"
    },
    "outcome": "Yellow Card",
    "score": {
@@ -1537,7 +1537,7 @@
    "type": "Shot",
    "team": "France",
    "players": {
-    "shooter": "Randal Kolo Muani"
+    "shooter": "Randal Kolo"
    },
    "outcome": "Goal",
    "score": {
@@ -1566,7 +1566,7 @@
    "type": "Shot",
    "team": "Argentina",
    "players": {
-    "shooter": "Gonzalo Ariel Montiel"
+    "shooter": "Gonzalo Montiel"
    },
    "outcome": "Goal",
    "score": {
