@@ -1,48 +1,49 @@
-// Shapes the live page reads from the match server.
-// Guessed from issue #18 until docs/CONTRACT.md is filled in (#14); api.ts is the only place
-// that turns server JSON into these, so a contract change lands there.
+// Shapes the live page reads from the match server, as docs/CONTRACT.md ("Shapes") defines them.
+// api.ts is the only place that turns server JSON into these.
 
 export type Sport = 'football' | 'cricket'
 
 export interface Match {
-  id: string
+  match_id: string
   sport: Sport
-  title: string
-  home: string
-  away: string
+  title?: string
+  sample: boolean
+  // Not in the contract's Match, but data/'s match header has them; used when present.
+  home?: string
+  away?: string
 }
 
-// Football kinds come from StatsBomb event types, cricket kinds from Cricsheet deliveries.
-export type MomentKind =
-  | 'shot'
-  | 'goal'
-  | 'save'
-  | 'card'
-  | 'wicket'
-  | 'four'
-  | 'six'
-  | 'other'
+export type Score = { home: number; away: number } | { runs: number; wickets: number; target?: number }
 
+// type: football "Shot" | "Own Goal Against" | "Foul Committed" | "Bad Behaviour" | "Substitution" |
+// "Injury Stoppage"; cricket "Wicket" | "Six" | "Four" | "No ball" | "Last ball" | "Chase".
 export interface Moment {
-  id: string
-  kind: MomentKind
-  clock: string // "29'" in football, "18.5" (over.ball) in cricket
-  team: string
-  player: string
-  // Football only: StatsBomb pitch coordinates, x 0-120 left to right, y 0-80 top to bottom.
-  x?: number
+  sport: Sport
+  match_id: string
+  idx: number
+  period: number
+  clock: string // "mm:ss" in football, "over.ball" in cricket
+  type: string
+  team: string // cricket: the batting side
+  players: Record<string, string> // role -> name: shooter, keeper, offender / batter, bowler, out
+  outcome: string
+  score: Score
+  x?: number // StatsBomb 120 x 80, when known
   y?: number
-  score: string // already formatted by the server: "1-0", "IND 144/4"
+  detail: Record<string, unknown>
 }
 
 export interface Line {
-  id: string // POST /lines/{id}/fix targets it
-  moment_id: string
+  line_id: string
+  match_id: string
+  moment_idx: number
   text: string
   latency_ms: number
+  first_word_ms?: number
 }
 
 export type StreamEvent =
   | { type: 'moment'; moment: Moment }
   | { type: 'line'; line: Line }
+  | { type: 'error'; detail: string }
   | { type: 'end' }

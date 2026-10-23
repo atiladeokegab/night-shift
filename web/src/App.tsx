@@ -4,6 +4,7 @@ import { isDemo, listMatches, startReplay } from './api'
 import { Ground } from './components/Ground'
 import { Pitch } from './components/Pitch'
 import { ScoreBar } from './components/ScoreBar'
+import { clockText, leadPlayer, sideOf } from './moment'
 import type { Line, Match, Moment, Sport } from './types'
 import { useSpeech } from './useSpeech'
 
@@ -16,8 +17,9 @@ export default function App() {
   const [matchId, setMatchId] = useState<string | null>(null)
   const [speed, setSpeed] = useState(4)
   const [running, setRunning] = useState(false)
-  const [moment, setMoment] = useState<Moment | null>(null)
+  const [moments, setMoments] = useState<Moment[]>([])
   const [lines, setLines] = useState<Line[]>([])
+  const [teams, setTeams] = useState<string[]>([])
   const [ended, setEnded] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const speech = useSpeech()
@@ -32,7 +34,7 @@ export default function App() {
     listMatches()
       .then((all) => {
         setMatches(all)
-        setMatchId(all[0]?.id ?? null)
+        setMatchId(all[0]?.match_id ?? null)
       })
       .catch((e: Error) => setError(e.message))
   }, [])
@@ -41,19 +43,18 @@ export default function App() {
     if (!running || !matchId) return
     let stop: (() => void) | null = null
     let cancelled = false
-    startReplay(
-      matchId,
-      speed,
-      (e) => {
-        if (e.type === 'moment') setMoment(e.moment)
-        if (e.type === 'line') {
-          setLines((prev) => [e.line, ...prev])
-          say.current(e.line.text)
-        }
-        if (e.type === 'end') setEnded(true)
-      },
-      setError,
-    )
+    startReplay(matchId, speed, (e) => {
+      if (e.type === 'moment') {
+        setMoments((prev) => [...prev, e.moment])
+        setTeams((prev) => (e.moment.team && !prev.includes(e.moment.team) ? [...prev, e.moment.team] : prev))
+      }
+      if (e.type === 'line') {
+        setLines((prev) => [e.line, ...prev])
+        say.current(e.line.text)
+      }
+      if (e.type === 'error') setError(e.detail)
+      if (e.type === 'end') setEnded(true)
+    })
       .then((s) => (cancelled ? s() : (stop = s)))
       .catch((e: Error) => setError(e.message))
     return () => {
@@ -63,14 +64,11 @@ export default function App() {
     }
   }, [running, matchId, speed])
 
-  const match = matches.find((m) => m.id === matchId) ?? null
-  const sport = match?.sport ?? 'football'
-  const ofSport = matches.filter((m) => m.sport === sport)
-
-  // Every change that starts a new replay clears the old one's moment, lines and errors first.
+  // Every change that starts a new replay clears the old one's moments, lines and errors first.
   const clear = () => {
-    setMoment(null)
+    setMoments([])
     setLines([])
+    setTeams([])
     setEnded(false)
     setError(null)
   }
@@ -82,11 +80,20 @@ export default function App() {
   // One tap: pick the first match of the other sport; a running replay follows to it.
   const switchSport = (next: Sport) => {
     const first = matches.find((m) => m.sport === next)
-    if (first) pickMatch(first.id)
+    if (first) pickMatch(first.match_id)
   }
 
+  const match = matches.find((m) => m.match_id === matchId) ?? null
+  const sport = match?.sport ?? 'football'
+  const ofSport = matches.filter((m) => m.sport === sport)
+  const moment = moments.at(-1) ?? null
   const latest = lines[0]
-  const latestMoment = latest && moment?.id === latest.moment_id ? moment : null
+  const latestMoment = latest ? moments.find((m) => m.idx === latest.moment_idx) : undefined
+
+  const names = { home: match?.home ?? teams[0] ?? 'Home', away: match?.away ?? teams[1] ?? 'Away' }
+  const ours = match && moment ? COLORS[sideOf(moment.team, match, teams[0] ?? null)] : COLORS.home
+  const theirs = ours === COLORS.home ? COLORS.away : COLORS.home
+  const label = match?.title ?? match?.match_id ?? ''
 
   return (
     <div className="page">
@@ -114,8 +121,8 @@ export default function App() {
       {match && (
         <main>
           <div className="controls">
-            <select value={match.id} onChange={(e) => pickMatch(e.target.value)} aria-label="Match">
-              {ofSport.map((m) => <option key={m.id} value={m.id}>{m.title}</option>)}
+            <select value={match.match_id} onChange={(e) => pickMatch(e.target.value)} aria-label="Match">
+              {ofSport.map((m) => <option key={m.match_id} value={m.match_id}>{m.title ?? m.match_id}</option>)}
             </select>
             <select
               value={speed}
@@ -143,16 +150,16 @@ export default function App() {
             )}
           </div>
 
-          <ScoreBar match={match} moment={moment} colors={COLORS} />
+          <ScoreBar match={match} moment={moment} names={names} colors={COLORS} />
 
           <div className="stage">
             {sport === 'football'
-              ? <Pitch match={match} moment={moment} colors={COLORS} />
-              : <Ground match={match} moment={moment} colors={COLORS} />}
+              ? <Pitch moment={moment} attack={ours} defend={theirs} label={label} />
+              : <Ground moment={moment} bat={ours} field={theirs} label={label} />}
             <div className="subtitle" aria-live="assertive">
               {latest ? (
                 <>
-                  {latestMoment && <span className="who">{latestMoment.player} · {latestMoment.clock}</span>}
+                  {latestMoment && <span className="who">{leadPlayer(latestMoment)} · {clockText(latestMoment)}</span>}
                   <span className="text">{latest.text}</span>
                 </>
               ) : (
@@ -161,11 +168,11 @@ export default function App() {
             </div>
           </div>
 
-          {ended && <p className="empty">Full time. Pick another moment or switch sport.</p>}
+          {ended && <p className="empty">Full time. Pick another match or switch sport.</p>}
 
           <ol className="log" aria-label="Commentary so far">
             {lines.map((l) => (
-              <li key={l.id}>
+              <li key={l.line_id}>
                 <span className="text">{l.text}</span>
                 <span className="latency">{l.latency_ms} ms</span>
               </li>

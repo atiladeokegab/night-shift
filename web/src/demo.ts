@@ -1,40 +1,48 @@
-// Demo feed for building the page before the match server (#14) exists.
-// Only used when the page is opened with ?demo; the real page never falls back to it.
-// The lines are placeholders written by hand, not commentator output.
+// Demo feed for building the page without the match server: only used with ?demo, never as a fallback.
+// Moments follow the contract's shapes; the lines are placeholders written by hand, not commentator output.
 import type { Line, Match, Moment, StreamEvent } from './types'
 
 export const demoMatches: Match[] = [
-  { id: 'demo-wwc-2023-final', sport: 'football', title: "Women's World Cup final 2023", home: 'Spain', away: 'England' },
-  { id: 'demo-ind-pak-2022', sport: 'cricket', title: 'T20 World Cup 2022', home: 'India', away: 'Pakistan' },
+  { match_id: 'demo-football', sport: 'football', title: "Women's World Cup final 2023", sample: true, home: 'Spain', away: 'England' },
+  { match_id: 'demo-cricket', sport: 'cricket', title: 'T20 World Cup 2022', sample: true, home: 'India', away: 'Pakistan' },
 ]
 
+const football = (idx: number, m: Partial<Moment>): Moment => ({
+  sport: 'football', match_id: 'demo-football', idx, period: 1, clock: '00:00', type: 'Shot', team: '',
+  players: {}, outcome: '', score: { home: 0, away: 0 }, detail: {}, ...m,
+})
+const cricket = (idx: number, m: Partial<Moment>): Moment => ({
+  sport: 'cricket', match_id: 'demo-cricket', idx, period: 2, clock: '0.0', type: 'Six', team: 'India',
+  players: {}, outcome: '', score: { runs: 0, wickets: 0, target: 160 }, detail: {}, ...m,
+})
+
 const feeds: Record<string, [Moment, string][]> = {
-  'demo-wwc-2023-final': [
-    [{ id: 'f1', kind: 'shot', clock: "16'", team: 'England', player: 'Lauren Hemp', x: 108, y: 34, score: '0-0' },
+  'demo-football': [
+    [football(0, { clock: '15:40', team: 'England', players: { shooter: 'Lauren Hemp' }, outcome: 'Post', x: 108, y: 34 }),
       'Hemp lets fly and it cannons back off the bar!'],
-    [{ id: 'f2', kind: 'goal', clock: "29'", team: 'Spain', player: 'Olga Carmona', x: 104, y: 52, score: '1-0' },
+    [football(1, { clock: '28:21', team: 'Spain', players: { shooter: 'Olga Carmona' }, outcome: 'Goal', x: 104, y: 52, score: { home: 1, away: 0 } }),
       'Carmona, low across Earps and in. Spain lead!'],
-    [{ id: 'f3', kind: 'save', clock: "70'", team: 'England', player: 'Mary Earps', x: 4, y: 40, score: '1-0' },
-      'Earps goes the right way and saves the penalty!'],
+    [football(2, { clock: '69:30', period: 2, team: 'Spain', players: { shooter: 'Jennifer Hermoso', keeper: 'Mary Earps' }, outcome: 'Saved', x: 108, y: 40, score: { home: 1, away: 0 } }),
+      'Hermoso from the spot, and Earps saves it!'],
   ],
-  'demo-ind-pak-2022': [
-    [{ id: 'c1', kind: 'six', clock: '18.5', team: 'India', player: 'Virat Kohli', score: 'IND 138/4' },
+  'demo-cricket': [
+    [cricket(0, { clock: '18.5', players: { batter: 'Virat Kohli', bowler: 'Haris Rauf' }, outcome: '6 runs', score: { runs: 138, wickets: 4, target: 160 } }),
       'Kohli, straight back over Rauf\'s head for six!'],
-    [{ id: 'c2', kind: 'six', clock: '18.6', team: 'India', player: 'Virat Kohli', score: 'IND 144/4' },
+    [cricket(1, { clock: '18.6', players: { batter: 'Virat Kohli', bowler: 'Haris Rauf' }, outcome: '6 runs', score: { runs: 144, wickets: 4, target: 160 } }),
       'And again! Flicked over fine leg, sixteen needed off the last.'],
-    [{ id: 'c3', kind: 'wicket', clock: '19.1', team: 'Pakistan', player: 'Mohammad Nawaz', score: 'IND 144/5' },
+    [cricket(2, { clock: '19.1', type: 'Wicket', players: { batter: 'Hardik Pandya', bowler: 'Mohammad Nawaz', out: 'Hardik Pandya' }, outcome: 'caught', score: { runs: 144, wickets: 5, target: 160 } }),
       'Nawaz strikes first ball, Pandya holes out.'],
   ],
 }
 
-// Mimics the SSE stream: one moment, then its line a moment later.
+// Mimics the SSE stream: one moment, then its line a moment later, then end.
 export function streamDemo(matchId: string, onEvent: (e: StreamEvent) => void): () => void {
   const timers: number[] = []
   const feed = feeds[matchId] ?? []
   feed.forEach(([moment, text], i) => {
     const at = 1000 + i * 4500
     timers.push(window.setTimeout(() => onEvent({ type: 'moment', moment }), at))
-    const line: Line = { id: `line-${moment.id}`, moment_id: moment.id, text, latency_ms: 600 }
+    const line: Line = { line_id: `demo-${matchId}-${i}`, match_id: matchId, moment_idx: moment.idx, text, latency_ms: 600 }
     timers.push(window.setTimeout(() => onEvent({ type: 'line', line }), at + line.latency_ms))
   })
   timers.push(window.setTimeout(() => onEvent({ type: 'end' }), 1000 + feed.length * 4500))
