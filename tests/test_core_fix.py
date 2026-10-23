@@ -121,3 +121,14 @@ def test_correction_is_the_next_turn_of_the_same_task_and_session(said, matched)
         },
     ]
     assert out == {"mubit_request_id": "fake-1", "reply_matched": matched}
+
+
+def test_a_correction_over_20_words_echoed_exactly_matches():
+    fixed = (
+        "Ann's shot from the edge of the box is saved to his left by the keeper,"
+        " and Reds still lead one nil at half time."
+    )
+    assert len(fixed.split()) == 25
+    line = {"match_id": "7", "moment_idx": 0, "text": "Saved by the keeper!"}
+    out = correct(line, fixed, HEADER, [moment(0)], Says(fixed.replace(", ", ",\n  ")))
+    assert out["reply_matched"] is True

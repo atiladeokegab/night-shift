@@ -210,8 +210,12 @@ def correct(
         {"role": "user", "content": CORRECTION.format(text=corrected_text)},
     ]
     reply = (provider or default_provider()).call(request)
-    said = spoken(" ".join(b["text"] for b in reply["content"] if b["type"] == "text"))
-    return {"mubit_request_id": reply["request_id"], "reply_matched": said == corrected_text}
+    # the echo, not a spoken line: untrimmed, so a correction over 20 words can still match
+    said = " ".join(b["text"] for b in reply["content"] if b["type"] == "text").split()
+    return {
+        "mubit_request_id": reply["request_id"],
+        "reply_matched": said == corrected_text.split(),
+    }
 
 
 _provider = None
