@@ -19,7 +19,7 @@
    "team": "England Women's",
    "players": {
     "shooter": "Lauren Hemp",
-    "keeper": "Catalina Thomas Coll Lluch"
+    "keeper": "Cata Coll"
    },
    "outcome": "Saved",
    "score": {
@@ -69,7 +69,7 @@
    "type": "Shot",
    "team": "Spain Women's",
    "players": {
-    "shooter": "Salma Paralluelo Ayingono"
+    "shooter": "Salma Paralluelo"
    },
    "outcome": "Wayward",
    "score": {
@@ -94,7 +94,7 @@
    "type": "Shot",
    "team": "Spain Women's",
    "players": {
-    "shooter": "Alba María Redondo Ferrer",
+    "shooter": "Alba Redondo",
     "keeper": "Mary Alexandra Earps"
    },
    "outcome": "Saved",
@@ -121,7 +121,7 @@
    "team": "England Women's",
    "players": {
     "shooter": "Lauren Hemp",
-    "keeper": "Catalina Thomas Coll Lluch"
+    "keeper": "Cata Coll"
    },
    "outcome": "Saved",
    "score": {
@@ -146,7 +146,7 @@
    "type": "Shot",
    "team": "Spain Women's",
    "players": {
-    "shooter": "Olga Carmona García"
+    "shooter": "Olga Carmona"
    },
    "outcome": "Goal",
    "score": {
@@ -171,7 +171,7 @@
    "type": "Shot",
    "team": "Spain Women's",
    "players": {
-    "shooter": "Irene Paredes Hernandez"
+    "shooter": "Irene Hernandez"
    },
    "outcome": "Off T",
    "score": {
@@ -196,7 +196,7 @@
    "type": "Shot",
    "team": "Spain Women's",
    "players": {
-    "shooter": "Alba María Redondo Ferrer"
+    "shooter": "Alba Redondo"
    },
    "outcome": "Blocked",
    "score": {
@@ -221,7 +221,7 @@
    "type": "Shot",
    "team": "Spain Women's",
    "players": {
-    "shooter": "Salma Paralluelo Ayingono"
+    "shooter": "Salma Paralluelo"
    },
    "outcome": "Post",
    "score": {
@@ -284,7 +284,7 @@
    "type": "Shot",
    "team": "Spain Women's",
    "players": {
-    "shooter": "María Francesca Caldentey Oliver",
+    "shooter": "Mariona Caldentey",
     "keeper": "Mary Alexandra Earps"
    },
    "outcome": "Saved",
@@ -357,8 +357,8 @@
    "type": "Substitution",
    "team": "Spain Women's",
    "players": {
-    "off": "Alba María Redondo Ferrer",
-    "on": "Oihane Hernández Zurbano"
+    "off": "Alba Redondo",
+    "on": "Oihane Hernández"
    },
    "outcome": "Tactical",
    "score": {
@@ -376,7 +376,7 @@
    "type": "Shot",
    "team": "Spain Women's",
    "players": {
-    "shooter": "Aitana Bonmati Conca"
+    "shooter": "Aitana Bonmati"
    },
    "outcome": "Off T",
    "score": {
@@ -401,7 +401,7 @@
    "type": "Injury Stoppage",
    "team": "Spain Women's",
    "players": {
-    "injured": "Jennifer Hermoso Fuentes"
+    "injured": "Jennifer Hermoso"
    },
    "outcome": "Injury stoppage",
    "score": {
@@ -419,7 +419,7 @@
    "type": "Shot",
    "team": "Spain Women's",
    "players": {
-    "shooter": "Jennifer Hermoso Fuentes",
+    "shooter": "Jennifer Hermoso",
     "keeper": "Mary Alexandra Earps"
    },
    "outcome": "Saved",
@@ -463,7 +463,7 @@
    "type": "Injury Stoppage",
    "team": "Spain Women's",
    "players": {
-    "injured": "Laia Codina Panedas"
+    "injured": "Laia Codina"
    },
    "outcome": "Injury stoppage",
    "score": {
@@ -481,8 +481,8 @@
    "type": "Substitution",
    "team": "Spain Women's",
    "players": {
-    "off": "Laia Codina Panedas",
-    "on": "Ivana Andrés Sanz"
+    "off": "Laia Codina",
+    "on": "Ivana Andrés"
    },
    "outcome": "Injury",
    "score": {
@@ -526,7 +526,7 @@
    "team": "England Women's",
    "players": {
     "shooter": "Lauren James",
-    "keeper": "Catalina Thomas Coll Lluch"
+    "keeper": "Cata Coll"
    },
    "outcome": "Saved",
    "score": {
@@ -551,7 +551,7 @@
    "type": "Foul Committed",
    "team": "Spain Women's",
    "players": {
-    "offender": "Salma Paralluelo Ayingono"
+    "offender": "Salma Paralluelo"
    },
    "outcome": "Yellow Card",
    "score": {
@@ -573,7 +573,7 @@
    "type": "Injury Stoppage",
    "team": "Spain Women's",
    "players": {
-    "injured": "Jennifer Hermoso Fuentes"
+    "injured": "Jennifer Hermoso"
    },
    "outcome": "Injury stoppage",
    "score": {
@@ -609,7 +609,7 @@
    "type": "Injury Stoppage",
    "team": "Spain Women's",
    "players": {
-    "injured": "Jennifer Hermoso Fuentes"
+    "injured": "Jennifer Hermoso"
    },
    "outcome": "Injury stoppage",
    "score": {
@@ -671,7 +671,7 @@
    "type": "Shot",
    "team": "Spain Women's",
    "players": {
-    "shooter": "Jennifer Hermoso Fuentes"
+    "shooter": "Jennifer Hermoso"
    },
    "outcome": "Blocked",
    "score": {
@@ -696,8 +696,8 @@
    "type": "Substitution",
    "team": "Spain Women's",
    "players": {
-    "off": "María Francesca Caldentey Oliver",
-    "on": "Alexia Putellas Segura"
+    "off": "Mariona Caldentey",
+    "on": "Alexia Putellas"
    },
    "outcome": "Tactical",
    "score": {
@@ -715,7 +715,7 @@
    "type": "Shot",
    "team": "Spain Women's",
    "players": {
-    "shooter": "Alexia Putellas Segura"
+    "shooter": "Alexia Putellas"
    },
    "outcome": "Blocked",
    "score": {
@@ -740,7 +740,7 @@
    "type": "Shot",
    "team": "Spain Women's",
    "players": {
-    "shooter": "Ona Batlle Pascual",
+    "shooter": "Ona Batlle",
     "keeper": "Mary Alexandra Earps"
    },
    "outcome": "Saved",
@@ -766,7 +766,7 @@
    "type": "Shot",
    "team": "Spain Women's",
    "players": {
-    "shooter": "Aitana Bonmati Conca"
+    "shooter": "Aitana Bonmati"
    },
    "outcome": "Blocked",
    "score": {
@@ -791,7 +791,7 @@
    "type": "Shot",
    "team": "Spain Women's",
    "players": {
-    "shooter": "Salma Paralluelo Ayingono"
+    "shooter": "Salma Paralluelo"
    },
    "outcome": "Blocked",
    "score": {

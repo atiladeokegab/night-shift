@@ -10,6 +10,7 @@ import json
 from pathlib import Path
 
 SAMPLE = Path(__file__).resolve().parent / "sample"
+VIDEO = Path(__file__).resolve().parent / "video"
 
 
 def _path(match_id: str) -> Path:
@@ -28,12 +29,22 @@ def list_matches() -> list[dict]:
     for path in sorted(SAMPLE.glob("*.json")):
         h = json.loads(path.read_text(encoding="utf-8"))["header"]
         title = f"{h['home']} v {h['away']}, {h['competition']} {h['stage']}".strip()
-        out.append({"match_id": h["match_id"], "sport": h["sport"], "title": title, "sample": True})
+        match = {"match_id": h["match_id"], "sport": h["sport"], "title": title, "sample": True}
+        if vmap := video_map(h["match_id"]):
+            match["youtube_id"] = vmap["youtube_id"]
+        out.append(match)
     return out
 
 
 def load_moments(match_id: str) -> list[dict]:
     return _read(match_id)["moments"]
+
+
+def video_map(match_id: str) -> dict | None:
+    """data/video/<sport>-<match_id>.json: {youtube_id, source, moments: [{idx, video_t}]}."""
+    match_id = str(match_id)
+    found = sorted(VIDEO.glob(f"*-{match_id}.json")) if match_id.isalnum() else []
+    return json.loads(found[0].read_text(encoding="utf-8")) if found else None
 
 
 def match_header(match_id: str) -> dict:
@@ -55,4 +66,10 @@ if __name__ == "__main__":
 
     final = next(m for m in feed.statsbomb_matches(72, 107) if m["match_id"] == 3906390)
     _bundle("football", "3906390", final)  # 2023 Women's World Cup final
+    final = next(m for m in feed.statsbomb_matches(43, 106) if m["match_id"] == 3869685)
+    _bundle("football", "3869685", final)  # 2022 World Cup final, Messi v Mbappé
     _bundle("cricket", "1298150")  # India v Pakistan, T20 World Cup 2022
+    finals = {"competition": "NBA Finals", "stage": "Game 6", "date": "1998-06-14"}
+    _bundle("basketball", "0049700088", finals)  # Jordan's last shot as a Bull
+    season = {"competition": "NBA", "stage": "Regular season", "date": "2006-01-22"}
+    _bundle("basketball", "0020500591", season)  # Kobe's 81 v Toronto

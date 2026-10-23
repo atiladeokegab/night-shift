@@ -1,7 +1,9 @@
-"""The replayer: walks a match's Moments at `speed`, asks the commentator for a Line per moment,
-stores each Line and publishes moment, line and stats events for the SSE stream."""
+"""The replayer: walks a match's Moments at `speed` (or, for a match with a video map, its mapped
+moments ahead of time), asks the commentator for a Line per moment, stores each Line and publishes
+moment, line and stats events for the SSE stream."""
 
 import asyncio
+import time
 import uuid
 from collections.abc import Callable
 
@@ -9,11 +11,18 @@ from core.stats import stats
 
 
 def moment_seconds(moment: dict) -> float:
-    """Match time of a moment: football "mm:ss"; cricket "over.ball" at 30 s a ball."""
+    """Match time of a moment: football "mm:ss"; basketball "mm:ss" left in a 12-minute
+    quarter (5-minute overtimes); cricket "over.ball" at 30 s a ball."""
     clock = str(moment.get("clock", "0"))
     if moment.get("sport") == "football":
         mm, _, ss = clock.partition(":")
         return int(mm) * 60 + int(ss or 0)
+    if moment.get("sport") == "basketball":
+        mm, _, ss = clock.partition(":")
+        period = int(moment.get("period") or 1)
+        length = 720 if period <= 4 else 300
+        start = 720 * min(period - 1, 4) + 300 * max(period - 5, 0)
+        return start + length - (int(mm) * 60 + int(ss or 0))
     over, _, ball = clock.partition(".")
     # shortcut: Cricsheet has no ball timestamps, so 30 s a ball; real times if a feed gives them.
     return (int(over) * 6 + int(ball or 0)) * 30.0
@@ -24,6 +33,7 @@ class Replay:
         self.id = uuid.uuid4().hex[:12]
         self.match_id = match_id
         self.speed = speed
+        self.started = time.monotonic()
         self.events: list[dict] = []
         self.done = False
         self._changed = asyncio.Condition()
@@ -53,23 +63,43 @@ class Replay:
 
 
 async def run_replay(
-    replay: Replay, moments: list[dict], commentate: Callable[[dict, list[dict]], dict], store
+    replay: Replay,
+    moments: list[dict],
+    commentate: Callable[[dict, list[dict]], dict],
+    store,
+    video: dict | None = None,
+    speak: Callable[[dict, dict, float | None], None] | None = None,
 ) -> None:
+    # A video map: only mapped moments are called, each tagged with its video time and sent as
+    # soon as it is ready; the page holds each line until the player reaches that time.
+    video_t = {m["idx"]: m["video_t"] for m in video["moments"]} if video else None
     try:
         last = None
         history: list[dict] = []
         for moment in moments:
-            at = moment_seconds(moment)
-            if last is not None and at > last:
-                await asyncio.sleep((at - last) / replay.speed)
-            last = at
-            await replay.publish("moment", moment)
+            tag = {}
+            if video_t is None:
+                at = moment_seconds(moment)
+                if last is not None and at > last:
+                    await asyncio.sleep((at - last) / replay.speed)
+                last = at
+            elif moment["idx"] in video_t:
+                tag = {"video_t": video_t[moment["idx"]]}
+            else:  # not in the video: no call, but still recent play for later lines
+                history.append(moment)
+                continue
+            await replay.publish("moment", {**moment, **tag})
             # commentate sees only moments up to this one: later events never reach the model
             line = await asyncio.to_thread(commentate, moment, list(history))
             history.append(moment)
             if line is None:  # the commentator had nothing usable to say: the moment stays silent
                 continue
+            line = {**line, **tag}
             store.append("lines", line)
+            # shortcut: due at replay start + video_t, as if the video starts with the replay;
+            # the player's own clock if the page ever sends it.
+            if speak:
+                speak(line, moment, replay.started + tag["video_t"] if tag else None)
             await replay.publish("line", line)
             await replay.publish("stats", stats(store))
     except Exception as exc:  # the stream says why it stopped instead of hanging open

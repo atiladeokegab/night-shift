@@ -1,5 +1,7 @@
 """The moment picker on hand-built feeds: no network."""
 
+import json
+
 from agent import feed
 
 HEADER = {"sport": "football", "match_id": "1", "home": "Reds", "away": "Blues"}
@@ -51,6 +53,22 @@ def test_shots_goals_cards_and_own_goals_are_moments():
     assert moments[1]["score"] == {"home": 1, "away": 0} and moments[1]["x"] == 110.0
     assert moments[3]["score"] == {"home": 1, "away": 1}  # an own goal counts for the other side
     assert [m["idx"] for m in moments] == [0, 1, 2, 3]
+
+
+def test_players_go_by_their_lineup_nickname_else_their_full_name():
+    messi = {"id": 5503, "name": "Lionel Andrés Messi Cuccittini"}
+    events = [
+        ev("Shot", player=None, shot={"outcome": {"name": "Goal"}}) | {"player": messi},
+        ev("Shot", player="Hugo Lloris", shot={"outcome": {"name": "Saved"}}),
+    ]
+    moments = feed.football_moments(HEADER, events, {5503: "Lionel Messi"})
+    assert [m["players"]["shooter"] for m in moments] == ["Lionel Messi", "Hugo Lloris"]
+
+
+def test_name_overrides_beat_statsbomb_nicknames(monkeypatch):
+    lineups = [{"lineup": [{"player_id": 22097, "player_nickname": "Randal Kolo"}]}]
+    monkeypatch.setattr(feed, "_fetch", lambda *a, **k: json.dumps(lineups).encode())
+    assert feed.statsbomb_nicknames("3869685")[22097] == "Kolo Muani"
 
 
 def ball(batter=0, extras=None, wicket=None, ball="0.1"):
@@ -128,6 +146,7 @@ def test_close_chase_in_the_last_two_overs_calls_every_ball():
 def test_held_out_and_demo_matches():
     assert feed.held_out("football", "105") and not feed.held_out("football", "106")
     assert ("cricket", "1298150") in feed.DEMO and ("football", "3906390") in feed.DEMO
+    assert {("basketball", "0049700088"), ("basketball", "0020500591")} <= feed.DEMO
 
 
 def test_cricket_clock_counts_legal_balls_within_each_over():
@@ -155,3 +174,83 @@ def test_cricket_clock_counts_legal_balls_within_each_over():
         + ["1.1", "1.1", "1.2", "1.2", "1.3", "1.4", "1.5", "1.6"]
         + [f"2.{b}" for b in range(1, 7)]
     )
+
+
+BALL = {
+    "sport": "basketball",
+    "match_id": "0049700088",
+    "home": "Utah Jazz",
+    "away": "Chicago Bulls",
+}
+
+
+def play(n, kind, clock, desc, side="away", p1="Michael Jordan", p2="", period=4, other=""):
+    home, away = ("Utah", "Jazz"), ("Chicago", "Bulls")
+    t1, t2 = (away, home) if side == "away" else (home, away)
+    return {
+        "EVENTNUM": str(n),
+        "EVENTMSGTYPE": str(kind),
+        "PERIOD": str(period),
+        "PCTIMESTRING": clock,
+        "HOMEDESCRIPTION": desc if side == "home" else other,
+        "VISITORDESCRIPTION": desc if side == "away" else other,
+        "PLAYER1_NAME": p1,
+        "PLAYER1_TEAM_CITY": t1[0],
+        "PLAYER1_TEAM_NICKNAME": t1[1],
+        "PLAYER2_NAME": p2,
+        "PLAYER2_TEAM_CITY": t2[0] if p2 else "",
+        "PLAYER2_TEAM_NICKNAME": t2[1] if p2 else "",
+    }
+
+
+def test_basketball_picks_lead_changes_steals_and_the_buzzer():
+    rows = [
+        # an opening basket is no moment: no tie, no lead change, not the closing minutes
+        play(1, 1, "11:30", "Malone Jump Shot (2 PTS)", side="home", p1="Karl Malone"),
+        play(2, 2, "11:10", "MISS Jordan Jump Shot"),
+        play(3, 3, "10:50", "Jordan Free Throw 1 of 2 (1 PTS)"),
+        play(4, 1, "10:40", "Pippen 3PT Jump Shot (3 PTS)", p1="Scottie Pippen"),
+        # the turnover is on Utah's side, the steal on Chicago's: a steal, credited to Jordan
+        play(
+            5,
+            5,
+            "0:18",
+            "Malone Turnover",
+            side="home",
+            p1="Karl Malone",
+            p2="Michael Jordan",
+            other="Jordan STEAL (1 STL)",
+        ),
+        play(6, 1, "0:05", "Jordan 17' Jump Shot (3 PTS)"),
+        play(7, 13, "0:00", ""),
+    ]
+    rows[4]["PLAYER2_TEAM_CITY"], rows[4]["PLAYER2_TEAM_NICKNAME"] = "Chicago", "Bulls"
+    ms = feed.basketball_moments(BALL, rows)
+    assert [m["type"] for m in ms] == ["Field goal", "Steal", "Field goal", "End of game"]
+    assert ms[0]["detail"]["lead_change"] and ms[0]["score"] == {"home": 2, "away": 4}
+    assert ms[1]["players"] == {"stealer": "Michael Jordan", "lost_by": "Karl Malone"}
+    assert ms[1]["team"] == "Chicago Bulls" and ms[1]["detail"]["play"] == "Jordan STEAL (1 STL)"
+    assert ms[2]["players"] == {"shooter": "Michael Jordan"} and ms[2]["clock"] == "00:05"
+    assert ms[2]["detail"]["player_points"] == 3 and ms[-1]["score"] == {"home": 2, "away": 6}
+
+
+def test_basketball_keeps_every_basket_of_a_big_night_and_the_record_free_throw():
+    rows, pts = [], 0
+    for n in range(41):  # 41 two-pointers in the 1st quarter: 82 points
+        pts += 2
+        rows.append(
+            play(n, 1, "11:00", f"Bryant Jump Shot ({pts} PTS)", p1="Kobe Bryant", period=1)
+        )
+    rows.append(play(99, 3, "0:43", "Bryant Free Throw 1 of 2 (83 PTS)", p1="Kobe Bryant"))
+    ms = feed.basketball_moments(BALL, rows)
+    points = [m["detail"]["player_points"] for m in ms]
+    assert points[0] == 30 and points[-1] == 83  # the 30 milestone first, the record FT last
+    assert all(p in points for p in range(40, 83, 2))
+
+
+def test_nba_rows_rejects_an_id_that_is_not_a_game():
+    import pytest
+
+    for bad in ("49700088", "00497000ab", "0019700088", "../etc/passwd"):
+        with pytest.raises(KeyError):
+            feed.nba_rows(bad)

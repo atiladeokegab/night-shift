@@ -1,0 +1,566 @@
+{
+ "header": {
+  "sport": "basketball",
+  "match_id": "0020500591",
+  "home": "Los Angeles Lakers",
+  "away": "Toronto Raptors",
+  "competition": "NBA",
+  "stage": "Regular season",
+  "date": "2006-01-22"
+ },
+ "moments": [
+  {
+   "sport": "basketball",
+   "match_id": "0020500591",
+   "idx": 0,
+   "period": 1,
+   "clock": "10:35",
+   "type": "Field goal",
+   "team": "Toronto Raptors",
+   "players": {
+    "shooter": "Morris Peterson",
+    "assist": "Mike James"
+   },
+   "outcome": "2 points",
+   "score": {
+    "home": 2,
+    "away": 2
+   },
+   "detail": {
+    "play": "Peterson 17' Jump Shot (2 PTS) (James 1 AST)",
+    "player_points": 2,
+    "tied": true
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0020500591",
+   "idx": 1,
+   "period": 1,
+   "clock": "10:00",
+   "type": "Field goal",
+   "team": "Toronto Raptors",
+   "players": {
+    "shooter": "Mike James",
+    "assist": "Chris Bosh"
+   },
+   "outcome": "3 points",
+   "score": {
+    "home": 3,
+    "away": 5
+   },
+   "detail": {
+    "play": "James 25' 3PT Jump Shot (3 PTS) (Bosh 1 AST)",
+    "player_points": 3,
+    "lead_change": true
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0020500591",
+   "idx": 2,
+   "period": 1,
+   "clock": "09:49",
+   "type": "Field goal",
+   "team": "Los Angeles Lakers",
+   "players": {
+    "shooter": "Kobe Bryant"
+   },
+   "outcome": "2 points",
+   "score": {
+    "home": 5,
+    "away": 5
+   },
+   "detail": {
+    "play": "Bryant Reverse Layup (2 PTS)",
+    "player_points": 2,
+    "tied": true
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0020500591",
+   "idx": 3,
+   "period": 3,
+   "clock": "09:36",
+   "type": "Field goal",
+   "team": "Los Angeles Lakers",
+   "players": {
+    "shooter": "Kobe Bryant"
+   },
+   "outcome": "2 points",
+   "score": {
+    "home": 53,
+    "away": 69
+   },
+   "detail": {
+    "play": "Bryant 10' Running Jump Shot (30 PTS)",
+    "player_points": 30
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0020500591",
+   "idx": 4,
+   "period": 3,
+   "clock": "06:22",
+   "type": "Field goal",
+   "team": "Los Angeles Lakers",
+   "players": {
+    "shooter": "Kobe Bryant",
+    "assist": "Devean George"
+   },
+   "outcome": "3 points",
+   "score": {
+    "home": 65,
+    "away": 75
+   },
+   "detail": {
+    "play": "Bryant 26' 3PT Jump Shot (41 PTS) (George 1 AST)",
+    "player_points": 41
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0020500591",
+   "idx": 5,
+   "period": 3,
+   "clock": "05:48",
+   "type": "Field goal",
+   "team": "Los Angeles Lakers",
+   "players": {
+    "shooter": "Kobe Bryant"
+   },
+   "outcome": "2 points",
+   "score": {
+    "home": 67,
+    "away": 77
+   },
+   "detail": {
+    "play": "Bryant 18' Jump Shot (43 PTS)",
+    "player_points": 43
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0020500591",
+   "idx": 6,
+   "period": 3,
+   "clock": "04:47",
+   "type": "Field goal",
+   "team": "Los Angeles Lakers",
+   "players": {
+    "shooter": "Kobe Bryant",
+    "assist": "Smush Parker"
+   },
+   "outcome": "3 points",
+   "score": {
+    "home": 73,
+    "away": 78
+   },
+   "detail": {
+    "play": "Bryant 27' 3PT Jump Shot (47 PTS) (Parker 4 AST)",
+    "player_points": 47
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0020500591",
+   "idx": 7,
+   "period": 3,
+   "clock": "02:30",
+   "type": "Field goal",
+   "team": "Los Angeles Lakers",
+   "players": {
+    "shooter": "Kobe Bryant"
+   },
+   "outcome": "2 points",
+   "score": {
+    "home": 81,
+    "away": 85
+   },
+   "detail": {
+    "play": "Bryant Reverse Layup (49 PTS)",
+    "player_points": 49
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0020500591",
+   "idx": 8,
+   "period": 3,
+   "clock": "01:37",
+   "type": "Free throw",
+   "team": "Los Angeles Lakers",
+   "players": {
+    "shooter": "Smush Parker"
+   },
+   "outcome": "1 point",
+   "score": {
+    "home": 85,
+    "away": 85
+   },
+   "detail": {
+    "play": "Parker Free Throw 2 of 2 (11 PTS)",
+    "player_points": 11,
+    "tied": true
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0020500591",
+   "idx": 9,
+   "period": 3,
+   "clock": "01:11",
+   "type": "Field goal",
+   "team": "Los Angeles Lakers",
+   "players": {
+    "shooter": "Kobe Bryant"
+   },
+   "outcome": "2 points",
+   "score": {
+    "home": 87,
+    "away": 85
+   },
+   "detail": {
+    "play": "Bryant Slam Dunk (51 PTS)",
+    "player_points": 51,
+    "lead_change": true
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0020500591",
+   "idx": 10,
+   "period": 3,
+   "clock": "00:31",
+   "type": "Field goal",
+   "team": "Los Angeles Lakers",
+   "players": {
+    "shooter": "Kobe Bryant",
+    "assist": "Lamar Odom"
+   },
+   "outcome": "2 points",
+   "score": {
+    "home": 91,
+    "away": 85
+   },
+   "detail": {
+    "play": "Bryant Slam Dunk (53 PTS) (Odom 6 AST)",
+    "player_points": 53
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0020500591",
+   "idx": 11,
+   "period": 4,
+   "clock": "09:26",
+   "type": "Field goal",
+   "team": "Los Angeles Lakers",
+   "players": {
+    "shooter": "Kobe Bryant"
+   },
+   "outcome": "2 points",
+   "score": {
+    "home": 95,
+    "away": 88
+   },
+   "detail": {
+    "play": "Bryant 13' Jump Shot (57 PTS)",
+    "player_points": 57
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0020500591",
+   "idx": 12,
+   "period": 4,
+   "clock": "08:53",
+   "type": "Field goal",
+   "team": "Los Angeles Lakers",
+   "players": {
+    "shooter": "Kobe Bryant"
+   },
+   "outcome": "2 points",
+   "score": {
+    "home": 97,
+    "away": 88
+   },
+   "detail": {
+    "play": "Bryant 14' Running Jump Shot (59 PTS)",
+    "player_points": 59
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0020500591",
+   "idx": 13,
+   "period": 4,
+   "clock": "06:32",
+   "type": "Field goal",
+   "team": "Los Angeles Lakers",
+   "players": {
+    "shooter": "Kobe Bryant"
+   },
+   "outcome": "2 points",
+   "score": {
+    "home": 102,
+    "away": 93
+   },
+   "detail": {
+    "play": "Bryant 3' Running Layup (61 PTS)",
+    "player_points": 61
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0020500591",
+   "idx": 14,
+   "period": 4,
+   "clock": "05:30",
+   "type": "Field goal",
+   "team": "Los Angeles Lakers",
+   "players": {
+    "shooter": "Kobe Bryant"
+   },
+   "outcome": "3 points",
+   "score": {
+    "home": 108,
+    "away": 96
+   },
+   "detail": {
+    "play": "Bryant 26' 3PT Jump Shot (67 PTS)",
+    "player_points": 67
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0020500591",
+   "idx": 15,
+   "period": 4,
+   "clock": "04:52",
+   "type": "Field goal",
+   "team": "Los Angeles Lakers",
+   "players": {
+    "shooter": "Kobe Bryant",
+    "assist": "Lamar Odom"
+   },
+   "outcome": "3 points",
+   "score": {
+    "home": 111,
+    "away": 96
+   },
+   "detail": {
+    "play": "Bryant 26' 3PT Jump Shot (70 PTS) (Odom 7 AST)",
+    "player_points": 70
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0020500591",
+   "idx": 16,
+   "period": 4,
+   "clock": "04:25",
+   "type": "Field goal",
+   "team": "Los Angeles Lakers",
+   "players": {
+    "shooter": "Kobe Bryant"
+   },
+   "outcome": "2 points",
+   "score": {
+    "home": 113,
+    "away": 96
+   },
+   "detail": {
+    "play": "Bryant 14' Jump Shot (72 PTS)",
+    "player_points": 72
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0020500591",
+   "idx": 17,
+   "period": 4,
+   "clock": "03:26",
+   "type": "Field goal",
+   "team": "Los Angeles Lakers",
+   "players": {
+    "shooter": "Kobe Bryant"
+   },
+   "outcome": "2 points",
+   "score": {
+    "home": 115,
+    "away": 98
+   },
+   "detail": {
+    "play": "Bryant 5' Running Jump Shot (74 PTS)",
+    "player_points": 74
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0020500591",
+   "idx": 18,
+   "period": 4,
+   "clock": "01:47",
+   "type": "Free throw",
+   "team": "Los Angeles Lakers",
+   "players": {
+    "shooter": "Kobe Bryant"
+   },
+   "outcome": "1 point",
+   "score": {
+    "home": 118,
+    "away": 102
+   },
+   "detail": {
+    "play": "Bryant Free Throw 1 of 3 (77 PTS)",
+    "player_points": 77
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0020500591",
+   "idx": 19,
+   "period": 4,
+   "clock": "01:47",
+   "type": "Free throw",
+   "team": "Los Angeles Lakers",
+   "players": {
+    "shooter": "Kobe Bryant"
+   },
+   "outcome": "1 point",
+   "score": {
+    "home": 119,
+    "away": 102
+   },
+   "detail": {
+    "play": "Bryant Free Throw 2 of 3 (78 PTS)",
+    "player_points": 78
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0020500591",
+   "idx": 20,
+   "period": 4,
+   "clock": "01:47",
+   "type": "Free throw",
+   "team": "Los Angeles Lakers",
+   "players": {
+    "shooter": "Kobe Bryant"
+   },
+   "outcome": "1 point",
+   "score": {
+    "home": 120,
+    "away": 102
+   },
+   "detail": {
+    "play": "Bryant Free Throw 3 of 3 (79 PTS)",
+    "player_points": 79
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0020500591",
+   "idx": 21,
+   "period": 4,
+   "clock": "01:11",
+   "type": "Steal",
+   "team": "Los Angeles Lakers",
+   "players": {
+    "stealer": "Sasha Vujacic",
+    "lost_by": "Charlie Villanueva"
+   },
+   "outcome": "Steal",
+   "score": {
+    "home": 120,
+    "away": 102
+   },
+   "detail": {
+    "play": "Vujacic STEAL (1 STL)"
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0020500591",
+   "idx": 22,
+   "period": 4,
+   "clock": "00:43",
+   "type": "Free throw",
+   "team": "Los Angeles Lakers",
+   "players": {
+    "shooter": "Kobe Bryant"
+   },
+   "outcome": "1 point",
+   "score": {
+    "home": 121,
+    "away": 102
+   },
+   "detail": {
+    "play": "Bryant Free Throw 1 of 2 (80 PTS)",
+    "player_points": 80
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0020500591",
+   "idx": 23,
+   "period": 4,
+   "clock": "00:43",
+   "type": "Free throw",
+   "team": "Los Angeles Lakers",
+   "players": {
+    "shooter": "Kobe Bryant"
+   },
+   "outcome": "1 point",
+   "score": {
+    "home": 122,
+    "away": 102
+   },
+   "detail": {
+    "play": "Bryant Free Throw 2 of 2 (81 PTS)",
+    "player_points": 81
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0020500591",
+   "idx": 24,
+   "period": 4,
+   "clock": "00:29",
+   "type": "Field goal",
+   "team": "Toronto Raptors",
+   "players": {
+    "shooter": "Matt Bonner",
+    "assist": "Joey Graham"
+   },
+   "outcome": "2 points",
+   "score": {
+    "home": 122,
+    "away": 104
+   },
+   "detail": {
+    "play": "Bonner 18' Jump Shot (12 PTS) (Graham 1 AST)",
+    "player_points": 12
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0020500591",
+   "idx": 25,
+   "period": 4,
+   "clock": "00:00",
+   "type": "End of game",
+   "team": "",
+   "players": {},
+   "outcome": "Final buzzer",
+   "score": {
+    "home": 122,
+    "away": 104
+   },
+   "detail": {}
+  }
+ ]
+}

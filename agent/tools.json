@@ -1,15 +1,15 @@
 [
   {
     "name": "get_score",
-    "description": "The score after the current moment, with the period and clock.",
+    "description": "The score or standing after the current moment (a scoreline, or positions and gaps in a race), with the period, lap or clock.",
     "input_schema": {"type": "object", "properties": {}}
   },
   {
     "name": "get_player",
-    "description": "What one player has done in this match so far, up to the current moment.",
+    "description": "What one player or driver has done in this event so far, up to the current moment.",
     "input_schema": {
       "type": "object",
-      "properties": {"name": {"type": "string", "description": "The player's name as given."}},
+      "properties": {"name": {"type": "string", "description": "The player's or driver's name as given."}},
       "required": ["name"]
     }
   },

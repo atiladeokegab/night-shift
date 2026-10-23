@@ -1,4 +1,4 @@
-"""The commentator: one frozen prompt, template and tool set for both sports, via Mubit.
+"""The commentator: one frozen prompt, template and tool set for every sport, via Mubit.
 
 Only the moments up to and including the current one ever reach the request or the tools.
 """
@@ -31,13 +31,13 @@ def session_id(sport: str, match_id: str) -> str:
 
 def _score(header: dict, m: dict) -> str:
     s = m["score"]
-    if m["sport"] == "football":
+    if "home" in s:  # football and basketball
         text = f"{header['home']} {s['home']}, {header['away']} {s['away']}"
         if "shootout" in m["detail"]:
             so = m["detail"]["shootout"]
             text += f" (penalties {so['home']}-{so['away']})"
         return text
-    text = f"{m['team']} {s['runs']}/{s['wickets']}"
+    text = f"{m['team']} {s['runs']} for {s['wickets']}"  # said as written: runs, then wickets
     if "target" in s:
         need = max(0, s["target"] - s["runs"])
         text += f", target {s['target']}, need {need} from {m['detail']['balls_left']} balls"
@@ -60,6 +60,8 @@ def _detail(m: dict) -> str:
 def _period(m: dict) -> str:
     if m["sport"] == "cricket":
         return f"innings {m['period']}"
+    if m["sport"] == "basketball":
+        return f"quarter {m['period']}" if m["period"] <= 4 else f"overtime {m['period'] - 4}"
     return "penalty shootout" if m["period"] == 5 else f"period {m['period']}"
 
 
@@ -125,16 +127,28 @@ class NoLine(ValueError):
 # The model talking about its task, not the match: "I have all the information I need ...".
 _PREAMBLE = re.compile(
     r"^(?:I\b|I'(?:m|ve|ll|d)\b|Let me\b|Let's (?:see|check|look)\b|Based on\b"
-    r"|Here(?:'s| is)\b|(?:Okay|OK|Sure|Great|Alright),)[^.!?:\n]*[.!?:]*\s*"
+    r"|Here(?:'s| is)\b|(?:Okay|OK|Sure|Great|Alright),)[^.!?:…\n]*[.!?:…]*\s*"
+)
+
+
+# The model questioning its input instead of calling the moment: "There's a discrepancy here ...".
+_META = re.compile(
+    r"\b(?:your message|the message|you say|you said|could you|clarify|discrepancy|the tools?"
+    r"|labell?ed as|the score confirms)\b",
+    re.I,
 )
 
 
 def spoken(text: str) -> str:
-    """The line as it should be spoken: leading preamble sentences dropped."""
-    text = text.strip()
-    while (m := _PREAMBLE.match(text)) and m.end():
-        text = text[m.end() :].lstrip()
-    return text
+    """The line as spoken: preamble dropped, and any paragraph about the input left out."""
+    kept = []
+    for para in re.split(r"\n\s*\n", text.strip()):
+        para = para.strip()
+        while (m := _PREAMBLE.match(para)) and m.end():
+            para = para[m.end() :].lstrip()
+        if para and not _META.search(para):
+            kept.append(para)
+    return " ".join(kept)
 
 
 def commentate(
@@ -150,6 +164,28 @@ def commentate(
         return line_for(header, moments, len(history), provider or default_provider())
     except NoLine:
         return None  # the replay skips the moment
+
+
+CORRECTION = "Producer correction. Reply with exactly this line: {text}"
+
+
+def correct(
+    line: dict, corrected_text: str, header: dict | None = None, moments=None, provider=None
+) -> dict:
+    """A producer's fix as the next turn of the line's own call: same task, same session."""
+    if header is None or moments is None:
+        from data.matches import load_moments, match_header
+
+        header = header or match_header(line["match_id"])
+        moments = moments if moments is not None else load_moments(line["match_id"])
+    request = build_request(header, [m for m in moments if m["idx"] <= line["moment_idx"]])
+    request["messages"] += [
+        {"role": "assistant", "content": line["text"]},
+        {"role": "user", "content": CORRECTION.format(text=corrected_text)},
+    ]
+    reply = (provider or default_provider()).call(request)
+    said = spoken(" ".join(b["text"] for b in reply["content"] if b["type"] == "text"))
+    return {"mubit_request_id": reply["request_id"], "reply_matched": said == corrected_text}
 
 
 _provider = None
@@ -263,7 +299,10 @@ class FakeProvider:
         text = msgs[0]["content"]
         fields = dict(line.split(": ", 1) for line in text.splitlines() if ": " in line)
         big = fields.get("Event", "").startswith(("Shot, Goal", "Wicket"))
-        if len(msgs) == 1 and big:
+        said = msgs[-1]["content"]
+        if isinstance(said, str) and said.startswith("Producer correction"):
+            content = [{"type": "text", "text": said.split(": ", 1)[1]}]
+        elif len(msgs) == 1 and big:
             content = [
                 {"type": "tool_use", "id": f"fake-tool-{n}", "name": "get_score", "input": {}}
             ]

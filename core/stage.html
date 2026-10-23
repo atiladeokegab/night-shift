@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Touchline stage</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Backup live page served by core at /stage. Tokens copied from docs/mockup/index.html (21-redesign). */
+:root {
+  --bg: #06080F; --fg: #F6F4EF; --muted: rgba(246, 244, 239, .66); --faint: rgba(246, 244, 239, .42);
+  --glass: rgba(14, 18, 31, .55); --line: rgba(255, 255, 255, .10); --line-hi: rgba(255, 255, 255, .20);
+  --amber: #FFB547; --amber-deep: #F5A524; --on-amber: #1B1203;
+  --air: #FF4D4F; --live: #3DDC84; --fix: #7CD4FF; --err: #FF6B6B;
+  --display: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --body: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --ease: cubic-bezier(.2, .7, .2, 1);
+  --side-w: 384px; --gut: 32px;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font: 400 16px/1.5 var(--body); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; border-radius: 6px; }
+.num { font-variant-numeric: tabular-nums; }
+.label { font: 600 .7rem/1 var(--body); letter-spacing: .16em; text-transform: uppercase; color: var(--faint); }
+.glass {
+  background: linear-gradient(180deg, rgba(255, 255, 255, .07), rgba(255, 255, 255, .015)), var(--glass);
+  -webkit-backdrop-filter: blur(22px) saturate(150%); backdrop-filter: blur(22px) saturate(150%);
+  border: 1px solid var(--line); border-radius: 20px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 24px 64px -28px rgba(0, 0, 0, .7);
+}
+#video { position: fixed; inset: 0; background: #03050A; }
+#video iframe { width: 100%; height: 100%; border: 0; }
+#video.off { display: none; }
+.novideo { position: fixed; top: 46%; left: 0; right: calc(var(--side-w) + var(--gut)); text-align: center; color: var(--faint); }
+/* Overlays let clicks through to the player except where they hold controls. */
+.live { position: fixed; inset: 0; pointer-events: none; }
+.live .nav, .live .side, .live .hud { pointer-events: auto; }
+.nav { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px var(--gut);
+  background: linear-gradient(180deg, rgba(6, 8, 15, .78), transparent); }
+.wordmark { font: 700 1.55rem/1 var(--display); letter-spacing: -.025em; color: var(--amber); }
+.seg { display: inline-flex; background: rgba(255, 255, 255, .05); border-radius: 12px; padding: 3px; }
+.seg button { height: 32px; padding: 0 16px; border: 0; background: none; border-radius: 9px; color: var(--muted); font: 500 .88rem/1 var(--body); transition: background .2s, color .2s; }
+.seg button[aria-pressed="true"] { background: rgba(255, 255, 255, .13); color: var(--fg); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1); }
+.onair { display: inline-flex; align-items: center; gap: 10px; padding: 9px 14px 9px 12px; border-radius: 999px; font: 600 .7rem/1 var(--body); letter-spacing: .16em; }
+.onair .rec { width: 8px; height: 8px; border-radius: 50%; background: rgba(255, 255, 255, .3); }
+.onair.on .rec { background: var(--air); animation: rec 1.4s ease-out infinite; }
+@keyframes rec { 0% { box-shadow: 0 0 0 0 rgba(255, 77, 79, .6); } 100% { box-shadow: 0 0 0 10px rgba(255, 77, 79, 0); } }
+.lane { position: absolute; left: var(--gut); right: calc(var(--side-w) + var(--gut) + 16px); }
+.hud { top: 92px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.scorebar { display: flex; align-items: center; gap: 14px; padding: 10px 16px; border-radius: 14px; font: 600 1.05rem/1 var(--display); flex-wrap: wrap; }
+.score { font-size: 1.5rem; letter-spacing: -.01em; }
+.sep { width: 1px; height: 20px; background: var(--line-hi); }
+.clock { color: var(--amber); font-size: 1.15rem; }
+.period { color: var(--muted); font: 500 .85rem/1 var(--body); }
+.sync { padding: 6px 10px; border-radius: 999px; border: 1px solid var(--line-hi); color: var(--muted); font: 500 .75rem/1 var(--body); background: rgba(6, 8, 15, .5); }
+.subtitle { bottom: 72px; display: grid; justify-items: center; gap: 16px; text-align: center; }
+.subtitle::before { content: ""; position: absolute; inset: -64px -18% -40px; z-index: -1; background: radial-gradient(closest-side, rgba(4, 6, 12, .82), rgba(4, 6, 12, .5) 62%, transparent); }
+.subtitle .tag { font: 600 .7rem/1 var(--body); letter-spacing: .18em; text-transform: uppercase; color: var(--amber); padding: 7px 11px; border-radius: 999px;
+  background: rgba(255, 181, 71, .1); border: 1px solid rgba(255, 181, 71, .28); }
+.subtitle p { margin: 0; max-width: 34ch; font: 600 clamp(1.6rem, 3vw, 3rem)/1.12 var(--display); letter-spacing: -.02em; text-wrap: balance;
+  text-shadow: 0 2px 30px rgba(0, 0, 0, .65); animation: rise .38s var(--ease); }
+.subtitle.waiting p { font: 500 1.15rem/1.4 var(--body); color: var(--muted); letter-spacing: 0; }
+.subtitle.err p { font: 500 1.15rem/1.4 var(--body); color: var(--err); }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); filter: blur(4px); } }
+.side { position: absolute; top: 92px; right: var(--gut); bottom: 26px; width: var(--side-w); display: flex; flex-direction: column; gap: 16px; }
+.panel { padding: 20px; }
+.panel.lines { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.panel-h { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
+.panel h3 { margin: 0; font: 600 1.05rem/1 var(--display); letter-spacing: -.01em; }
+.panel .hint { margin: 0; color: var(--faint); font-size: .85rem; }
+.log { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; overflow: auto; min-height: 0; scrollbar-width: thin; }
+.log li { display: grid; grid-template-columns: 52px 1fr auto; gap: 4px 10px; padding: 12px 0; border-top: 1px solid var(--line); animation: rise .38s var(--ease); }
+.log li:first-child { border-top: 0; padding-top: 2px; }
+.log .when { font: 600 .8rem/1.55 var(--display); color: var(--amber); }
+.log .text { min-width: 0; font-size: .92rem; line-height: 1.45; }
+.log .fw { font: 600 .8rem/1.55 var(--display); color: var(--muted); white-space: nowrap; }
+.log .late .text { color: var(--faint); text-decoration: line-through; }
+.stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px 12px; margin: 0; }
+.stats div { display: grid; gap: 8px; align-content: start; }
+.stats dt { letter-spacing: .1em; line-height: 1.3; }
+.stats dd { margin: 0; font: 600 1.45rem/1 var(--display); letter-spacing: -.02em; }
+@media (max-width: 900px) {
+  :root { --gut: 16px; }
+  .live { position: static; pointer-events: auto; }
+  #video { position: relative; height: 56.25vw; }
+  .nav { position: sticky; z-index: 2; background: var(--bg); flex-wrap: wrap; }
+  .lane, .side, .novideo { position: static; width: auto; margin: 16px var(--gut); }
+  .subtitle::before { display: none; }
+}
+</style>
+</head>
+<body>
+<div id="video" class="off"><div id="player"></div></div>
+<p class="novideo" id="novideo" hidden>No video for this match: lines show as they arrive.</p>
+<main class="live">
+  <nav class="nav">
+    <span class="wordmark">Touchline</span>
+    <div class="seg" id="sports" role="group" aria-label="Sport"></div>
+    <span class="onair glass" id="onair"><span class="rec"></span>ON AIR</span>
+  </nav>
+  <div class="hud lane">
+    <div class="scorebar glass num" id="score"></div>
+    <span class="sync num" id="sync"></span>
+  </div>
+  <div class="subtitle lane waiting" id="sub" aria-live="polite"><span class="tag" id="tag">Stage</span><p id="said">Loading matches…</p></div>
+  <aside class="side">
+    <section class="glass panel lines">
+      <div class="panel-h"><h3>Lines</h3><p class="hint">first word</p></div>
+      <ol class="log" id="log"></ol>
+    </section>
+    <section class="glass panel"><dl class="stats num" id="stats"></dl></section>
+  </aside>
+</main>
+<script>
+// The picker: one button per demo match (label, sport, match id).
+const PICKS = [["Football", "football", "3906390"], ["Messi v Mbappé", "football", "3869685"],
+  ["Cricket", "cricket", "1298150"], ["Jordan", "basketball", "0049700088"],
+  ["Kobe", "basketball", "0020500591"]];
+const LANG = { football: "en-GB", cricket: "en-IN", basketball: "en-US" };
+const WINDOW = 0.5; // a line plays only within this many seconds after its video_t
+const $ = (id) => document.getElementById(id);
+const el = (tag, cls, text) => Object.assign(document.createElement(tag), cls ? { className: cls } : {}, text != null ? { textContent: text } : {});
+const mmss = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+
+let matches = [], match = null, es = null, yt = null, player = null, ytFailed = false, apiFailed = false;
+let moments = {}, seen = new Set(), held = [], queue = [], logged = new Map(), lastT = 0;
+
+// YouTube IFrame API. If it cannot load (offline), lines fall back to showing as they arrive.
+const ytApi = new Promise((resolve) => { window.onYouTubeIframeAPIReady = () => resolve(window.YT); });
+const ytScript = Object.assign(document.createElement("script"), { src: "https://www.youtube.com/iframe_api" });
+const noVideo = (e) => {
+  ytFailed = true;
+  $("video").classList.add("off");
+  $("novideo").textContent = `Video unavailable${e && e.data ? ` (YouTube error ${e.data})` : ""}: lines show as they arrive.`;
+  $("novideo").hidden = false;
+  queue.splice(0).forEach(show);
+};
+ytScript.onerror = () => { apiFailed = true; noVideo(); };
+document.head.append(ytScript);
+
+function subtitle(text, mode, tag) {
+  $("sub").className = `subtitle lane ${mode || ""}`;
+  $("tag").textContent = tag || "Stage";
+  const p = el("p", null, text);
+  p.id = "said";
+  $("said").replaceWith(p); // a fresh node replays the rise animation
+}
+
+function teams() {
+  const [home, away] = (match.title || "").split(", ")[0].split(" v ");
+  return { home: home || "Home", away: away || "Away" };
+}
+
+function period(m) {
+  if (match.sport !== "basketball") return `Half ${m.period}`;
+  return m.period > 4 ? `OT ${m.period - 4}` : `Q${m.period}`;
+}
+
+function scorebar(m) {
+  const t = teams(), s = (m && m.score) || {};
+  const parts = match.sport === "cricket"
+    ? [[m ? m.team : `${t.home} v ${t.away}`, "team"], [m ? `${s.runs}/${s.wickets}` : "–", "score"],
+       [null, "sep"], [m ? `Ov ${m.clock}` : "", "clock"], [s.target ? `Target ${s.target}` : "", "period"]]
+    : [[t.home, "team"], [`${s.home ?? 0}–${s.away ?? 0}`, "score"], [t.away, "team"],
+       [null, "sep"], [m ? m.clock : "00:00", "clock"], [m ? period(m) : "", "period"]];
+  $("score").replaceChildren(...parts.map(([text, cls]) => el("span", cls, text)));
+}
+
+async function refreshStats() {
+  const r = await fetch("/stats").catch(() => null);
+  if (!r || !r.ok) return;
+  const s = await r.json();
+  const ms = (v) => (v == null ? "–" : `${Math.round(v)} ms`);
+  const rows = [["Lines", s.lines], ["Mubit calls", s.mubit_requests], ["Fixes", s.fixes],
+    ["First word p50", ms(s.first_word_ms_p50)], ["First word p95", ms(s.first_word_ms_p95)], ["Latency p50", ms(s.latency_ms_p50)]];
+  $("stats").replaceChildren(...rows.map(([k, v]) => {
+    const d = el("div");
+    d.append(el("dt", "label", k), el("dd", null, String(v ?? "–")));
+    return d;
+  }));
+}
+
+// Voice: the server's line audio (GET /lines/{id}/audio); on any failure, browser speech.
+let current = null;
+const onAir = (on) => $("onair").classList.toggle("on", on);
+
+function prepare(line) {
+  if (line.audio) return;
+  line.audio = new Audio(`/lines/${encodeURIComponent(line.line_id)}/audio`);
+  line.audio.preload = "auto";
+  line.audio.onplaying = () => onAir(true);
+  line.audio.onpause = line.audio.onended = () => onAir(false);
+}
+
+function stopVoice() {
+  if ("speechSynthesis" in window) speechSynthesis.cancel();
+  if (current) current.pause();
+  current = null;
+}
+
+function speak(line) {
+  stopVoice();
+  prepare(line);
+  const a = (current = line.audio);
+  a.play().catch(() => { if (current === a) speakBrowser(line.text); });
+}
+
+function speakBrowser(text) {
+  if (!("speechSynthesis" in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = LANG[match.sport] || "en-GB";
+  u.voice = speechSynthesis.getVoices().find((v) => v.lang.replace("_", "-") === u.lang) || null;
+  u.onstart = () => onAir(true);
+  u.onend = u.onerror = () => onAir(false);
+  speechSynthesis.speak(u);
+}
+
+function logLine(line, late) {
+  if (logged.has(line.line_id)) return logged.get(line.line_id).classList.toggle("late", late);
+  const m = moments[line.moment_idx];
+  const li = el("li", late ? "late" : "");
+  li.append(el("span", "when", m ? m.clock : ""), el("span", "text", line.text),
+    el("span", "fw", line.first_word_ms == null ? "–" : `${Math.round(line.first_word_ms)} ms`));
+  logged.set(line.line_id, li);
+  $("log").prepend(li);
+}
+
+function show(line) {
+  const m = moments[line.moment_idx];
+  if (m) scorebar(m);
+  subtitle(line.text, "", m ? `${m.type} · ${m.clock}` : "Live");
+  logLine(line, false);
+  speak(line);
+  refreshStats();
+}
+
+// A line with a video time waits for the picture; anything else shows at once.
+function arrive(line) {
+  if (seen.has(line.line_id)) return; // a reconnecting stream replays from the start
+  seen.add(line.line_id);
+  if (line.video_t == null || !match.youtube_id || ytFailed) return show(line);
+  const byTime = (a, b) => a.video_t - b.video_t;
+  held.push(line);
+  held.sort(byTime);
+  queue.push(line);
+  queue.sort(byTime);
+}
+
+// The gate: every 100 ms, release lines whose video_t the playing picture has reached.
+function tick() {
+  if (!player || !match || !match.youtube_id) return;
+  const playing = player.getPlayerState() === YT.PlayerState.PLAYING;
+  const t = player.getCurrentTime();
+  if (Math.abs(t - lastT) > 2) { // sought: drop what was said and re-arm from the new time
+    stopVoice();
+    queue = held.filter((l) => l.video_t >= t - WINDOW);
+  }
+  lastT = t;
+  const next = queue[0];
+  $("sync").textContent = `${playing ? "▶" : "Ⅱ"} ${mmss(t)}` +
+    (next ? ` · next line ${mmss(next.video_t)} · ${queue.length} held` : "") + (playing ? "" : " · commentary waits");
+  if (!playing) return;
+  queue.slice(0, 2).forEach(prepare); // fetch the next lines' audio before their moment
+  while (queue.length && queue[0].video_t <= t) {
+    const line = queue.shift();
+    if (t - line.video_t <= WINDOW) show(line);
+    else logLine(line, true); // arrived after its moment had passed: never spoken late
+  }
+}
+setInterval(tick, 100);
+
+function onState(e) {
+  const playing = e.data === YT.PlayerState.PLAYING; // paused or buffering: the voice waits
+  if ("speechSynthesis" in window) playing ? speechSynthesis.resume() : speechSynthesis.pause();
+  if (current && !current.ended) playing ? current.play().catch(() => {}) : current.pause();
+}
+
+function loadVideo(id) {
+  $("video").classList.toggle("off", !id || ytFailed);
+  $("novideo").hidden = !!id && !ytFailed;
+  if (!id || ytFailed) return player && player.pauseVideo();
+  ytApi.then((YT) => {
+    if (yt) return yt.loadVideoById(id);
+    yt = new YT.Player("player", {
+      videoId: id,
+      playerVars: { autoplay: 1, mute: 1, playsinline: 1, rel: 0 },
+      events: { onReady: (e) => { player = e.target; player.mute(); player.playVideo(); }, onStateChange: onState, onError: noVideo },
+    });
+  });
+}
+
+// Each tap takes a new token: a slower earlier tap never opens a stream, and a stale stream is closed.
+let run = 0;
+
+async function start(id) {
+  const m = matches.find((x) => x.match_id === id);
+  if (!m) return;
+  const token = ++run;
+  if (es) es.close();
+  es = null;
+  stopVoice();
+  match = m; ytFailed = apiFailed; moments = {}; seen = new Set(); held = []; queue = []; logged = new Map(); lastT = 0;
+  $("log").replaceChildren();
+  document.querySelectorAll("#sports button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.match === id));
+  scorebar(null);
+  subtitle("Waiting for the first line…", "waiting", m.title);
+  loadVideo(m.youtube_id);
+  const r = await fetch("/replays", { method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ match_id: m.match_id, speed: 10 }) }).catch(() => null);
+  if (token !== run) return;
+  if (!r || !r.ok) return subtitle(`Could not start the replay (${r ? r.status : "offline"})`, "err");
+  const { replay_id } = await r.json();
+  if (token !== run) return;
+  const src = (es = new EventSource(`/replays/${replay_id}/stream`));
+  const live = (fn) => (e) => (token === run ? fn(e) : src.close());
+  src.addEventListener("moment", live((e) => { const mo = JSON.parse(e.data); moments[mo.idx] = mo; }));
+  src.addEventListener("line", live((e) => arrive(JSON.parse(e.data))));
+  src.addEventListener("error", live((e) => { if (e.data) subtitle(JSON.parse(e.data).detail, "err", "Commentator error"); }));
+  src.addEventListener("end", () => src.close());
+}
+
+async function init() {
+  const r = await fetch("/matches").catch(() => null);
+  if (!r || !r.ok) return subtitle(`No matches (${r ? r.status : "offline"})`, "err");
+  matches = await r.json();
+  const picks = PICKS.filter(([, , id]) => matches.some((m) => m.match_id === id));
+  $("sports").replaceChildren(...picks.map(([label, s, id]) => {
+    const m = matches.find((x) => x.match_id === id);
+    const b = el("button", null, label);
+    Object.assign(b, { type: "button", title: m.title || m.match_id, onclick: () => start(id) });
+    b.dataset.sport = s; b.dataset.match = id;
+    b.setAttribute("aria-pressed", "false");
+    return b;
+  }));
+  refreshStats();
+  subtitle("Pick a match to start", "waiting");
+}
+init();
+</script>
+</body>
+</html>
