@@ -11,10 +11,10 @@ from core.stats import stats
 
 
 def moment_seconds(moment: dict) -> float:
-    """Match time of a moment: football "mm:ss"; basketball "mm:ss" left in a 12-minute
+    """Match time of a moment: football and f1 "mm:ss"; basketball "mm:ss" left in a 12-minute
     quarter (5-minute overtimes); cricket "over.ball" at 30 s a ball."""
     clock = str(moment.get("clock", "0"))
-    if moment.get("sport") == "football":
+    if moment.get("sport") in ("football", "f1"):
         mm, _, ss = clock.partition(":")
         return int(mm) * 60 + int(ss or 0)
     if moment.get("sport") == "basketball":

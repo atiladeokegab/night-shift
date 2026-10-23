@@ -31,6 +31,10 @@ def session_id(sport: str, match_id: str) -> str:
 
 def _score(header: dict, m: dict) -> str:
     s = m["score"]
+    if m["sport"] == "f1":
+        return f"Lap {s['lap']} of {s['laps']}: " + ", ".join(
+            f"P{c['pos']} {c['driver']}" + (f" {c['gap']}" if c["gap"] else "") for c in s["top"]
+        )
     if "home" in s:  # football and basketball
         text = f"{header['home']} {s['home']}, {header['away']} {s['away']}"
         if "shootout" in m["detail"]:
@@ -58,6 +62,8 @@ def _detail(m: dict) -> str:
 
 
 def _period(m: dict) -> str:
+    if m["sport"] == "f1":
+        return f"lap {m['period']}"
     if m["sport"] == "cricket":
         return f"innings {m['period']}"
     if m["sport"] == "basketball":
@@ -69,13 +75,17 @@ def describe(m: dict) -> str:
     return f"{m['clock']} {m['type']}, {m['outcome']} ({m['team']}; {_players(m)})"
 
 
+def _match(header: dict) -> str:
+    event = f"{header['competition']} {header['stage']}, {header['date']}"
+    return event if header["sport"] == "f1" else f"{header['home']} v {header['away']}, {event}"
+
+
 def render_message(header: dict, past: list[dict]) -> str:
     m = past[-1]
     recent = [describe(p) for p in past[-4:-1]] or ["none yet"]
     return Template(MESSAGE).substitute(
         sport=m["sport"],
-        match=f"{header['home']} v {header['away']}, {header['competition']} {header['stage']}, "
-        f"{header['date']}",
+        match=_match(header),
         period=_period(m),
         clock=m["clock"],
         type=m["type"],
