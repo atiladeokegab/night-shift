@@ -11,11 +11,18 @@ from core.stats import stats
 
 
 def moment_seconds(moment: dict) -> float:
-    """Match time of a moment: football "mm:ss"; cricket "over.ball" at 30 s a ball."""
+    """Match time of a moment: football "mm:ss"; basketball "mm:ss" left in a 12-minute
+    quarter (5-minute overtimes); cricket "over.ball" at 30 s a ball."""
     clock = str(moment.get("clock", "0"))
     if moment.get("sport") == "football":
         mm, _, ss = clock.partition(":")
         return int(mm) * 60 + int(ss or 0)
+    if moment.get("sport") == "basketball":
+        mm, _, ss = clock.partition(":")
+        period = int(moment.get("period") or 1)
+        length = 720 if period <= 4 else 300
+        start = 720 * min(period - 1, 4) + 300 * max(period - 5, 0)
+        return start + length - (int(mm) * 60 + int(ss or 0))
     over, _, ball = clock.partition(".")
     # shortcut: Cricsheet has no ball timestamps, so 30 s a ball; real times if a feed gives them.
     return (int(over) * 6 + int(ball or 0)) * 30.0

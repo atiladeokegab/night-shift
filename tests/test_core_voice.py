@@ -89,10 +89,11 @@ def test_voices_lists_one_default_per_sport(tmp_path):
     assert all(set(v) == {"id", "label", "default_for", "lang"} for v in voices)
     lang = {v["default_for"]: v["lang"] for v in voices}
     assert lang["cricket"] == "en-IN" and lang["football"] == "en-GB"
+    assert lang["basketball"] == "en-US"  # Sam, the American play-by-play pick
     assert all(v["id"].isascii() and " " not in v["id"] for v in voices)
 
 
-@pytest.mark.parametrize("sport", ["cricket", "football"])
+@pytest.mark.parametrize("sport", ["cricket", "football", "basketball"])
 def test_audio_defaults_to_the_lines_sport_voice(tmp_path, monkeypatch, sport):
     from core.voice import VOICES
 
@@ -142,6 +143,17 @@ def test_warm_reports_a_voice_that_fails():
     assert all(ms is None for ms in took.values())
 
 
+def hoop(kind, outcome, period=2, clock="06:00", **detail):
+    return {
+        "sport": "basketball",
+        "type": kind,
+        "outcome": outcome,
+        "period": period,
+        "clock": clock,
+        "detail": detail,
+    }
+
+
 @pytest.mark.parametrize(
     "moment,tag",
     [
@@ -153,6 +165,14 @@ def test_warm_reports_a_voice_that_fails():
         ({"type": "Four", "outcome": "4 runs"}, "[excited]"),
         ({"type": "Chase", "outcome": "dot ball"}, "[hushed]"),
         ({"type": "Substitution", "outcome": "Tactical"}, None),
+        (hoop("Field goal", "2 points", period=4, clock="00:05"), "[shouting]"),
+        (hoop("Free throw", "1 point", lead_change=True), "[shouting]"),
+        (hoop("Field goal", "2 points", play="Bryant Slam Dunk (51 PTS)"), "[shouting]"),
+        (hoop("Field goal", "3 points"), "[shouting]"),
+        (hoop("End of game", "Final buzzer", period=4, clock="00:00"), "[shouting]"),
+        (hoop("Steal", "Steal", period=4, clock="00:18"), "[excited]"),
+        (hoop("Free throw", "1 point", period=4, clock="00:43"), "[excited]"),
+        (hoop("Field goal", "2 points"), None),  # a routine basket mid-game stays plain
     ],
 )
 def test_moment_kind_sets_the_audio_tag(moment, tag):
@@ -251,7 +271,12 @@ def test_voice_and_model_per_sport_come_from_env(tmp_path, monkeypatch):
         assert client.get("/lines/f1/audio").status_code == 200
     george = next(v for v in VOICES if v["id"] == "george")
     assert voice_in(seen[0]) == george["eleven_id"] and b"eleven_flash_v2_5" in seen[0].content
-    assert defaults == {"george": "football", "connor": None, "viraj": "cricket"}
+    assert defaults == {
+        "george": "football",
+        "connor": None,
+        "viraj": "cricket",
+        "sam": "basketball",
+    }
 
 
 def test_a_raw_elevenlabs_voice_id_is_a_config_only_pick(tmp_path, monkeypatch):

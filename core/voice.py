@@ -51,6 +51,13 @@ VOICES = [
         "default_for": None,
         "eleven_id": "JBFqnCBsd6RMkjVDRZzb",
     },
+    {
+        "id": "sam",
+        "lang": "en-US",
+        "label": "Sam: American, play-by-play",
+        "default_for": "basketball",
+        "eleven_id": "gnPxliFHTp6OK6tcoA6i",
+    },
 ]
 
 # A moment's kind to the eleven_v3 audio tag it is read with; anything else is read plainly.
@@ -63,11 +70,29 @@ TAGS = {
     "Foul Committed": "[excited]",
     "Bad Behaviour": "[excited]",
     "Chase": "[hushed]",
+    "End of game": "[shouting]",
+    "Steal": "[excited]",
+    "Free throw": "[excited]",
 }
 
 
+def _big_basket(m: dict) -> bool:
+    """Basketball: a lead change, or a three, a dunk or any field goal in the last two minutes."""
+    if m.get("sport") != "basketball":
+        return False
+    detail = m.get("detail") or {}
+    closing = (m.get("period") or 0) >= 4 and str(m.get("clock", "99:99")) <= "02:00"
+    field_goal = m.get("type") == "Field goal"
+    dunk = "DUNK" in str(detail.get("play", "")).upper()
+    return bool(detail.get("lead_change")) or (
+        field_goal and (closing or dunk or m.get("outcome") == "3 points")
+    )
+
+
 def tag_for(moment: dict) -> str | None:
-    return "[shouting]" if moment.get("outcome") == "Goal" else TAGS.get(moment.get("type"))
+    if moment.get("outcome") == "Goal" or _big_basket(moment):
+        return "[shouting]"
+    return TAGS.get(moment.get("type"))
 
 
 def all_voices(env=os.environ) -> list[dict]:

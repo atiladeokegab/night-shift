@@ -1,0 +1,758 @@
+{
+ "header": {
+  "sport": "basketball",
+  "match_id": "0049700088",
+  "home": "Utah Jazz",
+  "away": "Chicago Bulls",
+  "competition": "NBA Finals",
+  "stage": "Game 6",
+  "date": "1998-06-14"
+ },
+ "moments": [
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 0,
+   "period": 1,
+   "clock": "10:51",
+   "type": "Field goal",
+   "team": "Utah Jazz",
+   "players": {
+    "shooter": "Karl Malone",
+    "assist": "John Stockton"
+   },
+   "outcome": "2 points",
+   "score": {
+    "home": 2,
+    "away": 2
+   },
+   "detail": {
+    "play": "Malone 14' Jump Shot (2 PTS) (Stockton 1 AST)",
+    "player_points": 2,
+    "tied": true
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 1,
+   "period": 1,
+   "clock": "09:58",
+   "type": "Field goal",
+   "team": "Utah Jazz",
+   "players": {
+    "shooter": "Jeff Hornacek",
+    "assist": "John Stockton"
+   },
+   "outcome": "2 points",
+   "score": {
+    "home": 4,
+    "away": 4
+   },
+   "detail": {
+    "play": "Hornacek Layup (2 PTS) (Stockton 2 AST)",
+    "player_points": 2,
+    "tied": true
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 2,
+   "period": 1,
+   "clock": "09:20",
+   "type": "Free throw",
+   "team": "Utah Jazz",
+   "players": {
+    "shooter": "Karl Malone"
+   },
+   "outcome": "1 point",
+   "score": {
+    "home": 6,
+    "away": 6
+   },
+   "detail": {
+    "play": "Malone Free Throw 2 of 2 (4 PTS)",
+    "player_points": 4,
+    "tied": true
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 3,
+   "period": 1,
+   "clock": "08:37",
+   "type": "Field goal",
+   "team": "Utah Jazz",
+   "players": {
+    "shooter": "John Stockton"
+   },
+   "outcome": "2 points",
+   "score": {
+    "home": 8,
+    "away": 8
+   },
+   "detail": {
+    "play": "Stockton Driving Layup (2 PTS)",
+    "player_points": 2,
+    "tied": true
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 4,
+   "period": 1,
+   "clock": "01:45",
+   "type": "Field goal",
+   "team": "Utah Jazz",
+   "players": {
+    "shooter": "Karl Malone"
+   },
+   "outcome": "2 points",
+   "score": {
+    "home": 19,
+    "away": 18
+   },
+   "detail": {
+    "play": "Malone 13' Jump Shot (7 PTS)",
+    "player_points": 7,
+    "lead_change": true
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 5,
+   "period": 1,
+   "clock": "01:19",
+   "type": "Field goal",
+   "team": "Chicago Bulls",
+   "players": {
+    "shooter": "Bill Wennington",
+    "assist": "Steve Kerr"
+   },
+   "outcome": "2 points",
+   "score": {
+    "home": 19,
+    "away": 20
+   },
+   "detail": {
+    "play": "Wennington 18' Jump Shot (2 PTS) (Kerr 1 AST)",
+    "player_points": 2,
+    "lead_change": true
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 6,
+   "period": 1,
+   "clock": "01:01",
+   "type": "Free throw",
+   "team": "Utah Jazz",
+   "players": {
+    "shooter": "Jeff Hornacek"
+   },
+   "outcome": "1 point",
+   "score": {
+    "home": 20,
+    "away": 20
+   },
+   "detail": {
+    "play": "Hornacek Free Throw Technical (9 PTS)",
+    "player_points": 9,
+    "tied": true
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 7,
+   "period": 1,
+   "clock": "00:46",
+   "type": "Field goal",
+   "team": "Utah Jazz",
+   "players": {
+    "shooter": "Karl Malone",
+    "assist": "Howard Eisley"
+   },
+   "outcome": "2 points",
+   "score": {
+    "home": 22,
+    "away": 20
+   },
+   "detail": {
+    "play": "Malone 8' Jump Shot (9 PTS) (Eisley 1 AST)",
+    "player_points": 9,
+    "lead_change": true
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 8,
+   "period": 1,
+   "clock": "00:30",
+   "type": "Field goal",
+   "team": "Chicago Bulls",
+   "players": {
+    "shooter": "Michael Jordan"
+   },
+   "outcome": "2 points",
+   "score": {
+    "home": 22,
+    "away": 22
+   },
+   "detail": {
+    "play": "Jordan 19' Jump Shot (8 PTS)",
+    "player_points": 8,
+    "tied": true
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 9,
+   "period": 2,
+   "clock": "05:01",
+   "type": "Field goal",
+   "team": "Chicago Bulls",
+   "players": {
+    "shooter": "Michael Jordan",
+    "assist": "Toni Kukoc"
+   },
+   "outcome": "2 points",
+   "score": {
+    "home": 35,
+    "away": 36
+   },
+   "detail": {
+    "play": "Jordan Layup (16 PTS) (Kukoc 4 AST)",
+    "player_points": 16,
+    "lead_change": true
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 10,
+   "period": 2,
+   "clock": "04:33",
+   "type": "Field goal",
+   "team": "Utah Jazz",
+   "players": {
+    "shooter": "Karl Malone"
+   },
+   "outcome": "2 points",
+   "score": {
+    "home": 37,
+    "away": 36
+   },
+   "detail": {
+    "play": "Malone 6' Jump Shot (16 PTS)",
+    "player_points": 16,
+    "lead_change": true
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 11,
+   "period": 2,
+   "clock": "03:40",
+   "type": "Field goal",
+   "team": "Chicago Bulls",
+   "players": {
+    "shooter": "Michael Jordan",
+    "assist": "Ron Harper"
+   },
+   "outcome": "3 points",
+   "score": {
+    "home": 39,
+    "away": 39
+   },
+   "detail": {
+    "play": "Jordan 24' 3PT Jump Shot (19 PTS) (Harper 2 AST)",
+    "player_points": 19,
+    "tied": true
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 12,
+   "period": 2,
+   "clock": "03:05",
+   "type": "Field goal",
+   "team": "Chicago Bulls",
+   "players": {
+    "shooter": "Toni Kukoc"
+   },
+   "outcome": "2 points",
+   "score": {
+    "home": 41,
+    "away": 41
+   },
+   "detail": {
+    "play": "Kukoc Driving Layup (10 PTS)",
+    "player_points": 10,
+    "tied": true
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 13,
+   "period": 2,
+   "clock": "02:24",
+   "type": "Field goal",
+   "team": "Chicago Bulls",
+   "players": {
+    "shooter": "Michael Jordan"
+   },
+   "outcome": "2 points",
+   "score": {
+    "home": 43,
+    "away": 43
+   },
+   "detail": {
+    "play": "Jordan 17' Jump Shot (21 PTS)",
+    "player_points": 21,
+    "tied": true
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 14,
+   "period": 2,
+   "clock": "01:40",
+   "type": "Field goal",
+   "team": "Chicago Bulls",
+   "players": {
+    "shooter": "Michael Jordan"
+   },
+   "outcome": "2 points",
+   "score": {
+    "home": 45,
+    "away": 45
+   },
+   "detail": {
+    "play": "Jordan 15' Jump Shot (23 PTS)",
+    "player_points": 23,
+    "tied": true
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 15,
+   "period": 3,
+   "clock": "03:59",
+   "type": "Field goal",
+   "team": "Chicago Bulls",
+   "players": {
+    "shooter": "Scottie Pippen",
+    "assist": "Ron Harper"
+   },
+   "outcome": "2 points",
+   "score": {
+    "home": 57,
+    "away": 57
+   },
+   "detail": {
+    "play": "Pippen 7' Jump Shot (6 PTS) (Harper 3 AST)",
+    "player_points": 6,
+    "tied": true
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 16,
+   "period": 3,
+   "clock": "03:15",
+   "type": "Field goal",
+   "team": "Chicago Bulls",
+   "players": {
+    "shooter": "Dennis Rodman"
+   },
+   "outcome": "2 points",
+   "score": {
+    "home": 59,
+    "away": 59
+   },
+   "detail": {
+    "play": "Rodman Tip Shot (4 PTS)",
+    "player_points": 4,
+    "tied": true
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 17,
+   "period": 3,
+   "clock": "02:36",
+   "type": "Free throw",
+   "team": "Chicago Bulls",
+   "players": {
+    "shooter": "Michael Jordan"
+   },
+   "outcome": "1 point",
+   "score": {
+    "home": 60,
+    "away": 60
+   },
+   "detail": {
+    "play": "Jordan Free Throw 2 of 2 (28 PTS)",
+    "player_points": 28,
+    "tied": true
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 18,
+   "period": 4,
+   "clock": "11:44",
+   "type": "Free throw",
+   "team": "Chicago Bulls",
+   "players": {
+    "shooter": "Michael Jordan"
+   },
+   "outcome": "1 point",
+   "score": {
+    "home": 66,
+    "away": 62
+   },
+   "detail": {
+    "play": "Jordan Free Throw 1 of 2 (30 PTS)",
+    "player_points": 30
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 19,
+   "period": 4,
+   "clock": "08:05",
+   "type": "Field goal",
+   "team": "Chicago Bulls",
+   "players": {
+    "shooter": "Toni Kukoc",
+    "assist": "Jud Buechler"
+   },
+   "outcome": "3 points",
+   "score": {
+    "home": 70,
+    "away": 70
+   },
+   "detail": {
+    "play": "Kukoc 25' 3PT Jump Shot (15 PTS) (Buechler 1 AST)",
+    "player_points": 15,
+    "tied": true
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 20,
+   "period": 4,
+   "clock": "06:52",
+   "type": "Field goal",
+   "team": "Chicago Bulls",
+   "players": {
+    "shooter": "Michael Jordan"
+   },
+   "outcome": "2 points",
+   "score": {
+    "home": 73,
+    "away": 74
+   },
+   "detail": {
+    "play": "Jordan 18' Jump Shot (37 PTS)",
+    "player_points": 37,
+    "lead_change": true
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 21,
+   "period": 4,
+   "clock": "05:43",
+   "type": "Free throw",
+   "team": "Utah Jazz",
+   "players": {
+    "shooter": "Karl Malone"
+   },
+   "outcome": "1 point",
+   "score": {
+    "home": 74,
+    "away": 74
+   },
+   "detail": {
+    "play": "Malone Free Throw 1 of 2 (26 PTS)",
+    "player_points": 26,
+    "tied": true
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 22,
+   "period": 4,
+   "clock": "05:43",
+   "type": "Free throw",
+   "team": "Utah Jazz",
+   "players": {
+    "shooter": "Karl Malone"
+   },
+   "outcome": "1 point",
+   "score": {
+    "home": 75,
+    "away": 74
+   },
+   "detail": {
+    "play": "Malone Free Throw 2 of 2 (27 PTS)",
+    "player_points": 27,
+    "lead_change": true
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 23,
+   "period": 4,
+   "clock": "04:46",
+   "type": "Free throw",
+   "team": "Chicago Bulls",
+   "players": {
+    "shooter": "Dennis Rodman"
+   },
+   "outcome": "1 point",
+   "score": {
+    "home": 77,
+    "away": 77
+   },
+   "detail": {
+    "play": "Rodman Free Throw 2 of 2 (7 PTS)",
+    "player_points": 7,
+    "tied": true
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 24,
+   "period": 4,
+   "clock": "03:44",
+   "type": "Field goal",
+   "team": "Chicago Bulls",
+   "players": {
+    "shooter": "Ron Harper"
+   },
+   "outcome": "2 points",
+   "score": {
+    "home": 79,
+    "away": 79
+   },
+   "detail": {
+    "play": "Harper 15' Running Jump Shot (8 PTS)",
+    "player_points": 8,
+    "tied": true
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 25,
+   "period": 4,
+   "clock": "02:34",
+   "type": "Field goal",
+   "team": "Utah Jazz",
+   "players": {
+    "shooter": "Karl Malone",
+    "assist": "John Stockton"
+   },
+   "outcome": "2 points",
+   "score": {
+    "home": 83,
+    "away": 79
+   },
+   "detail": {
+    "play": "Malone 20' Jump Shot (31 PTS) (Stockton 5 AST)",
+    "player_points": 31
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 26,
+   "period": 4,
+   "clock": "01:45",
+   "type": "Steal",
+   "team": "Chicago Bulls",
+   "players": {
+    "stealer": "Dennis Rodman",
+    "lost_by": "Bryon Russell"
+   },
+   "outcome": "Steal",
+   "score": {
+    "home": 83,
+    "away": 81
+   },
+   "detail": {
+    "play": "Rodman STEAL (2 STL)"
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 27,
+   "period": 4,
+   "clock": "00:59",
+   "type": "Free throw",
+   "team": "Chicago Bulls",
+   "players": {
+    "shooter": "Michael Jordan"
+   },
+   "outcome": "1 point",
+   "score": {
+    "home": 83,
+    "away": 82
+   },
+   "detail": {
+    "play": "Jordan Free Throw 1 of 2 (40 PTS)",
+    "player_points": 40
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 28,
+   "period": 4,
+   "clock": "00:59",
+   "type": "Free throw",
+   "team": "Chicago Bulls",
+   "players": {
+    "shooter": "Michael Jordan"
+   },
+   "outcome": "1 point",
+   "score": {
+    "home": 83,
+    "away": 83
+   },
+   "detail": {
+    "play": "Jordan Free Throw 2 of 2 (41 PTS)",
+    "player_points": 41,
+    "tied": true
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 29,
+   "period": 4,
+   "clock": "00:41",
+   "type": "Field goal",
+   "team": "Utah Jazz",
+   "players": {
+    "shooter": "John Stockton",
+    "assist": "Karl Malone"
+   },
+   "outcome": "3 points",
+   "score": {
+    "home": 86,
+    "away": 83
+   },
+   "detail": {
+    "play": "Stockton 24' 3PT Jump Shot (10 PTS) (Malone 7 AST)",
+    "player_points": 10
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 30,
+   "period": 4,
+   "clock": "00:37",
+   "type": "Field goal",
+   "team": "Chicago Bulls",
+   "players": {
+    "shooter": "Michael Jordan"
+   },
+   "outcome": "2 points",
+   "score": {
+    "home": 86,
+    "away": 85
+   },
+   "detail": {
+    "play": "Jordan Driving Layup (43 PTS)",
+    "player_points": 43
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 31,
+   "period": 4,
+   "clock": "00:18",
+   "type": "Steal",
+   "team": "Chicago Bulls",
+   "players": {
+    "stealer": "Michael Jordan",
+    "lost_by": "Karl Malone"
+   },
+   "outcome": "Steal",
+   "score": {
+    "home": 86,
+    "away": 85
+   },
+   "detail": {
+    "play": "Jordan STEAL (4 STL)"
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 32,
+   "period": 4,
+   "clock": "00:05",
+   "type": "Field goal",
+   "team": "Chicago Bulls",
+   "players": {
+    "shooter": "Michael Jordan"
+   },
+   "outcome": "2 points",
+   "score": {
+    "home": 86,
+    "away": 87
+   },
+   "detail": {
+    "play": "Jordan 17' Jump Shot (45 PTS)",
+    "player_points": 45,
+    "lead_change": true
+   }
+  },
+  {
+   "sport": "basketball",
+   "match_id": "0049700088",
+   "idx": 33,
+   "period": 4,
+   "clock": "00:00",
+   "type": "End of game",
+   "team": "",
+   "players": {},
+   "outcome": "Final buzzer",
+   "score": {
+    "home": 86,
+    "away": 87
+   },
+   "detail": {}
+  }
+ ]
+}

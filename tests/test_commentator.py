@@ -267,3 +267,21 @@ def test_cricket_score_reads_runs_for_wickets():
     assert "Score after this moment: A 10 for 2\n" in message
     assert commentator.run_tool("get_score", {}, CRIC, past).startswith("A 10 for 2;")
     assert "10/2" not in json.dumps(build_request(CRIC, past))
+
+
+def test_jordans_last_shot_reaches_the_model_with_names_and_score():
+    moments = load_moments("0049700088")
+    shot = next(m for m in moments if m["clock"] == "00:05" and m["period"] == 4)
+    message = commentator.render_message(match_header("0049700088"), moments[: shot["idx"] + 1])
+    assert "Sport: basketball" in message and "Moment: quarter 4, 00:05" in message
+    assert "shooter: Michael Jordan" in message
+    assert "Score after this moment: Utah Jazz 86, Chicago Bulls 87" in message
+
+
+def test_kobes_81st_point_reaches_the_model():
+    moments = load_moments("0020500591")
+    record = next(m for m in moments if m["detail"].get("player_points") == 81)
+    assert record["players"] == {"shooter": "Kobe Bryant"}
+    assert record["score"] == {"home": 122, "away": 102}
+    assert moments[-1]["type"] == "End of game"
+    assert moments[-1]["score"] == {"home": 122, "away": 104}

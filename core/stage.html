@@ -116,8 +116,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
   </aside>
 </main>
 <script>
-const DEMO = { football: "3906390", cricket: "1298150" };
-const LANG = { football: "en-GB", cricket: "en-IN" };
+// The picker: one button per demo match (label, sport, match id).
+const PICKS = [["Football", "football", "3906390"], ["Messi v Mbappé", "football", "3869685"],
+  ["Cricket", "cricket", "1298150"], ["Jordan", "basketball", "0049700088"],
+  ["Kobe", "basketball", "0020500591"]];
+const LANG = { football: "en-GB", cricket: "en-IN", basketball: "en-US" };
 const WINDOW = 0.5; // a line plays only within this many seconds after its video_t
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => Object.assign(document.createElement(tag), cls ? { className: cls } : {}, text != null ? { textContent: text } : {});
@@ -152,13 +155,18 @@ function teams() {
   return { home: home || "Home", away: away || "Away" };
 }
 
+function period(m) {
+  if (match.sport !== "basketball") return `Half ${m.period}`;
+  return m.period > 4 ? `OT ${m.period - 4}` : `Q${m.period}`;
+}
+
 function scorebar(m) {
   const t = teams(), s = (m && m.score) || {};
   const parts = match.sport === "cricket"
     ? [[m ? m.team : `${t.home} v ${t.away}`, "team"], [m ? `${s.runs}/${s.wickets}` : "–", "score"],
        [null, "sep"], [m ? `Ov ${m.clock}` : "", "clock"], [s.target ? `Target ${s.target}` : "", "period"]]
     : [[t.home, "team"], [`${s.home ?? 0}–${s.away ?? 0}`, "score"], [t.away, "team"],
-       [null, "sep"], [m ? m.clock : "00:00", "clock"], [m ? `Half ${m.period}` : "", "period"]];
+       [null, "sep"], [m ? m.clock : "00:00", "clock"], [m ? period(m) : "", "period"]];
   $("score").replaceChildren(...parts.map(([text, cls]) => el("span", cls, text)));
 }
 
@@ -289,8 +297,8 @@ function loadVideo(id) {
 // Each tap takes a new token: a slower earlier tap never opens a stream, and a stale stream is closed.
 let run = 0;
 
-async function start(sport) {
-  const m = matches.find((x) => x.match_id === DEMO[sport]) || matches.find((x) => x.sport === sport);
+async function start(id) {
+  const m = matches.find((x) => x.match_id === id);
   if (!m) return;
   const token = ++run;
   if (es) es.close();
@@ -298,7 +306,7 @@ async function start(sport) {
   stopVoice();
   match = m; ytFailed = apiFailed; moments = {}; seen = new Set(); held = []; queue = []; logged = new Map(); lastT = 0;
   $("log").replaceChildren();
-  document.querySelectorAll("#sports button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.sport === sport));
+  document.querySelectorAll("#sports button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.match === id));
   scorebar(null);
   subtitle("Waiting for the first line…", "waiting", m.title);
   loadVideo(m.youtube_id);
@@ -320,17 +328,17 @@ async function init() {
   const r = await fetch("/matches").catch(() => null);
   if (!r || !r.ok) return subtitle(`No matches (${r ? r.status : "offline"})`, "err");
   matches = await r.json();
-  const sports = ["football", "cricket"].filter((s) => matches.some((m) => m.sport === s));
-  $("sports").replaceChildren(...sports.map((s) => {
-    const m = matches.find((x) => x.match_id === DEMO[s]) || matches.find((x) => x.sport === s);
-    const b = el("button", null, s[0].toUpperCase() + s.slice(1));
-    Object.assign(b, { type: "button", title: m.title || m.match_id, onclick: () => start(s) });
-    b.dataset.sport = s; b.dataset.match = m.match_id;
+  const picks = PICKS.filter(([, , id]) => matches.some((m) => m.match_id === id));
+  $("sports").replaceChildren(...picks.map(([label, s, id]) => {
+    const m = matches.find((x) => x.match_id === id);
+    const b = el("button", null, label);
+    Object.assign(b, { type: "button", title: m.title || m.match_id, onclick: () => start(id) });
+    b.dataset.sport = s; b.dataset.match = id;
     b.setAttribute("aria-pressed", "false");
     return b;
   }));
   refreshStats();
-  subtitle("Pick Football or Cricket to start", "waiting");
+  subtitle("Pick a match to start", "waiting");
 }
 init();
 </script>
