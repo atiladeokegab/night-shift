@@ -64,6 +64,7 @@ def main() -> int:
     if deps is None:
         print("smoke: no commentator (agent/, data/ from #13 not present)")
         return 1
+    os.environ.pop("ELEVENLABS_API_KEY", None)  # offline: no line is voiced
     with tempfile.TemporaryDirectory() as tmp:
         store = Store(tmp)
         with TestClient(create_app(store=store, deps=deps)) as client:
