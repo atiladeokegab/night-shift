@@ -11,7 +11,7 @@ export interface Match {
   // Not in the contract's Match, but data/'s match header has them; used when present.
   home?: string
   away?: string
-  // PRD v2 (A-6.1@2, A-6.4@1): the match's official highlights; shape asked in #33.
+  // PRD v2 (A-6.1@2, A-6.4@1): the match's official highlights, from data/video/ (#33).
   youtube_id?: string
 }
 
@@ -50,12 +50,12 @@ export type StreamEvent =
   | { type: 'error'; detail: string }
   | { type: 'end' }
 
-// GET /voices (A-6.3@1; shape asked in #33). `browser` voices are the page's own speechSynthesis
-// fallbacks, used when the server lists none.
+// GET /voices (A-6.3@1; PR #27's shape, agreed in #33). `browser` voices are the page's own
+// speechSynthesis fallbacks, used when the server lists none.
 export interface Voice {
   id: string
-  name: string
-  accent: string // a BCP 47 tag, e.g. "en-IN", "en-GB"
+  label: string
+  lang: string // a BCP 47 tag for the browser speech fallback, e.g. "en-IN", "en-GB"
   default_for?: Sport
   browser?: boolean
 }

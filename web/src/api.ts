@@ -75,8 +75,8 @@ export function lineAudioUrl(lineId: string, voiceId?: string): string {
 // The page's own speechSynthesis voices, offered when the server lists none (no /voices yet, or 503):
 // the PRD's defaults, an Indian voice for cricket and a British one for football.
 export const BROWSER_VOICES: Voice[] = [
-  { id: 'browser-en-GB', name: 'British (browser)', accent: 'en-GB', default_for: 'football', browser: true },
-  { id: 'browser-en-IN', name: 'Indian (browser)', accent: 'en-IN', default_for: 'cricket', browser: true },
+  { id: 'browser-en-GB', label: 'British (browser)', lang: 'en-GB', default_for: 'football', browser: true },
+  { id: 'browser-en-IN', label: 'Indian (browser)', lang: 'en-IN', default_for: 'cricket', browser: true },
 ]
 
 export async function listVoices(): Promise<Voice[]> {

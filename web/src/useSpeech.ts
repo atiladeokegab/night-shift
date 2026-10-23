@@ -3,7 +3,7 @@ import { isDemo, lineAudioUrl } from './api'
 import type { Line, Voice } from './types'
 
 // Reads each line aloud in the chosen voice (A-6.3@1): the server's ElevenLabs audio
-// (GET /lines/{id}/audio?voice=<id>, #25) first, the browser's own speech in that voice's accent when
+// (GET /lines/{id}/audio?voice=<id>, #25) first, the browser's own speech in that voice's language when
 // the route answers 503 or fails, or when the voice is one of the page's browser voices. A new line cuts off the one before it,
 // so the voice never falls behind the match. `speaking` drives the design's "On air" bars.
 export function useSpeech() {
@@ -31,10 +31,10 @@ export function useSpeech() {
   )
 
   const speakInBrowser = useCallback(
-    (text: string, accent: string, mine: number) => {
+    (text: string, lang: string, mine: number) => {
       if (!available) return
       const utterance = new SpeechSynthesisUtterance(text)
-      utterance.lang = accent
+      utterance.lang = lang
       utterance.rate = 1.1
       utterance.onstart = () => turn.current === mine && setSpeaking(true)
       utterance.onend = utterance.onerror = () => turn.current === mine && setSpeaking(false)
@@ -48,15 +48,15 @@ export function useSpeech() {
       if (!on) return
       hush()
       const mine = turn.current
-      const accent = voice?.accent ?? 'en-GB'
-      if (isDemo || voice?.browser) return speakInBrowser(line.text, accent, mine)
+      const lang = voice?.lang ?? 'en-GB'
+      if (isDemo || voice?.browser) return speakInBrowser(line.text, lang, mine)
       const audio = new Audio(lineAudioUrl(line.line_id, voice?.id))
       playing.current = audio
       // A 503 (no key, upstream down) or a network failure lands here; only the current line falls back.
       const fallBack = () => {
         if (turn.current !== mine) return
         playing.current = null
-        speakInBrowser(line.text, accent, mine)
+        speakInBrowser(line.text, lang, mine)
       }
       audio.addEventListener('playing', () => turn.current === mine && setSpeaking(true))
       audio.addEventListener('ended', () => turn.current === mine && setSpeaking(false))

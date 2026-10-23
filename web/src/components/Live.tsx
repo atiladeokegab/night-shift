@@ -62,7 +62,7 @@ export function Live(props: Props) {
         {/* A-6.3@1: the voice is a setting; a change applies from the next line, no reload. */}
         <select aria-label="Commentator voice" value={voiceId ?? ''} disabled={!voices.length}
           onChange={(e) => onVoice(e.target.value)}>
-          {voices.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+          {voices.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}
         </select>
         <span className={`on-air${speech.speaking ? ' speaking' : ''}`} aria-live="off">
           <span className="bars" aria-hidden><i /><i /><i /></span>On air
