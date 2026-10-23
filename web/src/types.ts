@@ -62,7 +62,7 @@ export interface Stats {
 
 export interface Adapter {
   status: 'not_trained' | 'training' | 'ready'
-  kept: number
+  kept: number | null // null until the lead records it from Mubit's console (#46); never guessed
   needed: number
   agree: number | null
   total: number | null

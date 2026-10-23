@@ -54,7 +54,10 @@ function Figure({ label, value }: { label: string; value: string }) {
 // The design's adapter states; "–" until core reports the adapter (#29).
 function AdapterResult({ adapter }: { adapter?: Adapter | null }) {
   let text = '–'
-  if (adapter?.status === 'not_trained') text = `Not trained yet: needs ${adapter.needed} kept lines (${adapter.kept} so far).`
+  if (adapter?.status === 'not_trained') {
+    const sofar = adapter.kept === null ? 'kept count not recorded yet' : `${adapter.kept} so far`
+    text = `Not trained yet: needs ${adapter.needed} kept lines (${sofar}).`
+  }
   if (adapter?.status === 'training') text = 'Training: Mubit is building the adapter.'
   if (adapter?.status === 'ready' && adapter.agree !== null && adapter.total !== null) {
     text = `Agrees with the big model on ${adapter.agree} of ${adapter.total} test moments.`
