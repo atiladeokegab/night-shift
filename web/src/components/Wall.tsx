@@ -2,10 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { CARD_COPY } from '../teams'
 import { SPORT_NAMES, type Match } from '../types'
 import { Nav, type Screen } from './Nav'
-import { loadYouTube } from '../ytApi'
-
-// A tile starts this many seconds before its first mapped moment, so the moment is on screen soon.
-const LEAD_IN_S = 3
+import { loadYouTube } from '../player'
 
 interface Props {
   matches: Match[] | null // null while loading
@@ -68,7 +65,8 @@ function Tile({ match, onOpen }: { match: Match; onOpen: (m: Match) => void }) {
     host.current.appendChild(target)
     let player: YT.Player | null = null
     let gone = false
-    const start = Math.max(0, Math.floor((match.first_video_t ?? 0) - LEAD_IN_S))
+    // GET /matches' video_start (#73) is already just before the first mapped moment.
+    const start = Math.max(0, Math.floor(match.video_start ?? 0))
     loadYouTube().then((YT) => {
       if (gone) return
       player = new YT.Player(target, {
@@ -85,13 +83,13 @@ function Tile({ match, onOpen }: { match: Match; onOpen: (m: Match) => void }) {
           onError: () => !gone && setBroken(true),
         },
       })
-    })
+    }, () => !gone && setBroken(true)) // the IFrame API never loaded (player.ts gives up after 10 s)
     return () => {
       gone = true
       player?.destroy()
       target.remove()
     }
-  }, [match.youtube_id, match.first_video_t])
+  }, [match.youtube_id, match.video_start])
 
   return (
     <button className="tile" onClick={() => onOpen(match)} aria-label={`Watch ${title} with commentary`}>

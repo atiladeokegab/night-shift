@@ -45,8 +45,9 @@ export function Picker({ matches, error, voices, onRetry, onStart, onGo }: Props
         <h1>Pick a match</h1>
         {body}
         <p className="foot">
-          Match data: StatsBomb open data and Cricsheet. Highlights: broadcast highlights on YouTube (ITV for the
-          final, the TV feed for India v Pakistan), embedded, muted. Commentary is AI-generated.
+          Match data: StatsBomb open data, Cricsheet, NBA play-by-play (stats.nba.com) and OpenF1. Highlights on
+          YouTube, embedded and muted: the FIFA, NBA and Formula 1 channels, and fan uploads of the TV coverage of
+          the Women's World Cup final (ITV) and India v Pakistan. Commentary is AI-generated.
         </p>
       </main>
     </div>

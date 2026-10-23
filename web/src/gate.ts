@@ -27,3 +27,10 @@ export function release<T extends Timed>(queue: T[], t: number): Released<T> {
   }
   return out
 }
+
+// The replay's own clock, for when the video can't play: it runs from `from` (where the picture was, or
+// where it should have started) at real speed and never pauses, so the mapped lines still play in step.
+export function replayClock(from: number, now = () => performance.now()) {
+  const t0 = now()
+  return () => ({ t: from + (now() - t0) / 1000, playing: true, duration: 0 })
+}
