@@ -450,7 +450,7 @@ F1_ENDPOINTS = (
 F1_TOP = 3  # overtakes and lead changes are called in the top three
 F1_FIELD = 5  # pit stops of the top five; the standing gives the top five with gaps
 F1_PIT_WINDOW = 40.0  # s: a place changing hands while either car is in the pits is a pit cycle
-F1_FLAP = 10.0  # s: a place handed straight back is timing noise, not an overtake
+F1_FLAP = 10.0  # s: a pass must hold this long, and not undo one this recent
 
 
 def openf1(endpoint: str, session_key: str) -> list[dict]:
@@ -555,21 +555,30 @@ def f1_moments(header: dict, rows: dict[str, list[dict]]) -> list[dict]:
     events.append((start, "Lights out", "race start", pole, {"leader": who(pole)}, {}))
 
     # overtakes and lead changes: a car moving up into the top three past the car that held it
-    # OpenF1 sends both cars of a pass with one timestamp, so compare whole timestamps
-    held, passes = dict(grid), []
+    # OpenF1 sends both cars of a pass with one timestamp, so compare whole timestamps; the
+    # passed car can also drop a few seconds before the other moves up, so dropped places are kept
+    held, passes, dropped = dict(grid), [], {}
+    flap = timedelta(seconds=F1_FLAP)
     for when, group in groupby((x for x in positions if x[0] > start), key=lambda x: x[0]):
         before = dict(held)
         held.update({n: p for _, n, p in group})
         for n, p in held.items():
             if p <= F1_TOP and p < before.get(n, p):
                 passed = next((m for m, q in before.items() if q == p and m != n), None)
+                if passed is None and p in dropped and when - dropped[p][1] <= flap:
+                    passed = dropped[p][0]
                 if passed is not None and held.get(passed, 0) >= p:  # it may move a beat later
                     passes.append((when, n, passed, p))
-    flap = timedelta(seconds=F1_FLAP)
+        dropped.update({q: (m, when) for m, q in before.items() if held[m] > q})
+
+    def ahead(n, m, t) -> bool:
+        order = order_at(t)
+        return order.get(n, 99) < order.get(m, 99)
+
     for when, n, passed, p in passes:
-        if any(
-            m == passed and o == n and q == p and when <= w <= when + flap for w, m, o, q in passes
-        ):
+        # timing noise: a place handed straight back, or a car only taking its place back
+        undone = any(m == passed and o == n and when < w <= when + flap for w, m, o, _ in passes)
+        if undone or ahead(n, passed, when - flap):
             continue
         pit = pitting(n, when) or pitting(passed, when)
         if pit and p > 1:  # places swapped by stops below the lead are not overtakes
