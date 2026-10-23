@@ -40,14 +40,29 @@ Run `uv run python -m core.voice` before the demo. It speaks one line in every v
 The lead picks the final voice and model per sport from the listening test. The pick goes in the environment:
 
 ```bash
-VOICE_FOOTBALL=connor              # an id from GET /voices
+VOICE_FOOTBALL=gU0LNdkMOQCOrPrwtbee   # an id from GET /voices, or any ElevenLabs voice id
 VOICE_CRICKET=viraj
-VOICE_MODEL_FOOTBALL=eleven_v3     # or eleven_flash_v2_5: no tags, fastest
+VOICE_MODEL_FOOTBALL=eleven_v3        # or eleven_flash_v2_5: no tags, fastest
 VOICE_MODEL_CRICKET=eleven_v3
 ```
 
-`GET /voices` reports the chosen default for each sport. The key stays in `ELEVENLABS_API_KEY` on the server, and the browser never calls ElevenLabs.
+Empty or unset means the default. A raw ElevenLabs voice id shows in `GET /voices` as `football-pick` (or `cricket-pick`), with the sport's default `lang`. The id itself stays on the server. Library voices work by id without being added to the account, but each one's first request is cold, so run `uv run python -m core.voice` after changing the pick. `GET /voices` reports the chosen default for each sport. The key stays in `ELEVENLABS_API_KEY` on the server, and the browser never calls ElevenLabs.
 
 ## Candidates compared
 
-The listening test compared 10 voices on `eleven_v3` with audio tags against today's `eleven_flash_v2_5`. No audio is committed.
+The listening test, on 2026-10-23, compared these 10 voices on `eleven_v3` with audio tags against today's `eleven_flash_v2_5`. No audio is committed. The tags tried were `[shouting]`, `[screaming]`, `[excited]`, `[whispers]`, `[hushed]`, `[breathless]`, `[gasps]` and `[laughs]`.
+
+| Sport | Voice | ElevenLabs voice id | Accent | Source |
+|---|---|---|---|---|
+| Football | Connor | `xtw8E1CXDMtNKx4sgP7u` | en-GB | in account (today's default) |
+| Football | British Football Announcer | `gU0LNdkMOQCOrPrwtbee` | en-GB | library |
+| Football | Sam, Engaging Game Narrator | `gnPxliFHTp6OK6tcoA6i` | en-US | library |
+| Football | Daniel | `onwK4e9ZLuTAKqWW03F9` | en-GB | premade |
+| Football | Raju, High Energy Football Commentary | `jAUbTDuEGvdxrWhSe9eR` | en-IN | library |
+| Cricket | Viraj | `PdJQAOWyIMAQwD7gQcSc` | en-IN | in account (today's default) |
+| Cricket | Shaurya M, Dynamic Cricket Commentator | `fRV3NpXPa1DGVnFs6Dg5` | en-IN | library |
+| Cricket | Raju, Cricket Match Commentator | `IX4AgWzTnD6q0cNvHqvK` | en-IN | library |
+| Cricket | Chris, Sports Commentator | `Anr9GtYh2VRXxiPplzxM` | en-IN | library |
+| Cricket | Pavan M, Energetic Sports Commentator | `BbDDnkbyQUUuTAZbQNEu` | en-IN | library |
+
+The pick: not made yet. Until the lead picks, the defaults are Connor for football and Viraj for cricket, both on `eleven_v3`.
