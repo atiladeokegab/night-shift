@@ -49,6 +49,7 @@ Errors: 404 not found, 422 bad input, 503 commentator not configured.
 - `GET /replays/{id}/stream` → SSE: per moment `moment`, `line`, `stats` in that order; `error`
   `{detail}` if the commentator fails; `end` last. A late subscriber gets the whole replay. (core)
 - `POST /lines/{line_id}/fix {corrected_text, reason}` → Fix (core, P1, not built yet)
+- `GET /stage` → the backup live page (`core/stage.html`, static HTML over the routes here) (core)
 - `GET /stats` → `{lines, fixes, mubit_requests, first_word_ms_p50, first_word_ms_p95,
   latency_ms_p50, latency_ms_p95, tokens_in, tokens_out}` (core)
 

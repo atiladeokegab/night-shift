@@ -5,9 +5,10 @@ import asyncio
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from core.replay import Replay, run_replay
@@ -87,5 +88,10 @@ def create_app(store=None, deps: Deps | None = None) -> FastAPI:
     @app.get("/stats")
     def get_stats():
         return stats(store)
+
+    @app.get("/stage")
+    def stage():
+        """The backup demo page: one static file, so the demo runs even without web/."""
+        return FileResponse(Path(__file__).with_name("stage.html"), media_type="text/html")
 
     return app
