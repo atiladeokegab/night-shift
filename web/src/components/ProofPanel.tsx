@@ -28,8 +28,8 @@ export function ProofPanel({ live }: Props) {
         <>
           {stats.lines === 0 && <p className="muted">No lines yet.</p>}
           <dl>
-            <Figure label="Model first word p50" value={seconds(stats.first_word_ms_p50)} />
-            <Figure label="Model first word p95" value={seconds(stats.first_word_ms_p95)} />
+            <Figure label="Model first text word p50" value={seconds(stats.first_word_ms_p50)} />
+            <Figure label="Model first text word p95" value={seconds(stats.first_word_ms_p95)} />
             <Figure label="Cost per line" value={dollars(stats.cost_per_line_usd)} />
             <Figure label="Lines" value={stats.lines ? String(stats.lines) : '–'} />
             <Figure label="Fixes" value={stats.lines ? String(stats.fixes) : '–'} />
@@ -39,8 +39,8 @@ export function ProofPanel({ live }: Props) {
       )}
       {/* first_word_ms is when the model's first word of text arrives (#37 review): label only what is measured. */}
       <p className="footnote">
-        Model first word: time from the moment to the commentator model's first word of text, measured
-        through Mubit. Waiting for the video and speaking the line come after it and are not included.
+        Model first text word: time from the moment to the first word of the model's text reply, measured
+        through Mubit. Finishing the line, speech synthesis and playback are not included.
       </p>
     </section>
   )

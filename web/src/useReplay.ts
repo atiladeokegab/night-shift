@@ -138,7 +138,8 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
     if (!watching) return
     const timer = window.setInterval(() => {
       const now = clock.current?.()
-      if (now) dispatch({ type: 'tick', t: Math.round(now.t * 10) / 10, playing: now.playing })
+      // Rounded down, never up: a line tagged 8.0 s must not show while the picture is at 7.96 s.
+      if (now) dispatch({ type: 'tick', t: Math.floor(now.t * 10) / 10, playing: now.playing })
     }, TICK_MS)
     return () => window.clearInterval(timer)
   }, [watching])

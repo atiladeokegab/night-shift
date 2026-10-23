@@ -19,6 +19,7 @@ export function LineLog({ lines, late, moments }: Props) {
         <ol>
           {lines.map((l) => {
             const m = moments.find((x) => x.idx === l.moment_idx)
+            const firstWord = l.first_word_ms !== undefined
             const ms = l.first_word_ms ?? l.latency_ms
             return (
               <li key={l.line_id} className={late.includes(l.line_id) ? 'late' : undefined}>
@@ -26,8 +27,8 @@ export function LineLog({ lines, late, moments }: Props) {
                 <span className="said">{l.text}</span>
                 <span className="first-word">
                   {late.includes(l.line_id) ? 'not spoken: the video had moved past it · ' : ''}
-                  {/* first_word_ms is the model's first word of text, not the spoken word (#37 review). */}
-                  model first word {(ms / 1000).toFixed(2)} s
+                  {/* first_word_ms is the model's first text word, not the spoken word; latency_ms the whole reply (#37 review). */}
+                  {firstWord ? 'model first text word' : 'model reply'} {(ms / 1000).toFixed(2)} s
                 </span>
                 {/* The fix sheet arrives with the fix loop (#16). */}
                 <button className="fix" disabled title="Fixing lines arrives with the fix loop (#16)">Fix</button>
