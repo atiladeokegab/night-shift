@@ -27,6 +27,8 @@ export function VideoStage({ youtubeId, label, onClock }: Props) {
         playerVars: { autoplay: 1, mute: 1, playsinline: 1, rel: 0, modestbranding: 1 },
         events: {
           onReady: (e) => {
+            // A player whose stage is already gone (a sport switch) must never hand over its clock.
+            if (gone) return
             e.target.mute()
             e.target.playVideo()
             const p = e.target

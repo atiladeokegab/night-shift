@@ -6,6 +6,7 @@ import pytest
 
 from agent import commentator, feed
 from agent.commentator import FakeProvider, build_request, commentate, line_for
+from data.matches import load_moments, match_header
 from scripts import replay_matches
 
 FOOT = {
@@ -209,6 +210,7 @@ def test_a_tool_only_last_reply_is_no_line_not_a_blank_one():
     [
         "I have all the information I need from your message.",
         "Let me check the score first.",
+        "There's a discrepancy here: you say the event is a shot off target. Could you clarify?",
         "",
     ],
 )
@@ -223,6 +225,9 @@ def test_preamble_alone_is_no_line(said):
         "I have all the information I need from your message.\n\nGoal! Ann buries it.",
         "I have all the information I need from your message. Goal! Ann buries it.",
         "Based on the score, here goes: Goal! Ann buries it.",
+        "I have all the information I need from your message… Goal! Ann buries it.",
+        "The score confirms Reds 1, Blues 0, so despite being labeled a save, it went in.\n\n"
+        "Goal! Ann buries it.",
     ],
 )
 def test_preamble_never_becomes_the_line(said):
@@ -233,3 +238,50 @@ def test_preamble_never_becomes_the_line(said):
 def test_a_line_starting_with_now_is_kept():
     line = line_for(FOOT, [moment(FOOT, 0)], 0, Scripted(text("Now that is a strike from Ann!")))
     assert line["text"] == "Now that is a strike from Ann!"
+
+
+def test_messis_penalty_reaches_the_model_as_lionel_messi():
+    moments = load_moments("3869685")
+    pen = next(
+        m for m in moments if m["outcome"] == "Goal" and m["detail"]["shot_type"] == "Penalty"
+    )
+    message = commentator.render_message(match_header("3869685"), moments[: pen["idx"] + 1])
+    assert "Lionel Messi" in message and "Cuccittini" not in message
+
+
+def test_one_untemplated_prompt_asks_for_a_broadcast_call_on_big_moments():
+    # A-3.6 offline: the live check (a judge on real lines) is tests/acceptance/test_A_3_6.py.
+    system = commentator.SYSTEM
+    assert "$" not in system and "{" not in system  # fixed text, never templated per sport
+    for sport in ("football", "cricket", "basketball", "formula"):
+        assert sport not in system.lower()  # the sport goes in the message, never the prompt
+    for rule in ("changes the score, the lead or the result", "emotion", "20 words"):
+        assert rule in system
+    assert "calmly" in system  # routine moments stay calm
+
+
+def test_cricket_score_reads_runs_for_wickets():
+    # "10/2" was read aloud backwards ("two for ten"); the message spells the order out.
+    past = [moment(CRIC, 2, score={"runs": 10, "wickets": 2})]
+    message = build_request(CRIC, past)["messages"][0]["content"]
+    assert "Score after this moment: A 10 for 2\n" in message
+    assert commentator.run_tool("get_score", {}, CRIC, past).startswith("A 10 for 2;")
+    assert "10/2" not in json.dumps(build_request(CRIC, past))
+
+
+def test_jordans_last_shot_reaches_the_model_with_names_and_score():
+    moments = load_moments("0049700088")
+    shot = next(m for m in moments if m["clock"] == "00:05" and m["period"] == 4)
+    message = commentator.render_message(match_header("0049700088"), moments[: shot["idx"] + 1])
+    assert "Sport: basketball" in message and "Moment: quarter 4, 00:05" in message
+    assert "shooter: Michael Jordan" in message
+    assert "Score after this moment: Utah Jazz 86, Chicago Bulls 87" in message
+
+
+def test_kobes_81st_point_reaches_the_model():
+    moments = load_moments("0020500591")
+    record = next(m for m in moments if m["detail"].get("player_points") == 81)
+    assert record["players"] == {"shooter": "Kobe Bryant"}
+    assert record["score"] == {"home": 122, "away": 102}
+    assert moments[-1]["type"] == "End of game"
+    assert moments[-1]["score"] == {"home": 122, "away": 104}

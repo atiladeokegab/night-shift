@@ -1,4 +1,4 @@
-"""The commentator: one frozen prompt, template and tool set for both sports, via Mubit.
+"""The commentator: one frozen prompt, template and tool set for every sport, via Mubit.
 
 Only the moments up to and including the current one ever reach the request or the tools.
 """
@@ -31,13 +31,13 @@ def session_id(sport: str, match_id: str) -> str:
 
 def _score(header: dict, m: dict) -> str:
     s = m["score"]
-    if m["sport"] == "football":
+    if "home" in s:  # football and basketball
         text = f"{header['home']} {s['home']}, {header['away']} {s['away']}"
         if "shootout" in m["detail"]:
             so = m["detail"]["shootout"]
             text += f" (penalties {so['home']}-{so['away']})"
         return text
-    text = f"{m['team']} {s['runs']}/{s['wickets']}"
+    text = f"{m['team']} {s['runs']} for {s['wickets']}"  # said as written: runs, then wickets
     if "target" in s:
         need = max(0, s["target"] - s["runs"])
         text += f", target {s['target']}, need {need} from {m['detail']['balls_left']} balls"
@@ -60,6 +60,8 @@ def _detail(m: dict) -> str:
 def _period(m: dict) -> str:
     if m["sport"] == "cricket":
         return f"innings {m['period']}"
+    if m["sport"] == "basketball":
+        return f"quarter {m['period']}" if m["period"] <= 4 else f"overtime {m['period'] - 4}"
     return "penalty shootout" if m["period"] == 5 else f"period {m['period']}"
 
 
@@ -125,16 +127,28 @@ class NoLine(ValueError):
 # The model talking about its task, not the match: "I have all the information I need ...".
 _PREAMBLE = re.compile(
     r"^(?:I\b|I'(?:m|ve|ll|d)\b|Let me\b|Let's (?:see|check|look)\b|Based on\b"
-    r"|Here(?:'s| is)\b|(?:Okay|OK|Sure|Great|Alright),)[^.!?:\n]*[.!?:]*\s*"
+    r"|Here(?:'s| is)\b|(?:Okay|OK|Sure|Great|Alright),)[^.!?:…\n]*[.!?:…]*\s*"
+)
+
+
+# The model questioning its input instead of calling the moment: "There's a discrepancy here ...".
+_META = re.compile(
+    r"\b(?:your message|the message|you say|you said|could you|clarify|discrepancy|the tools?"
+    r"|labell?ed as|the score confirms)\b",
+    re.I,
 )
 
 
 def spoken(text: str) -> str:
-    """The line as it should be spoken: leading preamble sentences dropped."""
-    text = text.strip()
-    while (m := _PREAMBLE.match(text)) and m.end():
-        text = text[m.end() :].lstrip()
-    return text
+    """The line as spoken: preamble dropped, and any paragraph about the input left out."""
+    kept = []
+    for para in re.split(r"\n\s*\n", text.strip()):
+        para = para.strip()
+        while (m := _PREAMBLE.match(para)) and m.end():
+            para = para[m.end() :].lstrip()
+        if para and not _META.search(para):
+            kept.append(para)
+    return " ".join(kept)
 
 
 def commentate(

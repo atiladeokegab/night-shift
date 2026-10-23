@@ -1,9 +1,9 @@
 // The only module that talks to the match server (docs/CONTRACT.md, 'HTTP'):
 // GET /matches, POST /replays {match_id, speed} -> {replay_id},
 // GET /replays/{id}/stream (SSE: moment, line, stats per moment; error; end last),
-// GET /voices and GET /lines/{id}/audio?voice=<id> (ElevenLabs; 503 when the voice isn't configured).
-import { demoMatches, streamDemo } from './demo'
-import type { Line, Match, Moment, StreamEvent, Voice } from './types'
+// GET /stats, GET /voices and GET /lines/{id}/audio?voice=<id> (ElevenLabs; 503 when the voice isn't configured).
+import { demoMatches, demoStats, streamDemo } from './demo'
+import type { Line, Match, Moment, Stats, StreamEvent, Voice } from './types'
 
 export const isDemo = new URLSearchParams(window.location.search).has('demo')
 
@@ -16,6 +16,13 @@ export async function listMatches(): Promise<Match[]> {
   if (isDemo) return demoMatches
   const res = await fetch('/matches')
   if (!res.ok) throw new Error(`GET /matches failed (${res.status})`)
+  return res.json()
+}
+
+export async function getStats(): Promise<Stats> {
+  if (isDemo) return demoStats()
+  const res = await fetch('/stats')
+  if (!res.ok) throw new Error(`GET /stats failed (${res.status})`)
   return res.json()
 }
 
@@ -47,6 +54,7 @@ export function followReplay(
   })
   source.addEventListener('moment', (e) => onEvent({ type: 'moment', moment: JSON.parse(e.data) as Moment }))
   source.addEventListener('line', (e) => onEvent({ type: 'line', line: JSON.parse(e.data) as Line }))
+  source.addEventListener('stats', (e) => onEvent({ type: 'stats', stats: JSON.parse(e.data) as Stats }))
   source.addEventListener('error', (e) => {
     // A server `error` event carries {detail}; a dropped connection is a plain Event with no data.
     const data = (e as MessageEvent).data

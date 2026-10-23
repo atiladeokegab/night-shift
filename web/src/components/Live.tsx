@@ -2,6 +2,7 @@ import type { Match, Sport, Voice } from '../types'
 import { onScreen, type Clock, type ReplayState } from '../useReplay'
 import type { useSpeech } from '../useSpeech'
 import { LineLog } from './LineLog'
+import { ProofPanel } from './ProofPanel'
 import { ScoreBar } from './ScoreBar'
 import { VideoStage } from './VideoStage'
 
@@ -93,11 +94,7 @@ export function Live(props: Props) {
         </section>
         <aside className="side">
           <LineLog lines={shown.lines} late={replay.late} moments={shown.moments} />
-          {/* #19 fills the proof panel. */}
-          <section className="panel proof" aria-label="Proof">
-            <h2>Proof</h2>
-            <p className="muted">No lines yet.</p>
-          </section>
+          <ProofPanel live={replay.stats} />
         </aside>
       </div>
     </main>

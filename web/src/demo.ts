@@ -1,6 +1,6 @@
 // Demo feed for building the page without the match server: only used with ?demo, never as a fallback.
 // Moments follow the contract's shapes; the lines are docs/design.md's samples, not commentator output.
-import type { Line, Match, Moment, StreamEvent } from './types'
+import type { Line, Match, Moment, Stats, StreamEvent } from './types'
 
 export const demoMatches: Match[] = [
   { match_id: '3906390', sport: 'football', title: "Spain Women's v England Women's, Women's World Cup Final", sample: true },
@@ -43,8 +43,21 @@ export function streamDemo(matchId: string, onEvent: (e: StreamEvent) => void): 
     const at = 1000 + i * 4500
     timers.push(window.setTimeout(() => onEvent({ type: 'moment', moment }), at))
     const line: Line = { line_id: `demo-${matchId}-${i}`, match_id: matchId, moment_idx: moment.idx, text, latency_ms: 600, first_word_ms: 600 }
-    timers.push(window.setTimeout(() => onEvent({ type: 'line', line }), at + line.latency_ms))
+    timers.push(window.setTimeout(() => {
+      onEvent({ type: 'line', line })
+      onEvent({ type: 'stats', stats: demoStats(i + 1) })
+    }, at + line.latency_ms))
   })
   timers.push(window.setTimeout(() => onEvent({ type: 'end' }), 1000 + feed.length * 4500))
   return () => timers.forEach(clearTimeout)
+}
+
+// Stats for the demo feed: every demo line takes 600 ms; cost and the adapter stay unknown,
+// as they are on the real server until #29 lands.
+export function demoStats(lines = 0): Stats {
+  const ms = lines ? 600 : null
+  return {
+    lines, fixes: 0, mubit_requests: 0, tokens_in: 0, tokens_out: 0,
+    first_word_ms_p50: ms, first_word_ms_p95: ms, latency_ms_p50: ms, latency_ms_p95: ms,
+  }
 }

@@ -47,9 +47,35 @@ export interface Line {
   video_t?: number // A-6.4@2: shown and spoken when the player reaches it (#47)
 }
 
+// GET /stats and the `stats` SSE event (CONTRACT.md); percentiles are null until there is a line.
+// cost_per_line_usd and adapter are proposed in #29 and absent until core sends them.
+export interface Stats {
+  lines: number
+  fixes: number
+  mubit_requests: number
+  first_word_ms_p50: number | null
+  first_word_ms_p95: number | null
+  latency_ms_p50: number | null
+  latency_ms_p95: number | null
+  tokens_in: number
+  tokens_out: number
+  cost_per_line_usd?: number | null
+  adapter?: Adapter | null
+}
+
+export interface Adapter {
+  status: 'not_trained' | 'training' | 'ready'
+  kept: number | null // null until the lead records it from Mubit's console (#46); never guessed
+  needed: number
+  agree: number | null
+  total: number | null
+  cost_measurable: boolean
+}
+
 export type StreamEvent =
   | { type: 'moment'; moment: Moment }
   | { type: 'line'; line: Line }
+  | { type: 'stats'; stats: Stats }
   | { type: 'error'; detail: string }
   | { type: 'end' }
 

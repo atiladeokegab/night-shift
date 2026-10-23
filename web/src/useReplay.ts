@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react'
 import { createReplay, followReplay, type StreamStatus } from './api'
 import { release } from './gate'
-import type { Line, Moment } from './types'
+import type { Line, Moment, Stats } from './types'
 
 export interface ReplayState {
   phase: 'idle' | 'starting' | 'live' | 'failed'
@@ -15,6 +15,7 @@ export interface ReplayState {
   queuedLines: Line[]
   ended: boolean
   error: string | null // a server `error` event: the commentator failed mid-replay
+  stats: Stats | null // the latest `stats` event; store-wide, so it outlives a single replay
 }
 
 type Action =
@@ -24,13 +25,14 @@ type Action =
   | { type: 'moment'; moment: Moment }
   | { type: 'line'; line: Line }
   | { type: 'tick'; t: number; playing: boolean }
+  | { type: 'stats'; stats: Stats }
   | { type: 'stream'; status: StreamStatus }
   | { type: 'error'; detail: string }
   | { type: 'end' }
 
 const initial: ReplayState = {
   phase: 'idle', stream: 'ok', gated: false, now: 0, moments: [], lines: [], late: [], queuedMoments: [], queuedLines: [],
-  ended: false, error: null,
+  ended: false, error: null, stats: null,
 }
 
 const waits = (s: ReplayState, item: { video_t?: number }) => s.gated && item.video_t !== undefined
@@ -38,7 +40,8 @@ const waits = (s: ReplayState, item: { video_t?: number }) => s.gated && item.vi
 // A reconnect gets the whole replay again, so moments and lines already held are dropped by key.
 function reduce(s: ReplayState, a: Action): ReplayState {
   switch (a.type) {
-    case 'start': return { ...initial, phase: 'starting', gated: a.gated }
+    case 'start': return { ...initial, phase: 'starting', gated: a.gated, stats: s.stats }
+    case 'stats': return { ...s, stats: a.stats }
     case 'started': return { ...s, phase: 'live' }
     case 'failed': return { ...s, phase: 'failed' }
     case 'moment': {
@@ -135,7 +138,8 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
     if (!watching) return
     const timer = window.setInterval(() => {
       const now = clock.current?.()
-      if (now) dispatch({ type: 'tick', t: Math.round(now.t * 10) / 10, playing: now.playing })
+      // Rounded down, never up: a line tagged 8.0 s must not show while the picture is at 7.96 s.
+      if (now) dispatch({ type: 'tick', t: Math.floor(now.t * 10) / 10, playing: now.playing })
     }, TICK_MS)
     return () => window.clearInterval(timer)
   }, [watching])
@@ -152,6 +156,7 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
         if (run.current !== token) return
         if (e.type === 'moment') dispatch({ type: 'moment', moment: e.moment })
         if (e.type === 'line') dispatch({ type: 'line', line: e.line })
+        if (e.type === 'stats') dispatch({ type: 'stats', stats: e.stats })
         if (e.type === 'error') dispatch({ type: 'error', detail: e.detail })
         if (e.type === 'end') dispatch({ type: 'end' })
       },
