@@ -6,7 +6,7 @@
 #     [DEPLOY_AS=<account that will run deploy.sh; default: you>] \
 #     MUBIT_API_KEY=... ELEVENLABS_API_KEY=... scripts/bootstrap.sh
 # The secrets are the SECRETS list in scripts/deploy.sh. A value is read only when its secret is
-# created; rotate one as docs/deploy.md says.
+# created; rotate one with `gcloud secrets versions add SECRET --data-file=-`.
 set -euo pipefail
 
 : "${PROJECT:?set PROJECT to the GCP project id}"
@@ -51,7 +51,7 @@ fi
 grant gcloud storage buckets add-iam-policy-binding "gs://$STATE_BUCKET" "${P[@]}" \
   --member "serviceAccount:$RUNTIME" --role roles/storage.objectUser
 
-# Secrets: the value comes from the env var named after the secret (anthropic-api-key reads
+# Secrets: the value comes from the env var named after the secret (mubit-api-key reads
 # MUBIT_API_KEY), printf so no trailing newline lands in it; a GENERATED one with no value
 # gets a random one.
 for secret in $SECRETS; do
