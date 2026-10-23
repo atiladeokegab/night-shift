@@ -1,14 +1,14 @@
-# <Event name>
+# Night Shift: Mubit Hackathon, London
 
-<One-paragraph brief: what we're building and for which track.>
+A live AI commentator for matches nobody calls. An agent with tools turns a real match event feed into one spoken line per key moment in under a second; producers fix wrong lines, every call and fix goes through Mubit, and Mubit trains a small commentator model that matches the big one at lower cost. Track: Own your intelligence layer.
 
-Official rules: <link>
+Official rules: https://luma.com/nightshift-london
 
-Smoke: `<the one command that proves the product works: tests plus one end-to-end run>`
+Smoke: `make smoke`
 
 The product that ships is `main`: the last commit that passed the smoke check.
 
-Board: <link to the event's GitHub Project board>
+Board: https://github.com/users/atiladeokegab/projects/13
 
 ## Deadlines
 
@@ -17,21 +17,22 @@ date, so this UTC column is the clock, never the milestone.
 
 | Deadline | Event time | UTC |
 |---|---|---|
-| spine | <YYYY-MM-DDTHH:MM±HH:MM> | <YYYY-MM-DDTHH:MMZ> |
-| code freeze | <YYYY-MM-DDTHH:MM±HH:MM> | <YYYY-MM-DDTHH:MMZ> |
-| submit | <YYYY-MM-DDTHH:MM±HH:MM> | <YYYY-MM-DDTHH:MMZ> |
+| spine | 2026-10-23T23:00+01:00 | 2026-10-23T22:00Z |
+| code freeze | 2026-10-25T09:00+00:00 | 2026-10-25T09:00Z |
+| submit | 2026-10-25T10:00+00:00 | 2026-10-25T10:00Z |
 
 ## Judging criteria
 
-- <criterion>: <weight>
-
-Penalised: <quoted from the brief, or "nothing stated">
+- Use of Mubit: a correction turning into a model update, live
+- Usefulness: a real recurring task someone would want handled
+- Technical execution: it works and holds up under questions
+- Demo: clear, live, under the time limit
 
 ## Team
 
 | Name | GitHub | Role | Bring |
 |---|---|---|---|
-| <name> | @<handle> | <role> | <domain files, rules or data they bring; empty if none> |
+| Atilade | @atiladeokegab | lead, designer, electronic engineering, IBM Z/COBOL, AI agents, product |  |
+| Persia | @PersiaF04 | full stack engineer |  |
 
-The lead's agents: <e.g. "Zeus plans, reviews and merges; Prometheus builds">. When this page
-or a review says "the lead", it may be one of them acting for the lead.
+The lead's agents: Zeus, Prometheus, Hermes. When this page or a review says "the lead", it may be one of them acting for the lead.

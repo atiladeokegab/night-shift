@@ -1,13 +1,13 @@
-# <Project name>
+# Touchline
 
-<One paragraph: what we're building and who it's for.>
+A live AI commentator for matches nobody calls. An agent with tools turns a real match event feed into one spoken line per key moment in under a second; producers fix wrong lines, every call and fix goes through Mubit, and Mubit trains a small commentator model that matches the big one at lower cost. Track: Own your intelligence layer.
 
 What we're building and who owns which part: [IDEA.md](IDEA.md). Deadlines, rules and
 the team: [HACKATHON.md](HACKATHON.md). Who is doing what, live: the board linked in HACKATHON.md.
 
 ## Quick start
 
-1. `gh repo clone <this repo>`
+1. `gh repo clone atiladeokegab/night-shift`
 2. Open your AI tool (Claude Code, Codex, Cursor, Copilot…) in the folder.
 3. Tell it: *"Read AGENTS.md, then pick up my issue."*
 
@@ -253,4 +253,8 @@ built during the event.
 
 ## Architecture
 
-<!-- the lead adds the C4 diagrams here -->
+![C4 context](docs/architecture/c4_context.png)
+
+![C4 container](docs/architecture/c4_container.png)
+
+![C4 component](docs/architecture/c4_component.png)
