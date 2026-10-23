@@ -15,7 +15,7 @@ LINE = {"line_id": "f1-0", "match_id": "f1", "moment_idx": 0, "text": "Shot!"}
 
 def setup(tmp_path, correct_fn):
     store = Store(tmp_path)
-    deps = Deps(lambda: [], lambda mid: MOMENTS, lambda m, h: dict(LINE), correct_fn)
+    deps = Deps(lambda: [], lambda mid: MOMENTS, lambda m, h: dict(LINE), correct=correct_fn)
     return TestClient(create_app(store=store, deps=deps)), store
 
 
