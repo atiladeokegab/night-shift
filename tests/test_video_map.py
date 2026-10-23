@@ -121,3 +121,24 @@ def test_demo_replay_streams_each_mapped_moment_once(tmp_path, path):
         lines = [d for n, d in read_stream(client, rid) if n == "line"]
     expected = [(str(m["idx"]), m["video_t"]) for m in video_map(match_id)["moments"]]
     assert [(ln["line_id"], ln["video_t"]) for ln in lines] == expected
+
+
+def test_each_video_starts_5_s_before_its_first_mapped_moment():
+    # Kobe's first call is 490 s into the highlights: the page starts the video at 485 s, not 0.
+    assert {m["match_id"]: m.get("video_start") for m in list_matches()} == {
+        "3906390": 98,
+        "1298150": 4,
+        "3869685": 68,
+        "0049700088": 363,
+        "0020500591": 485,
+        "9558": 0,
+    }
+
+
+def test_line_audio_is_due_from_the_video_start(tmp_path):
+    due = {}
+    replay = Replay("f1", speed=1.0)
+    video = {**F1_VIDEO, "start": 7}
+    speak = lambda line, moment, at: due.setdefault(line["line_id"], at - replay.started)  # noqa: E731
+    asyncio.run(run_replay(replay, MOMENTS, commentate, Store(tmp_path), video, speak))
+    assert due == {"f1-0": pytest.approx(5.5), "f1-2": pytest.approx(73.0)}

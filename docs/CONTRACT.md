@@ -42,8 +42,9 @@ and refuses to start without `STORE_URL=gs://bucket/prefix`.
   and latency summed over the whole tool loop; each id from `x-middleware-request-id`.
 - **Fix** (core/): `{line_id, corrected_text, reason, created_at, mubit_request_id,
   reply_matched: bool}`.
-- **Match** (data/): `{match_id, sport, title?, sample: bool, youtube_id?}`; `sample` marks
-  `data/sample/`; `youtube_id` is there when the match has a video map.
+- **Match** (data/): `{match_id, sport, title?, sample: bool, youtube_id?, video_start?}`; `sample`
+  marks `data/sample/`; `youtube_id` and `video_start` are there when the match has a video map.
+  `video_start` is the whole second the page starts the video at, 5 s before its first mapped moment.
 - **Video map** (data/video/): `{youtube_id, source, moments: [{idx, video_t}]}`; `idx` is a Moment's
   `idx`, `video_t` the seconds into the video of that moment's first showing, increasing with `idx`.
   Only moments matched with confidence are listed.

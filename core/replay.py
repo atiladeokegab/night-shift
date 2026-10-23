@@ -96,10 +96,11 @@ async def run_replay(
                 continue
             line = {**line, **tag}
             store.append("lines", line)
-            # shortcut: due at replay start + video_t, as if the video starts with the replay;
+            # shortcut: due as if the video starts with the replay at its `start` second;
             # the player's own clock if the page ever sends it.
             if speak:
-                speak(line, moment, replay.started + tag["video_t"] if tag else None)
+                due = replay.started + tag["video_t"] - video.get("start", 0) if tag else None
+                speak(line, moment, due)
             await replay.publish("line", line)
             await replay.publish("stats", stats(store))
     except Exception as exc:  # the stream says why it stopped instead of hanging open
