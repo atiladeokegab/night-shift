@@ -128,3 +128,30 @@ def test_close_chase_in_the_last_two_overs_calls_every_ball():
 def test_held_out_and_demo_matches():
     assert feed.held_out("football", "105") and not feed.held_out("football", "106")
     assert ("cricket", "1298150") in feed.DEMO and ("football", "3906390") in feed.DEMO
+
+
+def test_cricket_clock_counts_legal_balls_within_each_over():
+    """Real Cricsheet has no actual_delivery: the clock comes from the over and its legal balls."""
+
+    def four(**kw):
+        d = ball(batter=4, **kw)
+        del d["actual_delivery"]
+        return d
+
+    overs = [
+        {"over": 0, "deliveries": [four() for _ in range(6)]},
+        # a wide and a no-ball are re-bowled, so they share the next legal ball's number
+        {
+            "over": 1,
+            "deliveries": [four(extras={"wides": 1}), four(), four(extras={"noballs": 1})]
+            + [four() for _ in range(5)],
+        },
+        {"over": 2, "deliveries": [four() for _ in range(6)]},
+    ]
+    m = {"info": {"overs": 20}, "innings": [{"team": "A", "overs": overs}]}
+    clocks = [x["clock"] for x in feed.cricket_moments({"match_id": "9"}, m)]
+    assert clocks == (
+        [f"0.{b}" for b in range(1, 7)]
+        + ["1.1", "1.1", "1.2", "1.2", "1.3", "1.4", "1.5", "1.6"]
+        + [f"2.{b}" for b in range(1, 7)]
+    )

@@ -193,11 +193,16 @@ def cricket_moments(header: dict, match: dict) -> list[dict]:
             continue
         team = _s(inn.get("team"))
         target = _num((inn.get("target") or {}).get("runs"))
-        runs = wickets = legal = 0
+        runs = wickets = legal = in_over = 0
+        this_over = None
         free_hit = False
         balls = [(o, d) for o in inn.get("overs") or [] for d in o.get("deliveries") or []]
         for n, (over, d) in enumerate(balls):
             over_no = _num(over.get("over")) or 0
+            if over_no != this_over:
+                this_over, in_over = over_no, 0
+            # a wide or no-ball is re-bowled, so it carries the next legal ball's number
+            ball_no = in_over + 1
             r = d.get("runs") or {}
             extras = d.get("extras") or {}
             batter_runs = _num(r.get("batter")) or 0
@@ -205,7 +210,9 @@ def cricket_moments(header: dict, match: dict) -> list[dict]:
             runs += _num(r.get("total")) or 0
             outs = [w for w in d.get("wickets") or [] if isinstance(w, dict)]
             wickets += len(outs)
-            legal += not (extras.get("wides") or extras.get("noballs"))
+            is_legal = not (extras.get("wides") or extras.get("noballs"))
+            legal += is_legal
+            in_over += is_legal
             last_ball = n == len(balls) - 1
             tight_chase = target is not None and over_no >= max_overs - 2 and target - before <= 30
             if outs:
@@ -248,7 +255,7 @@ def cricket_moments(header: dict, match: dict) -> list[dict]:
                         "match_id": header["match_id"],
                         "idx": len(moments),
                         "period": inn_no,
-                        "clock": _s(d.get("actual_delivery"), 8) or f"{over_no}.{n}",
+                        "clock": _s(d.get("actual_delivery"), 8) or f"{over_no}.{ball_no}",
                         "type": kind,
                         "team": team,
                         "players": {k: v for k, v in players.items() if v},
