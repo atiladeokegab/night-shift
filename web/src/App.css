@@ -313,7 +313,33 @@ button.primary {
   padding: 2px 10px;
 }
 
-/* Field, subtitle and side column */
+/* Video stage, subtitle and side column. Structure only: the new look waits for the lead's mockup (#21). */
+
+.stage.dim .stage-wrap {
+  opacity: 0.5;
+}
+
+.video {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: #000;
+}
+
+.video iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.video.empty {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-family: var(--condensed);
+  font-size: 1.4rem;
+}
 
 .grid {
   display: grid;
@@ -327,90 +353,19 @@ button.primary {
   overflow: hidden;
 }
 
-.stage.dim .field-wrap {
-  opacity: 0.5;
-}
 
-.field-wrap {
-  position: relative;
-  background: var(--grass);
-}
 
-.overlay {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  background: rgba(14, 21, 36, 0.6);
-  font-family: var(--condensed);
-  font-size: 1.6rem;
-  font-weight: 600;
-}
 
-.field {
-  display: block;
-  width: 100%;
-  height: auto;
-}
 
-.markings {
-  fill: none;
-  stroke: var(--lines);
-  stroke-width: 0.4;
-}
 
-.strip {
-  fill: var(--strip);
-}
 
-.stumps-broken {
-  stroke: #fff;
-  stroke-width: 0.5;
-}
 
-.field .name {
-  font-family: var(--sans);
-  font-size: 3.4px;
-  fill: var(--text);
-}
 
-.field .caption {
-  font-family: var(--condensed);
-  font-size: 6.5px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  fill: var(--amber);
-  animation: fade 150ms ease-out;
-}
 
-.ball-path {
-  fill: none;
-  stroke: var(--amber);
-  stroke-width: 0.7;
-  stroke-dasharray: 1.6 1.2;
-}
 
-.reveal {
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  animation: draw 400ms ease-out forwards;
-}
 
-@keyframes draw {
-  to {
-    stroke-dashoffset: 0;
-  }
-}
 
-.ball {
-  fill: #fff;
-  stroke: #111;
-  stroke-width: 0.2;
-}
 
-.stickman {
-  transition: transform 600ms ease-out;
-}
 
 .subtitle {
   margin: 0;
@@ -444,7 +399,7 @@ button.primary {
 
 .lines li {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto 1fr auto;
   gap: 0 8px;
   padding: 8px 0;
   border-bottom: 1px solid var(--border);
@@ -461,13 +416,20 @@ button.primary {
   font-variant-numeric: tabular-nums;
 }
 
+.lines .fix {
+  grid-column: 3;
+  grid-row: 1;
+  padding: 2px 10px;
+  font-size: 0.875rem;
+}
+
 .lines .first-word {
   grid-column: 2;
   color: var(--muted);
   font-size: 0.875rem;
 }
 
-/* Under 760px everything stacks: score bar, field, subtitle, controls, line log. */
+/* Under 760px everything stacks: score bar, video, subtitle, controls, line log, proof. */
 @media (max-width: 760px) {
   .page {
     padding: 16px;
@@ -512,19 +474,9 @@ button.primary {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .stickman {
-    transition: none;
-  }
-
-  .reveal,
   .subtitle,
-  .field .caption,
   .on-air.speaking .bars i {
     animation: none;
-  }
-
-  .reveal {
-    stroke-dashoffset: 0;
   }
 }
 

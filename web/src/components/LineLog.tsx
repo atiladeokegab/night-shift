@@ -23,6 +23,8 @@ export function LineLog({ lines, moments }: Props) {
                 <span className="when">{m ? clockText(m, true) : ''}</span>
                 <span className="said">{l.text}</span>
                 <span className="first-word">first word {(ms / 1000).toFixed(2)} s</span>
+                {/* The fix sheet arrives with the fix loop (#16). */}
+                <button className="fix" disabled title="Fixing lines arrives with the fix loop (#16)">Fix</button>
               </li>
             )
           })}

@@ -1,9 +1,10 @@
 import { useCallback, useRef, useState } from 'react'
 import { isDemo, lineAudioUrl } from './api'
-import type { Line } from './types'
+import type { Line, Voice } from './types'
 
-// Reads each line aloud: the server's ElevenLabs voice (GET /lines/{id}/audio, #25) first, the
-// browser's own speech when that route answers 503 or fails. A new line cuts off the one before it,
+// Reads each line aloud in the chosen voice (A-6.3@1): the server's ElevenLabs audio
+// (GET /lines/{id}/audio?voice=<id>, #25) first, the browser's own speech in that voice's language when
+// the route answers 503 or fails, or when the voice is one of the page's browser voices. A new line cuts off the one before it,
 // so the voice never falls behind the match. `speaking` drives the design's "On air" bars.
 export function useSpeech() {
   const available = typeof window !== 'undefined' && 'speechSynthesis' in window
@@ -30,10 +31,10 @@ export function useSpeech() {
   )
 
   const speakInBrowser = useCallback(
-    (text: string, mine: number) => {
+    (text: string, lang: string, mine: number) => {
       if (!available) return
       const utterance = new SpeechSynthesisUtterance(text)
-      utterance.lang = 'en-GB'
+      utterance.lang = lang
       utterance.rate = 1.1
       utterance.onstart = () => turn.current === mine && setSpeaking(true)
       utterance.onend = utterance.onerror = () => turn.current === mine && setSpeaking(false)
@@ -43,18 +44,19 @@ export function useSpeech() {
   )
 
   const say = useCallback(
-    (line: Line) => {
+    (line: Line, voice: Voice | null) => {
       if (!on) return
       hush()
       const mine = turn.current
-      if (isDemo) return speakInBrowser(line.text, mine)
-      const audio = new Audio(lineAudioUrl(line.line_id))
+      const lang = voice?.lang ?? 'en-GB'
+      if (isDemo || voice?.browser) return speakInBrowser(line.text, lang, mine)
+      const audio = new Audio(lineAudioUrl(line.line_id, voice?.id))
       playing.current = audio
       // A 503 (no key, upstream down) or a network failure lands here; only the current line falls back.
       const fallBack = () => {
         if (turn.current !== mine) return
         playing.current = null
-        speakInBrowser(line.text, mine)
+        speakInBrowser(line.text, lang, mine)
       }
       audio.addEventListener('playing', () => turn.current === mine && setSpeaking(true))
       audio.addEventListener('ended', () => turn.current === mine && setSpeaking(false))

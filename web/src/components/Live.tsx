@@ -1,17 +1,19 @@
-import { matchTeams, sides } from '../teams'
-import type { Match, Sport } from '../types'
+import type { Match, Sport, Voice } from '../types'
 import type { ReplayState } from '../useReplay'
 import type { useSpeech } from '../useSpeech'
-import { Ground } from './Ground'
 import { LineLog } from './LineLog'
 import { ProofPanel } from './ProofPanel'
-import { Pitch } from './Pitch'
 import { ScoreBar } from './ScoreBar'
+import { VideoStage } from './VideoStage'
 
 interface Props {
   match: Match
   replay: ReplayState
+  replayKey: number // changes with every started replay, so the video restarts with it
   speech: ReturnType<typeof useSpeech>
+  voices: Voice[]
+  voiceId: string | null
+  onVoice: (id: string) => void
   canSwitchTo: (sport: Sport) => boolean
   onSwitch: (sport: Sport) => void
   onRetry: () => void
@@ -19,14 +21,14 @@ interface Props {
   onBack: () => void
 }
 
-// The live match page (docs/design.md "Screens"): score bar, controls, the field with the subtitle
-// under it, and the line log and proof panel beside it (stacked under 760px).
-export function Live({ match, replay, speech, canSwitchTo, onSwitch, onRetry, onReconnect, onBack }: Props) {
+// The live match page (PRD v2, R-6): score bar, controls, the highlights video with the subtitle
+// under it, and the line log and proof panel beside it (stacked under 760px). Structure and wiring
+// only: the new look waits for the lead's redesigned mockup (#21).
+export function Live(props: Props) {
+  const { match, replay, replayKey, speech, voices, voiceId, onVoice, canSwitchTo, onSwitch, onRetry, onReconnect, onBack } = props
   const moment = replay.moments.at(-1) ?? null
   const latest = replay.lines[0]
   const starting = replay.phase === 'starting'
-  const [home, away] = matchTeams(match)
-  const { ours, theirs } = moment ? sides(match, moment.team) : { ours: home, theirs: away }
   const label = match.title ?? match.match_id
 
   if (replay.phase === 'failed') {
@@ -58,6 +60,11 @@ export function Live({ match, replay, speech, canSwitchTo, onSwitch, onRetry, on
         <button disabled={!speech.available} aria-pressed={speech.on} onClick={() => speech.setOn(!speech.on)}>
           {!speech.available ? 'Voice unavailable in this browser' : speech.on ? 'Voice on' : 'Voice off'}
         </button>
+        {/* A-6.3@1: the voice is a setting; a change applies from the next line, no reload. */}
+        <select aria-label="Commentator voice" value={voiceId ?? ''} disabled={!voices.length}
+          onChange={(e) => onVoice(e.target.value)}>
+          {voices.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}
+        </select>
         <span className={`on-air${speech.speaking ? ' speaking' : ''}`} aria-live="off">
           <span className="bars" aria-hidden><i /><i /><i /></span>On air
         </span>
@@ -73,11 +80,9 @@ export function Live({ match, replay, speech, canSwitchTo, onSwitch, onRetry, on
 
       <div className="grid">
         <section className={`panel stage${replay.stream === 'reconnecting' ? ' dim' : ''}`}>
-          <div className="field-wrap">
-            {match.sport === 'football'
-              ? <Pitch moment={moment} ours={ours.color} theirs={theirs.color} label={label} />
-              : <Ground moment={moment} bat={ours.color} field={theirs.color} label={label} />}
-            {starting && <div className="overlay">Starting replay…</div>}
+          <div className="stage-wrap">
+            {starting ? <div className="video empty">Starting replay…</div>
+              : <VideoStage key={replayKey} youtubeId={match.youtube_id} label={label} />}
           </div>
           <p className="subtitle" aria-live="assertive" key={latest?.line_id ?? 'waiting'}>
             {latest ? latest.text : 'Waiting for the first moment…'}

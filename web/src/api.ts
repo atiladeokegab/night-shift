@@ -1,15 +1,15 @@
-// The only module that talks to the match server (docs/CONTRACT.md, "HTTP"):
+// The only module that talks to the match server (docs/CONTRACT.md, 'HTTP'):
 // GET /matches, POST /replays {match_id, speed} -> {replay_id},
 // GET /replays/{id}/stream (SSE: moment, line, stats per moment; error; end last),
-// GET /lines/{id}/audio (the line read by ElevenLabs, 503 when the voice isn't configured).
+// GET /stats, GET /voices and GET /lines/{id}/audio?voice=<id> (ElevenLabs; 503 when the voice isn't configured).
 import { demoMatches, demoStats, streamDemo } from './demo'
-import type { Line, Match, Moment, Stats, StreamEvent } from './types'
+import type { Line, Match, Moment, Stats, StreamEvent, Voice } from './types'
 
 export const isDemo = new URLSearchParams(window.location.search).has('demo')
 
 export type StreamStatus = 'ok' | 'reconnecting' | 'disconnected'
 
-// The design's "Disconnected after 3 tries".
+// The design's 'Disconnected after 3 tries'.
 const MAX_TRIES = 3
 
 export async function listMatches(): Promise<Match[]> {
@@ -75,6 +75,25 @@ export function followReplay(
   return () => source.close()
 }
 
-export function lineAudioUrl(lineId: string): string {
-  return `/lines/${encodeURIComponent(lineId)}/audio`
+export function lineAudioUrl(lineId: string, voiceId?: string): string {
+  const url = `/lines/${encodeURIComponent(lineId)}/audio`
+  return voiceId ? `${url}?voice=${encodeURIComponent(voiceId)}` : url
+}
+
+// The page's own speechSynthesis voices, offered when the server lists none (no /voices yet, or 503):
+// the PRD's defaults, an Indian voice for cricket and a British one for football.
+export const BROWSER_VOICES: Voice[] = [
+  { id: 'browser-en-GB', label: 'British (browser)', lang: 'en-GB', default_for: 'football', browser: true },
+  { id: 'browser-en-IN', label: 'Indian (browser)', lang: 'en-IN', default_for: 'cricket', browser: true },
+]
+
+export async function listVoices(): Promise<Voice[]> {
+  if (isDemo) return BROWSER_VOICES
+  try {
+    const res = await fetch('/voices')
+    const voices = res.ok ? ((await res.json()) as Voice[]) : []
+    return voices.length ? voices : BROWSER_VOICES
+  } catch {
+    return BROWSER_VOICES
+  }
 }
