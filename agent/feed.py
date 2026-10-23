@@ -62,6 +62,19 @@ def statsbomb_events(match_id: str) -> list[dict]:
     return json.loads(_fetch(f"{STATSBOMB}/events/{match_id}.json", f"sb_e_{match_id}.json"))
 
 
+def statsbomb_nicknames(match_id: str) -> dict[int, str]:
+    """Player id -> the name a commentator uses ("Lionel Messi"), from the match's lineups."""
+    teams = json.loads(_fetch(f"{STATSBOMB}/lineups/{match_id}.json", f"sb_l_{match_id}.json"))
+    return {
+        p["player_id"]: _s(p["player_nickname"])
+        for team in teams
+        if isinstance(team, dict)
+        for p in team.get("lineup") or []
+        if isinstance(p, dict)
+        if isinstance(p.get("player_id"), int) and _s(p.get("player_nickname"))
+    }
+
+
 def football_header(meta: dict) -> dict:
     """Teams, competition and date only: never the score or result."""
     return {
@@ -75,7 +88,14 @@ def football_header(meta: dict) -> dict:
     }
 
 
-def football_moments(header: dict, events: list[dict]) -> list[dict]:
+def football_moments(
+    header: dict, events: list[dict], nicknames: dict[int, str] | None = None
+) -> list[dict]:
+    nicknames = nicknames or {}
+
+    def who(obj) -> str:  # the nickname when StatsBomb has one, else the full name
+        return nicknames.get(obj.get("id"), _name(obj)) if isinstance(obj, dict) else ""
+
     home = header["home"]
     score = {"home": 0, "away": 0}
     shootout = {"home": 0, "away": 0}
@@ -84,13 +104,13 @@ def football_moments(header: dict, events: list[dict]) -> list[dict]:
         gk = ev.get("goalkeeper") or {}
         if _name(ev.get("type")) == "Goal Keeper" and "Saved" in _name(gk.get("type")):
             for rel in ev.get("related_events") or []:
-                keepers[rel] = _name(ev.get("player"))
+                keepers[rel] = who(ev.get("player"))
 
     moments = []
     for ev in events:
         kind = _name(ev.get("type"))
         team = _name(ev.get("team"))
-        player = _name(ev.get("player"))
+        player = who(ev.get("player"))
         period = _num(ev.get("period")) or 0
         side = "home" if team == home else "away"
         other = "away" if side == "home" else "home"
@@ -123,7 +143,7 @@ def football_moments(header: dict, events: list[dict]) -> list[dict]:
         elif kind == "Substitution":
             sub = ev.get("substitution") or {}
             outcome = _name(sub.get("outcome")) or "Substitution"
-            players = {"off": player, "on": _name(sub.get("replacement"))}
+            players = {"off": player, "on": who(sub.get("replacement"))}
         elif kind == "Injury Stoppage":
             outcome = "Injury stoppage"
             players["injured"] = player
@@ -277,7 +297,8 @@ def load(sport: str, match_id: str, meta: dict | None = None) -> tuple[dict, lis
     """(header, moments) for one match. Football needs its StatsBomb match record as meta."""
     if sport == "football":
         header = football_header(meta or {"match_id": match_id})
-        return header, football_moments(header, statsbomb_events(match_id))
+        events, nicknames = statsbomb_events(match_id), statsbomb_nicknames(match_id)
+        return header, football_moments(header, events, nicknames)
     match = cricsheet_match(match_id)
     header = cricket_header(match_id, match)
     return header, cricket_moments(header, match)

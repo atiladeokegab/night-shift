@@ -53,6 +53,16 @@ def test_shots_goals_cards_and_own_goals_are_moments():
     assert [m["idx"] for m in moments] == [0, 1, 2, 3]
 
 
+def test_players_go_by_their_lineup_nickname_else_their_full_name():
+    messi = {"id": 5503, "name": "Lionel Andrés Messi Cuccittini"}
+    events = [
+        ev("Shot", player=None, shot={"outcome": {"name": "Goal"}}) | {"player": messi},
+        ev("Shot", player="Hugo Lloris", shot={"outcome": {"name": "Saved"}}),
+    ]
+    moments = feed.football_moments(HEADER, events, {5503: "Lionel Messi"})
+    assert [m["players"]["shooter"] for m in moments] == ["Lionel Messi", "Hugo Lloris"]
+
+
 def ball(batter=0, extras=None, wicket=None, ball="0.1"):
     d = {
         "batter": "Bat",
