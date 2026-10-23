@@ -170,14 +170,39 @@ async function refreshStats() {
   }));
 }
 
-function speak(text) {
+// Voice: the server's line audio (GET /lines/{id}/audio); on any failure, browser speech.
+let current = null;
+const onAir = (on) => $("onair").classList.toggle("on", on);
+
+function prepare(line) {
+  if (line.audio) return;
+  line.audio = new Audio(`/lines/${encodeURIComponent(line.line_id)}/audio`);
+  line.audio.preload = "auto";
+  line.audio.onplaying = () => onAir(true);
+  line.audio.onpause = line.audio.onended = () => onAir(false);
+}
+
+function stopVoice() {
+  if ("speechSynthesis" in window) speechSynthesis.cancel();
+  if (current) current.pause();
+  current = null;
+}
+
+function speak(line) {
+  stopVoice();
+  prepare(line);
+  const a = (current = line.audio);
+  a.play().catch(() => { if (current === a) speakBrowser(line.text); });
+}
+
+function speakBrowser(text) {
   if (!("speechSynthesis" in window)) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.lang = LANG[match.sport] || "en-GB";
   u.voice = speechSynthesis.getVoices().find((v) => v.lang.replace("_", "-") === u.lang) || null;
-  u.onstart = () => $("onair").classList.add("on");
-  u.onend = u.onerror = () => $("onair").classList.remove("on");
+  u.onstart = () => onAir(true);
+  u.onend = u.onerror = () => onAir(false);
   speechSynthesis.speak(u);
 }
 
@@ -196,7 +221,7 @@ function show(line) {
   if (m) scorebar(m);
   subtitle(line.text, "", m ? `${m.type} · ${m.clock}` : "Live");
   logLine(line, false);
-  speak(line.text);
+  speak(line);
   refreshStats();
 }
 
@@ -218,7 +243,7 @@ function tick() {
   const playing = player.getPlayerState() === YT.PlayerState.PLAYING;
   const t = player.getCurrentTime();
   if (Math.abs(t - lastT) > 2) { // sought: drop what was said and re-arm from the new time
-    if ("speechSynthesis" in window) speechSynthesis.cancel();
+    stopVoice();
     queue = held.filter((l) => l.video_t >= t - WINDOW);
   }
   lastT = t;
@@ -226,6 +251,7 @@ function tick() {
   $("sync").textContent = `${playing ? "▶" : "Ⅱ"} ${mmss(t)}` +
     (next ? ` · next line ${mmss(next.video_t)} · ${queue.length} held` : "") + (playing ? "" : " · commentary waits");
   if (!playing) return;
+  queue.slice(0, 2).forEach(prepare); // fetch the next lines' audio before their moment
   while (queue.length && queue[0].video_t <= t) {
     const line = queue.shift();
     if (t - line.video_t <= WINDOW) show(line);
@@ -235,9 +261,9 @@ function tick() {
 setInterval(tick, 100);
 
 function onState(e) {
-  if (!("speechSynthesis" in window)) return;
-  if (e.data === YT.PlayerState.PLAYING) speechSynthesis.resume();
-  else speechSynthesis.pause(); // paused or buffering: the voice waits with the picture
+  const playing = e.data === YT.PlayerState.PLAYING; // paused or buffering: the voice waits
+  if ("speechSynthesis" in window) playing ? speechSynthesis.resume() : speechSynthesis.pause();
+  if (current && !current.ended) playing ? current.play().catch(() => {}) : current.pause();
 }
 
 function loadVideo(id) {
@@ -258,7 +284,7 @@ async function start(sport) {
   const m = matches.find((x) => x.match_id === DEMO[sport]) || matches.find((x) => x.sport === sport);
   if (!m) return;
   if (es) es.close();
-  if ("speechSynthesis" in window) speechSynthesis.cancel();
+  stopVoice();
   match = m; moments = {}; seen = new Set(); held = []; queue = []; logged = new Map(); lastT = 0;
   $("log").replaceChildren();
   document.querySelectorAll("#sports button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.sport === sport));
