@@ -152,6 +152,28 @@ def commentate(
         return None  # the replay skips the moment
 
 
+CORRECTION = "Producer correction. Reply with exactly this line: {text}"
+
+
+def correct(
+    line: dict, corrected_text: str, header: dict | None = None, moments=None, provider=None
+) -> dict:
+    """A producer's fix as the next turn of the line's own call: same task, same session."""
+    if header is None or moments is None:
+        from data.matches import load_moments, match_header
+
+        header = header or match_header(line["match_id"])
+        moments = moments if moments is not None else load_moments(line["match_id"])
+    request = build_request(header, [m for m in moments if m["idx"] <= line["moment_idx"]])
+    request["messages"] += [
+        {"role": "assistant", "content": line["text"]},
+        {"role": "user", "content": CORRECTION.format(text=corrected_text)},
+    ]
+    reply = (provider or default_provider()).call(request)
+    said = spoken(" ".join(b["text"] for b in reply["content"] if b["type"] == "text"))
+    return {"mubit_request_id": reply["request_id"], "reply_matched": said == corrected_text}
+
+
 _provider = None
 
 
@@ -263,7 +285,10 @@ class FakeProvider:
         text = msgs[0]["content"]
         fields = dict(line.split(": ", 1) for line in text.splitlines() if ": " in line)
         big = fields.get("Event", "").startswith(("Shot, Goal", "Wicket"))
-        if len(msgs) == 1 and big:
+        said = msgs[-1]["content"]
+        if isinstance(said, str) and said.startswith("Producer correction"):
+            content = [{"type": "text", "text": said.split(": ", 1)[1]}]
+        elif len(msgs) == 1 and big:
             content = [
                 {"type": "tool_use", "id": f"fake-tool-{n}", "name": "get_score", "input": {}}
             ]
