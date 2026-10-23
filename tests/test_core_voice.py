@@ -20,9 +20,10 @@ def upstream(status=200, body=AUDIO, seen=None):
     return httpx.MockTransport(handle)
 
 
-def client_for(tmp_path, transport):
+def client_for(tmp_path, transport, *lines):
     store = Store(tmp_path)
-    store.append("lines", {"line_id": "l1", "text": "Kohli! Six over long-on!"})
+    for line in ({"line_id": "l1", "text": "Kohli! Six over long-on!"}, *lines):
+        store.append("lines", line)
     deps = Deps(lambda: [], lambda mid: [], lambda m, h: {})
     return TestClient(create_app(store=store, deps=deps, tts_transport=transport))
 
@@ -71,3 +72,48 @@ def test_unknown_line_is_404(tmp_path, monkeypatch):
     monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
     with client_for(tmp_path, upstream()) as client:
         assert client.get("/lines/nope/audio").status_code == 404
+
+
+def voice_in(request: httpx.Request) -> str:
+    return request.url.path.split("/")[3]
+
+
+def test_voices_lists_one_default_per_sport(tmp_path):
+    with client_for(tmp_path, upstream()) as client:
+        voices = client.get("/voices").json()
+    assert {v["default_for"] for v in voices} >= {"cricket", "football"}
+    assert all(set(v) == {"id", "label", "default_for"} for v in voices)
+    assert all(v["id"].isascii() and " " not in v["id"] for v in voices)
+
+
+@pytest.mark.parametrize("sport", ["cricket", "football"])
+def test_audio_defaults_to_the_lines_sport_voice(tmp_path, monkeypatch, sport):
+    from core.voice import VOICES
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    seen = []
+    line = {"line_id": "s1", "sport": sport, "text": "Out!"}
+    with client_for(tmp_path, upstream(seen=seen), line) as client:
+        assert client.get("/lines/s1/audio").status_code == 200
+    default = next(v for v in VOICES if v["default_for"] == sport)
+    assert voice_in(seen[0]) == default["eleven_id"]
+
+
+def test_audio_uses_the_chosen_voice(tmp_path, monkeypatch):
+    from core.voice import VOICES
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    seen = []
+    chosen = next(v for v in VOICES if v["default_for"] == "football")
+    line = {"line_id": "c1", "sport": "cricket", "text": "Six!"}
+    with client_for(tmp_path, upstream(seen=seen), line) as client:
+        assert client.get(f"/lines/c1/audio?voice={chosen['id']}").status_code == 200
+    assert voice_in(seen[0]) == chosen["eleven_id"]
+
+
+def test_unknown_voice_is_404_before_calling_upstream(tmp_path, monkeypatch):
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    seen = []
+    with client_for(tmp_path, upstream(seen=seen)) as client:
+        resp = client.get("/lines/l1/audio?voice=JBFqnCBsd6RMkjVDRZzb")
+    assert resp.status_code == 404 and seen == []

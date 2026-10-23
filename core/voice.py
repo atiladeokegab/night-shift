@@ -14,18 +14,50 @@ log = logging.getLogger("night_shift.voice")
 
 TTS_URL = "https://api.elevenlabs.io/v1/text-to-speech/{voice}/stream"
 MODEL = "eleven_flash_v2_5"
-VOICE = "JBFqnCBsd6RMkjVDRZzb"  # George: warm British male, an ElevenLabs premade voice
+# The page's voice setting. ids are ours; eleven_id never leaves the server. Viraj and Connor are
+# ElevenLabs library voices: the first call on each takes ~15 s cold, ~0.15 s after.
+VOICES = [
+    {
+        "id": "viraj",
+        "label": "Viraj: Indian English, energetic",
+        "default_for": "cricket",
+        "eleven_id": "PdJQAOWyIMAQwD7gQcSc",
+    },
+    {
+        "id": "connor",
+        "label": "Connor: British, energetic",
+        "default_for": "football",
+        "eleven_id": "xtw8E1CXDMtNKx4sgP7u",
+    },
+    {
+        "id": "george",
+        "label": "George: British, warm",
+        "default_for": None,
+        "eleven_id": "JBFqnCBsd6RMkjVDRZzb",
+    },
+]
 
 
 def voice_router(store, transport: httpx.AsyncBaseTransport | None = None) -> APIRouter:
     router = APIRouter()
 
+    @router.get("/voices")
+    def voices():
+        return [{k: v[k] for k in ("id", "label", "default_for")} for v in VOICES]
+
     @router.get("/lines/{line_id}/audio")
-    async def line_audio(line_id: str):
+    async def line_audio(line_id: str, voice: str | None = None):
         # only stored lines are spoken, so the key can't be used to read out arbitrary text
         line = next((ln for ln in store.all("lines") if ln.get("line_id") == line_id), None)
         if line is None:
             raise HTTPException(404, f"no line {line_id!r}")
+        if voice:
+            chosen = next((v for v in VOICES if v["id"] == voice), None)
+            if chosen is None:
+                raise HTTPException(404, f"no voice {voice!r}")
+        else:
+            sport = line.get("sport")
+            chosen = next((v for v in VOICES if v["default_for"] == sport), VOICES[0])
         key = os.environ.get("ELEVENLABS_API_KEY")
         if not key:
             raise HTTPException(503, "voice not configured")
@@ -36,7 +68,7 @@ def voice_router(store, transport: httpx.AsyncBaseTransport | None = None) -> AP
             upstream = await client.send(
                 client.build_request(
                     "POST",
-                    TTS_URL.format(voice=VOICE),
+                    TTS_URL.format(voice=chosen["eleven_id"]),
                     params={"output_format": "mp3_44100_128"},
                     headers={"xi-api-key": key, "accept": "audio/mpeg"},
                     json={"text": line["text"], "model_id": MODEL},
