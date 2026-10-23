@@ -1,6 +1,6 @@
-<!-- Generated from the team PRD (v3, changes C-001 and C-002, approved 2026-10-23). This copy is what every agent builds and reviews against; it is refreshed whenever the PRD changes. The model's input is event data; the highlights video is display only. -->
+<!-- Generated from the team PRD (v5: changes C-001 to C-004, approved 2026-10-23). This copy is what every agent builds and reviews against; it is refreshed whenever the PRD changes. The model's input is event data; the highlights video is display only. -->
 
-# night-shift: PRD v3
+# night-shift: PRD v5
 
 ## Problem
 Most matches in most sports are played with nobody calling them: grassroots and lower-league football, most of the women's game, club and county cricket. A clever model could commentate them, but it is too slow to call a moment while it is still on screen and too expensive to run for every moment of every match.
@@ -30,7 +30,7 @@ Most matches in most sports are played with nobody calling them: grassroots and 
 - Video or vision input: the feed is event data
 - A live real-world match feed: replays of real matches only
 - A system prompt per sport, or a second commentator persona (splits the Mubit task)
-- Sports beyond football and cricket, or any sport without real event data
+- Sports beyond football, cricket, basketball and F1, or any sport without real event data
 - Our own fine-tuning or model hosting: Mubit trains the model
 - Any claim that our model beats the big one: it matches it, at lower cost
 - Unsourced statistics in the pitch; betting, odds or predictions
@@ -125,6 +125,14 @@ rank 9 · state proposed · needs R-5 · touches `README.md`, `docs/demo.md`
 Why: The submission and the demo criterion
 - A-9.1@1 Scenario: README.md has what it is, how to run it, the live URL, a screenshot and data credits (StatsBomb, Cricsheet), with no placeholders (`tests/acceptance/test_A_9_1.py`)
 - A-9.2@1 Scenario: docs/demo.md tells one human promise (every match gets a commentator) with the live call as its peak, at most one line on the tech, rehearsed once on the deployed URL (`tests/acceptance/test_A_9_2.py`)
+
+### R-10 Iconic extra screens after the core works: Messi v Mbappe, Jordan, Hamilton
+rank 10 · state proposed · needs R-6 · touches `data/`, `agent/`, `core/`
+Why: Iconic moments that resonate with the audience; shows the one commentator generalises
+- A-10.1@1 Scenario: an iconic basketball game from real play-by-play data (Michael Jordan's last shot, 1998 NBA Finals Game 6 against Utah, or the nearest iconic Jordan game with real data) replays over its official highlights and the same commentator calls its key moments (made baskets in the closing minutes, lead changes, steals, the go-ahead shot, the final buzzer) with every name and score right (`tests/acceptance/test_A_10_1.py`)
+- A-10.2@1 Scenario: an iconic F1 race from real timing data (Lewis Hamilton's 2024 British Grand Prix win at Silverstone, or the nearest iconic race with real data) replays over its official highlights and the same commentator calls its key moments (overtakes and lead changes, pit stops, safety car, the last lap and the finish) with every driver, position and gap right (`tests/acceptance/test_A_10_2.py`)
+- A-10.3@1 Scenario: all four sports are one Mubit task: the system prompt, tools, message template and tool_choice are byte-identical for football, cricket, basketball and F1, and the match picker lists all four (`tests/acceptance/test_A_10_3.py`)
+- A-10.4@1 Scenario: the 2022 World Cup final, Argentina v France, from StatsBomb open data replays over its official highlights and the same commentator calls its key moments (Messi's penalty and his extra-time goal, Di Maria's goal, Mbappe's penalty and his volley, the shoot-out) with every name and score right (`tests/acceptance/test_A_10_4.py`)
 
 ## References
 _(none)_
