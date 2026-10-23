@@ -70,6 +70,15 @@ def test_commentator_failure_ends_the_stream_with_error(tmp_path):
     assert names == ["moment", "error", "end"]
 
 
+def test_no_line_leaves_the_moment_silent(tmp_path):
+    deps = Deps(lambda: [], lambda mid: MOMENTS[mid], lambda m, h: None)
+    store = Store(tmp_path)
+    with TestClient(create_app(store=store, deps=deps)) as client:
+        rid = client.post("/replays", json={"match_id": "f1", "speed": 1e6}).json()["replay_id"]
+        names = [n for n, _ in read_stream(client, rid)]
+    assert names == ["moment", "moment", "end"] and store.all("lines") == []
+
+
 def test_unknown_match_and_replay_404(app_store):
     client, _ = app_store
     assert client.post("/replays", json={"match_id": "nope", "speed": 1}).status_code == 404

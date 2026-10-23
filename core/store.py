@@ -62,11 +62,13 @@ class GcsStore(Store):
             raise ValueError(f"unknown kind {kind!r}")
         with self._lock:
             for _ in range(8):
-                blob = self._blob(kind)
-                gen = blob.generation if blob.exists() else 0
-                text = blob.download_as_text() if gen else ""
+                # get_blob loads the generation; blob().exists() leaves it None, which read
+                # the object as empty and let the next append overwrite every earlier record
+                blob = self.bucket.get_blob(self._blob(kind).name)
+                gen = blob.generation if blob else 0
                 try:
-                    blob.upload_from_string(
+                    text = blob.download_as_text(if_generation_match=gen) if blob else ""
+                    self._blob(kind).upload_from_string(
                         text + json.dumps(record) + "\n", if_generation_match=gen
                     )
                     return record
