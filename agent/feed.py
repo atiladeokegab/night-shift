@@ -169,7 +169,8 @@ def cricket_header(match_id: str, match: dict) -> dict:
         "home": teams[0],
         "away": teams[1],
         "competition": _s(event.get("name")),
-        "stage": _s(event.get("stage") or event.get("match_number")),
+        "stage": _s(event.get("stage"))
+        or (f"match {_s(event.get('match_number'))}" if event.get("match_number") else ""),
         "date": _s((info.get("dates") or [""])[0], 10),
     }
 
@@ -188,7 +189,7 @@ def cricket_moments(header: dict, match: dict) -> list[dict]:
             continue
         team = _s(inn.get("team"))
         target = _num((inn.get("target") or {}).get("runs"))
-        runs = wickets = 0
+        runs = wickets = legal = 0
         free_hit = False
         balls = [(o, d) for o in inn.get("overs") or [] for d in o.get("deliveries") or []]
         for n, (over, d) in enumerate(balls):
@@ -200,6 +201,7 @@ def cricket_moments(header: dict, match: dict) -> list[dict]:
             runs += _num(r.get("total")) or 0
             outs = [w for w in d.get("wickets") or [] if isinstance(w, dict)]
             wickets += len(outs)
+            legal += not (extras.get("wides") or extras.get("noballs"))
             last_ball = n == len(balls) - 1
             tight_chase = (
                 target is not None and over_no >= max_overs - 2 and target - before <= 30
@@ -233,6 +235,8 @@ def cricket_moments(header: dict, match: dict) -> list[dict]:
                 }
                 if outs:
                     detail["wicket_kind"] = _s(outs[0].get("kind"))
+                if target is not None:
+                    detail["balls_left"] = max(0, max_overs * 6 - legal)
                 score = {"runs": runs, "wickets": wickets}
                 if target is not None:
                     score["target"] = target

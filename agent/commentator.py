@@ -36,7 +36,10 @@ def _score(header: dict, m: dict) -> str:
             text += f" (penalties {so['home']}-{so['away']})"
         return text
     text = f"{m['team']} {s['runs']}/{s['wickets']}"
-    return text + (f", target {s['target']}" if "target" in s else "")
+    if "target" in s:
+        need = max(0, s["target"] - s["runs"])
+        text += f", target {s['target']}, need {need} from {m['detail']['balls_left']} balls"
+    return text
 
 
 def _players(m: dict) -> str:
