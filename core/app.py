@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from core.replay import Replay, run_replay
 from core.stats import stats
 from core.store import open_store
+from core.voice import voice_router
 
 
 @dataclass
@@ -37,7 +38,7 @@ class ReplayRequest(BaseModel):
     speed: float = Field(10.0, gt=0)
 
 
-def create_app(store=None, deps: Deps | None = None) -> FastAPI:
+def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> FastAPI:
     app = FastAPI(title="Night Shift")
     store = store or open_store()
     deps = deps or default_deps()
@@ -88,4 +89,5 @@ def create_app(store=None, deps: Deps | None = None) -> FastAPI:
     def get_stats():
         return stats(store)
 
+    app.include_router(voice_router(store, tts_transport))
     return app
