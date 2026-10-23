@@ -59,9 +59,12 @@ def test_upstream_failure_is_503_without_the_key(tmp_path, monkeypatch, caplog, 
     assert KEY not in resp.text and KEY not in caplog.text
 
 
-def test_upstream_unreachable_is_503(tmp_path, monkeypatch):
+@pytest.mark.parametrize(
+    "exc", [httpx.ConnectError, httpx.ReadTimeout], ids=["unreachable", "cold-voice-timeout"]
+)
+def test_upstream_failure_is_503(tmp_path, monkeypatch, exc):
     def down(request):
-        raise httpx.ConnectError("no route", request=request)
+        raise exc("upstream", request=request)
 
     monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
     with client_for(tmp_path, httpx.MockTransport(down)) as client:
