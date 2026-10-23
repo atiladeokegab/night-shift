@@ -1,4 +1,4 @@
-"""The commentator: one frozen prompt, template and tool set for both sports, via Mubit.
+"""The commentator: one frozen prompt, template and tool set for every sport, via Mubit.
 
 Only the moments up to and including the current one ever reach the request or the tools.
 """
@@ -31,7 +31,7 @@ def session_id(sport: str, match_id: str) -> str:
 
 def _score(header: dict, m: dict) -> str:
     s = m["score"]
-    if m["sport"] == "football":
+    if "home" in s:  # football and basketball
         text = f"{header['home']} {s['home']}, {header['away']} {s['away']}"
         if "shootout" in m["detail"]:
             so = m["detail"]["shootout"]
@@ -60,6 +60,8 @@ def _detail(m: dict) -> str:
 def _period(m: dict) -> str:
     if m["sport"] == "cricket":
         return f"innings {m['period']}"
+    if m["sport"] == "basketball":
+        return f"quarter {m['period']}" if m["period"] <= 4 else f"overtime {m['period'] - 4}"
     return "penalty shootout" if m["period"] == 5 else f"period {m['period']}"
 
 
