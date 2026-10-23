@@ -271,10 +271,34 @@ def test_one_untemplated_prompt_asks_for_a_broadcast_call_on_big_moments():
             " it!",
         ),
         ("GOAL! Ann! Reds one, Blues nil!", "GOAL! Ann! Reds one, Blues nil!"),
+        (  # the score closes the line, so the middle goes
+            "What a header from Alexandra Popp! She climbs above everyone at the near post and"
+            " buries it past the keeper! Germany extend it to four.",
+            "What a header from Alexandra Popp! Germany extend it to four.",
+        ),
+        (  # a decimal point never ends a sentence
+            "Bowled him at 19.4 overs! The stumps go cartwheeling back towards the keeper and the"
+            " crowd erupts in noise! India 150 for 7.",
+            "Bowled him at 19.4 overs! India 150 for 7.",
+        ),
     ],
 )
 def test_line_is_trimmed_to_whole_sentences_within_20_words(said, line):
     assert line_for(FOOT, [moment(FOOT, 0)], 0, Scripted(text(said)))["text"] == line
+
+
+def test_26_word_f1_line_keeps_its_call_and_the_gap():
+    said = (
+        "Hamilton sweeps past Norris into Stowe! What a move from the champion in front of his"
+        " home crowd! Lap 40, Hamilton leads Norris by 1.5 seconds."
+    )
+    assert len(said.split()) == 26
+    moments = load_moments("9558")
+    line = line_for(match_header("9558"), moments, len(moments) - 1, Scripted(text(said)))
+    assert (
+        line["text"]
+        == "Hamilton sweeps past Norris into Stowe! Lap 40, Hamilton leads Norris by 1.5 seconds."
+    )
 
 
 def test_one_sentence_over_20_words_is_no_line():

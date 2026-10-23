@@ -167,13 +167,14 @@ def spoken(text: str) -> str:
 
 
 def _fit(text: str, limit: int = MAX_WORDS) -> str:
-    """Whole sentences up to the word limit; one long first sentence is no line."""
-    out = ""
-    for sentence in re.findall(r"[^.!?…]+[.!?…]*\s*", text):
-        if len((out + sentence).split()) > limit:
-            break
-        out += sentence
-    return out.strip()
+    """The whole line, else its first and last sentences (the score usually closes it), else the
+    first sentence; one long first sentence is no line."""
+    # a sentence ends at punctuation before a space, so "19.4 overs" stays whole
+    s = re.split(r"(?<=[.!?…])\s+", text.strip())
+    for out in (s, s[:1] + s[-1:], s[:1]):
+        if len(" ".join(out).split()) <= limit:
+            return " ".join(out)
+    return ""
 
 
 def commentate(
