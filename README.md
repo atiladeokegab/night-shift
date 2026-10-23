@@ -120,7 +120,7 @@ As of 23 October 2026, 23:30 UTC.
 | One task for every sport; facts from tools, never from later in the match (A-1.2, A-1.4, A-10.3) | Live |
 | Expressive voice per sport, with a voice setting (A-6.3, A-6.6) | Live |
 | Proof panel: latency, cost per line, lines, fixes and the adapter's result (A-7.1) | Live |
-| Producer fix: the server stores it and sends it through Mubit (A-4.1) | Live; the page's Fix button is in review |
+| Producer fix: the server stores it and sends it through Mubit (A-4.1) | Live; the page's Fix button is merged and goes live with the next deploy |
 | The home page as a wall of all six matches playing at once (A-6.5) | In progress |
 | Mubit's trained commentator against the big model on held-out moments (R-8) | In progress |
 
