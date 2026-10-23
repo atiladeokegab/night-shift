@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import time
 import uuid
 from datetime import UTC, datetime
@@ -49,7 +50,10 @@ def _players(m: dict) -> str:
 def _detail(m: dict) -> str:
     def flat(d):
         return ", ".join(f"{k}: {v}" for k, v in d.items() if v not in ("", None, False, {}, 0))
-    return flat({k: flat(v) if isinstance(v, dict) else v for k, v in m["detail"].items()}) or "none"
+
+    return (
+        flat({k: flat(v) if isinstance(v, dict) else v for k, v in m["detail"].items()}) or "none"
+    )
 
 
 def _period(m: dict) -> str:
@@ -100,16 +104,44 @@ def run_tool(name: str, args: dict, header: dict, past: list[dict]) -> str:
         return f"{_score(header, m)}; {_period(m)}, {m['clock']}"
     if name == "get_player":
         who = str((args or {}).get("name", "")).strip().lower()
-        hits = [describe(p) for p in past if who and any(who in n.lower() for n in p["players"].values())]
+        hits = [
+            describe(p)
+            for p in past
+            if who and any(who in n.lower() for n in p["players"].values())
+        ]
         return "\n".join(hits[-10:]) or f"No moments yet for {who or 'that player'}."
     if name == "get_recent_play":
         count = (args or {}).get("count", 3)
         count = max(1, min(10, count if isinstance(count, int) else 3))
-        return "\n".join(describe(p) for p in past[-count - 1:-1]) or "No earlier moments."
+        return "\n".join(describe(p) for p in past[-count - 1 : -1]) or "No earlier moments."
     return f"Unknown tool {name}."
 
 
-def commentate(header: dict, moments: list[dict], idx: int, provider) -> dict:
+def commentate(
+    moment: dict, history: list[dict], header: dict | None = None, provider=None
+) -> dict:
+    """The server's seam: one Line for `moment`, given only the earlier moments."""
+    if header is None:
+        from data.matches import match_header
+
+        header = match_header(moment["match_id"])
+    moments = [*history, moment]
+    return line_for(header, moments, len(history), provider or default_provider())
+
+
+_provider = None
+
+
+def default_provider():
+    """Mubit when MUBIT_API_KEY is set, else FakeProvider; made once per process."""
+    global _provider
+    if _provider is None:
+        key = os.environ.get("MUBIT_API_KEY")
+        _provider = MubitProvider(key) if key else FakeProvider()
+    return _provider
+
+
+def line_for(header: dict, moments: list[dict], idx: int, provider) -> dict:
     """One Line for moments[idx], with at most one tool round."""
     past = moments[: idx + 1]  # never anything later than this moment
     request = build_request(header, past)
@@ -123,10 +155,14 @@ def commentate(header: dict, moments: list[dict], idx: int, provider) -> dict:
             out = run_tool(b["name"], b["input"], header, past)
             tool_calls.append({"name": b["name"], "input": b["input"], "output": out})
             results.append({"type": "tool_result", "tool_use_id": b["id"], "content": out})
-        request = {**request, "messages": request["messages"] + [
-            {"role": "assistant", "content": reply["content"]},
-            {"role": "user", "content": results},
-        ]}
+        request = {
+            **request,
+            "messages": request["messages"]
+            + [
+                {"role": "assistant", "content": reply["content"]},
+                {"role": "user", "content": results},
+            ],
+        }
         offset = (time.monotonic() - start) * 1000
         reply = provider.call(request)  # the last round: any further tool request is dropped
         replies.append(reply)
@@ -163,7 +199,10 @@ class MubitProvider:
 
         headers = {} if record else {"x-middleware-record": "off"}
         self.client = anthropic.Anthropic(
-            api_key=api_key, base_url=MUBIT_URL, timeout=timeout, max_retries=1,
+            api_key=api_key,
+            base_url=MUBIT_URL,
+            timeout=timeout,
+            max_retries=1,
             default_headers=headers,
         )
 
@@ -177,7 +216,10 @@ class MubitProvider:
             request_id = stream.response.headers.get("x-middleware-request-id")
         return {
             "content": [_block(b) for b in msg.content],
-            "usage": {"input_tokens": msg.usage.input_tokens, "output_tokens": msg.usage.output_tokens},
+            "usage": {
+                "input_tokens": msg.usage.input_tokens,
+                "output_tokens": msg.usage.output_tokens,
+            },
             "request_id": request_id,
             "first_word_ms": first,
         }
@@ -197,7 +239,9 @@ class FakeProvider:
         fields = dict(line.split(": ", 1) for line in text.splitlines() if ": " in line)
         big = fields.get("Event", "").startswith(("Shot, Goal", "Wicket"))
         if len(msgs) == 1 and big:
-            content = [{"type": "tool_use", "id": f"fake-tool-{n}", "name": "get_score", "input": {}}]
+            content = [
+                {"type": "tool_use", "id": f"fake-tool-{n}", "name": "get_score", "input": {}}
+            ]
         else:
             content = [{"type": "text", "text": f"{fields.get('Event')} for {fields.get('Team')}!"}]
         return {

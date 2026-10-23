@@ -20,12 +20,26 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from agent import feed
-from agent.commentator import FakeProvider, MubitProvider, commentate
+from agent.commentator import FakeProvider, MubitProvider, line_for
 
 # Hand-picked StatsBomb competition-seasons, men's and women's, one match from each in turn.
 FOOTBALL = [
-    (43, 106), (72, 30), (55, 282), (37, 90), (2, 27), (53, 106), (9, 281), (49, 107),
-    (1267, 107), (72, 107), (223, 282), (182, 281), (12, 27), (44, 107), (7, 235), (131, 281),
+    (43, 106),
+    (72, 30),
+    (55, 282),
+    (37, 90),
+    (2, 27),
+    (53, 106),
+    (9, 281),
+    (49, 107),
+    (1267, 107),
+    (72, 107),
+    (223, 282),
+    (182, 281),
+    (12, 27),
+    (44, 107),
+    (7, 235),
+    (131, 281),
 ]
 LINES = ROOT / "data" / "lines.jsonl"
 
@@ -71,8 +85,12 @@ def _world_cup(archive, ids: list[str], gender: str, seen: set):
         info = match.get("info") or {}
         event = info.get("event") if isinstance(info.get("event"), dict) else {}
         name = str(event.get("name", ""))
-        if (info.get("gender") == gender and "T20 World Cup" in name and "Qualifier" not in name
-                and len(match.get("innings") or []) >= 2):
+        if (
+            info.get("gender") == gender
+            and "T20 World Cup" in name
+            and "Qualifier" not in name
+            and len(match.get("innings") or []) >= 2
+        ):
             yield match_id, frozenset(map(str, info.get("teams") or []))
 
 
@@ -81,7 +99,9 @@ def cricket_candidates(seen: set):
     archive = feed.cricsheet_zip()
     ids = sorted((n[:-5] for n in archive.namelist() if n[:-5].isdigit()), key=int, reverse=True)
     pairs = set()
-    for both in zip_longest(_world_cup(archive, ids, "female", seen), _world_cup(archive, ids, "male", seen)):
+    for both in zip_longest(
+        _world_cup(archive, ids, "female", seen), _world_cup(archive, ids, "male", seen)
+    ):
         for match_id, pair in filter(None, both):
             if pair not in pairs:
                 pairs.add(pair)
@@ -92,8 +112,11 @@ def pick(moments: list[dict], k: int) -> list[int]:
     """Up to k moment indices: goals and wickets first (half at most), the rest spread evenly."""
     if len(moments) <= k:
         return [m["idx"] for m in moments]
-    big = [m["idx"] for m in moments
-           if m["outcome"] == "Goal" or m["type"] in ("Wicket", "Own Goal Against")][: k // 2]
+    big = [
+        m["idx"]
+        for m in moments
+        if m["outcome"] == "Goal" or m["type"] in ("Wicket", "Own Goal Against")
+    ][: k // 2]
     others = [m["idx"] for m in moments if m["idx"] not in big]
     want = k - len(big)
     return sorted(big + [others[int(i * len(others) / want)] for i in range(want)])
@@ -104,7 +127,7 @@ def replay(sport: str, match_id: str, meta, provider, per_match: int, out: Path)
     written = failures = 0
     for idx in pick(moments, per_match):
         try:
-            line = commentate(header, moments, idx, provider)
+            line = line_for(header, moments, idx, provider)
         except Exception as exc:  # a failed call skips the moment, never the run
             failures += 1
             print(f"  {sport} {match_id} #{idx}: {exc!r}", file=sys.stderr)

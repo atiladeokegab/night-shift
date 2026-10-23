@@ -1,0 +1,836 @@
+{
+ "header": {
+  "sport": "football",
+  "match_id": "3906390",
+  "home": "Spain Women's",
+  "away": "England Women's",
+  "competition": "Women's World Cup",
+  "stage": "Final",
+  "date": "2023-08-20"
+ },
+ "moments": [
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 0,
+   "period": 1,
+   "clock": "04:12",
+   "type": "Shot",
+   "team": "England Women's",
+   "players": {
+    "shooter": "Lauren Hemp",
+    "keeper": "Catalina Thomas Coll Lluch"
+   },
+   "outcome": "Saved",
+   "score": {
+    "home": 0,
+    "away": 0
+   },
+   "detail": {
+    "shot_type": "Open Play",
+    "body_part": "Left Foot",
+    "technique": "Normal",
+    "xg": 0.04
+   },
+   "x": 107.9,
+   "y": 56.3
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 1,
+   "period": 1,
+   "clock": "15:11",
+   "type": "Shot",
+   "team": "England Women's",
+   "players": {
+    "shooter": "Lauren Hemp"
+   },
+   "outcome": "Post",
+   "score": {
+    "home": 0,
+    "away": 0
+   },
+   "detail": {
+    "shot_type": "Open Play",
+    "body_part": "Left Foot",
+    "technique": "Normal",
+    "xg": 0.12
+   },
+   "x": 104.0,
+   "y": 35.4
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 2,
+   "period": 1,
+   "clock": "16:47",
+   "type": "Shot",
+   "team": "Spain Women's",
+   "players": {
+    "shooter": "Salma Paralluelo Ayingono"
+   },
+   "outcome": "Wayward",
+   "score": {
+    "home": 0,
+    "away": 0
+   },
+   "detail": {
+    "shot_type": "Open Play",
+    "body_part": "Left Foot",
+    "technique": "Volley",
+    "xg": 0.33
+   },
+   "x": 112.6,
+   "y": 37.2
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 3,
+   "period": 1,
+   "clock": "16:47",
+   "type": "Shot",
+   "team": "Spain Women's",
+   "players": {
+    "shooter": "Alba María Redondo Ferrer",
+    "keeper": "Mary Alexandra Earps"
+   },
+   "outcome": "Saved",
+   "score": {
+    "home": 0,
+    "away": 0
+   },
+   "detail": {
+    "shot_type": "Open Play",
+    "body_part": "Right Foot",
+    "technique": "Half Volley",
+    "xg": 0.46
+   },
+   "x": 115.3,
+   "y": 46.7
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 4,
+   "period": 1,
+   "clock": "19:23",
+   "type": "Shot",
+   "team": "England Women's",
+   "players": {
+    "shooter": "Lauren Hemp",
+    "keeper": "Catalina Thomas Coll Lluch"
+   },
+   "outcome": "Saved",
+   "score": {
+    "home": 0,
+    "away": 0
+   },
+   "detail": {
+    "shot_type": "Open Play",
+    "body_part": "Left Foot",
+    "technique": "Normal",
+    "xg": 0.09
+   },
+   "x": 107.3,
+   "y": 53.5
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 5,
+   "period": 1,
+   "clock": "28:29",
+   "type": "Shot",
+   "team": "Spain Women's",
+   "players": {
+    "shooter": "Olga Carmona García"
+   },
+   "outcome": "Goal",
+   "score": {
+    "home": 1,
+    "away": 0
+   },
+   "detail": {
+    "shot_type": "Open Play",
+    "body_part": "Left Foot",
+    "technique": "Normal",
+    "xg": 0.05
+   },
+   "x": 107.1,
+   "y": 24.5
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 6,
+   "period": 1,
+   "clock": "36:30",
+   "type": "Shot",
+   "team": "Spain Women's",
+   "players": {
+    "shooter": "Irene Paredes Hernandez"
+   },
+   "outcome": "Off T",
+   "score": {
+    "home": 1,
+    "away": 0
+   },
+   "detail": {
+    "shot_type": "Open Play",
+    "body_part": "Left Foot",
+    "technique": "Half Volley",
+    "xg": 0.05
+   },
+   "x": 107.1,
+   "y": 50.8
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 7,
+   "period": 1,
+   "clock": "38:49",
+   "type": "Shot",
+   "team": "Spain Women's",
+   "players": {
+    "shooter": "Alba María Redondo Ferrer"
+   },
+   "outcome": "Blocked",
+   "score": {
+    "home": 1,
+    "away": 0
+   },
+   "detail": {
+    "shot_type": "Open Play",
+    "body_part": "Left Foot",
+    "technique": "Normal",
+    "xg": 0.01
+   },
+   "x": 103.5,
+   "y": 59.5
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 8,
+   "period": 1,
+   "clock": "45:59",
+   "type": "Shot",
+   "team": "Spain Women's",
+   "players": {
+    "shooter": "Salma Paralluelo Ayingono"
+   },
+   "outcome": "Post",
+   "score": {
+    "home": 1,
+    "away": 0
+   },
+   "detail": {
+    "shot_type": "Open Play",
+    "body_part": "Right Foot",
+    "technique": "Half Volley",
+    "xg": 0.13
+   },
+   "x": 108.3,
+   "y": 40.7
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 9,
+   "period": 2,
+   "clock": "45:00",
+   "type": "Substitution",
+   "team": "England Women's",
+   "players": {
+    "off": "Rachel Daly",
+    "on": "Chloe Kelly"
+   },
+   "outcome": "Tactical",
+   "score": {
+    "home": 1,
+    "away": 0
+   },
+   "detail": {}
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 10,
+   "period": 2,
+   "clock": "45:00",
+   "type": "Substitution",
+   "team": "England Women's",
+   "players": {
+    "off": "Alessia Russo",
+    "on": "Lauren James"
+   },
+   "outcome": "Tactical",
+   "score": {
+    "home": 1,
+    "away": 0
+   },
+   "detail": {}
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 11,
+   "period": 2,
+   "clock": "49:15",
+   "type": "Shot",
+   "team": "Spain Women's",
+   "players": {
+    "shooter": "María Francesca Caldentey Oliver",
+    "keeper": "Mary Alexandra Earps"
+   },
+   "outcome": "Saved",
+   "score": {
+    "home": 1,
+    "away": 0
+   },
+   "detail": {
+    "shot_type": "Open Play",
+    "body_part": "Right Foot",
+    "technique": "Normal",
+    "xg": 0.05
+   },
+   "x": 98.5,
+   "y": 37.9
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 12,
+   "period": 2,
+   "clock": "53:10",
+   "type": "Shot",
+   "team": "England Women's",
+   "players": {
+    "shooter": "Lauren Hemp"
+   },
+   "outcome": "Off T",
+   "score": {
+    "home": 1,
+    "away": 0
+   },
+   "detail": {
+    "shot_type": "Open Play",
+    "body_part": "Left Foot",
+    "technique": "Half Volley",
+    "xg": 0.15
+   },
+   "x": 111.3,
+   "y": 33.6
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 13,
+   "period": 2,
+   "clock": "53:56",
+   "type": "Foul Committed",
+   "team": "England Women's",
+   "players": {
+    "offender": "Lauren Hemp"
+   },
+   "outcome": "Yellow Card",
+   "score": {
+    "home": 1,
+    "away": 0
+   },
+   "detail": {
+    "card": "Yellow Card"
+   },
+   "x": 93.2,
+   "y": 52.2
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 14,
+   "period": 2,
+   "clock": "59:29",
+   "type": "Substitution",
+   "team": "Spain Women's",
+   "players": {
+    "off": "Alba María Redondo Ferrer",
+    "on": "Oihane Hernández Zurbano"
+   },
+   "outcome": "Tactical",
+   "score": {
+    "home": 1,
+    "away": 0
+   },
+   "detail": {}
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 15,
+   "period": 2,
+   "clock": "61:07",
+   "type": "Shot",
+   "team": "Spain Women's",
+   "players": {
+    "shooter": "Aitana Bonmati Conca"
+   },
+   "outcome": "Off T",
+   "score": {
+    "home": 1,
+    "away": 0
+   },
+   "detail": {
+    "shot_type": "Open Play",
+    "body_part": "Left Foot",
+    "technique": "Normal",
+    "xg": 0.05
+   },
+   "x": 96.8,
+   "y": 31.0
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 16,
+   "period": 2,
+   "clock": "64:18",
+   "type": "Injury Stoppage",
+   "team": "Spain Women's",
+   "players": {
+    "injured": "Jennifer Hermoso Fuentes"
+   },
+   "outcome": "Injury stoppage",
+   "score": {
+    "home": 1,
+    "away": 0
+   },
+   "detail": {}
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 17,
+   "period": 2,
+   "clock": "69:01",
+   "type": "Shot",
+   "team": "Spain Women's",
+   "players": {
+    "shooter": "Jennifer Hermoso Fuentes",
+    "keeper": "Mary Alexandra Earps"
+   },
+   "outcome": "Saved",
+   "score": {
+    "home": 1,
+    "away": 0
+   },
+   "detail": {
+    "shot_type": "Penalty",
+    "body_part": "Left Foot",
+    "technique": "Normal",
+    "xg": 0.78
+   },
+   "x": 108.1,
+   "y": 40.1
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 18,
+   "period": 2,
+   "clock": "71:00",
+   "type": "Injury Stoppage",
+   "team": "England Women's",
+   "players": {
+    "injured": "Lauren Hemp"
+   },
+   "outcome": "Injury stoppage",
+   "score": {
+    "home": 1,
+    "away": 0
+   },
+   "detail": {}
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 19,
+   "period": 2,
+   "clock": "71:18",
+   "type": "Injury Stoppage",
+   "team": "Spain Women's",
+   "players": {
+    "injured": "Laia Codina Panedas"
+   },
+   "outcome": "Injury stoppage",
+   "score": {
+    "home": 1,
+    "away": 0
+   },
+   "detail": {}
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 20,
+   "period": 2,
+   "clock": "72:42",
+   "type": "Substitution",
+   "team": "Spain Women's",
+   "players": {
+    "off": "Laia Codina Panedas",
+    "on": "Ivana Andrés Sanz"
+   },
+   "outcome": "Injury",
+   "score": {
+    "home": 1,
+    "away": 0
+   },
+   "detail": {}
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 21,
+   "period": 2,
+   "clock": "73:51",
+   "type": "Shot",
+   "team": "England Women's",
+   "players": {
+    "shooter": "Lucy Bronze"
+   },
+   "outcome": "Off T",
+   "score": {
+    "home": 1,
+    "away": 0
+   },
+   "detail": {
+    "shot_type": "Open Play",
+    "body_part": "Right Foot",
+    "technique": "Normal",
+    "xg": 0.01
+   },
+   "x": 82.6,
+   "y": 50.7
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 22,
+   "period": 2,
+   "clock": "75:07",
+   "type": "Shot",
+   "team": "England Women's",
+   "players": {
+    "shooter": "Lauren James",
+    "keeper": "Catalina Thomas Coll Lluch"
+   },
+   "outcome": "Saved",
+   "score": {
+    "home": 1,
+    "away": 0
+   },
+   "detail": {
+    "shot_type": "Open Play",
+    "body_part": "Left Foot",
+    "technique": "Normal",
+    "xg": 0.01
+   },
+   "x": 112.6,
+   "y": 24.4
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 23,
+   "period": 2,
+   "clock": "76:55",
+   "type": "Foul Committed",
+   "team": "Spain Women's",
+   "players": {
+    "offender": "Salma Paralluelo Ayingono"
+   },
+   "outcome": "Yellow Card",
+   "score": {
+    "home": 1,
+    "away": 0
+   },
+   "detail": {
+    "card": "Yellow Card"
+   },
+   "x": 99.9,
+   "y": 67.4
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 24,
+   "period": 2,
+   "clock": "77:26",
+   "type": "Injury Stoppage",
+   "team": "Spain Women's",
+   "players": {
+    "injured": "Jennifer Hermoso Fuentes"
+   },
+   "outcome": "Injury stoppage",
+   "score": {
+    "home": 1,
+    "away": 0
+   },
+   "detail": {}
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 25,
+   "period": 2,
+   "clock": "84:31",
+   "type": "Injury Stoppage",
+   "team": "England Women's",
+   "players": {
+    "injured": "Lauren James"
+   },
+   "outcome": "Injury stoppage",
+   "score": {
+    "home": 1,
+    "away": 0
+   },
+   "detail": {}
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 26,
+   "period": 2,
+   "clock": "84:40",
+   "type": "Injury Stoppage",
+   "team": "Spain Women's",
+   "players": {
+    "injured": "Jennifer Hermoso Fuentes"
+   },
+   "outcome": "Injury stoppage",
+   "score": {
+    "home": 1,
+    "away": 0
+   },
+   "detail": {}
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 27,
+   "period": 2,
+   "clock": "86:43",
+   "type": "Substitution",
+   "team": "England Women's",
+   "players": {
+    "off": "Ella Toone",
+    "on": "Bethany England"
+   },
+   "outcome": "Tactical",
+   "score": {
+    "home": 1,
+    "away": 0
+   },
+   "detail": {}
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 28,
+   "period": 2,
+   "clock": "88:22",
+   "type": "Shot",
+   "team": "England Women's",
+   "players": {
+    "shooter": "Millie Bright"
+   },
+   "outcome": "Blocked",
+   "score": {
+    "home": 1,
+    "away": 0
+   },
+   "detail": {
+    "shot_type": "Open Play",
+    "body_part": "Left Foot",
+    "technique": "Half Volley",
+    "xg": 0.02
+   },
+   "x": 100.7,
+   "y": 24.7
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 29,
+   "period": 2,
+   "clock": "89:01",
+   "type": "Shot",
+   "team": "Spain Women's",
+   "players": {
+    "shooter": "Jennifer Hermoso Fuentes"
+   },
+   "outcome": "Blocked",
+   "score": {
+    "home": 1,
+    "away": 0
+   },
+   "detail": {
+    "shot_type": "Open Play",
+    "body_part": "Left Foot",
+    "technique": "Normal",
+    "xg": 0.06
+   },
+   "x": 109.3,
+   "y": 30.3
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 30,
+   "period": 2,
+   "clock": "89:38",
+   "type": "Substitution",
+   "team": "Spain Women's",
+   "players": {
+    "off": "María Francesca Caldentey Oliver",
+    "on": "Alexia Putellas Segura"
+   },
+   "outcome": "Tactical",
+   "score": {
+    "home": 1,
+    "away": 0
+   },
+   "detail": {}
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 31,
+   "period": 2,
+   "clock": "89:58",
+   "type": "Shot",
+   "team": "Spain Women's",
+   "players": {
+    "shooter": "Alexia Putellas Segura"
+   },
+   "outcome": "Blocked",
+   "score": {
+    "home": 1,
+    "away": 0
+   },
+   "detail": {
+    "shot_type": "Open Play",
+    "body_part": "Head",
+    "technique": "Normal",
+    "xg": 0.1
+   },
+   "x": 114.8,
+   "y": 45.1
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 32,
+   "period": 2,
+   "clock": "91:22",
+   "type": "Shot",
+   "team": "Spain Women's",
+   "players": {
+    "shooter": "Ona Batlle Pascual",
+    "keeper": "Mary Alexandra Earps"
+   },
+   "outcome": "Saved",
+   "score": {
+    "home": 1,
+    "away": 0
+   },
+   "detail": {
+    "shot_type": "Open Play",
+    "body_part": "Right Foot",
+    "technique": "Normal",
+    "xg": 0.03
+   },
+   "x": 108.8,
+   "y": 54.2
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 33,
+   "period": 2,
+   "clock": "97:48",
+   "type": "Shot",
+   "team": "Spain Women's",
+   "players": {
+    "shooter": "Aitana Bonmati Conca"
+   },
+   "outcome": "Blocked",
+   "score": {
+    "home": 1,
+    "away": 0
+   },
+   "detail": {
+    "shot_type": "Open Play",
+    "body_part": "Left Foot",
+    "technique": "Normal",
+    "xg": 0.04
+   },
+   "x": 99.0,
+   "y": 44.7
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 34,
+   "period": 2,
+   "clock": "97:53",
+   "type": "Shot",
+   "team": "Spain Women's",
+   "players": {
+    "shooter": "Salma Paralluelo Ayingono"
+   },
+   "outcome": "Blocked",
+   "score": {
+    "home": 1,
+    "away": 0
+   },
+   "detail": {
+    "shot_type": "Open Play",
+    "body_part": "Left Foot",
+    "technique": "Normal",
+    "xg": 0.04
+   },
+   "x": 105.8,
+   "y": 25.4
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 35,
+   "period": 2,
+   "clock": "102:59",
+   "type": "Shot",
+   "team": "England Women's",
+   "players": {
+    "shooter": "Millie Bright"
+   },
+   "outcome": "Blocked",
+   "score": {
+    "home": 1,
+    "away": 0
+   },
+   "detail": {
+    "shot_type": "Open Play",
+    "body_part": "Head",
+    "technique": "Normal",
+    "xg": 0.04
+   },
+   "x": 110.3,
+   "y": 45.5
+  }
+ ]
+}

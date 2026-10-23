@@ -50,8 +50,11 @@ def _name(obj) -> str:
 
 # --- football -----------------------------------------------------------------------------
 
+
 def statsbomb_matches(comp: int, season: int) -> list[dict]:
-    return json.loads(_fetch(f"{STATSBOMB}/matches/{comp}/{season}.json", f"sb_m_{comp}_{season}.json"))
+    return json.loads(
+        _fetch(f"{STATSBOMB}/matches/{comp}/{season}.json", f"sb_m_{comp}_{season}.json")
+    )
 
 
 def statsbomb_events(match_id: str) -> list[dict]:
@@ -149,6 +152,7 @@ def football_moments(header: dict, events: list[dict]) -> list[dict]:
 
 # --- cricket ------------------------------------------------------------------------------
 
+
 def cricsheet_zip() -> zipfile.ZipFile:
     data = _fetch(CRICSHEET_ZIP, "t20s_json.zip", timeout=httpx.Timeout(120.0, connect=10.0))
     return zipfile.ZipFile(io.BytesIO(data))
@@ -203,9 +207,7 @@ def cricket_moments(header: dict, match: dict) -> list[dict]:
             wickets += len(outs)
             legal += not (extras.get("wides") or extras.get("noballs"))
             last_ball = n == len(balls) - 1
-            tight_chase = (
-                target is not None and over_no >= max_overs - 2 and target - before <= 30
-            )
+            tight_chase = target is not None and over_no >= max_overs - 2 and target - before <= 30
             if outs:
                 kind, outcome = "Wicket", _s(outs[0].get("kind"))
             elif batter_runs in (4, 6):
@@ -240,19 +242,21 @@ def cricket_moments(header: dict, match: dict) -> list[dict]:
                 score = {"runs": runs, "wickets": wickets}
                 if target is not None:
                     score["target"] = target
-                moments.append({
-                    "sport": "cricket",
-                    "match_id": header["match_id"],
-                    "idx": len(moments),
-                    "period": inn_no,
-                    "clock": _s(d.get("actual_delivery"), 8) or f"{over_no}.{n}",
-                    "type": kind,
-                    "team": team,
-                    "players": {k: v for k, v in players.items() if v},
-                    "outcome": outcome,
-                    "score": score,
-                    "detail": detail,
-                })
+                moments.append(
+                    {
+                        "sport": "cricket",
+                        "match_id": header["match_id"],
+                        "idx": len(moments),
+                        "period": inn_no,
+                        "clock": _s(d.get("actual_delivery"), 8) or f"{over_no}.{n}",
+                        "type": kind,
+                        "team": team,
+                        "players": {k: v for k, v in players.items() if v},
+                        "outcome": outcome,
+                        "score": score,
+                        "detail": detail,
+                    }
+                )
             # A free hit follows a no-ball and lasts until the next legal delivery.
             if extras.get("noballs"):
                 free_hit = True
