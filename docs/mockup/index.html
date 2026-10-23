@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Touchline mockup</title>
+<style>
+/* Touchline mockup: static, fake data, every screen and state. The look is in docs/design.md. */
+:root {
+  --bg: #0E1524; --panel: #16203A; --line: #2A375A; --fg: #EEF2F7; --muted: #9AA8BF;
+  --accent: #FFB547; --fix: #6FD3FF; --err: #FF6B6B;
+  --esp: #E8414C; --eng: #F4F4F4; --ind: #4FA3FF; --pak: #2FBF71;
+  --pitch: #1E5B3A; --pitch-line: #DCE7DF; --strip: #C9B27C;
+  --display: "Barlow Condensed", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif;
+  --body: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 var(--body); }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: .45; }
+button:focus-visible, textarea:focus-visible, input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.label { font: 600 .8rem/1 var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.btn { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 8px 16px; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #111; font-weight: 700; }
+.btn.danger { border-color: var(--err); color: var(--err); background: transparent; }
+
+/* Mockup-only bar: not part of the product. */
+#mock { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; padding: 6px 16px; background: #05080F; border-bottom: 1px dashed var(--line); font-size: .75rem; }
+#mock b { color: var(--muted); font-weight: 600; margin-right: 4px; }
+#mock button { background: none; border: 1px solid #1d2741; border-radius: 4px; padding: 1px 6px; color: var(--muted); }
+#mock button[aria-current="true"] { color: var(--accent); border-color: var(--accent); }
+#mock i { width: 1px; height: 14px; background: var(--line); margin: 0 4px; }
+
+.wrap { max-width: 1280px; margin: 0 auto; padding: 16px 24px 32px; }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.brand { font: 700 1.6rem/1 var(--display); letter-spacing: .02em; }
+.brand::after { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-left: 4px; }
+
+/* Match picker */
+.picker h1 { font: 700 2.6rem/1.05 var(--display); margin: 24px 0 4px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 24px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: grid; gap: 8px; min-height: 230px; }
+.card h2 { font: 700 1.9rem/1.05 var(--display); margin: 0; }
+.card .result { font: 600 1.2rem/1.2 var(--display); }
+.card.ghost { background: linear-gradient(90deg, var(--panel), #1b2746, var(--panel)); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+.speeds { display: flex; gap: 8px; flex-wrap: wrap; }
+.speeds label { position: relative; }
+.speeds input { position: absolute; opacity: 0; }
+.speeds span { display: inline-block; border: 1px solid var(--line); border-radius: 3px; padding: 4px 10px; font: 600 .95rem/1.2 var(--display); }
+.speeds input:checked + span { border-color: var(--accent); color: var(--accent); }
+.notice { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 24px; margin-top: 24px; display: grid; gap: 16px; justify-items: start; font-size: 1.15rem; }
+.notice.err { border-color: var(--err); }
+footer { color: var(--muted); font-size: .85rem; border-top: 1px solid var(--line); margin-top: 32px; padding-top: 16px; }
+
+/* Live page */
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 16px; font: 700 1.6rem/1.1 var(--display); letter-spacing: .03em; }
+.bar .score { display: flex; align-items: center; gap: 10px; }
+.chip { padding: 2px 8px; border-radius: 3px; color: #111; }
+.bar .clock { color: var(--accent); }
+.bar .need { color: var(--fg); font-weight: 600; }
+.bar .period { color: var(--muted); font-weight: 600; font-size: 1.1rem; }
+.bar .replay { margin-left: auto; color: var(--err); font-size: 1rem; letter-spacing: .12em; }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 16px 0; }
+.tabs { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.tabs button { border: 0; background: var(--panel); padding: 8px 20px; font: 700 1.1rem/1 var(--display); letter-spacing: .04em; }
+.tabs button[aria-pressed="true"] { background: var(--accent); color: #111; }
+.onair { display: inline-flex; align-items: center; gap: 8px; font: 600 1rem/1 var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.onair.on { color: var(--accent); }
+.bars { display: inline-flex; gap: 3px; align-items: flex-end; height: 18px; }
+.bars span { width: 4px; height: 6px; background: currentColor; border-radius: 1px; }
+.onair.on .bars span { animation: pulse .7s ease-in-out infinite alternate; }
+.onair.on .bars span:nth-child(2) { animation-delay: .2s; } .onair.on .bars span:nth-child(3) { animation-delay: .4s; }
+@keyframes pulse { to { height: 18px; } }
+.grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr); gap: 16px; align-items: start; }
+.stage { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.stage svg { display: block; width: 100%; height: auto; transition: opacity .3s; }
+.stage.dim svg { opacity: .5; }
+.stick { transition: transform .6s ease-out; }
+.path { stroke-dasharray: 1.5 1; animation: draw .4s ease-out; }
+@keyframes draw { from { opacity: 0; } }
+.overlay { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 16px; background: rgba(14, 21, 36, .75); font: 600 1.5rem/1.2 var(--display); text-align: center; padding: 16px; }
+.banner { padding: 8px 16px; font-weight: 600; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.banner.warn { background: var(--accent); color: #111; }
+.banner.err { background: var(--err); color: #111; }
+.banner .btn { padding: 2px 12px; background: #111; color: var(--fg); border-color: #111; }
+.sub { border-top: 1px solid var(--line); padding: 16px 24px 20px; min-height: 7.5rem; display: grid; place-content: center; text-align: center; gap: 6px; }
+.sub p { margin: 0; font: 600 2.25rem/1.25 var(--body); text-wrap: balance; animation: fade .15s ease-out; }
+.sub.fixed p { color: var(--fix); }
+.sub.rejected p { color: var(--muted); text-decoration: line-through; }
+.sub.waiting p { color: var(--muted); font-weight: 400; }
+@keyframes fade { from { opacity: 0; } }
+.tag { font: 700 .75rem/1 var(--display); letter-spacing: .12em; text-transform: uppercase; border-radius: 3px; padding: 3px 6px; justify-self: center; }
+.tag.fixed { color: #111; background: var(--fix); }
+.tag.rejected { color: #111; background: var(--err); }
+.side { display: grid; gap: 16px; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; }
+.panel h3 { margin: 0 0 12px; font: 700 1.3rem/1 var(--display); letter-spacing: .03em; }
+.log { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-height: 360px; overflow: auto; }
+.log li { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 10px; align-items: start; border-top: 1px solid var(--line); padding-top: 8px; }
+.log li:first-child { border-top: 0; padding-top: 0; }
+.log .when { font: 700 .95rem/1.5 var(--display); color: var(--accent); }
+.log .text { min-width: 0; }
+.log .orig { color: var(--muted); text-decoration: line-through; font-size: .9rem; }
+.log .meta { grid-column: 2; font-size: .8rem; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+.log .fixed .text > span:first-child { color: var(--fix); }
+.log .rejected .text > span:first-child { color: var(--muted); text-decoration: line-through; }
+.log .fixbtn { grid-column: 3; grid-row: 1; padding: 2px 12px; font-size: .9rem; }
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 0; }
+.stats div { display: grid; gap: 4px; }
+.stats dd { margin: 0; font: 700 1.9rem/1 var(--display); }
+.stats .wide { grid-column: 1 / -1; }
+.stats .wide dd { font: 600 1.05rem/1.35 var(--body); }
+.panel .foot { margin: 12px 0 0; font-size: .8rem; color: var(--muted); }
+.err-text { color: var(--err); }
+
+/* Producer fix sheet */
+.scrim { position: fixed; inset: 0; background: rgba(5, 8, 15, .7); display: grid; place-items: end center; padding: 16px; z-index: 5; }
+.sheet { width: min(640px, 100%); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 24px; display: grid; gap: 14px; margin-bottom: 8vh; }
+.sheet h2 { margin: 0; font: 700 1.8rem/1 var(--display); }
+.sheet .said { font-size: 1.2rem; border-left: 3px solid var(--err); padding-left: 12px; }
+.sheet textarea { width: 100%; min-height: 5.5rem; resize: vertical; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font: 600 1.2rem/1.35 var(--body); }
+.reasons { display: flex; flex-wrap: wrap; gap: 8px; }
+.reasons label { position: relative; }
+.reasons input { position: absolute; opacity: 0; }
+.reasons span { display: inline-block; border: 1px solid var(--line); border-radius: 3px; padding: 4px 10px; }
+.reasons input:checked + span { border-color: var(--fix); color: var(--fix); }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.actions .spacer { flex: 1; }
+.hint { margin: 0; font-size: .9rem; color: var(--muted); }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--fg); color: #111; padding: 10px 18px; border-radius: 8px; font-weight: 600; z-index: 6; }
+
+@media (max-width: 760px) {
+  .wrap { padding: 12px 16px 24px; }
+  .grid { grid-template-columns: 1fr; }
+  .bar { font-size: 1.3rem; padding: 8px 12px; }
+  .sub { padding: 12px 16px 16px; min-height: 5.5rem; }
+  .sub p { font-size: 1.5rem; }
+  .picker h1 { font-size: 2rem; }
+  .sheet { margin-bottom: 0; padding: 16px; }
+  .scrim { padding: 0; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<nav id="mock" aria-label="Mockup states"></nav>
+<div id="app"></div>
+<script>
+// Fake data. Moments, scores and times follow the real matches; the lines are samples, not the agent's output.
+const MATCHES = {
+  football: {
+    title: "Spain v England", detail: "2023 Women's World Cup final · Sydney · 20 Aug 2023", result: "Spain 1–0 England",
+    teams: [["ESP", "var(--esp)"], ["ENG", "var(--eng)"]],
+    moments: [
+      { clock: "15:11", period: "1st half", score: "0–0", ms: 610, mark: "WOODWORK", path: [104, 35.4, 120, 37],
+        actors: [["Hemp", 104, 35.4, "var(--eng)", 0], ["Coll", 116, 44, "var(--esp)", 0]],
+        text: "Hemp lets fly from the edge… and it cracks back off the woodwork!" },
+      { clock: "28:29", period: "1st half", score: "1–0", ms: 580, mark: "GOAL", path: [107.1, 24.5, 120, 42],
+        actors: [["Carmona", 107.1, 24.5, "var(--esp)", 1.5], ["Earps", 116, 46, "var(--eng)", 0]],
+        text: "Olga Carmona! Low across Earps and in. Spain lead one-nil." },
+      { clock: "64:18", period: "2nd half", score: "1–0", ms: 640, mark: "INJURY STOPPAGE",
+        actors: [["Hermoso", 70, 52, "var(--esp)", -1]],
+        text: "Play stops: Hermoso is down and holding her ankle." },
+      { clock: "69:01", period: "2nd half", score: "1–0", ms: 720, mark: "PENALTY", path: [108, 40, 119, 37],
+        actors: [["Hermoso", 108, 40, "var(--esp)", 0], ["Earps", 118.5, 40, "var(--eng)", -2]],
+        text: "Hermoso steps up… and doubles Spain's lead!",
+        better: "SAVED! Earps guesses right and keeps England alive!" },
+    ],
+  },
+  cricket: {
+    title: "India v Pakistan", detail: "T20 World Cup · MCG, Melbourne · 23 Oct 2022", result: "India won by 4 wickets, off the last ball",
+    teams: [["IND", "var(--ind)"], ["PAK", "var(--pak)"]], target: "PAK 159/8",
+    moments: [
+      { clock: "Over 18.5", period: "2nd innings", score: "138/4", need: "need 22 off 7", ms: 590, mark: "SIX", path: [60, 48, 62, 1],
+        actors: [["Rauf", 60, 30, "var(--pak)", 1.5], ["Kohli", 60, 50, "var(--ind)", -2]],
+        text: "Kohli goes straight back over Rauf's head! Six! India need 22 off 7." },
+      { clock: "Over 18.6", period: "2nd innings", score: "144/4", need: "need 16 off 6", ms: 600, mark: "SIX", path: [60, 48, 22, 72],
+        actors: [["Rauf", 60, 30, "var(--pak)", 1.5], ["Kohli", 60, 50, "var(--ind)", 2]],
+        text: "And again! Flicked over fine leg. Sixteen needed off the last over." },
+      { clock: "Over 19.1", period: "2nd innings", score: "144/5", need: "need 16 off 5", ms: 650, mark: "OUT", path: [60, 48, 80, 20],
+        actors: [["Nawaz", 60, 30, "var(--pak)", 1.5], ["Pandya", 60, 50, "var(--ind)", -2]],
+        text: "Pandya goes! Caught off Nawaz, first ball of the last over." },
+      { clock: "Over 19.4", period: "2nd innings", score: "154/5", need: "need 6 off 3", ms: 610, mark: "NO-BALL · SIX", path: [60, 48, 46, 1],
+        actors: [["Nawaz", 60, 30, "var(--pak)", 1.5], ["Kohli", 60, 50, "var(--ind)", -2]],
+        text: "Full toss, waist high, Kohli dispatches it for six. No-ball, free hit!" },
+      { clock: "Over 19.6", period: "2nd innings", score: "160/6", need: "India win", ms: 570, mark: "INDIA WIN", path: [60, 48, 70, 8],
+        actors: [["Nawaz", 60, 30, "var(--pak)", 1.5], ["Ashwin", 60, 50, "var(--ind)", -2]],
+        text: "Ashwin lifts it over mid-off! India win off the last ball!" },
+    ],
+  },
+};
+const REASONS = ["Wrong fact", "Wrong player", "Wrong score", "Tone", "Other"];
+const hasSpeech = "speechSynthesis" in window;
+
+const fresh = () => ({ screen: "picker", picker: "ok", sport: "football", idx: -1, live: "ok", stream: "ok",
+  voice: hasSpeech ? "on" : "unavailable", speaking: false, fix: null, fixes: {}, proof: "ok", adapter: "result", toast: "" });
+let S = fresh();
+let timer = null;
+
+// Mockup states: each one is a URL hash, so a reviewer can link straight to it.
+const PRESETS = {
+  "Picker": {}, "Picker loading": { picker: "loading" }, "Picker empty": { picker: "empty" }, "Picker error": { picker: "error" },
+  "|1": 0,
+  "Live football": { screen: "live", idx: 3 }, "Live cricket": { screen: "live", sport: "cricket", idx: 4 },
+  "Starting": { screen: "live", live: "starting" }, "Waiting": { screen: "live", idx: -1 }, "Replay error": { screen: "live", live: "error" },
+  "Reconnecting": { screen: "live", idx: 2, stream: "reconnecting" }, "Disconnected": { screen: "live", idx: 2, stream: "disconnected" },
+  "Speaking": { screen: "live", idx: 1, speaking: true }, "Voice off": { screen: "live", idx: 3, voice: "off" },
+  "Voice unavailable": { screen: "live", idx: 3, voice: "unavailable" },
+  "|2": 0,
+  "Fix sheet": { screen: "live", idx: 3, fix: { key: "football-3", phase: "edit" } },
+  "Fix empty": { screen: "live", idx: 3, fix: { key: "football-3", phase: "edit", text: "" } },
+  "Fix sending": { screen: "live", idx: 3, fix: { key: "football-3", phase: "sending", text: MATCHES.football.moments[3].better } },
+  "Fix error": { screen: "live", idx: 3, fix: { key: "football-3", phase: "error", text: MATCHES.football.moments[3].better } },
+  "Line fixed": { screen: "live", idx: 3, fixes: { "football-3": { text: MATCHES.football.moments[3].better, reason: "Wrong fact" } } },
+  "Line rejected": { screen: "live", idx: 3, fixes: { "football-3": { rejected: true } } },
+  "|3": 0,
+  "Proof empty": { screen: "live", idx: -1, proof: "empty" }, "Proof loading": { screen: "live", idx: 1, proof: "loading" },
+  "Proof error": { screen: "live", idx: 1, proof: "error" }, "Adapter not trained": { screen: "live", idx: 3, adapter: "untrained" },
+  "Adapter training": { screen: "live", idx: 3, adapter: "training" }, "Adapter cost not measurable": { screen: "live", idx: 3, adapter: "nocost" },
+};
+const slug = (name) => name.toLowerCase().replace(/ /g, "-");
+
+function applyHash() {
+  clearTimeout(timer);
+  const name = Object.keys(PRESETS).find((k) => slug(k) === decodeURIComponent(location.hash.slice(1)));
+  S = Object.assign(fresh(), name ? JSON.parse(JSON.stringify(PRESETS[name])) : {});
+  if (S.voice === "on" && !hasSpeech) S.voice = "unavailable";
+  render();
+}
+
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const set = (patch) => { Object.assign(S, patch); render(); };
+const key = (sport, i) => `${sport}-${i}`;
+
+// ---- Field drawing (StatsBomb 120 x 80 for both sports) ----
+function fieldSvg(sport, m) {
+  const lines = sport === "football"
+    ? `<rect x="0" y="0" width="120" height="80"/><line x1="60" y1="0" x2="60" y2="80"/><circle cx="60" cy="40" r="10"/>
+       <rect x="0" y="18" width="18" height="44"/><rect x="102" y="18" width="18" height="44"/>
+       <rect x="0" y="30" width="6" height="20"/><rect x="114" y="30" width="6" height="20"/>
+       <rect x="-2" y="36" width="2" height="8"/><rect x="120" y="36" width="2" height="8"/>`
+    : `<ellipse cx="60" cy="40" rx="58" ry="39"/><ellipse cx="60" cy="40" rx="28" ry="20" stroke-dasharray="1.5 1.5"/>`;
+  const strip = sport === "cricket" ? `<rect x="56" y="28" width="8" height="24" fill="var(--strip)" opacity=".85"/>` : "";
+  let inner = "";
+  if (m) {
+    if (m.path) {
+      const [x1, y1, x2, y2] = m.path;
+      inner += `<line class="path" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--accent)" stroke-width=".7"/>
+        <circle cx="${x2}" cy="${y2}" r="1" fill="#fff" stroke="#111" stroke-width=".3"/>`;
+    }
+    for (const [name, x, y, color, pose] of m.actors) inner += stick(name, x, y, color, pose);
+    inner += `<text x="60" y="${sport === "cricket" ? 76 : 10}" fill="var(--accent)" font-size="5" text-anchor="middle"
+      font-family="Barlow Condensed, Arial Narrow, sans-serif" font-weight="700" letter-spacing=".5">${m.mark}</text>`;
+  }
+  return `<svg viewBox="-4 -4 128 88" role="img" aria-label="${sport === "football" ? "Football pitch" : "Cricket ground"}${m ? ", " + esc(m.mark) : ""}">
+    <rect x="-4" y="-4" width="128" height="88" fill="var(--pitch)"/>
+    <g fill="none" stroke="var(--pitch-line)" stroke-width=".5" opacity=".8">${lines}</g>${strip}${inner}</svg>`;
+}
+// A stick figure drawn at the origin and moved by CSS transform, so it can glide between moments.
+function stick(name, x, y, color, pose) {
+  return `<g class="stick" data-name="${name}" style="transform: translate(${x}px, ${y}px)">
+    <g stroke="${color}" stroke-width="1" stroke-linecap="round" fill="none">
+      <circle cx="0" cy="-7" r="1.6" fill="${color}"/><line x1="0" y1="-5.4" x2="0" y2="-1.5"/>
+      <line x1="0" y1="-4.5" x2="-2.4" y2="${-3 - pose}"/><line x1="0" y1="-4.5" x2="2.4" y2="${-3 + pose}"/>
+      <line x1="0" y1="-1.5" x2="-1.8" y2="1.5"/><line x1="0" y1="-1.5" x2="${1.8 + pose / 2}" y2="1.5"/></g>
+    <text x="0" y="5" fill="var(--fg)" font-size="3" text-anchor="middle" font-family="Source Sans 3, system-ui, sans-serif">${name}</text></g>`;
+}
+
+// ---- Screens ----
+function pickerView() {
+  let body;
+  if (S.picker === "loading") body = `<div class="cards" aria-busy="true"><div class="card ghost"></div><div class="card ghost"></div></div>
+    <p class="muted">Loading matches…</p>`;
+  else if (S.picker === "empty") body = `<div class="notice">No matches yet. Load the demo data, then refresh.</div>`;
+  else if (S.picker === "error") body = `<div class="notice err"><span>Couldn't load matches. Is the server running?</span>
+    <button class="btn primary" data-act="picker-retry">Try again</button></div>`;
+  else body = `<div class="cards">${Object.entries(MATCHES).map(([sport, m]) => `
+    <article class="card">
+      <span class="label">${sport === "football" ? "Football" : "Cricket"}</span>
+      <h2>${m.title}</h2><span class="muted">${m.detail}</span><span class="result">${m.result}</span>
+      <div class="speeds" role="radiogroup" aria-label="Speed">${["Real time", "4x", "16x"].map((s, i) =>
+        `<label><input type="radio" name="speed-${sport}" ${i === 1 ? "checked" : ""}><span>${s}</span></label>`).join("")}</div>
+      <div><button class="btn primary" data-act="start" data-sport="${sport}">Start replay</button></div>
+    </article>`).join("")}</div>`;
+  return `<div class="wrap picker"><div class="top"><span class="brand">Touchline</span></div>
+    <p class="muted">A live AI commentator for matches nobody calls.</p>
+    <h1>Pick a match</h1>${body}
+    <footer>Match data: StatsBomb open data and Cricsheet. Commentary is AI-generated.</footer></div>`;
+}
+
+function liveView() {
+  const match = MATCHES[S.sport];
+  const m = S.live === "ok" ? match.moments[S.idx] : null;
+  const [[h, hc], [a, ac]] = match.teams;
+  const score = S.sport === "football"
+    ? `<span class="chip" style="background:${hc}">${h}</span><span class="num">${m ? m.score : "0–0"}</span><span class="chip" style="background:${ac}">${a}</span>`
+    : `<span class="chip" style="background:${hc}">${h}</span><span class="num">${m ? m.score : "0/0"}</span><span class="chip" style="background:${ac}">${a}</span>
+       <span class="need num">${m ? m.need : match.target}</span>`;
+  const bar = `<div class="bar" role="status"><span class="score">${score}</span>
+    <span class="clock num">${m ? m.clock : S.sport === "football" ? "00:00" : "Over 0.0"}</span>
+    <span class="period">${m ? m.period : S.sport === "football" ? "1st half" : "1st innings"}</span><span class="replay">● REPLAY</span></div>`;
+
+  const busy = S.live !== "ok";
+  const voiceLabel = S.voice === "on" ? "Voice on" : S.voice === "off" ? "Voice off" : "Voice unavailable in this browser";
+  const controls = `<div class="controls">
+    <button class="btn" data-act="matches">← Matches</button>
+    <div class="tabs" role="group" aria-label="Sport">${["football", "cricket"].map((s) =>
+      `<button data-act="sport" data-sport="${s}" aria-pressed="${S.sport === s}" ${busy ? "disabled" : ""}>${s === "football" ? "Football" : "Cricket"}</button>`).join("")}</div>
+    <button class="btn" data-act="voice" aria-pressed="${S.voice === "on"}" ${S.voice === "unavailable" || busy ? "disabled" : ""}>${voiceLabel}</button>
+    <span class="onair ${S.speaking && S.voice !== "off" ? "on" : ""}"><span class="bars" aria-hidden="true"><span></span><span></span><span></span></span>On air</span>
+  </div>`;
+
+  let overlay = "";
+  if (S.live === "starting") overlay = `<div class="overlay" aria-busy="true">Starting replay…</div>`;
+  if (S.live === "error") overlay = `<div class="overlay"><span>Couldn't start the replay.</span><span class="actions">
+    <button class="btn primary" data-act="retry">Try again</button><button class="btn" data-act="matches">Back to matches</button></span></div>`;
+  const banner = S.stream === "reconnecting" ? `<div class="banner warn" role="alert">Reconnecting to the replay…</div>`
+    : S.stream === "disconnected" ? `<div class="banner err" role="alert">Stream disconnected. Lines may be missing.
+      <button class="btn" data-act="reconnect">Reconnect</button></div>` : "";
+
+  let sub;
+  if (S.live !== "ok") sub = `<div class="sub waiting"><p>&nbsp;</p></div>`;
+  else if (!m) sub = `<div class="sub waiting" aria-live="polite"><p>Waiting for the first moment…</p></div>`;
+  else {
+    const f = S.fixes[key(S.sport, S.idx)];
+    if (f && f.rejected) sub = `<div class="sub rejected" aria-live="polite"><span class="tag rejected">Rejected</span><p>${esc(m.text)}</p></div>`;
+    else if (f) sub = `<div class="sub fixed" aria-live="polite"><span class="tag fixed">Fixed</span><p>${esc(f.text)}</p></div>`;
+    else sub = `<div class="sub" aria-live="polite"><p>${esc(m.text)}</p></div>`;
+  }
+
+  const stage = `<div class="stage ${S.stream !== "ok" ? "dim" : ""}">${banner}${fieldSvg(S.sport, m)}${overlay}${sub}</div>`;
+  return `<div class="wrap"><div class="top"><span class="brand">Touchline</span></div>${bar}${controls}
+    <div class="grid">${stage}<div class="side">${logView()}${proofView()}</div></div></div>`;
+}
+
+function logView() {
+  const ms = S.live === "ok" ? MATCHES[S.sport].moments.slice(0, S.idx + 1) : [];
+  if (!ms.length) return `<section class="panel"><h3>Lines</h3><p class="muted">Lines appear here as Touchline calls them.</p></section>`;
+  const items = ms.map((m, i) => {
+    const f = S.fixes[key(S.sport, i)];
+    const cls = f ? (f.rejected ? "rejected" : "fixed") : "";
+    const text = f && !f.rejected ? `<span>${esc(f.text)}</span><div class="orig">${esc(m.text)}</div>` : `<span>${esc(m.text)}</span>`;
+    const tag = f ? `<span class="tag ${cls}">${f.rejected ? "Rejected" : "Fixed"}</span>` : "";
+    return `<li class="${cls}"><span class="when num">${m.clock.replace("Over ", "")}</span><div class="text">${text}</div>
+      <button class="btn fixbtn" data-act="fix" data-i="${i}" ${f ? "disabled" : ""} aria-label="Fix the line at ${m.clock}">Fix</button>
+      <div class="meta"><span class="num">first word ${(m.ms / 1000).toFixed(2)} s</span>${tag}</div></li>`;
+  }).reverse().join("");
+  return `<section class="panel"><h3>Lines</h3><ul class="log">${items}</ul></section>`;
+}
+
+function proofView() {
+  const nFix = Object.keys(S.fixes).length;
+  let body;
+  if (S.proof === "loading") body = `<p class="muted">Loading stats…</p>`;
+  else if (S.proof === "error") body = `<p class="err-text">Stats unavailable. Lines still play.</p>`;
+  else {
+    const empty = S.proof === "empty" || S.idx < 0;
+    const v = (x) => (empty ? "–" : x);
+    const adapter = empty ? "–"
+      : S.adapter === "untrained" ? "Not trained yet: needs 25 kept lines (12 so far)."
+      : S.adapter === "training" ? "Training: Mubit is building the adapter."
+      : "Agrees with the big model on 23 of 25 test moments.";
+    const nocost = S.adapter === "nocost" && !empty
+      ? `<div class="wide"><dt class="label">Adapter cost</dt><dd>Not measurable. <span class="muted">Mubit doesn't report the adapter's cost to the app.</span></dd></div>` : "";
+    body = `<dl class="stats">
+      <div><dt class="label">First word p50</dt><dd class="num">${v("0.61 s")}</dd></div>
+      <div><dt class="label">First word p95</dt><dd class="num">${v("1.04 s")}</dd></div>
+      <div><dt class="label">Cost per line</dt><dd class="num">${v("$0.0009")}</dd></div>
+      <div><dt class="label">Lines</dt><dd class="num">${v(37 + S.idx + 1)}</dd></div>
+      <div><dt class="label">Fixes</dt><dd class="num">${v(2 + nFix)}</dd></div>
+      <div class="wide"><dt class="label">Adapter</dt><dd>${adapter}</dd></div>${nocost}
+    </dl>${empty ? `<p class="foot">No lines yet.</p>` : ""}
+    <p class="foot">First word: time from the moment to the first spoken word. Measured through Mubit.</p>`;
+  }
+  return `<section class="panel" aria-live="polite"><h3>Proof</h3>${body}</section>`;
+}
+
+function fixView() {
+  if (!S.fix) return "";
+  const [sport, i] = S.fix.key.split("-");
+  const m = MATCHES[sport].moments[+i];
+  const text = S.fix.text ?? m.text;
+  const sending = S.fix.phase === "sending";
+  const reason = S.fix.reason || "Wrong fact";
+  return `<div class="scrim" data-act="scrim"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="fix-h">
+    <h2 id="fix-h">Fix this line</h2>
+    <span class="label">Touchline said</span><div class="said">${esc(m.text)}</div>
+    <label class="label" for="fix-text">Corrected line</label>
+    <textarea id="fix-text" ${sending ? "disabled" : ""}>${esc(text)}</textarea>
+    ${text.trim() ? "" : `<p class="hint">Type the corrected line, or reject it.</p>`}
+    <span class="label">What was wrong</span>
+    <div class="reasons" role="radiogroup" aria-label="What was wrong">${REASONS.map((r) =>
+      `<label><input type="radio" name="reason" value="${r}" ${r === reason ? "checked" : ""} ${sending ? "disabled" : ""}><span>${r}</span></label>`).join("")}</div>
+    ${S.fix.phase === "error" ? `<p class="err-text" role="alert">Fix not saved. Check the connection and send again.</p>` : ""}
+    <div class="actions">
+      <button class="btn primary" data-act="send" ${sending || !text.trim() ? "disabled" : ""}>${sending ? "Sending fix…" : "Send fix"}</button>
+      <button class="btn danger" data-act="reject" ${sending ? "disabled" : ""}>Reject line</button>
+      <span class="spacer"></span><button class="btn" data-act="cancel" ${sending ? "disabled" : ""}>Cancel</button>
+    </div>
+    <p class="hint">Your fix goes back through Mubit and is kept beside the original.</p>
+  </div></div>`;
+}
+
+function mockBar() {
+  const cur = decodeURIComponent(location.hash.slice(1));
+  return `<b>Mockup</b>` + Object.keys(PRESETS).map((k) => k.startsWith("|") ? "<i></i>"
+    : `<button data-preset="${slug(k)}" aria-current="${cur === slug(k)}">${k}</button>`).join("");
+}
+
+function render() {
+  document.getElementById("mock").innerHTML = mockBar();
+  const app = document.getElementById("app");
+  const old = new Map([...app.querySelectorAll(".stick")].map((g) => [g.dataset.name, g.style.transform]));
+  app.innerHTML = (S.screen === "picker" ? pickerView() : liveView()) + fixView() + (S.toast ? `<div class="toast" role="status">${S.toast}</div>` : "");
+  // Glide each stickman from where it stood to its new spot.
+  for (const g of app.querySelectorAll(".stick")) {
+    const to = g.style.transform, from = old.get(g.dataset.name);
+    if (from && from !== to) { g.style.transition = "none"; g.style.transform = from; g.getBoundingClientRect(); g.style.transition = ""; g.style.transform = to; }
+  }
+  if (S.fix) document.getElementById("fix-text")?.focus();
+}
+
+// ---- Replay playback (mockup only: a timer stands in for the SSE stream) ----
+function speak(text) {
+  S.speaking = true;
+  if (S.voice === "on" && hasSpeech) {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.onend = () => set({ speaking: false });
+    speechSynthesis.speak(u);
+  } else setTimeout(() => set({ speaking: false }), 2500);
+}
+function step() {
+  const ms = MATCHES[S.sport].moments;
+  if (S.screen !== "live" || S.live !== "ok" || S.idx >= ms.length - 1) return;
+  S.idx += 1;
+  speak(ms[S.idx].text);
+  render();
+  timer = setTimeout(step, 5000);
+}
+function start(sport) {
+  clearTimeout(timer);
+  if (hasSpeech) speechSynthesis.cancel();
+  history.replaceState(null, "", location.pathname);
+  Object.assign(S, { screen: "live", sport, idx: -1, live: "starting", stream: "ok", speaking: false, fix: null, proof: "ok" });
+  render();
+  timer = setTimeout(() => { set({ live: "ok" }); timer = setTimeout(step, 1200); }, 900);
+}
+function toast(msg) { set({ toast: msg }); setTimeout(() => set({ toast: "" }), 2400); }
+
+document.addEventListener("click", (e) => {
+  const p = e.target.closest("[data-preset]");
+  if (p) { location.hash = p.dataset.preset; return; }
+  const t = e.target.closest("[data-act]");
+  if (!t || t.disabled) return;
+  const act = t.dataset.act;
+  if (act === "scrim" && e.target !== t) return;
+  if (act === "start" || act === "sport") start(t.dataset.sport);
+  else if (act === "matches") { clearTimeout(timer); history.replaceState(null, "", location.pathname); set(fresh()); }
+  else if (act === "picker-retry") { set({ picker: "loading" }); setTimeout(() => set({ picker: "ok" }), 900); }
+  else if (act === "retry") start(S.sport);
+  else if (act === "reconnect") { set({ stream: "reconnecting" }); setTimeout(() => set({ stream: "ok" }), 1200); }
+  else if (act === "voice") { if (S.voice === "on" && hasSpeech) speechSynthesis.cancel(); set({ voice: S.voice === "on" ? "off" : "on", speaking: false }); }
+  else if (act === "fix") set({ fix: { key: key(S.sport, +t.dataset.i), phase: "edit" } });
+  else if (act === "cancel" || act === "scrim") set({ fix: null });
+  else if (act === "reject") { S.fixes[S.fix.key] = { rejected: true }; S.fix = null; toast("Line rejected."); }
+  else if (act === "send") {
+    const fixKey = S.fix.key, text = document.getElementById("fix-text").value.trim(), reason = S.fix.reason || "Wrong fact";
+    set({ fix: { ...S.fix, phase: "sending" } });
+    setTimeout(() => { S.fixes[fixKey] = { text, reason }; S.fix = null; toast("Fix sent. Kept beside the original."); }, 900);
+  }
+});
+document.addEventListener("input", (e) => {
+  if (e.target.id === "fix-text") {
+    const hadText = !!(S.fix.text ?? "x").trim();
+    S.fix.text = e.target.value;
+    if (hadText !== !!e.target.value.trim()) { render(); const ta = document.getElementById("fix-text"); ta.setSelectionRange(ta.value.length, ta.value.length); }
+  }
+  if (e.target.name === "reason") S.fix.reason = e.target.value;
+});
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && S.fix && S.fix.phase !== "sending") set({ fix: null }); });
+window.addEventListener("hashchange", applyHash);
+applyHash();
+</script>
+</body>
+</html>
