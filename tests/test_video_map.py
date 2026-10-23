@@ -97,7 +97,7 @@ def test_map_file_validates_against_the_picker(path):
     times = [m["video_t"] for m in vmap["moments"]]
     assert idxs and all(i in picked and picked[i]["sport"] == sport for i in idxs)
     assert idxs == sorted(set(idxs)), "one entry per moment, in match order"
-    assert all(a < b for a, b in zip(times, times[1:])), "video times increase with the match"
+    assert all(a < b for a, b in zip(times, times[1:], strict=False)), "video times must increase"
     assert all(isinstance(t, (int, float)) and t >= 0 for t in times)
 
 
