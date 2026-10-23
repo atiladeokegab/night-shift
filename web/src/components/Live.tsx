@@ -1,102 +1,179 @@
-import type { Match, Sport, Voice } from '../types'
+import { momentTag } from '../moment'
+import { SPORT_NAMES, type Line, type Match, type Sport } from '../types'
 import { onScreen, type Clock, type ReplayState } from '../useReplay'
-import type { useSpeech } from '../useSpeech'
 import { LineLog } from './LineLog'
+import { Nav, type Screen } from './Nav'
 import { ProofPanel } from './ProofPanel'
 import { ScoreBar } from './ScoreBar'
-import { VideoStage } from './VideoStage'
+import { VideoStage, type VideoState } from './VideoStage'
+
+export type VoiceStatus = 'on' | 'off' | 'unavailable'
 
 interface Props {
   match: Match
   replay: ReplayState
   replayKey: number // changes with every started replay, so the video restarts with it
-  speech: ReturnType<typeof useSpeech>
-  voices: Voice[]
-  voiceId: string | null
-  onVoice: (id: string) => void
+  switching: boolean // started from the sport switch: "Switching to cricket…"
+  sports: Sport[] // the sports the server has matches for
+  voice: { status: VoiceStatus; name: string; speaking: boolean }
+  video: VideoState
+  onVideo: (state: VideoState) => void
   onClock: (clock: Clock | null) => void
-  canSwitchTo: (sport: Sport) => boolean
-  onSwitch: (sport: Sport) => void
+  onSport: (sport: Sport) => void
+  onVoiceSheet: () => void
+  onFix: (line: Line) => void
   onRetry: () => void
   onReconnect: () => void
-  onBack: () => void
+  onGo: (screen: Screen) => void
 }
 
-// The live match page (PRD v2, R-6): score bar, controls, the highlights video with the subtitle
-// under it, and the line log and proof panel beside it (stacked under 760px). Structure and wiring
-// only: the new look waits for the lead's redesigned mockup (#21).
+// The live page (docs/design.md "Layout"; PRD v5 R-6): the highlights fill the stage; over them the nav,
+// the score bar and ON AIR pill, the moment tag and subtitle, the dock and the video timeline; the Lines
+// and Proof cards stand in a glass column on the right (under the stage below 1100px).
 export function Live(props: Props) {
-  const { match, replay, replayKey, speech, voices, voiceId, onVoice, onClock, canSwitchTo, onSwitch, onRetry, onReconnect, onBack } = props
-  // Only what the picture has reached (A-6.4@2). The subtitle is the newest line presented in time;
-  // lines the picture had passed stay in the log only.
+  const { match, replay, replayKey, switching, sports, voice, video, onVideo, onClock, onSport, onVoiceSheet, onFix, onRetry, onReconnect, onGo } = props
   const shown = onScreen(replay)
   const moment = shown.moments.at(-1) ?? null
   const latest = shown.lines.find((l) => !replay.late.includes(l.line_id))
-  const starting = replay.phase === 'starting'
-  const label = match.title ?? match.match_id
+  const busy = replay.phase !== 'live'
+  const gated = !!match.youtube_id
+  const voiceLabel = `${voice.name} commentator`
 
-  if (replay.phase === 'failed') {
-    return (
-      <main className="state">
-        <p>Couldn't start the replay.</p>
-        <div className="row">
-          <button className="primary" onClick={onRetry}>Try again</button>
-          <button onClick={onBack}>Back to matches</button>
-        </div>
-      </main>
-    )
-  }
-
-  return (
-    <main className="live">
-      <ScoreBar match={match} moment={moment} />
-
-      <div className="controls">
-        <button onClick={onBack}>← Matches</button>
-        <div className="tabs" role="group" aria-label="Sport">
-          {(['football', 'cricket'] as Sport[]).map((s) => (
-            <button key={s} className={s === match.sport ? 'on' : ''} aria-pressed={s === match.sport}
-              disabled={starting || !canSwitchTo(s)} onClick={() => s !== match.sport && onSwitch(s)}>
-              {s === 'football' ? 'Football' : 'Cricket'}
-            </button>
-          ))}
-        </div>
-        <button disabled={!speech.available} aria-pressed={speech.on} onClick={() => speech.setOn(!speech.on)}>
-          {!speech.available ? 'Voice unavailable in this browser' : speech.on ? 'Voice on' : 'Voice off'}
-        </button>
-        {/* A-6.3@1: the voice is a setting; a change applies from the next line, no reload. */}
-        <select aria-label="Commentator voice" value={voiceId ?? ''} disabled={!voices.length}
-          onChange={(e) => onVoice(e.target.value)}>
-          {voices.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}
-        </select>
-        <span className={`on-air${speech.speaking ? ' speaking' : ''}`} aria-live="off">
-          <span className="bars" aria-hidden><i /><i /><i /></span>On air
+  let overlay = null
+  if (replay.phase === 'starting') {
+    overlay = switching ? (
+      <div className="overlay" aria-busy="true">
+        <span className="spin" />Switching to {SPORT_NAMES[match.sport].toLowerCase()}…
+        <span className="label">{match.title?.split(',')[0]} · {voiceLabel}</span>
+      </div>
+    ) : <div className="overlay" aria-busy="true"><span className="spin" />Starting replay…</div>
+  } else if (replay.phase === 'failed') {
+    overlay = (
+      <div className="overlay" role="alert">
+        <span>Couldn't start the replay.</span>
+        <span className="actions">
+          <button className="btn primary" onClick={onRetry}>Try again</button>
+          <button className="btn" onClick={() => onGo('picker')}>Back to matches</button>
         </span>
       </div>
+    )
+  } else if (gated && video === 'loading') {
+    overlay = <div className="overlay" aria-busy="true"><span className="spin" />Loading highlights…</div>
+  }
 
-      {replay.stream === 'reconnecting' && <p className="banner amber">Reconnecting to the replay…</p>}
-      {replay.stream === 'disconnected' && (
-        <p className="banner red">
-          Stream disconnected. Lines may be missing. <button onClick={onReconnect}>Reconnect</button>
-        </p>
-      )}
-      {replay.error && <p className="banner red">{replay.error}</p>}
+  const dim = replay.stream !== 'ok' || busy || video === 'loading'
+  const fix = latest ? replay.fixes[latest.line_id] : undefined
+  const latestMoment = latest ? shown.moments.find((m) => m.idx === latest.moment_idx) : undefined
 
-      <div className="grid">
-        <section className={`panel stage${replay.stream === 'reconnecting' ? ' dim' : ''}`}>
-          <div className="stage-wrap">
-            {starting ? <div className="video empty">Starting replay…</div>
-              : <VideoStage key={replayKey} youtubeId={match.youtube_id} label={label} onClock={onClock} />}
-          </div>
-          <p className="subtitle" aria-live="assertive" key={latest?.line_id ?? 'waiting'}>
-            {latest ? latest.text : 'Waiting for the first moment…'}
-          </p>
-        </section>
-        <aside className="side">
-          <LineLog lines={shown.lines} late={replay.late} moments={shown.moments} />
-          <ProofPanel live={replay.stats} />
-        </aside>
+  return (
+    <div className="live">
+      <div id="video" className={video === 'unavailable' && !busy ? 'off' : dim ? 'dim' : undefined}>
+        {replay.phase === 'live' && <VideoStage key={replayKey} youtubeId={match.youtube_id} onClock={onClock} onState={onVideo} />}
       </div>
-    </main>
+      <section className="stage" aria-label={`${match.title ?? match.match_id} highlights`}>
+        <div className="shade" />
+        <Nav current="live" onGo={onGo} />
+        <div className="lane hud">
+          <ScoreBar match={match} moment={moment} moments={shown.moments} />
+          <OnAir voice={voice} label={voiceLabel} />
+        </div>
+        {replay.phase === 'live' && video === 'unavailable' && <p className="novideo">Highlights unavailable here. Commentary carries on.</p>}
+        {replay.stream === 'reconnecting' && (
+          <div className="banner"><div className="glass warn" role="alert"><b />Reconnecting to the replay…</div></div>
+        )}
+        {replay.stream === 'disconnected' && (
+          <div className="banner">
+            <div className="glass err" role="alert">
+              <b />Stream disconnected. Lines may be missing.
+              <button className="btn sm" onClick={onReconnect}>Reconnect</button>
+            </div>
+          </div>
+        )}
+        {replay.error && (
+          <div className="banner"><div className="glass err" role="alert"><b />{replay.error}</div></div>
+        )}
+        {replay.phase === 'live' && video !== 'loading' && (
+          latest ? (
+            <div className={`lane subtitle${fix ? ' fixed' : ''}`} aria-live="polite" key={latest.line_id + (fix ? '-fixed' : '')}>
+              {latestMoment && <span className={`tag${fix ? ' fixed' : ''}`}>{fix ? 'Fixed · ' : ''}{momentTag(latestMoment)}</span>}
+              <p>{fix ? fix.corrected_text : latest.text}</p>
+            </div>
+          ) : (
+            <div className="lane subtitle waiting" aria-live="polite"><p>Waiting for the first moment…</p></div>
+          )
+        )}
+        <div className="lane dock">
+          <div className="glass">
+            <button className="btn back" onClick={() => onGo('picker')}>← Fixtures</button>
+            <div className="seg" role="group" aria-label="Sport">
+              {sports.map((s) => (
+                <button key={s} aria-pressed={match.sport === s} disabled={busy} onClick={() => s !== match.sport && onSport(s)}>
+                  {SPORT_NAMES[s]}
+                </button>
+              ))}
+            </div>
+            <button className="btn" disabled={busy} aria-haspopup="dialog" onClick={onVoiceSheet}>
+              Voice: {voice.status === 'on' ? voice.name : voice.status === 'off' ? 'Off' : 'Unavailable'}
+            </button>
+          </div>
+        </div>
+        {gated && <Timeline replay={replay} />}
+        {overlay}
+      </section>
+      <aside className="side">
+        <LineLog lines={shown.lines} late={replay.late} fixes={replay.fixes} moments={shown.moments} onFix={onFix} />
+        <ProofPanel live={replay.stats} />
+      </aside>
+    </div>
+  )
+}
+
+function OnAir({ voice, label }: { voice: Props['voice']; label: string }) {
+  if (voice.status !== 'on') {
+    return (
+      <span className="onair glass">
+        <span className="rec" />
+        {voice.status === 'off' ? 'VOICE OFF' : 'VOICE UNAVAILABLE'}
+        <span className="who">{voice.status === 'off' ? 'Subtitles only' : 'Subtitles carry on'}</span>
+      </span>
+    )
+  }
+  return (
+    <span className={`onair glass${voice.speaking ? ' on' : ''}`} role="status">
+      <span className="rec" />ON AIR
+      <span className="bars" aria-hidden><span /><span /><span /><span /></span>
+      <span className="who">{label}</span>
+    </span>
+  )
+}
+
+const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
+
+// The video timeline (docs/design.md): the progress track with a marker per mapped moment, amber once
+// called, and the player's time over the video's length.
+function Timeline({ replay }: { replay: ReplayState }) {
+  const length = replay.duration
+  const marks = [...replay.moments, ...replay.queuedMoments].filter((m) => m.video_t !== undefined)
+  const at = (t: number) => (length ? `${Math.min(100, (t / length) * 100)}%` : '0%')
+  return (
+    <div className="lane timeline">
+      <span className="yt">
+        <svg viewBox="0 0 16 16" aria-hidden="true">
+          <rect x="1" y="3" width="14" height="10" rx="3" fill="none" stroke="currentColor" strokeWidth="1.3" />
+          <path d="M6.5 5.8v4.4L10.3 8z" fill="currentColor" />
+        </svg>
+        Broadcast highlights · YouTube · muted
+      </span>
+      <div className="track" aria-hidden>
+        <span className="played" style={{ width: at(replay.now) }} />
+        {marks.map((m) => (
+          <span key={m.idx} className={`mk${m.video_t! <= replay.now ? ' done' : ''}`} style={{ left: at(m.video_t!) }} />
+        ))}
+      </div>
+      <span className="clockline">
+        <span className="sync">Synced to video</span>
+        <span className="num">{mmss(replay.now)}{length ? ` / ${mmss(length)}` : ''}</span>
+      </span>
+    </div>
   )
 }
