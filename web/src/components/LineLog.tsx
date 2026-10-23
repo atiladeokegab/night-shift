@@ -3,11 +3,13 @@ import type { Line, Moment } from '../types'
 
 interface Props {
   lines: Line[] // newest first
+  late: string[] // released after the video had moved past them: never shown or spoken
   moments: Moment[]
 }
 
-// The line log (docs/design.md): every line so far, newest first, with its clock and first-word time.
-export function LineLog({ lines, moments }: Props) {
+// The line log (docs/design.md): every line so far, newest first, with its clock and the model's
+// first-word time (time to its first word of text; video wait and speech come after).
+export function LineLog({ lines, late, moments }: Props) {
   return (
     <section className="panel lines" aria-label="Lines">
       <h2>Lines</h2>
@@ -19,10 +21,14 @@ export function LineLog({ lines, moments }: Props) {
             const m = moments.find((x) => x.idx === l.moment_idx)
             const ms = l.first_word_ms ?? l.latency_ms
             return (
-              <li key={l.line_id}>
+              <li key={l.line_id} className={late.includes(l.line_id) ? 'late' : undefined}>
                 <span className="when">{m ? clockText(m, true) : ''}</span>
                 <span className="said">{l.text}</span>
-                <span className="first-word">first word {(ms / 1000).toFixed(2)} s</span>
+                <span className="first-word">
+                  {late.includes(l.line_id) ? 'not spoken: the video had moved past it · ' : ''}
+                  {/* first_word_ms is the model's first word of text, not the spoken word (#37 review). */}
+                  model first word {(ms / 1000).toFixed(2)} s
+                </span>
                 {/* The fix sheet arrives with the fix loop (#16). */}
                 <button className="fix" disabled title="Fixing lines arrives with the fix loop (#16)">Fix</button>
               </li>

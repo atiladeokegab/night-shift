@@ -30,6 +30,8 @@ export interface Moment {
   players: Record<string, string> // role -> name: shooter, keeper, offender / batter, bowler, out
   outcome: string
   score: Score
+  // A-6.4@2: seconds into the highlights video at which the moment first shows (guess asked in #47).
+  video_t?: number
   x?: number // StatsBomb 120 x 80, when known
   y?: number
   detail: Record<string, unknown>
@@ -42,6 +44,7 @@ export interface Line {
   text: string
   latency_ms: number
   first_word_ms?: number
+  video_t?: number // A-6.4@2: shown and spoken when the player reaches it (#47)
 }
 
 export type StreamEvent =
