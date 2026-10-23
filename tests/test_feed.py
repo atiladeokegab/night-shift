@@ -1,5 +1,7 @@
 """The moment picker on hand-built feeds: no network."""
 
+import json
+
 from agent import feed
 
 HEADER = {"sport": "football", "match_id": "1", "home": "Reds", "away": "Blues"}
@@ -51,6 +53,22 @@ def test_shots_goals_cards_and_own_goals_are_moments():
     assert moments[1]["score"] == {"home": 1, "away": 0} and moments[1]["x"] == 110.0
     assert moments[3]["score"] == {"home": 1, "away": 1}  # an own goal counts for the other side
     assert [m["idx"] for m in moments] == [0, 1, 2, 3]
+
+
+def test_players_go_by_their_lineup_nickname_else_their_full_name():
+    messi = {"id": 5503, "name": "Lionel Andrés Messi Cuccittini"}
+    events = [
+        ev("Shot", player=None, shot={"outcome": {"name": "Goal"}}) | {"player": messi},
+        ev("Shot", player="Hugo Lloris", shot={"outcome": {"name": "Saved"}}),
+    ]
+    moments = feed.football_moments(HEADER, events, {5503: "Lionel Messi"})
+    assert [m["players"]["shooter"] for m in moments] == ["Lionel Messi", "Hugo Lloris"]
+
+
+def test_name_overrides_beat_statsbomb_nicknames(monkeypatch):
+    lineups = [{"lineup": [{"player_id": 22097, "player_nickname": "Randal Kolo"}]}]
+    monkeypatch.setattr(feed, "_fetch", lambda *a, **k: json.dumps(lineups).encode())
+    assert feed.statsbomb_nicknames("3869685")[22097] == "Kolo Muani"
 
 
 def ball(batter=0, extras=None, wicket=None, ball="0.1"):
