@@ -209,6 +209,7 @@ def test_a_tool_only_last_reply_is_no_line_not_a_blank_one():
     [
         "I have all the information I need from your message.",
         "Let me check the score first.",
+        "There's a discrepancy here: you say the event is a shot off target. Could you clarify?",
         "",
     ],
 )
