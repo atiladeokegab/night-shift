@@ -131,17 +131,22 @@ _PREAMBLE = re.compile(
 
 # The model questioning its input instead of calling the moment: "There's a discrepancy here ...".
 _META = re.compile(
-    r"\b(?:your message|the message|you say|you said|could you|clarify|discrepancy|the tools?)\b",
+    r"\b(?:your message|the message|you say|you said|could you|clarify|discrepancy|the tools?"
+    r"|labell?ed as|the score confirms)\b",
     re.I,
 )
 
 
 def spoken(text: str) -> str:
-    """The line as spoken: preamble dropped; a reply about the input is no line."""
-    text = text.strip()
-    while (m := _PREAMBLE.match(text)) and m.end():
-        text = text[m.end() :].lstrip()
-    return "" if _META.search(text) else text
+    """The line as spoken: preamble dropped, and any paragraph about the input left out."""
+    kept = []
+    for para in re.split(r"\n\s*\n", text.strip()):
+        para = para.strip()
+        while (m := _PREAMBLE.match(para)) and m.end():
+            para = para[m.end() :].lstrip()
+        if para and not _META.search(para):
+            kept.append(para)
+    return " ".join(kept)
 
 
 def commentate(
