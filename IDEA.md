@@ -1,5 +1,7 @@
 # The idea
 
+The full, current requirements are in `docs/PRD.md` (PRD v2, 2026-10-23). Build and review against it.
+
 The lead writes this once the team has agreed the idea, and no issue is created before it is
 complete. If your task doesn't fit this page, open a change-request (AGENTS.md §7).
 
@@ -28,8 +30,9 @@ commentary for every match possible.
 - Commentator agent: one generalist with one fixed system prompt and 2-4 tools, so every call in every
   sport is one Mubit task; the sport goes in the message. One line per key moment (shots, goals, cards,
   wickets, boundaries), not every pass or dot ball.
-- Live match page: a stickman replay on the pitch or field for each sport, score, subtitles, and the
-  line read aloud.
+- Live match page: the match's official highlights (embedded YouTube, muted) play as the stage; as each
+  key moment plays, its line shows as a large subtitle and is spoken in an emotional commentator voice
+  (a setting: Indian voice for cricket, British for football by default), with the score.
 - Producer fix: edit or reject a line on the page; the corrected line goes back through Mubit and is
   kept with the original.
 - Real traffic: replay many matches tonight so the task passes 25 kept examples with varied, real calls.
@@ -39,7 +42,7 @@ commentary for every match possible.
 
 ## What we don't build
 
-- Video or vision input: the feed is event data, not pictures.
+- Video or vision input to the model: the commentator reads event data; the highlights video is display only.
 - A live real-world match feed: replays of real matches only.
 - A system prompt per sport, or more than one commentator persona: either splits the Mubit task.
 - Sports beyond football and cricket this weekend, and any sport without real event data.
@@ -50,7 +53,7 @@ commentary for every match possible.
 
 ## The demo, in one line
 
-The 2023 Women's World Cup final replays as stickmen and Touchline calls it aloud in under a second, the
+The 2023 Women's World Cup final's highlights play and Touchline calls each moment aloud, like a TV commentator, in under a second, the
 producer fixes one wrong line on stage, our own trained commentator calls a moment beside the big model,
 then one tap switches to Kohli's last overs against Pakistan in 2022 and the same commentator calls cricket.
 
