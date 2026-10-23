@@ -6,9 +6,11 @@ number, and the match header never carries the result. The picker follows the da
 
 from __future__ import annotations
 
+import csv
 import hashlib
 import io
 import json
+import tarfile
 import zipfile
 from pathlib import Path
 
@@ -17,10 +19,19 @@ import httpx
 CACHE = Path(__file__).resolve().parent.parent / "data" / "cache"
 STATSBOMB = "https://raw.githubusercontent.com/statsbomb/open-data/master/data"
 CRICSHEET_ZIP = "https://cricsheet.org/downloads/t20s_json.zip"
+# stats.nba.com play-by-play (playbyplayv2), one archive per season, from the Apache-2.0 mirror
+# shufinskiy/nba_data: stats.nba.com itself times out from cloud IPs.
+NBA_PBP = "https://github.com/shufinskiy/nba_data/raw/main/datasets/{name}.tar.xz"
 TIMEOUT = httpx.Timeout(30.0, connect=10.0)
 
 # WWC 2023 final; Ind v Pak 2022; WC 2022 final
-DEMO = {("football", "3906390"), ("cricket", "1298150"), ("football", "3869685")}
+DEMO = {
+    ("football", "3906390"),
+    ("cricket", "1298150"),
+    ("football", "3869685"),
+    ("basketball", "0049700088"),  # Jordan, 1998 Finals Game 6
+    ("basketball", "0020500591"),  # Kobe's 81 v Toronto
+}
 
 
 def held_out(sport: str, match_id: str) -> bool:
@@ -297,12 +308,139 @@ def cricket_moments(header: dict, match: dict) -> list[dict]:
     return moments
 
 
+# --- basketball ---------------------------------------------------------------------------
+
+CLOSING = 120  # the last two minutes of the 4th quarter or overtime: every basket and steal
+BIG_NIGHT = 40  # from 40 points, every field goal (and closing free throw) of that player
+
+
+def nba_rows(game_id: str) -> list[dict]:
+    """playbyplayv2 rows for one game; the season archive comes from the game id
+    (00 + type + season: "0049700088" is the 1997-98 playoffs, "0020500591" 2005-06)."""
+    if not (len(game_id) == 10 and game_id.isdigit() and game_id[2] in "24"):
+        raise KeyError(game_id)
+    yy = int(game_id[3:5])
+    name = f"nbastats_{'po_' if game_id[2] == '4' else ''}{(1900 if yy >= 46 else 2000) + yy}"
+    timeout = httpx.Timeout(120.0, connect=10.0)
+    data = _fetch(NBA_PBP.format(name=name), f"{name}.tar.xz", timeout=timeout)
+    want = str(int(game_id))  # the archive drops the leading zeros
+    with tarfile.open(fileobj=io.BytesIO(data), mode="r:xz") as tar:
+        member = next(m for m in tar.getmembers() if m.isfile() and m.name.endswith(".csv"))
+        text = io.TextIOWrapper(tar.extractfile(member), encoding="utf-8", newline="")
+        rows = [r for r in csv.DictReader(text) if r.get("GAME_ID") == want]
+    return sorted(rows, key=lambda r: (_int(r.get("PERIOD")), _int(r.get("EVENTNUM"))))
+
+
+def _int(value) -> int:
+    return int(value) if str(value or "").strip().isdigit() else 0
+
+
+def _team(row: dict, n: int) -> str:
+    return _s(
+        f"{row.get(f'PLAYER{n}_TEAM_CITY') or ''} {row.get(f'PLAYER{n}_TEAM_NICKNAME') or ''}"
+    )
+
+
+def basketball_header(game_id: str, rows: list[dict], meta: dict | None = None) -> dict:
+    """Teams from the feed; competition, stage and date from meta. Never the score or result."""
+    meta = meta or {}
+    home = next((_team(r, 1) for r in rows if r.get("HOMEDESCRIPTION") and _team(r, 1)), "")
+    away = next((_team(r, 1) for r in rows if r.get("VISITORDESCRIPTION") and _team(r, 1)), "")
+    return {
+        "sport": "basketball",
+        "match_id": _s(game_id),
+        "home": home,
+        "away": away,
+        "competition": _s(meta.get("competition")),
+        "stage": _s(meta.get("stage")),
+        "date": _s(meta.get("date"), 10),
+    }
+
+
+def basketball_moments(header: dict, rows: list[dict]) -> list[dict]:
+    score = {"home": 0, "away": 0}
+    points: dict[str, int] = {}
+    leader = None  # the side that last led, through ties
+    last_period = max((_int(r.get("PERIOD")) for r in rows), default=0)
+    moments = []
+    for r in rows:
+        kind_no, period = _int(r.get("EVENTMSGTYPE")), _int(r.get("PERIOD"))
+        mm, _, ss = str(r.get("PCTIMESTRING") or "0:00").partition(":")
+        left = _int(mm) * 60 + _int(ss)
+        closing = period >= 4 and left <= CLOSING
+        home_side = _team(r, 1) == header["home"]
+        play = _s(r.get("HOMEDESCRIPTION") or r.get("VISITORDESCRIPTION"), 80)
+        shooter = _s(r.get("PLAYER1_NAME"))
+        players, detail, keep = {}, {}, False
+        if kind_no == 1 or (kind_no == 3 and play and "MISS" not in play.upper()):
+            made = 1 if kind_no == 3 else 3 if "3PT" in play.upper() else 2
+            score["home" if home_side else "away"] += made
+            after = score["home"] - score["away"]
+            had = points.get(shooter, 0)
+            points[shooter] = had + made
+            kind = "Free throw" if kind_no == 3 else "Field goal"
+            outcome = f"{made} point{'s' if made > 1 else ''}"
+            team = _team(r, 1)
+            players = {"shooter": shooter}
+            if kind_no == 1 and _s(r.get("PLAYER2_NAME")):
+                players["assist"] = _s(r.get("PLAYER2_NAME"))
+            detail = {"play": play, "player_points": points[shooter]}
+            if after == 0:
+                detail["tied"] = True
+            else:
+                now = "home" if after > 0 else "away"
+                if leader not in (None, now):
+                    detail["lead_change"] = True
+                leader = now
+            milestone = points[shooter] // 10 > had // 10 and points[shooter] >= 30
+            big = points[shooter] >= BIG_NIGHT and (kind_no == 1 or closing)
+            keep = (
+                (closing and kind_no == 1)
+                or milestone
+                or big
+                or "tied" in detail
+                or "lead_change" in detail
+            )
+        elif kind_no == 5 and closing and _s(r.get("PLAYER2_NAME")):
+            # the steal is told on the stealer's side, the turnover on the other
+            sides = (r.get("HOMEDESCRIPTION"), r.get("VISITORDESCRIPTION"))
+            play = next((_s(d, 80) for d in sides if "STEAL" in str(d or "").upper()), "")
+            kind, outcome, team, keep = "Steal", "Steal", _team(r, 2), bool(play)
+            players = {"stealer": _s(r.get("PLAYER2_NAME")), "lost_by": shooter}
+            detail = {"play": play}
+        elif kind_no == 13 and period == last_period:
+            kind, outcome, team, keep = "End of game", "Final buzzer", "", True
+        if not keep:
+            continue
+        moments.append(
+            {
+                "sport": "basketball",
+                "match_id": header["match_id"],
+                "idx": len(moments),
+                "period": period,
+                "clock": f"{left // 60:02d}:{left % 60:02d}",
+                "type": kind,
+                "team": team,
+                "players": {k: v for k, v in players.items() if v},
+                "outcome": outcome,
+                "score": dict(score),
+                "detail": detail,
+            }
+        )
+    return moments
+
+
 def load(sport: str, match_id: str, meta: dict | None = None) -> tuple[dict, list[dict]]:
-    """(header, moments) for one match. Football needs its StatsBomb match record as meta."""
+    """(header, moments) for one match. Football needs its StatsBomb match record as meta;
+    basketball takes competition, stage and date from meta."""
     if sport == "football":
         header = football_header(meta or {"match_id": match_id})
         events, nicknames = statsbomb_events(match_id), statsbomb_nicknames(match_id)
         return header, football_moments(header, events, nicknames)
+    if sport == "basketball":
+        rows = nba_rows(match_id)
+        header = basketball_header(match_id, rows, meta)
+        return header, basketball_moments(header, rows)
     match = cricsheet_match(match_id)
     header = cricket_header(match_id, match)
     return header, cricket_moments(header, match)
