@@ -445,12 +445,12 @@ F1_ENDPOINTS = (
     "stints",
     "laps",
     "race_control",
-    "session_result",
 )
 F1_TOP = 3  # overtakes and lead changes are called in the top three
 F1_FIELD = 5  # pit stops of the top five; the standing gives the top five with gaps
 F1_PIT_WINDOW = 40.0  # s: a place changing hands while either car is in the pits is a pit cycle
-F1_FLAP = 10.0  # s: a pass must hold this long, and not undo one this recent
+F1_FLAP = 10.0  # s: a pass that undoes one this recent is a car taking its place back
+F1_HOLD = 20.0  # s: a pass is called once it has held this long (and any pit row behind it is in)
 
 
 def openf1(endpoint: str, session_key: str) -> list[dict]:
@@ -484,11 +484,15 @@ def f1_header(session_key: str, meta: dict | None = None) -> dict:
 
 
 def _gap(value) -> str:
-    return f"+{value:.1f}s" if _num(value) is not None else _s(value, 12)
+    return f"{value:.1f} seconds" if _num(value) is not None else _s(value, 12)  # not "+3.3s"
 
 
 def f1_moments(header: dict, rows: dict[str, list[dict]]) -> list[dict]:
-    """Moments from OpenF1 rows ({endpoint: rows}), each with the lap and the top five then."""
+    """Moments from OpenF1 rows ({endpoint: rows}), each with the lap and the top five then.
+
+    No look-ahead (A-1.4): a moment's clock is the latest feed time it reads. Rows count as known
+    at their `date` (laps at `date_start`; their duration is never read), and a pit row's
+    duration and new tyre once the car leaves the pit lane, `date` + `pit_duration`."""
     drivers = {}
     for d in rows.get("drivers") or []:
         if (n := _num(d.get("driver_number"))) is not None:
@@ -512,7 +516,6 @@ def f1_moments(header: dict, rows: dict[str, list[dict]]) -> list[dict]:
     control = timed("race_control", "date", "category", "flag", "message")
     pits = timed("pit", "date", "driver_number", "lap_number", "pit_duration")
     stints = [r for r in rows.get("stints") or [] if _num(r.get("lap_start"))]
-    result = {r.get("driver_number"): r for r in rows.get("session_result") or []}
     total = header.get("laps") or max((x[2] for x in laps), default=0)
     start = next((x[0] for x in control if _s(x[3]) == "SESSION STARTED"), None)
     if start is None:
@@ -531,25 +534,38 @@ def f1_moments(header: dict, rows: dict[str, list[dict]]) -> list[dict]:
             pos[n] = p
         return pos
 
+    def in_lane(t) -> set:
+        """Cars in the pit lane at t whose new place the position feed has not sent yet."""
+        out, window = set(), timedelta(seconds=F1_PIT_WINDOW)
+        for when, n, _, lane in pits:  # its lane time is known only once it is out: capped
+            out_at = when + min(timedelta(seconds=_num(lane) or F1_PIT_WINDOW), window)
+            if when <= t <= out_at and not any(
+                m == n and when - window <= w <= t for w, m, _ in positions
+            ):
+                out.add(n)
+        return out
+
     def standing(t) -> dict:
-        gap = {}
+        gap, lane = {}, in_lane(t)
         for when, n, g in gaps:
             if when > t:
                 break
             gap[n] = g
-        top, ahead = [], 0.0
+        top, pitting_now, ahead = [], [], 0.0
         for p, n in sorted((p, n) for n, p in order_at(t).items())[:F1_FIELD]:
+            if n in lane:  # its place is unknown until the feed sends it: never read ahead
+                pitting_now.append({"pos": None, "driver": who(n), "gap": "in the pit lane"})
+                continue
             g = gap.get(n)
             if _num(g) is not None:  # behind the car ahead or it lags a pit stop: left out
                 g, ahead = (g if g > ahead else None), max(ahead, g)
             top.append({"pos": p, "driver": who(n), "gap": "leader" if p == 1 else _gap(g)})
-        return {"lap": lap_at(t), "laps": total, "top": top}
+        return {"lap": lap_at(t), "laps": total, "top": top + pitting_now}
 
-    def pitting(n, t) -> bool:
-        window = timedelta(seconds=F1_PIT_WINDOW)
-        return any(p == n and abs(when - t) <= window for when, p, *_ in pits)
+    def pitting(n, since, t) -> bool:
+        return any(p == n and since <= when <= t for when, p, *_ in pits)
 
-    events = []  # (time, type, outcome, driver number, players, detail)
+    events = []  # (time called, type, outcome, driver number, players, detail)
     grid = order_at(start)
     pole = min(grid, key=grid.get, default=None)
     events.append((start, "Lights out", "race start", pole, {"leader": who(pole)}, {}))
@@ -575,20 +591,23 @@ def f1_moments(header: dict, rows: dict[str, list[dict]]) -> list[dict]:
         order = order_at(t)
         return order.get(n, 99) < order.get(m, 99)
 
+    hold, window = timedelta(seconds=F1_HOLD), timedelta(seconds=F1_PIT_WINDOW)
     for when, n, passed, p in passes:
+        at = when + hold  # called once it has held, so the hold is never read ahead
         # timing noise: a place handed straight back, or a car only taking its place back
-        undone = any(m == passed and o == n and when < w <= when + flap for w, m, o, _ in passes)
-        if undone or ahead(n, passed, when - flap):
+        undone = any(m == passed and o == n and when < w <= at for w, m, o, _ in passes)
+        if undone or not ahead(n, passed, at) or ahead(n, passed, when - flap):
             continue
-        pit = pitting(n, when) or pitting(passed, when)
+        pit = pitting(n, when - window, at) or pitting(passed, when - window, at)
         if pit and p > 1:  # places swapped by stops below the lead are not overtakes
             continue
         outcome = f"P{p} " + ("in the pit stops" if pit else "on track")
         kind = "Lead change" if p == 1 else "Overtake"
-        events.append((when, kind, outcome, n, {"driver": who(n), "passed": who(passed)}, {}))
+        events.append((at, kind, outcome, n, {"driver": who(n), "passed": who(passed)}, {}))
 
     for when, n, lap, lane in pits:
-        if order_at(when).get(n, 99) > F1_FIELD:
+        lane = _num(lane)  # pit entry to exit, not the stationary stop
+        if order_at(when).get(n, 99) > F1_FIELD or not lane:
             continue
         lap = _num(lap) or 0
         tyre = next(
@@ -599,9 +618,11 @@ def f1_moments(header: dict, rows: dict[str, list[dict]]) -> list[dict]:
             ),
             "",
         )
-        detail = {"tyres": tyre, "pit_lane_s": _num(lane)}
+        detail = {"tyres": tyre, "pit_lane_time": f"{lane:.1f} seconds in the pit lane"}
         outcome = f"pits for {tyre} tyres" if tyre else "pit stop"
-        events.append((when, "Pit stop", outcome, n, {"driver": who(n)}, detail))
+        # called as it leaves the pit lane: its time there and new tyre are known only then
+        exit_ = when + timedelta(seconds=lane)
+        events.append((exit_, "Pit stop", outcome, n, {"driver": who(n)}, detail))
 
     for when, category, flag, message in control:
         message = _s(message, 80)
@@ -615,41 +636,18 @@ def f1_moments(header: dict, rows: dict[str, list[dict]]) -> list[dict]:
             continue
         events.append((when, kind, message.capitalize(), None, {}, {}))
 
-    last = {}  # each car's last lap row: no time on it before the distance means it stopped
-    for r in rows.get("laps") or []:
-        if _num(r.get("lap_number")) and _when(r.get("date_start")):
-            last[r.get("driver_number")] = r
-    for n, r in last.items():
-        dns = (result.get(n) or {}).get("dns")
-        if r.get("lap_duration") is None and r["lap_number"] < total and not dns:
-            when = _when(r["date_start"])
-            events.append(
-                (when, "Retirement", f"out on lap {r['lap_number']}", n, {"driver": who(n)}, {})
-            )
+    # no retirements: OpenF1 sends no row confirming one, and a car's missing laps can be a slow
+    # car's later rows, so inferring it would read ahead (A-1.4)
 
     final = next((x[0] for x in laps if x[2] == total), None)
     if final is not None:
         leader = min(order_at(final).items(), key=lambda x: x[1], default=(None, 0))[0]
         events.append((final, "Last lap", "final lap", leader, {"leader": who(leader)}, {}))
     flag = next((x[0] for x in control if _s(x[2]) == "CHEQUERED"), None)
-    if flag is not None:
-        # the classification gives the finishing gaps; without it they are read just after
-        winner = min(order_at(flag + timedelta(seconds=F1_FLAP)).items(), key=lambda x: x[1])[0]
-        events.append((flag, "Finish", "chequered flag", winner, {"winner": who(winner)}, {}))
-
-    classified = sorted((r["position"], n) for n, r in result.items() if _num(r.get("position")))
-    finish = {
-        "lap": total,
-        "laps": total,
-        "top": [
-            {
-                "pos": p,
-                "driver": who(n),
-                "gap": "leader" if p == 1 else _gap(result[n].get("gap_to_leader")),
-            }
-            for p, n in classified[:F1_FIELD]
-        ],
-    }
+    if flag is not None:  # called once the cars behind have crossed and their gaps are in
+        at = flag + hold
+        winner = min(order_at(at).items(), key=lambda x: x[1], default=(None, 0))[0]
+        events.append((at, "Finish", "chequered flag", winner, {"winner": who(winner)}, {}))
 
     moments = []
     for when, kind, outcome, n, players, detail in sorted(events, key=lambda e: e[0]):
@@ -665,9 +663,7 @@ def f1_moments(header: dict, rows: dict[str, list[dict]]) -> list[dict]:
                 "team": drivers.get(n, ("", ""))[1],
                 "players": {k: v for k, v in players.items() if v},
                 "outcome": outcome,
-                "score": finish
-                if kind == "Finish" and classified
-                else standing(when + timedelta(seconds=F1_FLAP) if kind == "Finish" else when),
+                "score": standing(when),
                 "detail": {k: v for k, v in detail.items() if v not in ("", None)},
             }
         )

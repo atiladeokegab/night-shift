@@ -58,7 +58,7 @@
    "match_id": "9558",
    "idx": 1,
    "period": 1,
-   "clock": "00:24",
+   "clock": "00:44",
    "type": "Overtake",
    "team": "Red Bull Racing",
    "players": {
@@ -78,22 +78,22 @@
      {
       "pos": 2,
       "driver": "Lewis Hamilton",
-      "gap": "+0.4s"
+      "gap": "0.4 seconds"
      },
      {
       "pos": 3,
       "driver": "Max Verstappen",
-      "gap": "+0.6s"
+      "gap": "0.9 seconds"
      },
      {
       "pos": 4,
       "driver": "Lando Norris",
-      "gap": ""
+      "gap": "1.0 seconds"
      },
      {
       "pos": 5,
       "driver": "Oscar Piastri",
-      "gap": "+0.8s"
+      "gap": "1.4 seconds"
      }
     ]
    },
@@ -103,8 +103,8 @@
    "sport": "f1",
    "match_id": "9558",
    "idx": 2,
-   "period": 15,
-   "clock": "22:47",
+   "period": 16,
+   "clock": "23:07",
    "type": "Overtake",
    "team": "McLaren",
    "players": {
@@ -113,7 +113,7 @@
    },
    "outcome": "P3 on track",
    "score": {
-    "lap": 15,
+    "lap": 16,
     "laps": 52,
     "top": [
      {
@@ -124,22 +124,22 @@
      {
       "pos": 2,
       "driver": "Lewis Hamilton",
-      "gap": "+1.6s"
+      "gap": "1.6 seconds"
      },
      {
       "pos": 3,
       "driver": "Lando Norris",
-      "gap": "+4.7s"
+      "gap": "4.7 seconds"
      },
      {
       "pos": 4,
       "driver": "Max Verstappen",
-      "gap": "+4.8s"
+      "gap": "5.4 seconds"
      },
      {
       "pos": 5,
       "driver": "Oscar Piastri",
-      "gap": "+6.7s"
+      "gap": "6.9 seconds"
      }
     ]
    },
@@ -150,7 +150,7 @@
    "match_id": "9558",
    "idx": 3,
    "period": 18,
-   "clock": "27:18",
+   "clock": "27:38",
    "type": "Lead change",
    "team": "Mercedes",
    "players": {
@@ -170,22 +170,22 @@
      {
       "pos": 2,
       "driver": "George Russell",
-      "gap": ""
+      "gap": "0.6 seconds"
      },
      {
       "pos": 3,
       "driver": "Lando Norris",
-      "gap": "+3.0s"
+      "gap": "2.7 seconds"
      },
      {
       "pos": 4,
       "driver": "Oscar Piastri",
-      "gap": "+5.6s"
+      "gap": "5.4 seconds"
      },
      {
       "pos": 5,
       "driver": "Max Verstappen",
-      "gap": "+6.9s"
+      "gap": "7.3 seconds"
      }
     ]
    },
@@ -196,7 +196,50 @@
    "match_id": "9558",
    "idx": 4,
    "period": 19,
-   "clock": "28:06",
+   "clock": "28:10",
+   "type": "Conditions",
+   "team": "",
+   "players": {},
+   "outcome": "Low grip conditions",
+   "score": {
+    "lap": 19,
+    "laps": 52,
+    "top": [
+     {
+      "pos": 1,
+      "driver": "Lewis Hamilton",
+      "gap": "leader"
+     },
+     {
+      "pos": 2,
+      "driver": "Lando Norris",
+      "gap": "1.3 seconds"
+     },
+     {
+      "pos": 3,
+      "driver": "George Russell",
+      "gap": "1.6 seconds"
+     },
+     {
+      "pos": 4,
+      "driver": "Oscar Piastri",
+      "gap": "3.5 seconds"
+     },
+     {
+      "pos": 5,
+      "driver": "Max Verstappen",
+      "gap": "6.8 seconds"
+     }
+    ]
+   },
+   "detail": {}
+  },
+  {
+   "sport": "f1",
+   "match_id": "9558",
+   "idx": 5,
+   "period": 19,
+   "clock": "28:26",
    "type": "Overtake",
    "team": "McLaren",
    "players": {
@@ -216,65 +259,22 @@
      {
       "pos": 2,
       "driver": "Lando Norris",
-      "gap": "+1.3s"
+      "gap": "1.4 seconds"
      },
      {
       "pos": 3,
       "driver": "George Russell",
-      "gap": ""
+      "gap": "2.1 seconds"
      },
      {
       "pos": 4,
       "driver": "Oscar Piastri",
-      "gap": "+3.5s"
+      "gap": "3.7 seconds"
      },
      {
       "pos": 5,
       "driver": "Max Verstappen",
-      "gap": "+6.8s"
-     }
-    ]
-   },
-   "detail": {}
-  },
-  {
-   "sport": "f1",
-   "match_id": "9558",
-   "idx": 5,
-   "period": 19,
-   "clock": "28:10",
-   "type": "Conditions",
-   "team": "",
-   "players": {},
-   "outcome": "Low grip conditions",
-   "score": {
-    "lap": 19,
-    "laps": 52,
-    "top": [
-     {
-      "pos": 1,
-      "driver": "Lewis Hamilton",
-      "gap": "leader"
-     },
-     {
-      "pos": 2,
-      "driver": "Lando Norris",
-      "gap": "+1.3s"
-     },
-     {
-      "pos": 3,
-      "driver": "George Russell",
-      "gap": "+1.6s"
-     },
-     {
-      "pos": 4,
-      "driver": "Oscar Piastri",
-      "gap": "+3.5s"
-     },
-     {
-      "pos": 5,
-      "driver": "Max Verstappen",
-      "gap": "+6.8s"
+      "gap": "6.7 seconds"
      }
     ]
    },
@@ -285,7 +285,7 @@
    "match_id": "9558",
    "idx": 6,
    "period": 20,
-   "clock": "29:29",
+   "clock": "29:49",
    "type": "Lead change",
    "team": "McLaren",
    "players": {
@@ -305,22 +305,22 @@
      {
       "pos": 2,
       "driver": "Lewis Hamilton",
-      "gap": ""
+      "gap": "1.5 seconds"
      },
      {
       "pos": 3,
-      "driver": "George Russell",
-      "gap": "+0.9s"
+      "driver": "Oscar Piastri",
+      "gap": "1.9 seconds"
      },
      {
       "pos": 4,
-      "driver": "Oscar Piastri",
-      "gap": "+1.9s"
+      "driver": "George Russell",
+      "gap": "1.9 seconds"
      },
      {
       "pos": 5,
       "driver": "Max Verstappen",
-      "gap": "+6.3s"
+      "gap": "5.8 seconds"
      }
     ]
    },
@@ -331,7 +331,7 @@
    "match_id": "9558",
    "idx": 7,
    "period": 20,
-   "clock": "29:48",
+   "clock": "30:08",
    "type": "Overtake",
    "team": "McLaren",
    "players": {
@@ -351,22 +351,22 @@
      {
       "pos": 2,
       "driver": "Lewis Hamilton",
-      "gap": "+1.5s"
+      "gap": "1.6 seconds"
      },
      {
       "pos": 3,
       "driver": "Oscar Piastri",
-      "gap": "+1.7s"
+      "gap": "1.9 seconds"
      },
      {
       "pos": 4,
       "driver": "George Russell",
-      "gap": ""
+      "gap": "2.7 seconds"
      },
      {
       "pos": 5,
       "driver": "Max Verstappen",
-      "gap": "+5.8s"
+      "gap": "5.9 seconds"
      }
     ]
    },
@@ -376,8 +376,8 @@
    "sport": "f1",
    "match_id": "9558",
    "idx": 8,
-   "period": 20,
-   "clock": "30:50",
+   "period": 21,
+   "clock": "31:10",
    "type": "Overtake",
    "team": "McLaren",
    "players": {
@@ -386,7 +386,7 @@
    },
    "outcome": "P2 on track",
    "score": {
-    "lap": 20,
+    "lap": 21,
     "laps": 52,
     "top": [
      {
@@ -397,22 +397,22 @@
      {
       "pos": 2,
       "driver": "Oscar Piastri",
-      "gap": "+1.0s"
+      "gap": "1.3 seconds"
      },
      {
       "pos": 3,
       "driver": "Lewis Hamilton",
-      "gap": "+1.1s"
+      "gap": "2.1 seconds"
      },
      {
       "pos": 4,
       "driver": "George Russell",
-      "gap": "+2.2s"
+      "gap": "2.9 seconds"
      },
      {
       "pos": 5,
       "driver": "Max Verstappen",
-      "gap": "+5.1s"
+      "gap": "5.1 seconds"
      }
     ]
    },
@@ -440,22 +440,22 @@
      {
       "pos": 2,
       "driver": "Oscar Piastri",
-      "gap": "+1.4s"
+      "gap": "1.4 seconds"
      },
      {
       "pos": 3,
       "driver": "Lewis Hamilton",
-      "gap": "+3.5s"
+      "gap": "3.5 seconds"
      },
      {
       "pos": 4,
       "driver": "George Russell",
-      "gap": "+5.6s"
+      "gap": "5.6 seconds"
      },
      {
       "pos": 5,
       "driver": "Max Verstappen",
-      "gap": "+11.6s"
+      "gap": "11.6 seconds"
      }
     ]
    },
@@ -466,7 +466,7 @@
    "match_id": "9558",
    "idx": 10,
    "period": 27,
-   "clock": "40:57",
+   "clock": "41:25",
    "type": "Pit stop",
    "team": "Red Bull Racing",
    "players": {
@@ -485,28 +485,28 @@
      {
       "pos": 2,
       "driver": "Oscar Piastri",
-      "gap": "+0.4s"
+      "gap": "0.6 seconds"
      },
      {
       "pos": 3,
       "driver": "Lewis Hamilton",
-      "gap": "+2.3s"
+      "gap": "2.7 seconds"
      },
      {
       "pos": 4,
       "driver": "George Russell",
-      "gap": "+3.6s"
+      "gap": "4.4 seconds"
      },
      {
-      "pos": 5,
+      "pos": null,
       "driver": "Max Verstappen",
-      "gap": "+14.4s"
+      "gap": "in the pit lane"
      }
     ]
    },
    "detail": {
     "tyres": "intermediate",
-    "pit_lane_s": 28.3
+    "pit_lane_time": "28.3 seconds in the pit lane"
    }
   },
   {
@@ -514,7 +514,7 @@
    "match_id": "9558",
    "idx": 11,
    "period": 28,
-   "clock": "42:19",
+   "clock": "42:39",
    "type": "Lead change",
    "team": "McLaren",
    "players": {
@@ -534,22 +534,22 @@
      {
       "pos": 2,
       "driver": "Lando Norris",
-      "gap": ""
+      "gap": "12.7 seconds"
      },
      {
       "pos": 3,
       "driver": "Lewis Hamilton",
-      "gap": "+2.8s"
+      "gap": ""
      },
      {
       "pos": 4,
       "driver": "George Russell",
-      "gap": "+5.0s"
+      "gap": ""
      },
      {
       "pos": 5,
       "driver": "Max Verstappen",
-      "gap": "+26.1s"
+      "gap": "26.6 seconds"
      }
     ]
    },
@@ -560,7 +560,7 @@
    "match_id": "9558",
    "idx": 12,
    "period": 28,
-   "clock": "42:30",
+   "clock": "42:59",
    "type": "Pit stop",
    "team": "McLaren",
    "players": {
@@ -579,28 +579,28 @@
      {
       "pos": 2,
       "driver": "Lando Norris",
-      "gap": ""
+      "gap": "10.4 seconds"
      },
      {
       "pos": 3,
       "driver": "Lewis Hamilton",
-      "gap": "+2.8s"
+      "gap": "14.3 seconds"
      },
      {
       "pos": 4,
-      "driver": "George Russell",
-      "gap": "+5.0s"
+      "driver": "Max Verstappen",
+      "gap": "17.4 seconds"
      },
      {
       "pos": 5,
-      "driver": "Max Verstappen",
-      "gap": "+24.1s"
+      "driver": "George Russell",
+      "gap": "22.1 seconds"
      }
     ]
    },
    "detail": {
     "tyres": "intermediate",
-    "pit_lane_s": 28.6
+    "pit_lane_time": "28.6 seconds in the pit lane"
    }
   },
   {
@@ -608,7 +608,7 @@
    "match_id": "9558",
    "idx": 13,
    "period": 28,
-   "clock": "42:33",
+   "clock": "43:02",
    "type": "Pit stop",
    "team": "Mercedes",
    "players": {
@@ -627,28 +627,28 @@
      {
       "pos": 2,
       "driver": "Lando Norris",
-      "gap": ""
+      "gap": "10.1 seconds"
      },
      {
       "pos": 3,
       "driver": "Lewis Hamilton",
-      "gap": "+2.8s"
+      "gap": "14.3 seconds"
      },
      {
       "pos": 4,
-      "driver": "George Russell",
-      "gap": "+5.0s"
+      "driver": "Max Verstappen",
+      "gap": "16.7 seconds"
      },
      {
       "pos": 5,
-      "driver": "Max Verstappen",
-      "gap": "+22.0s"
+      "driver": "George Russell",
+      "gap": "21.4 seconds"
      }
     ]
    },
    "detail": {
     "tyres": "intermediate",
-    "pit_lane_s": 28.9
+    "pit_lane_time": "28.9 seconds in the pit lane"
    }
   },
   {
@@ -656,7 +656,7 @@
    "match_id": "9558",
    "idx": 14,
    "period": 28,
-   "clock": "42:40",
+   "clock": "43:12",
    "type": "Pit stop",
    "team": "Mercedes",
    "players": {
@@ -675,28 +675,28 @@
      {
       "pos": 2,
       "driver": "Lando Norris",
-      "gap": "+12.4s"
+      "gap": "7.9 seconds"
      },
      {
       "pos": 3,
       "driver": "Lewis Hamilton",
-      "gap": "+16.2s"
+      "gap": "12.6 seconds"
      },
      {
       "pos": 4,
       "driver": "Max Verstappen",
-      "gap": "+20.3s"
+      "gap": "15.1 seconds"
      },
      {
       "pos": 5,
       "driver": "George Russell",
-      "gap": ""
+      "gap": "20.3 seconds"
      }
     ]
    },
    "detail": {
     "tyres": "intermediate",
-    "pit_lane_s": 32.0
+    "pit_lane_time": "32.0 seconds in the pit lane"
    }
   },
   {
@@ -704,7 +704,7 @@
    "match_id": "9558",
    "idx": 15,
    "period": 29,
-   "clock": "44:13",
+   "clock": "44:33",
    "type": "Lead change",
    "team": "McLaren",
    "players": {
@@ -723,23 +723,23 @@
      },
      {
       "pos": 2,
-      "driver": "Oscar Piastri",
-      "gap": ""
+      "driver": "Lewis Hamilton",
+      "gap": "3.4 seconds"
      },
      {
       "pos": 3,
-      "driver": "Lewis Hamilton",
-      "gap": "+5.6s"
+      "driver": "Max Verstappen",
+      "gap": "7.0 seconds"
      },
      {
       "pos": 4,
-      "driver": "Max Verstappen",
-      "gap": ""
+      "driver": "George Russell",
+      "gap": "10.4 seconds"
      },
      {
       "pos": 5,
-      "driver": "George Russell",
-      "gap": ""
+      "driver": "Carlos Sainz",
+      "gap": "12.3 seconds"
      }
     ]
    },
@@ -749,53 +749,8 @@
    "sport": "f1",
    "match_id": "9558",
    "idx": 16,
-   "period": 34,
-   "clock": "52:52",
-   "type": "Retirement",
-   "team": "Mercedes",
-   "players": {
-    "driver": "George Russell"
-   },
-   "outcome": "out on lap 34",
-   "score": {
-    "lap": 34,
-    "laps": 52,
-    "top": [
-     {
-      "pos": 1,
-      "driver": "Lando Norris",
-      "gap": "leader"
-     },
-     {
-      "pos": 2,
-      "driver": "Lewis Hamilton",
-      "gap": "+3.2s"
-     },
-     {
-      "pos": 3,
-      "driver": "Max Verstappen",
-      "gap": "+10.5s"
-     },
-     {
-      "pos": 4,
-      "driver": "George Russell",
-      "gap": "+15.8s"
-     },
-     {
-      "pos": 5,
-      "driver": "Carlos Sainz",
-      "gap": "+19.7s"
-     }
-    ]
-   },
-   "detail": {}
-  },
-  {
-   "sport": "f1",
-   "match_id": "9558",
-   "idx": 17,
    "period": 39,
-   "clock": "61:27",
+   "clock": "61:57",
    "type": "Pit stop",
    "team": "Mercedes",
    "players": {
@@ -813,37 +768,37 @@
      },
      {
       "pos": 2,
-      "driver": "Lewis Hamilton",
-      "gap": "+2.2s"
+      "driver": "Carlos Sainz",
+      "gap": "21.3 seconds"
      },
      {
       "pos": 3,
-      "driver": "Max Verstappen",
-      "gap": "+7.7s"
+      "driver": "Lewis Hamilton",
+      "gap": "23.7 seconds"
      },
      {
       "pos": 4,
-      "driver": "Oscar Piastri",
-      "gap": "+22.3s"
+      "driver": "Max Verstappen",
+      "gap": "29.2 seconds"
      },
      {
       "pos": 5,
-      "driver": "Carlos Sainz",
-      "gap": ""
+      "driver": "Oscar Piastri",
+      "gap": "43.0 seconds"
      }
     ]
    },
    "detail": {
     "tyres": "soft",
-    "pit_lane_s": 30.0
+    "pit_lane_time": "30.0 seconds in the pit lane"
    }
   },
   {
    "sport": "f1",
    "match_id": "9558",
-   "idx": 18,
+   "idx": 17,
    "period": 39,
-   "clock": "61:31",
+   "clock": "62:00",
    "type": "Pit stop",
    "team": "Red Bull Racing",
    "players": {
@@ -862,36 +817,36 @@
      {
       "pos": 2,
       "driver": "Carlos Sainz",
-      "gap": "+21.4s"
+      "gap": "21.3 seconds"
      },
      {
       "pos": 3,
       "driver": "Lewis Hamilton",
-      "gap": ""
+      "gap": "23.7 seconds"
      },
      {
       "pos": 4,
       "driver": "Max Verstappen",
-      "gap": ""
+      "gap": "29.1 seconds"
      },
      {
       "pos": 5,
       "driver": "Oscar Piastri",
-      "gap": "+22.3s"
+      "gap": "42.7 seconds"
      }
     ]
    },
    "detail": {
     "tyres": "hard",
-    "pit_lane_s": 29.0
+    "pit_lane_time": "29.0 seconds in the pit lane"
    }
   },
   {
    "sport": "f1",
    "match_id": "9558",
-   "idx": 19,
+   "idx": 18,
    "period": 39,
-   "clock": "61:46",
+   "clock": "62:15",
    "type": "Pit stop",
    "team": "McLaren",
    "players": {
@@ -910,84 +865,36 @@
      {
       "pos": 2,
       "driver": "Carlos Sainz",
-      "gap": "+21.3s"
+      "gap": "21.4 seconds"
      },
      {
       "pos": 3,
       "driver": "Lewis Hamilton",
-      "gap": "+24.4s"
+      "gap": "22.9 seconds"
      },
      {
       "pos": 4,
       "driver": "Max Verstappen",
-      "gap": "+29.3s"
+      "gap": "28.5 seconds"
      },
      {
       "pos": 5,
       "driver": "Oscar Piastri",
-      "gap": ""
+      "gap": "42.1 seconds"
      }
     ]
    },
    "detail": {
     "tyres": "medium",
-    "pit_lane_s": 29.2
+    "pit_lane_time": "29.2 seconds in the pit lane"
    }
   },
   {
    "sport": "f1",
    "match_id": "9558",
-   "idx": 20,
+   "idx": 19,
    "period": 40,
-   "clock": "63:02",
-   "type": "Pit stop",
-   "team": "McLaren",
-   "players": {
-    "driver": "Lando Norris"
-   },
-   "outcome": "pits for soft tyres",
-   "score": {
-    "lap": 40,
-    "laps": 52,
-    "top": [
-     {
-      "pos": 1,
-      "driver": "Lando Norris",
-      "gap": "leader"
-     },
-     {
-      "pos": 2,
-      "driver": "Carlos Sainz",
-      "gap": "+21.3s"
-     },
-     {
-      "pos": 3,
-      "driver": "Lewis Hamilton",
-      "gap": "+21.8s"
-     },
-     {
-      "pos": 4,
-      "driver": "Max Verstappen",
-      "gap": ""
-     },
-     {
-      "pos": 5,
-      "driver": "Oscar Piastri",
-      "gap": "+39.1s"
-     }
-    ]
-   },
-   "detail": {
-    "tyres": "soft",
-    "pit_lane_s": 30.3
-   }
-  },
-  {
-   "sport": "f1",
-   "match_id": "9558",
-   "idx": 21,
-   "period": 40,
-   "clock": "63:08",
+   "clock": "63:28",
    "type": "Lead change",
    "team": "Mercedes",
    "players": {
@@ -1007,22 +914,22 @@
      {
       "pos": 2,
       "driver": "Lando Norris",
-      "gap": ""
+      "gap": "2.1 seconds"
      },
      {
       "pos": 3,
-      "driver": "Carlos Sainz",
-      "gap": "+21.3s"
+      "driver": "Max Verstappen",
+      "gap": "6.5 seconds"
      },
      {
       "pos": 4,
-      "driver": "Max Verstappen",
-      "gap": "+28.2s"
+      "driver": "Oscar Piastri",
+      "gap": "17.3 seconds"
      },
      {
       "pos": 5,
-      "driver": "Oscar Piastri",
-      "gap": ""
+      "driver": "Carlos Sainz",
+      "gap": "21.3 seconds"
      }
     ]
    },
@@ -1031,9 +938,57 @@
   {
    "sport": "f1",
    "match_id": "9558",
-   "idx": 22,
+   "idx": 20,
    "period": 40,
-   "clock": "63:23",
+   "clock": "63:33",
+   "type": "Pit stop",
+   "team": "McLaren",
+   "players": {
+    "driver": "Lando Norris"
+   },
+   "outcome": "pits for soft tyres",
+   "score": {
+    "lap": 40,
+    "laps": 52,
+    "top": [
+     {
+      "pos": 1,
+      "driver": "Lewis Hamilton",
+      "gap": "leader"
+     },
+     {
+      "pos": 2,
+      "driver": "Lando Norris",
+      "gap": "2.1 seconds"
+     },
+     {
+      "pos": 3,
+      "driver": "Max Verstappen",
+      "gap": "6.6 seconds"
+     },
+     {
+      "pos": 4,
+      "driver": "Oscar Piastri",
+      "gap": "17.3 seconds"
+     },
+     {
+      "pos": 5,
+      "driver": "Carlos Sainz",
+      "gap": "21.4 seconds"
+     }
+    ]
+   },
+   "detail": {
+    "tyres": "soft",
+    "pit_lane_time": "30.3 seconds in the pit lane"
+   }
+  },
+  {
+   "sport": "f1",
+   "match_id": "9558",
+   "idx": 21,
+   "period": 40,
+   "clock": "63:52",
    "type": "Pit stop",
    "team": "Ferrari",
    "players": {
@@ -1052,36 +1007,36 @@
      {
       "pos": 2,
       "driver": "Lando Norris",
-      "gap": "+2.0s"
+      "gap": "2.4 seconds"
      },
      {
       "pos": 3,
       "driver": "Max Verstappen",
-      "gap": "+6.5s"
+      "gap": "6.6 seconds"
      },
      {
       "pos": 4,
       "driver": "Oscar Piastri",
-      "gap": "+17.3s"
+      "gap": "17.5 seconds"
      },
      {
       "pos": 5,
       "driver": "Carlos Sainz",
-      "gap": "+21.3s"
+      "gap": "23.9 seconds"
      }
     ]
    },
    "detail": {
     "tyres": "hard",
-    "pit_lane_s": 29.0
+    "pit_lane_time": "29.0 seconds in the pit lane"
    }
   },
   {
    "sport": "f1",
    "match_id": "9558",
-   "idx": 23,
-   "period": 48,
-   "clock": "76:16",
+   "idx": 22,
+   "period": 49,
+   "clock": "76:36",
    "type": "Overtake",
    "team": "Red Bull Racing",
    "players": {
@@ -1090,7 +1045,7 @@
    },
    "outcome": "P2 on track",
    "score": {
-    "lap": 48,
+    "lap": 49,
     "laps": 52,
     "top": [
      {
@@ -1101,22 +1056,22 @@
      {
       "pos": 2,
       "driver": "Max Verstappen",
-      "gap": "+3.3s"
+      "gap": "3.3 seconds"
      },
      {
       "pos": 3,
       "driver": "Lando Norris",
-      "gap": "+3.4s"
+      "gap": "4.0 seconds"
      },
      {
       "pos": 4,
       "driver": "Oscar Piastri",
-      "gap": "+13.9s"
+      "gap": "13.8 seconds"
      },
      {
       "pos": 5,
       "driver": "Carlos Sainz",
-      "gap": "+26.8s"
+      "gap": "27.0 seconds"
      }
     ]
    },
@@ -1125,9 +1080,9 @@
   {
    "sport": "f1",
    "match_id": "9558",
-   "idx": 24,
+   "idx": 23,
    "period": 51,
-   "clock": "80:16",
+   "clock": "80:45",
    "type": "Pit stop",
    "team": "Ferrari",
    "players": {
@@ -1146,34 +1101,34 @@
      {
       "pos": 2,
       "driver": "Max Verstappen",
-      "gap": "+2.8s"
+      "gap": "2.8 seconds"
      },
      {
       "pos": 3,
       "driver": "Lando Norris",
-      "gap": "+6.2s"
+      "gap": "6.5 seconds"
      },
      {
       "pos": 4,
       "driver": "Oscar Piastri",
-      "gap": "+13.3s"
+      "gap": "13.1 seconds"
      },
      {
-      "pos": 5,
+      "pos": null,
       "driver": "Carlos Sainz",
-      "gap": "+26.3s"
+      "gap": "in the pit lane"
      }
     ]
    },
    "detail": {
     "tyres": "soft",
-    "pit_lane_s": 28.7
+    "pit_lane_time": "28.7 seconds in the pit lane"
    }
   },
   {
    "sport": "f1",
    "match_id": "9558",
-   "idx": 25,
+   "idx": 24,
    "period": 52,
    "clock": "80:57",
    "type": "Last lap",
@@ -1194,22 +1149,22 @@
      {
       "pos": 2,
       "driver": "Max Verstappen",
-      "gap": "+2.6s"
+      "gap": "2.6 seconds"
      },
      {
       "pos": 3,
       "driver": "Lando Norris",
-      "gap": "+6.5s"
+      "gap": "6.5 seconds"
      },
      {
       "pos": 4,
       "driver": "Oscar Piastri",
-      "gap": "+12.9s"
+      "gap": "12.9 seconds"
      },
      {
       "pos": 5,
       "driver": "Carlos Sainz",
-      "gap": "+47.3s"
+      "gap": "47.3 seconds"
      }
     ]
    },
@@ -1218,9 +1173,9 @@
   {
    "sport": "f1",
    "match_id": "9558",
-   "idx": 26,
+   "idx": 25,
    "period": 52,
-   "clock": "82:26",
+   "clock": "82:46",
    "type": "Finish",
    "team": "Mercedes",
    "players": {
@@ -1239,22 +1194,22 @@
      {
       "pos": 2,
       "driver": "Max Verstappen",
-      "gap": "+1.5s"
+      "gap": "1.5 seconds"
      },
      {
       "pos": 3,
       "driver": "Lando Norris",
-      "gap": "+7.5s"
+      "gap": "7.5 seconds"
      },
      {
       "pos": 4,
       "driver": "Oscar Piastri",
-      "gap": "+12.4s"
+      "gap": "12.4 seconds"
      },
      {
       "pos": 5,
       "driver": "Carlos Sainz",
-      "gap": "+47.3s"
+      "gap": "48.0 seconds"
      }
     ]
    },
