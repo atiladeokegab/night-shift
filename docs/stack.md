@@ -10,3 +10,6 @@
 | Offline | `FakeProvider`, no keys, no network | Decided | `make smoke` is the merge gate |
 | Check | ruff, pytest | Decided | `make check` |
 | Web build | Node 22 (`node:22-slim` build stage in the Dockerfile), `npm ci && npm run build` of web/ | Decided | builds the React + Vite page (web/, Persia) into the image; the API serves `web/dist` |
+| Web runtime | React 19 (`react`, `react-dom`); fonts `@fontsource/barlow-condensed`, `@fontsource/source-sans-3` | Decided | the live page (web/, Persia); fonts self-hosted, no font CDN on stage |
+| Web tooling | Vite 8 with `@vitejs/plugin-react`, TypeScript 6, oxlint; types `@types/node`, `@types/react`, `@types/react-dom` | Decided | build, type check and lint for web/; dev only, nothing ships but `web/dist` |
+| Video | YouTube IFrame Player API, loaded from youtube.com (no package) | Decided | A-6.4@2: the player's own time drives the commentary |
