@@ -1,0 +1,1489 @@
+{
+ "header": {
+  "sport": "cricket",
+  "match_id": "1298150",
+  "home": "Pakistan",
+  "away": "India",
+  "competition": "ICC Men's T20 World Cup",
+  "stage": "match 16",
+  "date": "2022-10-23"
+ },
+ "moments": [
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 0,
+   "period": 1,
+   "clock": "1.1",
+   "type": "Wicket",
+   "team": "Pakistan",
+   "players": {
+    "batter": "Babar Azam",
+    "bowler": "Arshdeep Singh",
+    "non_striker": "Mohammad Rizwan",
+    "out": "Babar Azam"
+   },
+   "outcome": "lbw",
+   "score": {
+    "runs": 1,
+    "wickets": 1
+   },
+   "detail": {
+    "runs_batter": 0,
+    "extras": {},
+    "free_hit": false,
+    "wicket_kind": "lbw"
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 1,
+   "period": 1,
+   "clock": "1.6",
+   "type": "Four",
+   "team": "Pakistan",
+   "players": {
+    "batter": "Mohammad Rizwan",
+    "bowler": "Arshdeep Singh",
+    "non_striker": "Shan Masood"
+   },
+   "outcome": "4 runs",
+   "score": {
+    "runs": 6,
+    "wickets": 1
+   },
+   "detail": {
+    "runs_batter": 4,
+    "extras": {},
+    "free_hit": false
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 2,
+   "period": 1,
+   "clock": "3.1",
+   "type": "Four",
+   "team": "Pakistan",
+   "players": {
+    "batter": "Shan Masood",
+    "bowler": "Arshdeep Singh",
+    "non_striker": "Mohammad Rizwan"
+   },
+   "outcome": "4 runs",
+   "score": {
+    "runs": 14,
+    "wickets": 1
+   },
+   "detail": {
+    "runs_batter": 4,
+    "extras": {},
+    "free_hit": false
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 3,
+   "period": 1,
+   "clock": "3.6",
+   "type": "Wicket",
+   "team": "Pakistan",
+   "players": {
+    "batter": "Mohammad Rizwan",
+    "bowler": "Arshdeep Singh",
+    "non_striker": "Shan Masood",
+    "out": "Mohammad Rizwan",
+    "fielder": "B Kumar"
+   },
+   "outcome": "caught",
+   "score": {
+    "runs": 15,
+    "wickets": 2
+   },
+   "detail": {
+    "runs_batter": 0,
+    "extras": {},
+    "free_hit": false,
+    "wicket_kind": "caught"
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 4,
+   "period": 1,
+   "clock": "4.5",
+   "type": "Four",
+   "team": "Pakistan",
+   "players": {
+    "batter": "Iftikhar Ahmed",
+    "bowler": "B Kumar",
+    "non_striker": "Shan Masood"
+   },
+   "outcome": "4 runs",
+   "score": {
+    "runs": 24,
+    "wickets": 2
+   },
+   "detail": {
+    "runs_batter": 4,
+    "extras": {},
+    "free_hit": false
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 5,
+   "period": 1,
+   "clock": "5.3",
+   "type": "Four",
+   "team": "Pakistan",
+   "players": {
+    "batter": "Shan Masood",
+    "bowler": "Mohammed Shami",
+    "non_striker": "Iftikhar Ahmed"
+   },
+   "outcome": "4 runs",
+   "score": {
+    "runs": 28,
+    "wickets": 2
+   },
+   "detail": {
+    "runs_batter": 4,
+    "extras": {},
+    "free_hit": false
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 6,
+   "period": 1,
+   "clock": "6.6",
+   "type": "Four",
+   "team": "Pakistan",
+   "players": {
+    "batter": "Shan Masood",
+    "bowler": "HH Pandya",
+    "non_striker": "Iftikhar Ahmed"
+   },
+   "outcome": "4 runs",
+   "score": {
+    "runs": 41,
+    "wickets": 2
+   },
+   "detail": {
+    "runs_batter": 4,
+    "extras": {},
+    "free_hit": false
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 7,
+   "period": 1,
+   "clock": "9.4",
+   "type": "Four",
+   "team": "Pakistan",
+   "players": {
+    "batter": "Iftikhar Ahmed",
+    "bowler": "HH Pandya",
+    "non_striker": "Shan Masood"
+   },
+   "outcome": "4 runs",
+   "score": {
+    "runs": 58,
+    "wickets": 2
+   },
+   "detail": {
+    "runs_batter": 4,
+    "extras": {},
+    "free_hit": false
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 8,
+   "period": 1,
+   "clock": "10.5",
+   "type": "Six",
+   "team": "Pakistan",
+   "players": {
+    "batter": "Iftikhar Ahmed",
+    "bowler": "R Ashwin",
+    "non_striker": "Shan Masood"
+   },
+   "outcome": "6 runs",
+   "score": {
+    "runs": 69,
+    "wickets": 2
+   },
+   "detail": {
+    "runs_batter": 6,
+    "extras": {},
+    "free_hit": false
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 9,
+   "period": 1,
+   "clock": "11.1",
+   "type": "Six",
+   "team": "Pakistan",
+   "players": {
+    "batter": "Iftikhar Ahmed",
+    "bowler": "AR Patel",
+    "non_striker": "Shan Masood"
+   },
+   "outcome": "6 runs",
+   "score": {
+    "runs": 76,
+    "wickets": 2
+   },
+   "detail": {
+    "runs_batter": 6,
+    "extras": {},
+    "free_hit": false
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 10,
+   "period": 1,
+   "clock": "11.3",
+   "type": "Six",
+   "team": "Pakistan",
+   "players": {
+    "batter": "Iftikhar Ahmed",
+    "bowler": "AR Patel",
+    "non_striker": "Shan Masood"
+   },
+   "outcome": "6 runs",
+   "score": {
+    "runs": 82,
+    "wickets": 2
+   },
+   "detail": {
+    "runs_batter": 6,
+    "extras": {},
+    "free_hit": false
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 11,
+   "period": 1,
+   "clock": "11.4",
+   "type": "Six",
+   "team": "Pakistan",
+   "players": {
+    "batter": "Iftikhar Ahmed",
+    "bowler": "AR Patel",
+    "non_striker": "Shan Masood"
+   },
+   "outcome": "6 runs",
+   "score": {
+    "runs": 88,
+    "wickets": 2
+   },
+   "detail": {
+    "runs_batter": 6,
+    "extras": {},
+    "free_hit": false
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 12,
+   "period": 1,
+   "clock": "12.2",
+   "type": "Wicket",
+   "team": "Pakistan",
+   "players": {
+    "batter": "Iftikhar Ahmed",
+    "bowler": "Mohammed Shami",
+    "non_striker": "Shan Masood",
+    "out": "Iftikhar Ahmed"
+   },
+   "outcome": "lbw",
+   "score": {
+    "runs": 91,
+    "wickets": 3
+   },
+   "detail": {
+    "runs_batter": 0,
+    "extras": {},
+    "free_hit": false,
+    "wicket_kind": "lbw"
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 13,
+   "period": 1,
+   "clock": "12.4",
+   "type": "Four",
+   "team": "Pakistan",
+   "players": {
+    "batter": "Shadab Khan",
+    "bowler": "Mohammed Shami",
+    "non_striker": "Shan Masood"
+   },
+   "outcome": "4 runs",
+   "score": {
+    "runs": 95,
+    "wickets": 3
+   },
+   "detail": {
+    "runs_batter": 4,
+    "extras": {},
+    "free_hit": false
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 14,
+   "period": 1,
+   "clock": "13.2",
+   "type": "Wicket",
+   "team": "Pakistan",
+   "players": {
+    "batter": "Shadab Khan",
+    "bowler": "HH Pandya",
+    "non_striker": "Shan Masood",
+    "out": "Shadab Khan",
+    "fielder": "SA Yadav"
+   },
+   "outcome": "caught",
+   "score": {
+    "runs": 96,
+    "wickets": 4
+   },
+   "detail": {
+    "runs_batter": 0,
+    "extras": {},
+    "free_hit": false,
+    "wicket_kind": "caught"
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 15,
+   "period": 1,
+   "clock": "13.6",
+   "type": "Wicket",
+   "team": "Pakistan",
+   "players": {
+    "batter": "Haider Ali",
+    "bowler": "HH Pandya",
+    "non_striker": "Shan Masood",
+    "out": "Haider Ali",
+    "fielder": "SA Yadav"
+   },
+   "outcome": "caught",
+   "score": {
+    "runs": 98,
+    "wickets": 5
+   },
+   "detail": {
+    "runs_batter": 0,
+    "extras": {},
+    "free_hit": false,
+    "wicket_kind": "caught"
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 16,
+   "period": 1,
+   "clock": "15.2",
+   "type": "Four",
+   "team": "Pakistan",
+   "players": {
+    "batter": "Mohammad Nawaz",
+    "bowler": "HH Pandya",
+    "non_striker": "Shan Masood"
+   },
+   "outcome": "4 runs",
+   "score": {
+    "runs": 111,
+    "wickets": 5
+   },
+   "detail": {
+    "runs_batter": 4,
+    "extras": {},
+    "free_hit": false
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 17,
+   "period": 1,
+   "clock": "15.4",
+   "type": "Four",
+   "team": "Pakistan",
+   "players": {
+    "batter": "Mohammad Nawaz",
+    "bowler": "HH Pandya",
+    "non_striker": "Shan Masood"
+   },
+   "outcome": "4 runs",
+   "score": {
+    "runs": 115,
+    "wickets": 5
+   },
+   "detail": {
+    "runs_batter": 4,
+    "extras": {},
+    "free_hit": false
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 18,
+   "period": 1,
+   "clock": "15.5",
+   "type": "Wicket",
+   "team": "Pakistan",
+   "players": {
+    "batter": "Mohammad Nawaz",
+    "bowler": "HH Pandya",
+    "non_striker": "Shan Masood",
+    "out": "Mohammad Nawaz",
+    "fielder": "KD Karthik"
+   },
+   "outcome": "caught",
+   "score": {
+    "runs": 115,
+    "wickets": 6
+   },
+   "detail": {
+    "runs_batter": 0,
+    "extras": {},
+    "free_hit": false,
+    "wicket_kind": "caught"
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 19,
+   "period": 1,
+   "clock": "16.4",
+   "type": "Wicket",
+   "team": "Pakistan",
+   "players": {
+    "batter": "Asif Ali",
+    "bowler": "Arshdeep Singh",
+    "non_striker": "Shan Masood",
+    "out": "Asif Ali",
+    "fielder": "KD Karthik"
+   },
+   "outcome": "caught",
+   "score": {
+    "runs": 120,
+    "wickets": 7
+   },
+   "detail": {
+    "runs_batter": 0,
+    "extras": {},
+    "free_hit": false,
+    "wicket_kind": "caught"
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 20,
+   "period": 1,
+   "clock": "17.2",
+   "type": "Four",
+   "team": "Pakistan",
+   "players": {
+    "batter": "Shan Masood",
+    "bowler": "Mohammed Shami",
+    "non_striker": "Shaheen Shah Afridi"
+   },
+   "outcome": "4 runs",
+   "score": {
+    "runs": 129,
+    "wickets": 7
+   },
+   "detail": {
+    "runs_batter": 4,
+    "extras": {},
+    "free_hit": false
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 21,
+   "period": 1,
+   "clock": "17.3",
+   "type": "Four",
+   "team": "Pakistan",
+   "players": {
+    "batter": "Shan Masood",
+    "bowler": "Mohammed Shami",
+    "non_striker": "Shaheen Shah Afridi"
+   },
+   "outcome": "4 runs",
+   "score": {
+    "runs": 133,
+    "wickets": 7
+   },
+   "detail": {
+    "runs_batter": 4,
+    "extras": {},
+    "free_hit": false
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 22,
+   "period": 1,
+   "clock": "18.3",
+   "type": "Six",
+   "team": "Pakistan",
+   "players": {
+    "batter": "Shaheen Shah Afridi",
+    "bowler": "Arshdeep Singh",
+    "non_striker": "Shan Masood"
+   },
+   "outcome": "6 runs",
+   "score": {
+    "runs": 143,
+    "wickets": 7
+   },
+   "detail": {
+    "runs_batter": 6,
+    "extras": {},
+    "free_hit": false
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 23,
+   "period": 1,
+   "clock": "18.4",
+   "type": "Four",
+   "team": "Pakistan",
+   "players": {
+    "batter": "Shaheen Shah Afridi",
+    "bowler": "Arshdeep Singh",
+    "non_striker": "Shan Masood"
+   },
+   "outcome": "4 runs",
+   "score": {
+    "runs": 147,
+    "wickets": 7
+   },
+   "detail": {
+    "runs_batter": 4,
+    "extras": {},
+    "free_hit": false
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 24,
+   "period": 1,
+   "clock": "19.2",
+   "type": "Wicket",
+   "team": "Pakistan",
+   "players": {
+    "batter": "Shaheen Shah Afridi",
+    "bowler": "B Kumar",
+    "non_striker": "Shan Masood",
+    "out": "Shaheen Shah Afridi"
+   },
+   "outcome": "caught and bowled",
+   "score": {
+    "runs": 151,
+    "wickets": 8
+   },
+   "detail": {
+    "runs_batter": 0,
+    "extras": {},
+    "free_hit": false,
+    "wicket_kind": "caught and bowled"
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 25,
+   "period": 1,
+   "clock": "19.3",
+   "type": "Six",
+   "team": "Pakistan",
+   "players": {
+    "batter": "Haris Rauf",
+    "bowler": "B Kumar",
+    "non_striker": "Shan Masood"
+   },
+   "outcome": "6 runs",
+   "score": {
+    "runs": 157,
+    "wickets": 8
+   },
+   "detail": {
+    "runs_batter": 6,
+    "extras": {},
+    "free_hit": false
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 26,
+   "period": 1,
+   "clock": "19.6",
+   "type": "Last ball",
+   "team": "Pakistan",
+   "players": {
+    "batter": "Haris Rauf",
+    "bowler": "B Kumar",
+    "non_striker": "Shan Masood"
+   },
+   "outcome": "2 runs",
+   "score": {
+    "runs": 159,
+    "wickets": 8
+   },
+   "detail": {
+    "runs_batter": 0,
+    "extras": {
+     "byes": 2
+    },
+    "free_hit": false
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 27,
+   "period": 2,
+   "clock": "1.5",
+   "type": "Wicket",
+   "team": "India",
+   "players": {
+    "batter": "KL Rahul",
+    "bowler": "Naseem Shah",
+    "non_striker": "RG Sharma",
+    "out": "KL Rahul"
+   },
+   "outcome": "bowled",
+   "score": {
+    "runs": 7,
+    "wickets": 1,
+    "target": 160
+   },
+   "detail": {
+    "runs_batter": 0,
+    "extras": {},
+    "free_hit": false,
+    "wicket_kind": "bowled",
+    "balls_left": 109
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 28,
+   "period": 2,
+   "clock": "3.2",
+   "type": "Wicket",
+   "team": "India",
+   "players": {
+    "batter": "RG Sharma",
+    "bowler": "Haris Rauf",
+    "non_striker": "V Kohli",
+    "out": "RG Sharma",
+    "fielder": "Iftikhar Ahmed"
+   },
+   "outcome": "caught",
+   "score": {
+    "runs": 10,
+    "wickets": 2,
+    "target": 160
+   },
+   "detail": {
+    "runs_batter": 0,
+    "extras": {},
+    "free_hit": false,
+    "wicket_kind": "caught",
+    "balls_left": 100
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 29,
+   "period": 2,
+   "clock": "3.3",
+   "type": "Four",
+   "team": "India",
+   "players": {
+    "batter": "SA Yadav",
+    "bowler": "Haris Rauf",
+    "non_striker": "V Kohli"
+   },
+   "outcome": "4 runs",
+   "score": {
+    "runs": 14,
+    "wickets": 2,
+    "target": 160
+   },
+   "detail": {
+    "runs_batter": 4,
+    "extras": {},
+    "free_hit": false,
+    "balls_left": 99
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 30,
+   "period": 2,
+   "clock": "5.2",
+   "type": "Four",
+   "team": "India",
+   "players": {
+    "batter": "SA Yadav",
+    "bowler": "Haris Rauf",
+    "non_striker": "V Kohli"
+   },
+   "outcome": "4 runs",
+   "score": {
+    "runs": 26,
+    "wickets": 2,
+    "target": 160
+   },
+   "detail": {
+    "runs_batter": 4,
+    "extras": {},
+    "free_hit": false,
+    "balls_left": 88
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 31,
+   "period": 2,
+   "clock": "5.3",
+   "type": "Wicket",
+   "team": "India",
+   "players": {
+    "batter": "SA Yadav",
+    "bowler": "Haris Rauf",
+    "non_striker": "V Kohli",
+    "out": "SA Yadav",
+    "fielder": "Mohammad Rizwan"
+   },
+   "outcome": "caught",
+   "score": {
+    "runs": 26,
+    "wickets": 3,
+    "target": 160
+   },
+   "detail": {
+    "runs_batter": 0,
+    "extras": {},
+    "free_hit": false,
+    "wicket_kind": "caught",
+    "balls_left": 87
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 32,
+   "period": 2,
+   "clock": "6.1",
+   "type": "Wicket",
+   "team": "India",
+   "players": {
+    "batter": "AR Patel",
+    "bowler": "Shadab Khan",
+    "non_striker": "V Kohli",
+    "out": "AR Patel",
+    "fielder": "Mohammad Rizwan"
+   },
+   "outcome": "run out",
+   "score": {
+    "runs": 31,
+    "wickets": 4,
+    "target": 160
+   },
+   "detail": {
+    "runs_batter": 0,
+    "extras": {},
+    "free_hit": false,
+    "wicket_kind": "run out",
+    "balls_left": 83
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 33,
+   "period": 2,
+   "clock": "10.2",
+   "type": "Four",
+   "team": "India",
+   "players": {
+    "batter": "HH Pandya",
+    "bowler": "Shadab Khan",
+    "non_striker": "V Kohli"
+   },
+   "outcome": "4 runs",
+   "score": {
+    "runs": 49,
+    "wickets": 4,
+    "target": 160
+   },
+   "detail": {
+    "runs_batter": 4,
+    "extras": {},
+    "free_hit": false,
+    "balls_left": 58
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 34,
+   "period": 2,
+   "clock": "11.1",
+   "type": "Six",
+   "team": "India",
+   "players": {
+    "batter": "HH Pandya",
+    "bowler": "Mohammad Nawaz",
+    "non_striker": "V Kohli"
+   },
+   "outcome": "6 runs",
+   "score": {
+    "runs": 60,
+    "wickets": 4,
+    "target": 160
+   },
+   "detail": {
+    "runs_batter": 6,
+    "extras": {},
+    "free_hit": false,
+    "balls_left": 53
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 35,
+   "period": 2,
+   "clock": "11.4",
+   "type": "Six",
+   "team": "India",
+   "players": {
+    "batter": "V Kohli",
+    "bowler": "Mohammad Nawaz",
+    "non_striker": "HH Pandya"
+   },
+   "outcome": "6 runs",
+   "score": {
+    "runs": 67,
+    "wickets": 4,
+    "target": 160
+   },
+   "detail": {
+    "runs_batter": 6,
+    "extras": {},
+    "free_hit": false,
+    "balls_left": 50
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 36,
+   "period": 2,
+   "clock": "11.6",
+   "type": "Six",
+   "team": "India",
+   "players": {
+    "batter": "HH Pandya",
+    "bowler": "Mohammad Nawaz",
+    "non_striker": "V Kohli"
+   },
+   "outcome": "6 runs",
+   "score": {
+    "runs": 74,
+    "wickets": 4,
+    "target": 160
+   },
+   "detail": {
+    "runs_batter": 6,
+    "extras": {},
+    "free_hit": false,
+    "balls_left": 48
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 37,
+   "period": 2,
+   "clock": "12.4",
+   "type": "Four",
+   "team": "India",
+   "players": {
+    "batter": "V Kohli",
+    "bowler": "Shaheen Shah Afridi",
+    "non_striker": "HH Pandya"
+   },
+   "outcome": "4 runs",
+   "score": {
+    "runs": 82,
+    "wickets": 4,
+    "target": 160
+   },
+   "detail": {
+    "runs_batter": 4,
+    "extras": {},
+    "free_hit": false,
+    "balls_left": 44
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 38,
+   "period": 2,
+   "clock": "13.1",
+   "type": "Four",
+   "team": "India",
+   "players": {
+    "batter": "V Kohli",
+    "bowler": "Shadab Khan",
+    "non_striker": "HH Pandya"
+   },
+   "outcome": "4 runs",
+   "score": {
+    "runs": 87,
+    "wickets": 4,
+    "target": 160
+   },
+   "detail": {
+    "runs_batter": 4,
+    "extras": {},
+    "free_hit": false,
+    "balls_left": 41
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 39,
+   "period": 2,
+   "clock": "14.4",
+   "type": "Four",
+   "team": "India",
+   "players": {
+    "batter": "V Kohli",
+    "bowler": "Naseem Shah",
+    "non_striker": "HH Pandya"
+   },
+   "outcome": "4 runs",
+   "score": {
+    "runs": 98,
+    "wickets": 4,
+    "target": 160
+   },
+   "detail": {
+    "runs_batter": 4,
+    "extras": {},
+    "free_hit": false,
+    "balls_left": 32
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 40,
+   "period": 2,
+   "clock": "17.1",
+   "type": "Four",
+   "team": "India",
+   "players": {
+    "batter": "V Kohli",
+    "bowler": "Shaheen Shah Afridi",
+    "non_striker": "HH Pandya"
+   },
+   "outcome": "4 runs",
+   "score": {
+    "runs": 116,
+    "wickets": 4,
+    "target": 160
+   },
+   "detail": {
+    "runs_batter": 4,
+    "extras": {},
+    "free_hit": false,
+    "balls_left": 17
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 41,
+   "period": 2,
+   "clock": "17.3",
+   "type": "Four",
+   "team": "India",
+   "players": {
+    "batter": "V Kohli",
+    "bowler": "Shaheen Shah Afridi",
+    "non_striker": "HH Pandya"
+   },
+   "outcome": "4 runs",
+   "score": {
+    "runs": 123,
+    "wickets": 4,
+    "target": 160
+   },
+   "detail": {
+    "runs_batter": 4,
+    "extras": {},
+    "free_hit": false,
+    "balls_left": 15
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 42,
+   "period": 2,
+   "clock": "17.6",
+   "type": "Four",
+   "team": "India",
+   "players": {
+    "batter": "V Kohli",
+    "bowler": "Shaheen Shah Afridi",
+    "non_striker": "HH Pandya"
+   },
+   "outcome": "4 runs",
+   "score": {
+    "runs": 129,
+    "wickets": 4,
+    "target": 160
+   },
+   "detail": {
+    "runs_batter": 4,
+    "extras": {},
+    "free_hit": false,
+    "balls_left": 12
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 43,
+   "period": 2,
+   "clock": "18.2",
+   "type": "Chase",
+   "team": "India",
+   "players": {
+    "batter": "V Kohli",
+    "bowler": "Haris Rauf",
+    "non_striker": "HH Pandya"
+   },
+   "outcome": "1 run",
+   "score": {
+    "runs": 131,
+    "wickets": 4,
+    "target": 160
+   },
+   "detail": {
+    "runs_batter": 1,
+    "extras": {},
+    "free_hit": false,
+    "balls_left": 10
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 44,
+   "period": 2,
+   "clock": "18.3",
+   "type": "Chase",
+   "team": "India",
+   "players": {
+    "batter": "HH Pandya",
+    "bowler": "Haris Rauf",
+    "non_striker": "V Kohli"
+   },
+   "outcome": "dot ball",
+   "score": {
+    "runs": 131,
+    "wickets": 4,
+    "target": 160
+   },
+   "detail": {
+    "runs_batter": 0,
+    "extras": {},
+    "free_hit": false,
+    "balls_left": 9
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 45,
+   "period": 2,
+   "clock": "18.4",
+   "type": "Chase",
+   "team": "India",
+   "players": {
+    "batter": "HH Pandya",
+    "bowler": "Haris Rauf",
+    "non_striker": "V Kohli"
+   },
+   "outcome": "1 run",
+   "score": {
+    "runs": 132,
+    "wickets": 4,
+    "target": 160
+   },
+   "detail": {
+    "runs_batter": 1,
+    "extras": {},
+    "free_hit": false,
+    "balls_left": 8
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 46,
+   "period": 2,
+   "clock": "18.5",
+   "type": "Six",
+   "team": "India",
+   "players": {
+    "batter": "V Kohli",
+    "bowler": "Haris Rauf",
+    "non_striker": "HH Pandya"
+   },
+   "outcome": "6 runs",
+   "score": {
+    "runs": 138,
+    "wickets": 4,
+    "target": 160
+   },
+   "detail": {
+    "runs_batter": 6,
+    "extras": {},
+    "free_hit": false,
+    "balls_left": 7
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 47,
+   "period": 2,
+   "clock": "18.6",
+   "type": "Six",
+   "team": "India",
+   "players": {
+    "batter": "V Kohli",
+    "bowler": "Haris Rauf",
+    "non_striker": "HH Pandya"
+   },
+   "outcome": "6 runs",
+   "score": {
+    "runs": 144,
+    "wickets": 4,
+    "target": 160
+   },
+   "detail": {
+    "runs_batter": 6,
+    "extras": {},
+    "free_hit": false,
+    "balls_left": 6
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 48,
+   "period": 2,
+   "clock": "19.1",
+   "type": "Wicket",
+   "team": "India",
+   "players": {
+    "batter": "HH Pandya",
+    "bowler": "Mohammad Nawaz",
+    "non_striker": "V Kohli",
+    "out": "HH Pandya",
+    "fielder": "Babar Azam"
+   },
+   "outcome": "caught",
+   "score": {
+    "runs": 144,
+    "wickets": 5,
+    "target": 160
+   },
+   "detail": {
+    "runs_batter": 0,
+    "extras": {},
+    "free_hit": false,
+    "wicket_kind": "caught",
+    "balls_left": 5
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 49,
+   "period": 2,
+   "clock": "19.2",
+   "type": "Chase",
+   "team": "India",
+   "players": {
+    "batter": "KD Karthik",
+    "bowler": "Mohammad Nawaz",
+    "non_striker": "V Kohli"
+   },
+   "outcome": "1 run",
+   "score": {
+    "runs": 145,
+    "wickets": 5,
+    "target": 160
+   },
+   "detail": {
+    "runs_batter": 1,
+    "extras": {},
+    "free_hit": false,
+    "balls_left": 4
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 50,
+   "period": 2,
+   "clock": "19.3",
+   "type": "Chase",
+   "team": "India",
+   "players": {
+    "batter": "V Kohli",
+    "bowler": "Mohammad Nawaz",
+    "non_striker": "KD Karthik"
+   },
+   "outcome": "2 runs",
+   "score": {
+    "runs": 147,
+    "wickets": 5,
+    "target": 160
+   },
+   "detail": {
+    "runs_batter": 2,
+    "extras": {},
+    "free_hit": false,
+    "balls_left": 3
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 51,
+   "period": 2,
+   "clock": "19.4",
+   "type": "Six",
+   "team": "India",
+   "players": {
+    "batter": "V Kohli",
+    "bowler": "Mohammad Nawaz",
+    "non_striker": "KD Karthik"
+   },
+   "outcome": "6 runs",
+   "score": {
+    "runs": 154,
+    "wickets": 5,
+    "target": 160
+   },
+   "detail": {
+    "runs_batter": 6,
+    "extras": {
+     "noballs": 1
+    },
+    "free_hit": false,
+    "balls_left": 3
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 52,
+   "period": 2,
+   "clock": "19.4",
+   "type": "Chase",
+   "team": "India",
+   "players": {
+    "batter": "V Kohli",
+    "bowler": "Mohammad Nawaz",
+    "non_striker": "KD Karthik"
+   },
+   "outcome": "wide",
+   "score": {
+    "runs": 155,
+    "wickets": 5,
+    "target": 160
+   },
+   "detail": {
+    "runs_batter": 0,
+    "extras": {
+     "wides": 1
+    },
+    "free_hit": true,
+    "balls_left": 3
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 53,
+   "period": 2,
+   "clock": "19.4",
+   "type": "Chase",
+   "team": "India",
+   "players": {
+    "batter": "V Kohli",
+    "bowler": "Mohammad Nawaz",
+    "non_striker": "KD Karthik"
+   },
+   "outcome": "3 runs",
+   "score": {
+    "runs": 158,
+    "wickets": 5,
+    "target": 160
+   },
+   "detail": {
+    "runs_batter": 0,
+    "extras": {
+     "byes": 3
+    },
+    "free_hit": true,
+    "balls_left": 2
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 54,
+   "period": 2,
+   "clock": "19.5",
+   "type": "Wicket",
+   "team": "India",
+   "players": {
+    "batter": "KD Karthik",
+    "bowler": "Mohammad Nawaz",
+    "non_striker": "V Kohli",
+    "out": "KD Karthik",
+    "fielder": "Mohammad Rizwan"
+   },
+   "outcome": "stumped",
+   "score": {
+    "runs": 158,
+    "wickets": 6,
+    "target": 160
+   },
+   "detail": {
+    "runs_batter": 0,
+    "extras": {},
+    "free_hit": false,
+    "wicket_kind": "stumped",
+    "balls_left": 1
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 55,
+   "period": 2,
+   "clock": "19.6",
+   "type": "Chase",
+   "team": "India",
+   "players": {
+    "batter": "R Ashwin",
+    "bowler": "Mohammad Nawaz",
+    "non_striker": "V Kohli"
+   },
+   "outcome": "wide",
+   "score": {
+    "runs": 159,
+    "wickets": 6,
+    "target": 160
+   },
+   "detail": {
+    "runs_batter": 0,
+    "extras": {
+     "wides": 1
+    },
+    "free_hit": false,
+    "balls_left": 1
+   }
+  },
+  {
+   "sport": "cricket",
+   "match_id": "1298150",
+   "idx": 56,
+   "period": 2,
+   "clock": "19.6",
+   "type": "Last ball",
+   "team": "India",
+   "players": {
+    "batter": "R Ashwin",
+    "bowler": "Mohammad Nawaz",
+    "non_striker": "V Kohli"
+   },
+   "outcome": "1 run",
+   "score": {
+    "runs": 160,
+    "wickets": 6,
+    "target": 160
+   },
+   "detail": {
+    "runs_batter": 1,
+    "extras": {},
+    "free_hit": false,
+    "balls_left": 0
+   }
+  }
+ ]
+}

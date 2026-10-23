@@ -26,7 +26,7 @@ export default function App() {
     voiceNow.current = voice
   }, [voice])
   const sayLine = useCallback((line: Line) => speech.say(line, voiceNow.current), [speech])
-  const replay = useReplay(sayLine)
+  const replay = useReplay(sayLine, speech.hush)
 
   const load = useCallback(() => {
     listMatches()
@@ -46,7 +46,8 @@ export default function App() {
   const start = (match: Match, speed: number) => {
     speech.hush()
     setCurrent((prev) => ({ match, speed, key: (prev?.key ?? 0) + 1 }))
-    replay.start(match.match_id, speed)
+    // A match with a highlights video holds its commentary for the player (A-6.4@2).
+    replay.start(match.match_id, speed, !!match.youtube_id)
   }
 
   // One tap starts the other sport's first match at the same speed; the whole page follows it.
@@ -77,6 +78,7 @@ export default function App() {
           voices={voices}
           voiceId={voice?.id ?? null}
           onVoice={(id) => setPicked((p) => ({ ...p, [current.match.sport]: id }))}
+          onClock={replay.setClock}
           canSwitchTo={(s) => !!firstOf(s)}
           onSwitch={switchSport}
           onRetry={() => start(current.match, current.speed)}

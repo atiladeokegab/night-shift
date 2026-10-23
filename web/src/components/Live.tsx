@@ -1,5 +1,5 @@
 import type { Match, Sport, Voice } from '../types'
-import type { ReplayState } from '../useReplay'
+import { onScreen, type Clock, type ReplayState } from '../useReplay'
 import type { useSpeech } from '../useSpeech'
 import { LineLog } from './LineLog'
 import { ProofPanel } from './ProofPanel'
@@ -14,6 +14,7 @@ interface Props {
   voices: Voice[]
   voiceId: string | null
   onVoice: (id: string) => void
+  onClock: (clock: Clock | null) => void
   canSwitchTo: (sport: Sport) => boolean
   onSwitch: (sport: Sport) => void
   onRetry: () => void
@@ -25,9 +26,12 @@ interface Props {
 // under it, and the line log and proof panel beside it (stacked under 760px). Structure and wiring
 // only: the new look waits for the lead's redesigned mockup (#21).
 export function Live(props: Props) {
-  const { match, replay, replayKey, speech, voices, voiceId, onVoice, canSwitchTo, onSwitch, onRetry, onReconnect, onBack } = props
-  const moment = replay.moments.at(-1) ?? null
-  const latest = replay.lines[0]
+  const { match, replay, replayKey, speech, voices, voiceId, onVoice, onClock, canSwitchTo, onSwitch, onRetry, onReconnect, onBack } = props
+  // Only what the picture has reached (A-6.4@2). The subtitle is the newest line presented in time;
+  // lines the picture had passed stay in the log only.
+  const shown = onScreen(replay)
+  const moment = shown.moments.at(-1) ?? null
+  const latest = shown.lines.find((l) => !replay.late.includes(l.line_id))
   const starting = replay.phase === 'starting'
   const label = match.title ?? match.match_id
 
@@ -82,14 +86,14 @@ export function Live(props: Props) {
         <section className={`panel stage${replay.stream === 'reconnecting' ? ' dim' : ''}`}>
           <div className="stage-wrap">
             {starting ? <div className="video empty">Starting replay…</div>
-              : <VideoStage key={replayKey} youtubeId={match.youtube_id} label={label} />}
+              : <VideoStage key={replayKey} youtubeId={match.youtube_id} label={label} onClock={onClock} />}
           </div>
           <p className="subtitle" aria-live="assertive" key={latest?.line_id ?? 'waiting'}>
             {latest ? latest.text : 'Waiting for the first moment…'}
           </p>
         </section>
         <aside className="side">
-          <LineLog lines={replay.lines} moments={replay.moments} />
+          <LineLog lines={shown.lines} late={replay.late} moments={shown.moments} />
           <ProofPanel live={replay.stats} />
         </aside>
       </div>

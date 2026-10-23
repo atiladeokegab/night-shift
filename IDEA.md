@@ -1,5 +1,7 @@
 # The idea
 
+The full, current requirements are in `docs/PRD.md` (PRD v5, 2026-10-23). Build and review against it.
+
 The lead writes this once the team has agreed the idea, and no issue is created before it is
 complete. If your task doesn't fit this page, open a change-request (AGENTS.md §7).
 
@@ -28,8 +30,9 @@ commentary for every match possible.
 - Commentator agent: one generalist with one fixed system prompt and 2-4 tools, so every call in every
   sport is one Mubit task; the sport goes in the message. One line per key moment (shots, goals, cards,
   wickets, boundaries), not every pass or dot ball.
-- Live match page: a stickman replay on the pitch or field for each sport, score, subtitles, and the
-  line read aloud.
+- Live match page: the match's official highlights (embedded YouTube, muted) play as the stage; as each
+  key moment plays, its line shows as a large subtitle and is spoken in an emotional commentator voice
+  (a setting: Indian voice for cricket, British for football by default), with the score.
 - Producer fix: edit or reject a line on the page; the corrected line goes back through Mubit and is
   kept with the original.
 - Real traffic: replay many matches tonight so the task passes 25 kept examples with varied, real calls.
@@ -37,12 +40,14 @@ commentary for every match possible.
 - Side by side: the big model and our trained commentator calling the same moment (Mubit's Try
   models, unless Mubit lets the app call the adapter).
 
+- Iconic extra screens, after the core works: Messi v Mbappé (2022 World Cup final), Michael Jordan's last shot (1998 NBA Finals), Lewis Hamilton's 2024 Silverstone win. Same commentator, same prompt.
+
 ## What we don't build
 
-- Video or vision input: the feed is event data, not pictures.
+- Video or vision input to the model: the commentator reads event data; the highlights video is display only.
 - A live real-world match feed: replays of real matches only.
 - A system prompt per sport, or more than one commentator persona: either splits the Mubit task.
-- Sports beyond football and cricket this weekend, and any sport without real event data.
+- Sports beyond football, cricket, basketball and F1 this weekend, and any sport without real event data.
 - Unsourced statistics in the pitch.
 - Our own fine-tuning or model hosting: Mubit trains the model.
 - Any claim that our model beats the big one: it matches it, at lower cost.
@@ -50,7 +55,7 @@ commentary for every match possible.
 
 ## The demo, in one line
 
-The 2023 Women's World Cup final replays as stickmen and Touchline calls it aloud in under a second, the
+The 2023 Women's World Cup final's highlights play and Touchline calls each moment aloud, like a TV commentator, in under a second, the
 producer fixes one wrong line on stage, our own trained commentator calls a moment beside the big model,
 then one tap switches to Kohli's last overs against Pakistan in 2022 and the same commentator calls cricket.
 
@@ -61,9 +66,9 @@ contracts; only the lead changes it.
 
 | Area | Directories | Owner | Issues |
 |---|---|---|---|
-| backend: core, commentator, data, eval, deploy | `core/`, `agent/`, `data/`, `eval/`, `scripts/`, `docs/`, `Makefile`, `pyproject.toml`, `Dockerfile`, `.dockerignore` | @atiladeokegab [Zeus], @atiladeokegab, @atiladeokegab [Hermes] | #1, #3, #13, #14, #15, #16, #17, #20, #25 |
+| backend: core, commentator, data, eval, deploy | `core/`, `agent/`, `data/`, `eval/`, `scripts/`, `docs/`, `Makefile`, `pyproject.toml`, `Dockerfile`, `.dockerignore` | @atiladeokegab [Zeus], @atiladeokegab, @atiladeokegab [Hermes] | #1, #3, #13, #14, #15, #16, #17, #20, #25, #40 |
 | web | `web/` | @PersiaF04 | #4, #18, #19 |
-| tests | `tests/`, `data/sample/` | @atiladeokegab [Prometheus], @atiladeokegab | #6, #11, #12 |
+| tests | `tests/`, `data/sample/` | @atiladeokegab [Prometheus] | #6, #11, #12 |
 | submission | `README.md`, `docs/` | @atiladeokegab [Zeus] | #1, #21 |
 
 Deploy owner: @atiladeokegab (Zeus). Only they run `make deploy`, from `main` after it moves; two
