@@ -1,0 +1,33 @@
+/* docs/design.md "Look": colours, type and spacing, as the approved mockup uses them. */
+:root {
+  --bg: #0e1524;
+  --panel: #16203a;
+  --border: #2a375a;
+  --text: #eef2f7;
+  --muted: #9aa8bf;
+  --amber: #ffb547;
+  --fixed: #6fd3ff;
+  --error: #ff6b6b;
+  --grass: #1e5b3a;
+  --lines: rgba(220, 231, 223, 0.8);
+  --strip: #c9b27c;
+  --condensed: 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif;
+  --sans: 'Source Sans 3', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color-scheme: dark;
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg);
+}
+
+body {
+  margin: 0;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--condensed);
+  margin: 0;
+}
