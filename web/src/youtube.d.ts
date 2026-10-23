@@ -13,11 +13,19 @@ declare namespace YT {
     target: Player
   }
 
+  interface OnStateChangeEvent extends PlayerEvent {
+    data: PlayerState
+  }
+
   interface PlayerOptions {
     videoId: string
     host?: string
     playerVars?: Record<string, string | number>
-    events?: { onReady?: (e: PlayerEvent) => void; onError?: (e: PlayerEvent) => void }
+    events?: {
+      onReady?: (e: PlayerEvent) => void
+      onStateChange?: (e: OnStateChangeEvent) => void
+      onError?: (e: PlayerEvent) => void
+    }
   }
 
   class Player {

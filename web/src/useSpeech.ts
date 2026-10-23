@@ -52,9 +52,12 @@ export function useSpeech() {
       if (isDemo || voice?.browser) return speakInBrowser(line.text, lang, mine)
       const audio = new Audio(lineAudioUrl(line.line_id, voice?.id))
       playing.current = audio
-      // A 503 (no key, upstream down) or a network failure lands here; only the current line falls back.
+      // A 503 (no key, upstream down) or a network failure lands here; only the current line falls back,
+      // once: the audio's error event and play()'s rejection both report the same failure.
+      let fell = false
       const fallBack = () => {
-        if (turn.current !== mine) return
+        if (fell || turn.current !== mine) return
+        fell = true
         playing.current = null
         speakInBrowser(line.text, lang, mine)
       }
