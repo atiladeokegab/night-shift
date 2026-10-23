@@ -57,7 +57,7 @@ Errors: 404 not found, 422 bad input, 503 commentator not configured.
   - `adapter: {status: "not_trained"|"training"|"ready", kept, needed, agree: int|null,
     total: int|null, cost_measurable: bool}`: `kept` counts stored lines, `needed` is 25;
     `status`, `agree` and `total` come from the latest `adapter` record the eval writes to the store
-    (`not_trained` and nulls before one exists); `cost_measurable` is false while the app can't
+    (`not_trained` and nulls before one exists; `python -m eval.record_adapter` appends one); `cost_measurable` is false while the app can't
     call the adapter.
 
 ## Agent
