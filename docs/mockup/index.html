@@ -99,7 +99,7 @@ footer { color: var(--muted); font-size: .85rem; border-top: 1px solid var(--lin
 .side { display: grid; gap: 16px; }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; }
 .panel h3 { margin: 0 0 12px; font: 700 1.3rem/1 var(--display); letter-spacing: .03em; }
-.log { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-height: 360px; overflow: auto; }
+.log { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-height: 440px; overflow: auto; }
 .log li { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 10px; align-items: start; border-top: 1px solid var(--line); padding-top: 8px; }
 .log li:first-child { border-top: 0; padding-top: 0; }
 .log .when { font: 700 .95rem/1.5 var(--display); color: var(--accent); }
@@ -252,7 +252,8 @@ function fieldSvg(sport, m) {
       inner += `<line class="path" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--accent)" stroke-width=".7"/>
         <circle cx="${x2}" cy="${y2}" r="1" fill="#fff" stroke="#111" stroke-width=".3"/>`;
     }
-    for (const [name, x, y, color, pose] of m.actors) inner += stick(name, x, y, color, pose);
+    // The first figure is labelled above its head, the second below, so close pairs never overlap; cricket figures are drawn larger on the bigger ground.
+    m.actors.forEach(([name, x, y, color, pose], i) => { inner += stick(name, x, y, color, pose, i ? 5 : -10.5, sport === "cricket" ? 1.5 : 1); });
     inner += `<text x="60" y="${sport === "cricket" ? 76 : 10}" fill="var(--accent)" font-size="5" text-anchor="middle"
       font-family="Barlow Condensed, Arial Narrow, sans-serif" font-weight="700" letter-spacing=".5">${m.mark}</text>`;
   }
@@ -261,13 +262,13 @@ function fieldSvg(sport, m) {
     <g fill="none" stroke="var(--pitch-line)" stroke-width=".5" opacity=".8">${lines}</g>${strip}${inner}</svg>`;
 }
 // A stick figure drawn at the origin and moved by CSS transform, so it can glide between moments.
-function stick(name, x, y, color, pose) {
-  return `<g class="stick" data-name="${name}" style="transform: translate(${x}px, ${y}px)">
+function stick(name, x, y, color, pose, labelY, k) {
+  return `<g class="stick" data-name="${name}" style="transform: translate(${x}px, ${y}px) scale(${k})">
     <g stroke="${color}" stroke-width="1" stroke-linecap="round" fill="none">
       <circle cx="0" cy="-7" r="1.6" fill="${color}"/><line x1="0" y1="-5.4" x2="0" y2="-1.5"/>
       <line x1="0" y1="-4.5" x2="-2.4" y2="${-3 - pose}"/><line x1="0" y1="-4.5" x2="2.4" y2="${-3 + pose}"/>
       <line x1="0" y1="-1.5" x2="-1.8" y2="1.5"/><line x1="0" y1="-1.5" x2="${1.8 + pose / 2}" y2="1.5"/></g>
-    <text x="0" y="5" fill="var(--fg)" font-size="3" text-anchor="middle" font-family="Source Sans 3, system-ui, sans-serif">${name}</text></g>`;
+    <text x="0" y="${labelY}" fill="var(--fg)" font-size="3" text-anchor="middle" font-family="Source Sans 3, system-ui, sans-serif">${name}</text></g>`;
 }
 
 // ---- Screens ----
