@@ -12,7 +12,7 @@
 
 **A live AI commentator for every match nobody calls, trained through Mubit on its own calls and every producer fix.**
 
-[**Try it live**](https://night-shift-5zvig7nbvq-ew.a.run.app) · [**The six screens**](#the-six-screens) · [**How it uses Mubit**](#how-it-uses-mubit) · [**For judges**](#for-judges) · [**Run it**](#run-it) · [**Demo script**](docs/demo.md)
+[**Try it live**](https://night-shift-5zvig7nbvq-ew.a.run.app) · [**Backup page**](https://night-shift-5zvig7nbvq-ew.a.run.app/stage) · [**The six screens**](#the-six-screens) · [**How it uses Mubit**](#how-it-uses-mubit) · [**For judges**](#for-judges) · [**Run it**](#run-it) · [**Demo script**](docs/demo.md)
 
 <img src="docs/img/live.png" alt="The live page, from the design mockup. A drawn night stadium stands in for the highlights video. Top left, the score bar reads ESP 1-0 ENG, 28:29, 1st half, REPLAY. Top right, a red ON AIR pill names the British commentator. In the lower third, the moment tag 28:29 GOAL sits above the large subtitle: Olga Carmona! Low across Earps and in! Spain lead the World Cup final! Under it, a dock with Fixtures, a Football and Cricket switch and Voice: British, and a video timeline with a small Synced to video label. On the right, a Lines card lists each line with its clock, its first-word time and a Fix button, and a Proof card shows first word p50 and p95, cost per line, lines, fixes and the adapter's result." width="100%">
 
@@ -63,9 +63,11 @@ producer fixes. That smaller model is what would make a commentator for every ma
    through the same Mubit task and session.
 5. **Counted at Mubit.** Each line stores the Mubit request id of every call it made, and
    `GET /stats` counts calls from those ids.
-6. **The trained model is measured, not assumed.** We compare Mubit's trained commentator with the
-   big model on held-out moments. That result is **in progress**: the adapter has not finished
-   training. The aim is that it matches the big model at lower cost; we make no claim that it beats it.
+6. **The trained model is measured, not assumed.** Mubit's console holds about 336 requests on the
+   frozen prompt; `/stats` counts only the live service's own lines, so it shows fewer. The adapter has not been trained or tried yet, so it has not passed
+   anything; `/stats` reports it as `not_trained`. When it is tried, we compare it with the big model on
+   held-out moments. The aim is that it matches the big model at lower cost; we make no claim that it
+   beats it.
 
 ## The six screens
 
@@ -74,45 +76,48 @@ the same commentator with the same prompt.
 
 | Screen | Sport and data | Voice | What it calls |
 |---|---|---|---|
-| Spain v England, 2023 Women's World Cup final | Football, StatsBomb | British | Carmona's winner, Earps's penalty save, the chances at both ends |
-| Argentina v France, 2022 World Cup final | Football, StatsBomb | British | Messi's two goals, Di María, Mbappé's three, the shoot-out |
-| India v Pakistan, 2022 T20 World Cup | Cricket, Cricsheet | Indian | The wickets, the sixes, Kohli's two sixes off Rauf, the last ball |
-| Michael Jordan's last shot, 1998 NBA Finals Game 6 | Basketball, NBA play-by-play | American play-by-play | The fourth quarter's baskets, Jordan's steal from Malone, the winning shot, the buzzer |
-| Kobe Bryant's 81 against Toronto, 2006 | Basketball, NBA play-by-play | American play-by-play | His baskets through the second half, the record-breaking points, the buzzer |
-| Lewis Hamilton's 2024 British Grand Prix win | F1, OpenF1 timing | British announcer | Overtakes and lead changes, pit stops, the rain, the last lap, the flag |
+| Spain v England, 2023 Women's World Cup final | Football, StatsBomb | British Football Announcer | Carmona's winner, Earps's penalty save, the chances at both ends |
+| Argentina v France, 2022 World Cup final | Football, StatsBomb | British Football Announcer | Messi's two goals, Di María, Mbappé's three, the shoot-out |
+| India v Pakistan, 2022 T20 World Cup | Cricket, Cricsheet | Raju | The wickets, the sixes, Kohli's two sixes off Rauf, the last ball |
+| Michael Jordan's last shot, 1998 NBA Finals Game 6 | Basketball, NBA play-by-play | Sam | The fourth quarter's baskets, Jordan's steal from Malone, the winning shot, the buzzer |
+| Kobe Bryant's 81 against Toronto, 2006 | Basketball, NBA play-by-play | Sam | His baskets through the second half, the record-breaking points, the buzzer |
+| Lewis Hamilton's 2024 British Grand Prix win | F1, OpenF1 timing | British Football Announcer | Overtakes and lead changes, pit stops, the rain, the last lap, the flag |
 
-The voice is a setting on the page, and a change applies from the next line. Lines are voiced by
-ElevenLabs `eleven_v3` with an audio tag per moment: shouting for a goal or a wicket, hushed for the
-build-up ([docs/voice.md](docs/voice.md)). The browser's own speech is the fallback.
+Lines are voiced by ElevenLabs `eleven_v3`, its most expressive model, with an audio tag per moment:
+shouting for a goal or a wicket, hushed for the build-up. The voices are ElevenLabs library voices:
+the British Football Announcer for football and F1, Raju for cricket and Sam for basketball
+([docs/voice.md](docs/voice.md)). The voice is a setting on the page, and a change applies from the
+next line. The browser's own speech is the fallback.
 
 ## For judges
 
-Live URL: <https://night-shift-5zvig7nbvq-ew.a.run.app> (Cloud Run, real Mubit calls).
-Every number below was read from that service's `GET /stats` on 23 October 2026 at 23:25 UTC; anything
+Live URL: <https://night-shift-5zvig7nbvq-ew.a.run.app> (Cloud Run, real Mubit calls). The backup page,
+<https://night-shift-5zvig7nbvq-ew.a.run.app/stage>, is one static file served by the same server.
+Every number below was read from that service's `GET /stats` on 23 October 2026 at 23:40 UTC; anything
 not yet measured says so.
 
 | Criterion | Evidence | Measured | Check it |
 |---|---|---|---|
-| Use of Mubit | Every call goes through Mubit's Anthropic endpoint, one session per match, one task for every sport | 189 lines; 198 Mubit calls, counted by their request ids | `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/stats` (`mubit_requests`) |
+| Use of Mubit | Every call goes through Mubit's Anthropic endpoint, one session per match, one task for every sport | 197 lines; 206 Mubit calls, counted by their request ids. Mubit's console holds about 336 requests on the frozen prompt | `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/stats` (`mubit_requests`) |
 | Use of Mubit: a correction becomes a model update | `POST /lines/{line_id}/fix` stores the fix beside the original and sends it through the same task and session | 0 fixes on the live service so far; the first is made in the demo | `fixes` in `/stats` |
 | Usefulness | Real matches from real event data in four sports, called the way a TV commentator would | 6 demo matches served | `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/matches` |
 | Technical execution | FastAPI server, durable store on Cloud Storage, server-sent event stream, commentary gated on the video player's clock, an offline test suite and a live smoke test on every deploy | Health: ok | `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/health` |
-| Demo | A 3-minute live demo on the deployed URL, scripted in [docs/demo.md](docs/demo.md) | To be recorded | |
-| Track: quality, cost and latency side by side | The proof panel and `GET /stats` show latency, cost per line, lines, fixes and the trained model's result | Big model, 189 lines: first word p50 529 ms, p95 984 ms; full line p50 821 ms, p95 1,332 ms; $0.0015 a line. The trained model's agreement: in progress | `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/stats` |
+| Demo | A 2-minute live demo on the deployed URL, scripted in [docs/demo.md](docs/demo.md) | To be rehearsed and recorded | |
+| Track: quality, cost and latency side by side | The proof panel and `GET /stats` show latency, cost per line, lines, fixes and the trained model's result | Big model, 197 lines: first word p50 529 ms, p95 951 ms; full line p50 821 ms, p95 1,187 ms; $0.0015 a line. The trained model: not trained or tried yet | `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/stats` |
 
 ### Quality, cost and latency, side by side
 
 | | Big model (`claude-haiku-4-5` via Mubit) | Our trained commentator |
 |---|---|---|
-| Agreement with the big model on held-out moments | baseline | in progress |
-| Cost per line | $0.0015 | in progress |
-| Tokens per line, in / out | about 1,408 / 26 (266,051 / 4,846 over 189 lines) | in progress |
-| First word, p50 / p95 | 529 ms / 984 ms | in progress |
-| Full line, p50 / p95 | 821 ms / 1,332 ms | in progress |
+| Agreement with the big model on held-out moments | baseline | not tried yet |
+| Cost per line | $0.0015 | not tried yet |
+| Tokens per line, in / out | about 1,415 / 25 (278,720 / 5,006 over 197 lines) | not tried yet |
+| First word, p50 / p95 | 529 ms / 951 ms | not tried yet |
+| Full line, p50 / p95 | 821 ms / 1,187 ms | not tried yet |
 
 ### Status
 
-As of 23 October 2026, 23:30 UTC.
+As of 23 October 2026, 23:40 UTC.
 
 | Capability | Status |
 |---|---|
@@ -122,7 +127,7 @@ As of 23 October 2026, 23:30 UTC.
 | Proof panel: latency, cost per line, lines, fixes and the adapter's result (A-7.1) | Live |
 | Producer fix: the server stores it and sends it through Mubit (A-4.1) | Live; the page's Fix button is merged and goes live with the next deploy |
 | The home page as a wall of all six matches playing at once (A-6.5) | In progress |
-| Mubit's trained commentator against the big model on held-out moments (R-8) | In progress |
+| Mubit's trained commentator against the big model on held-out moments (R-8) | Not trained or tried yet; about 336 requests are in Mubit's console |
 
 ## Run it
 
@@ -134,7 +139,8 @@ make check   # lint and the test suite, offline
 make dev     # the server on localhost; set MUBIT_API_KEY in .env for real commentary
 ```
 
-Or open the live URL: <https://night-shift-5zvig7nbvq-ew.a.run.app>.
+Or open the live URL, <https://night-shift-5zvig7nbvq-ew.a.run.app>, or its backup page,
+<https://night-shift-5zvig7nbvq-ew.a.run.app/stage>.
 
 ## Architecture
 
