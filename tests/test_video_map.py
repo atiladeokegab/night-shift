@@ -82,7 +82,7 @@ MAPS = sorted(VIDEO.glob("*.json"))
 def test_both_demo_matches_have_a_map():
     assert {p.stem for p in MAPS} == {"football-3906390", "cricket-1298150"}
     assert {m["match_id"]: m.get("youtube_id") for m in list_matches()} == {
-        "3906390": "3amQy3r0FMk",
+        "3906390": "jD1GwCcJV-0",
         "1298150": "tz_5DAA6IgE",
     }
 
