@@ -4,8 +4,10 @@ version = "0.1.0"
 description = "Night Shift: a live AI commentator whose calls and fixes train a model through Mubit."
 requires-python = ">=3.12"
 dependencies = [
+    "anthropic>=0.40",
     "fastapi>=0.115.0",
     "google-cloud-storage>=2.18.0",
+    "httpx>=0.27",
     "uvicorn[standard]>=0.30.0",
 ]
 
@@ -21,6 +23,7 @@ package = false
 
 [tool.ruff]
 line-length = 100
+extend-exclude = [".worktrees"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
