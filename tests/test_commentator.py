@@ -6,6 +6,7 @@ import pytest
 
 from agent import commentator, feed
 from agent.commentator import FakeProvider, build_request, commentate, line_for
+from data.matches import load_moments, match_header
 from scripts import replay_matches
 
 FOOT = {
@@ -233,3 +234,12 @@ def test_preamble_never_becomes_the_line(said):
 def test_a_line_starting_with_now_is_kept():
     line = line_for(FOOT, [moment(FOOT, 0)], 0, Scripted(text("Now that is a strike from Ann!")))
     assert line["text"] == "Now that is a strike from Ann!"
+
+
+def test_messis_penalty_reaches_the_model_as_lionel_messi():
+    moments = load_moments("3869685")
+    pen = next(
+        m for m in moments if m["outcome"] == "Goal" and m["detail"]["shot_type"] == "Penalty"
+    )
+    message = commentator.render_message(match_header("3869685"), moments[: pen["idx"] + 1])
+    assert "Lionel Messi" in message and "Cuccittini" not in message
