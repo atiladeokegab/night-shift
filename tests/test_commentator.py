@@ -210,6 +210,7 @@ def test_a_tool_only_last_reply_is_no_line_not_a_blank_one():
     [
         "I have all the information I need from your message.",
         "Let me check the score first.",
+        "There's a discrepancy here: you say the event is a shot off target. Could you clarify?",
         "",
     ],
 )
@@ -224,6 +225,7 @@ def test_preamble_alone_is_no_line(said):
         "I have all the information I need from your message.\n\nGoal! Ann buries it.",
         "I have all the information I need from your message. Goal! Ann buries it.",
         "Based on the score, here goes: Goal! Ann buries it.",
+        "I have all the information I need from your message… Goal! Ann buries it.",
     ],
 )
 def test_preamble_never_becomes_the_line(said):
@@ -243,3 +245,14 @@ def test_messis_penalty_reaches_the_model_as_lionel_messi():
     )
     message = commentator.render_message(match_header("3869685"), moments[: pen["idx"] + 1])
     assert "Lionel Messi" in message and "Cuccittini" not in message
+
+
+def test_one_untemplated_prompt_asks_for_a_broadcast_call_on_big_moments():
+    # A-3.6 offline: the live check (a judge on real lines) is tests/acceptance/test_A_3_6.py.
+    system = commentator.SYSTEM
+    assert "$" not in system and "{" not in system  # fixed text, never templated per sport
+    for sport in ("football", "cricket", "basketball", "formula"):
+        assert sport not in system.lower()  # the sport goes in the message, never the prompt
+    for rule in ("changes the score, the lead or the result", "emotion", "20 words"):
+        assert rule in system
+    assert "calmly" in system  # routine moments stay calm
