@@ -2,11 +2,15 @@
 show it. Writes to the store the server uses: STORE_DIR locally, or MODE=cloud STORE_URL=gs://...
 
     uv run python -m eval.record_adapter --status ready --agree 23 --total 25
-    MODE=cloud STORE_URL=gs://hackathon-starter-ao-state/night-shift-staging \
-        uv run python -m eval.record_adapter --status ready --agree 23 --total 25
 
-The cloud form needs Google application-default credentials with write access to the bucket
-(`gcloud auth application-default login` once). The server reads the store on each /stats.
+On a deployed service, write a fresh local store and copy it over the service's object (here
+staging; production is .../night-shift). The copy replaces earlier adapter records, which is fine:
+the panel reads only the latest, and the server never writes this kind. /stats reads it next call.
+
+    d=$(mktemp -d)
+    STORE_DIR=$d uv run python -m eval.record_adapter --status ready --agree 23 --total 25
+    gcloud storage cp $d/adapter.jsonl \
+        gs://hackathon-starter-ao-state/night-shift-staging/adapter.jsonl
 """
 
 import argparse
