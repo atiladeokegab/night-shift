@@ -46,6 +46,11 @@ export async function startReplay(
   return () => source.close()
 }
 
+// The line read aloud by the server's voice (#25): audio/mpeg, or 503 when the voice isn't configured.
+export function lineAudioUrl(lineId: string): string {
+  return `/lines/${encodeURIComponent(lineId)}/audio`
+}
+
 async function failure(what: string, res: Response): Promise<string> {
   const body = (await res.json().catch(() => null)) as { detail?: string } | null
   if (res.status === 503) return 'The commentator is not configured on the server.'
