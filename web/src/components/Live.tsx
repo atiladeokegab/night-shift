@@ -68,7 +68,7 @@ export function Live(props: Props) {
   return (
     <div className="live">
       <div id="video" className={video === 'unavailable' && !busy ? 'off' : dim ? 'dim' : undefined}>
-        {replay.phase === 'live' && <VideoStage key={replayKey} youtubeId={match.youtube_id} onClock={onClock} onState={onVideo} />}
+        {replay.phase === 'live' && <VideoStage key={replayKey} youtubeId={match.youtube_id} start={match.video_start ?? 0} onClock={onClock} onState={onVideo} />}
       </div>
       <section className="stage" aria-label={`${match.title ?? match.match_id} highlights`}>
         <div className="shade" />
@@ -77,7 +77,7 @@ export function Live(props: Props) {
           <ScoreBar match={match} moment={moment} moments={shown.moments} />
           <OnAir voice={voice} label={voiceLabel} />
         </div>
-        {replay.phase === 'live' && video === 'unavailable' && <p className="novideo">Highlights unavailable here. Commentary carries on.</p>}
+        {replay.phase === 'live' && video === 'unavailable' && <p className="novideo">Highlights can't play here. Commentary carries on, timed to the replay.</p>}
         {replay.stream === 'reconnecting' && (
           <div className="banner"><div className="glass warn" role="alert"><b />Reconnecting to the replay…</div></div>
         )}
@@ -117,7 +117,7 @@ export function Live(props: Props) {
             </button>
           </div>
         </div>
-        {gated && <Timeline replay={replay} />}
+        {gated && <Timeline replay={replay} synced={video !== 'unavailable'} />}
         {overlay}
       </section>
       <aside className="side">
@@ -151,7 +151,7 @@ const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).
 
 // The video timeline (docs/design.md): the progress track with a marker per mapped moment, amber once
 // called, and the player's time over the video's length.
-function Timeline({ replay }: { replay: ReplayState }) {
+function Timeline({ replay, synced }: { replay: ReplayState; synced: boolean }) {
   const length = replay.duration
   const marks = [...replay.moments, ...replay.queuedMoments].filter((m) => m.video_t !== undefined)
   const at = (t: number) => (length ? `${Math.min(100, (t / length) * 100)}%` : '0%')
@@ -171,7 +171,7 @@ function Timeline({ replay }: { replay: ReplayState }) {
         ))}
       </div>
       <span className="clockline">
-        <span className="sync">Synced to video</span>
+        <span className="sync">{synced ? 'Synced to video' : 'Replay clock'}</span>
         <span className="num">{mmss(replay.now)}{length ? ` / ${mmss(length)}` : ''}</span>
       </span>
     </div>

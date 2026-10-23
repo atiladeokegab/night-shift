@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react'
 import { createReplay, followReplay, type StreamStatus } from './api'
-import { release } from './gate'
+import { release, replayClock } from './gate'
 import type { Fix, Line, Moment, Stats } from './types'
 
 export interface ReplayState {
@@ -130,7 +130,9 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
   }, [newest, state.late])
 
   // Seeking back before the line being spoken stops the voice: it would describe the future.
+  const at = useRef(0) // where the picture was at the last tick
   useEffect(() => {
+    at.current = state.now
     if (spokenAt.current !== null && state.now < spokenAt.current) {
       spokenAt.current = null
       rewound.current()
@@ -153,6 +155,13 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
     clock.current = c
   }, [])
 
+  // The video can't play for good: the replay's own clock takes the player's place from where the
+  // picture was (or should have started), so the mapped lines still play rather than wait forever.
+  const origin = useRef(0)
+  const unGate = useCallback(() => {
+    clock.current = replayClock(Math.max(at.current, origin.current))
+  }, [])
+
   const follow = useCallback((id: string, token: number) => {
     stop.current?.()
     stop.current = followReplay(
@@ -171,11 +180,13 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
   }, [])
 
   const start = useCallback(
-    async (matchId: string, speed: number, gated: boolean) => {
+    async (matchId: string, speed: number, gated: boolean, from = 0) => {
       const token = ++run.current
       stop.current?.()
       stop.current = null
       clock.current = null
+      origin.current = from
+      at.current = 0
       dispatch({ type: 'start', gated })
       try {
         const id = await createReplay(matchId, speed)
@@ -209,5 +220,5 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
   // A fix's answer marks the line at once; the `fixed` event that follows on the stream is the same Fix.
   const markFixed = useCallback((fix: Fix) => dispatch({ type: 'fixed', fix }), [])
 
-  return { state, start, reconnect, leave, setClock, markFixed }
+  return { state, start, reconnect, leave, setClock, unGate, markFixed }
 }
