@@ -5,7 +5,7 @@ import type { Clock } from './useReplay'
 export type VideoState = 'loading' | 'ok' | 'unavailable'
 
 export const LOAD_MS = 10_000 // the IFrame API script has this long to load
-export const START_MS = 15_000 // a ready player has this long to start playing
+export const START_MS = 15_000 // a new player has this long to be ready and start playing
 
 interface Hooks {
   onClock: (clock: Clock | null) => void
@@ -14,7 +14,8 @@ interface Hooks {
 
 // Creates the player in `target` at `start` seconds and returns its cleanup. Every callback checks
 // `live` first, so a destroyed player's late onReady, onError or start timer never touches the clock
-// of the player that replaced it. A player that errors or never starts playing gives up for good:
+// of the player that replaced it. A player that errors, or isn't playing `startMs` after it was
+// created (never ready, or stuck), gives up for good:
 // the stage says so and the replay's own clock takes over (useReplay's unGate).
 export function mountPlayer(api: typeof YT, target: HTMLElement, youtubeId: string, start: number, hooks: Hooks, startMs = START_MS): () => void {
   let live = true
@@ -48,7 +49,6 @@ export function mountPlayer(api: typeof YT, target: HTMLElement, youtubeId: stri
           const playing = state === api.PlayerState.PLAYING || state === api.PlayerState.ENDED
           return { t: p.getCurrentTime(), playing, duration: p.getDuration() }
         })
-        timer = setTimeout(() => started || fail(), startMs)
       },
       onStateChange: (e) => {
         if (live && e.data === api.PlayerState.PLAYING) started = true
@@ -57,6 +57,8 @@ export function mountPlayer(api: typeof YT, target: HTMLElement, youtubeId: stri
       onError: fail,
     },
   })
+  // Armed now, not on ready: an iframe that never answers at all still gives up.
+  timer = setTimeout(() => started || fail(), startMs)
   return () => {
     if (live) end()
   }

@@ -37,7 +37,9 @@ function mount(startMs = 1000) {
 }
 
 test('the video starts at the given second', () => {
-  assert.equal(mount().player.options.playerVars!.start, 485)
+  const m = mount()
+  assert.equal(m.player.options.playerVars!.start, 485)
+  m.cleanup()
 })
 
 test("a destroyed player's late onError leaves the new player's clock alone", () => {
@@ -72,6 +74,13 @@ test('a ready player that never starts playing gives up after the start timeout'
   m.player.change(PlayerState.BUFFERING)
   await sleep(40)
   assert.deepEqual(m.calls, ['ok', 'clock', 'clock null', 'unavailable'])
+})
+
+test('a player that never answers at all gives up after the start timeout', async () => {
+  const m = mount(20)
+  await sleep(40)
+  assert.deepEqual(m.calls, ['clock null', 'unavailable'])
+  assert.ok(m.player.destroyed)
 })
 
 test('a player that starts playing in time keeps its clock', async () => {
