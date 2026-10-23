@@ -49,8 +49,9 @@ Errors: 404 not found, 422 bad input, 503 commentator not configured.
 - `GET /replays/{id}/stream` → SSE: per moment `moment`, `line`, `stats` in that order; `error`
   `{detail}` if the commentator fails; `end` last. A late subscriber gets the whole replay. (core)
 - `POST /lines/{line_id}/fix {corrected_text, reason}` → Fix (core, P1, not built yet)
-- `GET /voices` → `[{id, label, default_for: "cricket"|"football"|null}]`, the page's voice
-  setting: an Indian English commentator for cricket, a British one for football. (core)
+- `GET /voices` → `[{id, label, default_for: "cricket"|"football"|null, lang: "en-IN"|"en-GB"}]`, the page's voice
+  setting: an Indian English commentator for cricket, a British one for football; `lang` is
+  the BCP 47 tag the browser-speech fallback uses. (core)
 - `GET /lines/{line_id}/audio[?voice=<id>]` → `audio/mpeg` stream of the stored line read by
   ElevenLabs (`eleven_flash_v2_5`) in the chosen voice, or by default the voice for the line's
   sport. 404 for an unknown line or voice; 503 with no `ELEVENLABS_API_KEY`
