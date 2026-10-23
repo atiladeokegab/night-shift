@@ -54,11 +54,12 @@ Errors: 404 not found, 422 bad input, 503 commentator not configured.
   `stats` SSE event carries the same object.
   - `cost_per_line_usd: number | null`: mean cost of the stored lines, tokens × the model's list
     price; null when no line's model has a known price.
-  - `adapter: {status: "not_trained"|"training"|"ready", kept, needed, agree: int|null,
-    total: int|null, cost_measurable: bool}`: `kept` counts stored lines, `needed` is 25;
-    `status`, `agree` and `total` come from the latest `adapter` record the eval writes to the store
-    (`not_trained` and nulls before one exists; `python -m eval.record_adapter` appends one); `cost_measurable` is false while the app can't
-    call the adapter.
+  - `adapter: {status: "not_trained"|"training"|"ready", kept: int|null, needed, agree: int|null,
+    total: int|null, cost_measurable: bool}`: `needed` is 25. `status`, `kept`, `agree` and `total`
+    come from the latest `adapter` record in the store, which `python -m eval.record_adapter` appends
+    from Mubit's console; before one exists, `not_trained` and nulls. `kept` is never inferred from
+    stored lines, since a stored line doesn't prove Mubit kept it. `cost_measurable` is false while
+    the app can't call the adapter.
 
 ## Agent
 

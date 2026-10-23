@@ -20,13 +20,13 @@ def _cost(line: dict) -> float | None:
     return (line.get("tokens_in", 0) * price[0] + line.get("tokens_out", 0) * price[1]) / 1e6
 
 
-def _adapter(store, lines: list[dict]) -> dict:
-    # the eval appends an "adapter" record ({status, agree?, total?}) as training moves on
+def _adapter(store) -> dict:
+    # eval/record_adapter.py appends {status, kept?, agree?, total?} from Mubit's console
     latest = (store.all("adapter") or [{}])[-1]
     return {
         "status": latest.get("status", "not_trained"),
-        # shortcut: every stored line counts as kept; read Mubit's kept count if it exposes one
-        "kept": len(lines),
+        # a stored line doesn't prove Mubit kept it: unknown until a console count is recorded
+        "kept": latest.get("kept"),
         "needed": ADAPTER_NEEDED,
         "agree": latest.get("agree"),
         "total": latest.get("total"),
@@ -52,5 +52,5 @@ def stats(store) -> dict:
         "tokens_in": sum(ln.get("tokens_in", 0) for ln in lines),
         "tokens_out": sum(ln.get("tokens_out", 0) for ln in lines),
         "cost_per_line_usd": sum(costs) / len(costs) if costs else None,
-        "adapter": _adapter(store, lines),
+        "adapter": _adapter(store),
     }
