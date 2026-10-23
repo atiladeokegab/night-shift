@@ -28,11 +28,13 @@ and refuses to start without `STORE_URL=gs://bucket/prefix`.
 
 ## Shapes
 
-- **Moment** (data/): `{sport: "football"|"cricket", match_id, idx, period, clock, type, team,
-  players: {role: name}, outcome, score: {home, away} | {runs, wickets, target?}, x?, y?, detail: {}}`.
-  `clock` is `"mm:ss"` for football and `"over.ball"` for cricket; `period` is the half or the
-  innings; roles e.g. `shooter`, `keeper` / `batter`, `bowler`, `fielder`; `detail` holds sport
-  fields (runs, extras, wicket kind, xG, card); `x, y` on StatsBomb's 120 x 80 when known.
+- **Moment** (data/): `{sport: "football"|"cricket"|"basketball", match_id, idx, period, clock, type,
+  team, players: {role: name}, outcome, score: {home, away} | {runs, wickets, target?}, x?, y?,
+  detail: {}}`. `clock` is `"mm:ss"` for football, `"over.ball"` for cricket and `"mm:ss"` left in
+  the quarter for basketball; `period` is the half, the innings or the quarter (5+ is overtime);
+  roles e.g. `shooter`, `keeper` / `batter`, `bowler`, `fielder` / `shooter`, `assist`, `stealer`,
+  `lost_by`; `detail` holds sport fields (runs, extras, wicket kind, xG, card, play, player_points,
+  lead_change); `x, y` on StatsBomb's 120 x 80 when known.
 - **Line** (agent/): `{line_id, sport, match_id, moment_idx, text, model, latency_ms,
   first_word_ms, tokens_in, tokens_out, mubit_request_ids: [], tool_calls: [], created_at}`; tokens
   and latency summed over the whole tool loop; each id from `x-middleware-request-id`.
