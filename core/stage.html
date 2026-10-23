@@ -117,9 +117,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 </main>
 <script>
 // The picker: one button per demo match (label, sport, match id).
-const PICKS = [["Football", "football", "3906390"], ["Cricket", "cricket", "1298150"],
-  ["Jordan", "basketball", "0049700088"], ["Kobe", "basketball", "0020500591"]];
-const LANG = { football: "en-GB", cricket: "en-IN" };
+const PICKS = [["Football", "football", "3906390"], ["Messi v Mbappé", "football", "3869685"],
+  ["Cricket", "cricket", "1298150"], ["Jordan", "basketball", "0049700088"],
+  ["Kobe", "basketball", "0020500591"]];
+const LANG = { football: "en-GB", cricket: "en-IN", basketball: "en-US" };
 const WINDOW = 0.5; // a line plays only within this many seconds after its video_t
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => Object.assign(document.createElement(tag), cls ? { className: cls } : {}, text != null ? { textContent: text } : {});
