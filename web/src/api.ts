@@ -1,9 +1,10 @@
 // The only module that talks to the match server (docs/CONTRACT.md, 'HTTP'):
 // GET /matches, POST /replays {match_id, speed} -> {replay_id},
 // GET /replays/{id}/stream (SSE: moment, line, stats per moment; error; end last),
-// GET /stats, GET /voices and GET /lines/{id}/audio?voice=<id> (ElevenLabs; 503 when the voice isn't configured).
+// GET /stats, GET /voices, POST /lines/{id}/fix and GET /lines/{id}/audio?voice=<id> (ElevenLabs; 503
+// when the voice isn't configured).
 import { demoMatches, demoStats, streamDemo } from './demo'
-import type { Line, Match, Moment, Stats, StreamEvent, Voice } from './types'
+import type { Fix, Line, Match, Moment, Stats, StreamEvent, Voice } from './types'
 
 export const isDemo = new URLSearchParams(window.location.search).has('demo')
 
@@ -55,6 +56,7 @@ export function followReplay(
   source.addEventListener('moment', (e) => onEvent({ type: 'moment', moment: JSON.parse(e.data) as Moment }))
   source.addEventListener('line', (e) => onEvent({ type: 'line', line: JSON.parse(e.data) as Line }))
   source.addEventListener('stats', (e) => onEvent({ type: 'stats', stats: JSON.parse(e.data) as Stats }))
+  source.addEventListener('fixed', (e) => onEvent({ type: 'fixed', fix: JSON.parse(e.data) as Fix }))
   source.addEventListener('error', (e) => {
     // A server `error` event carries {detail}; a dropped connection is a plain Event with no data.
     const data = (e as MessageEvent).data
@@ -73,6 +75,26 @@ export function followReplay(
     onEvent({ type: 'end' })
   })
   return () => source.close()
+}
+
+// POST /lines/{id}/fix. A 503 means the Mubit call failed and nothing was stored, so it can be sent again.
+export class FixError extends Error {
+  status: number
+  constructor(status: number) {
+    super(`POST /lines/{id}/fix failed (${status})`)
+    this.status = status
+  }
+}
+
+export async function postFix(lineId: string, correctedText: string, reason: string): Promise<Fix> {
+  if (isDemo) throw new FixError(503) // the demo has no server to keep a fix
+  const res = await fetch(`/lines/${encodeURIComponent(lineId)}/fix`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ corrected_text: correctedText, reason }),
+  })
+  if (!res.ok) throw new FixError(res.status)
+  return res.json()
 }
 
 export function lineAudioUrl(lineId: string, voiceId?: string): string {

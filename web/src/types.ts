@@ -1,7 +1,11 @@
 // Shapes the live page reads from the match server, as docs/CONTRACT.md ("Shapes") defines them.
 // api.ts is the only place that turns server JSON into these.
 
-export type Sport = 'football' | 'cricket'
+// PRD v5 R-10: basketball and F1 join (CONTRACT.md "Moment").
+export type Sport = 'football' | 'cricket' | 'basketball' | 'f1'
+
+export const SPORTS: Sport[] = ['football', 'cricket', 'basketball', 'f1']
+export const SPORT_NAMES: Record<Sport, string> = { football: 'Football', cricket: 'Cricket', basketball: 'Basketball', f1: 'F1' }
 
 export interface Match {
   match_id: string
@@ -15,7 +19,17 @@ export interface Match {
   youtube_id?: string
 }
 
-export type Score = { home: number; away: number } | { runs: number; wickets: number; target?: number }
+// Football and basketball: {home, away}; cricket: runs and wickets; f1: the lap and the top five.
+export interface F1Place {
+  pos: number
+  driver: string
+  gap: string // "leader", "+1.5s", or "" when timing lags
+}
+
+export type Score =
+  | { home: number; away: number }
+  | { runs: number; wickets: number; target?: number }
+  | { lap: number; laps: number; top: F1Place[] }
 
 // type: football "Shot" | "Own Goal Against" | "Foul Committed" | "Bad Behaviour" | "Substitution" |
 // "Injury Stoppage"; cricket "Wicket" | "Six" | "Four" | "No ball" | "Last ball" | "Chase".
@@ -23,8 +37,8 @@ export interface Moment {
   sport: Sport
   match_id: string
   idx: number
-  period: number
-  clock: string // "mm:ss" in football, "over.ball" in cricket
+  period: number // the half, the innings, the quarter (5+ is overtime) or the lap
+  clock: string // "mm:ss": football, basketball (left in the quarter), f1 (since the start); "over.ball": cricket
   type: string
   team: string // cricket: the batting side
   players: Record<string, string> // role -> name: shooter, keeper, offender / batter, bowler, out
@@ -43,7 +57,7 @@ export interface Line {
   moment_idx: number
   text: string
   latency_ms: number
-  first_word_ms?: number
+  first_word_ms?: number | null // null when the provider reported no first text word
   video_t?: number // A-6.4@2: shown and spoken when the player reaches it (#47)
 }
 
@@ -72,10 +86,20 @@ export interface Adapter {
   cost_measurable: boolean
 }
 
+// POST /lines/{line_id}/fix's answer and the `fixed` SSE event (CONTRACT.md).
+export interface Fix {
+  line_id: string
+  corrected_text: string
+  reason: string
+  created_at?: number | string
+  reply_matched?: boolean
+}
+
 export type StreamEvent =
   | { type: 'moment'; moment: Moment }
   | { type: 'line'; line: Line }
   | { type: 'stats'; stats: Stats }
+  | { type: 'fixed'; fix: Fix }
   | { type: 'error'; detail: string }
   | { type: 'end' }
 

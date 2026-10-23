@@ -14,6 +14,7 @@ export default defineConfig({
       '/lines': api,
       '/stats': api,
       '/health': api,
+      '/voices': api,
     },
   },
 })
