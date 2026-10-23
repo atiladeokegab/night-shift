@@ -4,7 +4,7 @@
 # (the IAM grants re-add a binding that is already there, which leaves the policy unchanged).
 #   PROJECT=<gcp-project-id> [REGION=europe-west1] [STATE_BUCKET=<PROJECT>-state] \
 #     [DEPLOY_AS=<account that will run deploy.sh; default: you>] \
-#     ANTHROPIC_API_KEY=... [ADMIN_PASSWORD=...] scripts/bootstrap.sh
+#     MUBIT_API_KEY=... ELEVENLABS_API_KEY=... scripts/bootstrap.sh
 # The secrets are the SECRETS list in scripts/deploy.sh. A value is read only when its secret is
 # created; rotate one as docs/deploy.md says.
 set -euo pipefail
@@ -15,7 +15,7 @@ STATE_BUCKET="${STATE_BUCKET:-$PROJECT-state}"
 DEPLOY_AS="${DEPLOY_AS:-$(gcloud config get-value account)}"
 SECRETS="$(sed -n 's/^SECRETS="\(.*\)"$/\1/p' "$(dirname "$0")/deploy.sh")"
 : "${SECRETS:?no SECRETS= line in scripts/deploy.sh}"
-GENERATED="admin-password"  # made up when created without a value; nobody has to type one
+GENERATED=""  # secrets made up when created without a value; none here
 APIS="run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com
   secretmanager.googleapis.com storage.googleapis.com iam.googleapis.com iamcredentials.googleapis.com"
 DEPLOYER="deployer@$PROJECT.iam.gserviceaccount.com"  # deploy.sh impersonates this account
@@ -52,7 +52,7 @@ grant gcloud storage buckets add-iam-policy-binding "gs://$STATE_BUCKET" "${P[@]
   --member "serviceAccount:$RUNTIME" --role roles/storage.objectUser
 
 # Secrets: the value comes from the env var named after the secret (anthropic-api-key reads
-# ANTHROPIC_API_KEY), printf so no trailing newline lands in it; a GENERATED one with no value
+# MUBIT_API_KEY), printf so no trailing newline lands in it; a GENERATED one with no value
 # gets a random one.
 for secret in $SECRETS; do
   var="$(tr 'a-z-' 'A-Z_' <<<"$secret")"
@@ -73,8 +73,7 @@ for secret in $SECRETS; do
     --member "serviceAccount:$RUNTIME" --role roles/secretmanager.secretAccessor
 done
 
-# The deployer: deploys from source and acts as the runtime account, nothing else. It also reads
-# the admin password, which the live smoke at the end of deploy.sh logs in with.
+# The deployer: deploys from source and acts as the runtime account, nothing else.
 found gcloud iam service-accounts describe "$DEPLOYER" "${P[@]}" ||
   gcloud iam service-accounts create deployer --display-name "scripts/deploy.sh" "${P[@]}"
 # run.admin, not run.developer: --allow-unauthenticated sets the service's IAM policy, which
@@ -86,8 +85,6 @@ for role in roles/run.admin roles/run.sourceDeveloper roles/serviceusage.service
 done
 grant gcloud iam service-accounts add-iam-policy-binding "$RUNTIME" "${P[@]}" \
   --member "serviceAccount:$DEPLOYER" --role roles/iam.serviceAccountUser
-grant gcloud secrets add-iam-policy-binding admin-password "${P[@]}" \
-  --member "serviceAccount:$DEPLOYER" --role roles/secretmanager.secretAccessor
 
 # Whoever runs deploy.sh (a person, or the hub VM's service account) may impersonate the deployer.
 case "$DEPLOY_AS" in

@@ -3,8 +3,9 @@
 .env
 .env.*
 **/.env*
-ANSWERS
-data
+data/*.jsonl
+data/cache
+web/dist
 .worktrees
 **/.worktrees
 *.tfvars
@@ -13,4 +14,4 @@ data
 **/__pycache__
 .pytest_cache
 .ruff_cache
-node_modules
+**/node_modules
