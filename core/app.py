@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -133,6 +133,11 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
     @app.get("/stats")
     def get_stats():
         return stats(store)
+
+    @app.get("/stage")
+    def stage():
+        """The backup demo page: one static file, so the demo runs even without web/."""
+        return FileResponse(Path(__file__).with_name("stage.html"), media_type="text/html")
 
     app.include_router(voice_router(store, tts_transport))
     # the built page (web/, #18) at /, mounted last so every API route above wins

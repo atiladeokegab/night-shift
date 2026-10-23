@@ -61,6 +61,7 @@ Errors: 404 not found, 422 bad input, 503 commentator not configured.
   `stats`, on the replay stream that carried the line; a late subscriber gets them too. 404 unknown
   line, 422 blank `corrected_text` (trimmed), 503 no commentator or the Mubit call failed (nothing
   stored, so the page can send it again).
+- `GET /stage` → the backup live page (`core/stage.html`, static HTML over the routes here) (core)
 - `GET /voices` → `[{id, label, default_for: "cricket"|"football"|null, lang: "en-IN"|"en-GB"}]`, the page's voice
   setting: an Indian English commentator for cricket, a British one for football; `lang` is
   the BCP 47 tag the browser-speech fallback uses. (core)
