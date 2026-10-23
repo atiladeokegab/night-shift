@@ -19,7 +19,8 @@ STATSBOMB = "https://raw.githubusercontent.com/statsbomb/open-data/master/data"
 CRICSHEET_ZIP = "https://cricsheet.org/downloads/t20s_json.zip"
 TIMEOUT = httpx.Timeout(30.0, connect=10.0)
 
-DEMO = {("football", "3906390"), ("cricket", "1298150")}  # WWC 2023 final; Ind v Pak 2022
+# WWC 2023 final; Ind v Pak 2022; WC 2022 final
+DEMO = {("football", "3906390"), ("cricket", "1298150"), ("football", "3869685")}
 
 
 def held_out(sport: str, match_id: str) -> bool:

@@ -66,4 +66,6 @@ if __name__ == "__main__":
 
     final = next(m for m in feed.statsbomb_matches(72, 107) if m["match_id"] == 3906390)
     _bundle("football", "3906390", final)  # 2023 Women's World Cup final
+    final = next(m for m in feed.statsbomb_matches(43, 106) if m["match_id"] == 3869685)
+    _bundle("football", "3869685", final)  # 2022 World Cup final, Messi v Mbappé
     _bundle("cricket", "1298150")  # India v Pakistan, T20 World Cup 2022
