@@ -22,7 +22,6 @@ TOOLS = json.loads((AGENT / "tools.json").read_text(encoding="utf-8"))
 TOOL_CHOICE = {"type": "auto"}
 MODEL = "claude-haiku-4-5"
 MAX_TOKENS = 100
-TEMPERATURE = 0  # one learnable line per moment, so the small model can match it
 MUBIT_URL = "https://api.mubit.ai/anthropic"
 
 
@@ -92,7 +91,6 @@ def build_request(header: dict, past: list[dict]) -> dict:
     return {
         "model": MODEL,
         "max_tokens": MAX_TOKENS,
-        "temperature": TEMPERATURE,
         "system": SYSTEM,
         "tools": TOOLS,
         "tool_choice": TOOL_CHOICE,
