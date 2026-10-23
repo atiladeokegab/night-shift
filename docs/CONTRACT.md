@@ -56,7 +56,11 @@ Errors: 404 not found, 422 bad input, 503 commentator not configured.
   For a match with a video map, only mapped moments are called, the `moment` and `line` events carry
   `video_t` (seconds), and they are sent as soon as each line is ready rather than paced by `speed`:
   the page shows and speaks each line when the player reaches `video_t`.
-- `POST /lines/{line_id}/fix {corrected_text, reason}` → Fix (core, P1, not built yet)
+- `POST /lines/{line_id}/fix {corrected_text, reason?}` → Fix (core): stores the Fix in `fixes`
+  beside the line, sends the correction turn (Agent below) and publishes `fixed` (the Fix), then
+  `stats`, on the replay stream that carried the line; a late subscriber gets them too. 404 unknown
+  line, 422 blank `corrected_text` (trimmed), 503 no commentator or the Mubit call failed (nothing
+  stored, so the page can send it again).
 - `GET /voices` → `[{id, label, default_for: "cricket"|"football"|null, lang: "en-IN"|"en-GB"}]`, the page's voice
   setting: an Indian English commentator for cricket, a British one for football; `lang` is
   the BCP 47 tag the browser-speech fallback uses. (core)
@@ -86,8 +90,10 @@ Errors: 404 not found, 422 bad input, 503 commentator not configured.
 - Every model call goes through Mubit (`https://api.mubit.ai/anthropic`), model `claude-haiku-4-5`;
   one session per match in `metadata.user_id = "match-<sport>-<id>"`; no browser calls to Mubit.
   `FakeProvider` offline.
-- Correction: a second turn in the line's session, "Producer correction. Reply with exactly this
-  line: <text>"; `reply_matched` records whether it did.
+- Correction (`agent.commentator.correct`): the line's original request (same prompt, tools, model
+  and `metadata.user_id`, so the same Mubit task and session) plus the line as the assistant turn
+  and "Producer correction. Reply with exactly this line: <text>"; `reply_matched` records whether
+  the reply was exactly that line. Mubit has no feedback API, so this turn is the training signal.
 - The commentator sees only moments up to the current one; a later event never reaches the model.
 
 ## Check
