@@ -43,7 +43,10 @@ export function Picker({ matches, error, onRetry, onStart }: Props) {
 }
 
 function Card({ match, onStart }: { match: Match; onStart: Props['onStart'] }) {
-  const [speed, setSpeed] = useState(4)
+  // With a highlights video the stream follows the video clock (A-6.4@1), so only real time keeps
+  // lines in step with the picture (#33).
+  const speeds = match.youtube_id ? SPEEDS.filter(([value]) => value === 1) : SPEEDS
+  const [speed, setSpeed] = useState(match.youtube_id ? 1 : 4)
   const copy = CARD_COPY[match.match_id]
   return (
     <section className="card">
@@ -54,7 +57,7 @@ function Card({ match, onStart }: { match: Match; onStart: Props['onStart'] }) {
       )}
       {copy && <p className="result">{copy.result}</p>}
       <div className="speeds" role="group" aria-label="Replay speed">
-        {SPEEDS.map(([value, name]) => (
+        {speeds.map(([value, name]) => (
           <button key={value} className={value === speed ? 'on' : ''} aria-pressed={value === speed} onClick={() => setSpeed(value)}>
             {name}
           </button>
