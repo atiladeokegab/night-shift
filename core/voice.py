@@ -188,14 +188,16 @@ class Speaker:
             if left <= 0:  # it would land after the moment
                 return None
             try:
-                resp = await client.post(
-                    TTS_URL.format(voice=voice["eleven_id"]),
-                    params={"output_format": "mp3_44100_128"},
-                    headers={"xi-api-key": key, "accept": "audio/mpeg"},
-                    json={"text": text, "model_id": model},
-                    timeout=left,
-                )
-            except httpx.HTTPError as exc:
+                # httpx's timeout is per read: only this bounds the request plus every chunk
+                async with asyncio.timeout(left):
+                    resp = await client.post(
+                        TTS_URL.format(voice=voice["eleven_id"]),
+                        params={"output_format": "mp3_44100_128"},
+                        headers={"xi-api-key": key, "accept": "audio/mpeg"},
+                        json={"text": text, "model_id": model},
+                        timeout=left,
+                    )
+            except (httpx.HTTPError, TimeoutError) as exc:
                 log.warning("voice %s failed: %s", model, type(exc).__name__)
                 return None
         if resp.status_code != 200 or not resp.content:

@@ -301,3 +301,45 @@ def test_empty_voice_settings_from_env_example_keep_the_defaults(monkeypatch):
     for name in ("VOICE_FOOTBALL", "VOICE_MODEL_FOOTBALL"):
         monkeypatch.setenv(name, "")
     assert default_voice("football")["id"] == "connor" and model_for("football") == "eleven_v3"
+
+
+class Trickle(httpx.AsyncByteStream):
+    """20 chunks 0.03 s apart: each read is quick, the whole body is not."""
+
+    async def __aiter__(self):
+        import asyncio
+
+        for _ in range(20):
+            await asyncio.sleep(0.03)
+            yield AUDIO[:4]
+
+
+def test_a_slow_stream_past_the_deadline_falls_back(monkeypatch):
+    # httpx's timeout is per read, so only a deadline on the whole call stops a trickling body.
+    import asyncio
+    import time
+
+    from core.voice import FALLBACK_RESERVE_S, VOICES, Speaker
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    seen = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        model = json.loads(request.content)["model_id"]
+        seen.append(model)
+        return (
+            httpx.Response(200, stream=Trickle())
+            if "v3" in model
+            else httpx.Response(200, content=AUDIO)
+        )
+
+    speaker = Speaker(httpx.MockTransport(handle))
+    line = {"line_id": "x", "sport": "football", "text": "Goal!"}
+
+    async def run():
+        # v3 gets 0.08 s before the flash reserve; its body takes 0.6 s
+        speaker.prepare(line, {"type": "Shot"}, time.monotonic() + FALLBACK_RESERVE_S + 0.08)
+        return await speaker.audio(line, VOICES[1])
+
+    assert asyncio.run(run()) == (AUDIO, "eleven_flash_v2_5")
+    assert seen[0] == "eleven_v3" and seen[-1] == "eleven_flash_v2_5"

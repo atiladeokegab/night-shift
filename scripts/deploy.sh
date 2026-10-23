@@ -37,6 +37,24 @@ else
 fi
 MOUNTS="$(for s in $SECRETS; do printf '%s=%s:latest,' "$(tr 'a-z-' 'A-Z_' <<<"$s")" "$s"; done)"
 
+# The voice picks (docs/voice.md): VOICE_<SPORT> and VOICE_MODEL_<SPORT>, from the environment or
+# .env, go to Cloud Run only when set, so an unset one keeps the code default. .env is never
+# sourced: only VOICE_* lines are read from it, so no key can ride along.
+VOICE_ENV=""
+for name in $( (compgen -e; [[ -f .env ]] && sed -n 's/^\(VOICE_[A-Z0-9_]*\)=.*/\1/p' .env) \
+  | grep -E '^VOICE_[A-Z0-9_]+$' | sort -u); do
+  value="${!name:-}"
+  if [[ -z "$value" && -f .env ]]; then
+    value="$(sed -n "s/^$name=//p" .env | tail -1 | tr -d "\"'")"
+  fi
+  [[ -z "$value" ]] && continue
+  if [[ ! "$value" =~ ^[A-Za-z0-9_.-]+$ ]]; then
+    echo "deploy: $name must be a voice id or model name ([A-Za-z0-9_.-])" >&2
+    exit 1
+  fi
+  VOICE_ENV+=",$name=$value"
+done
+
 # The store is JSON-lines objects in GCS under gs://STATE_BUCKET/SERVICE/ (core/store.py), so it
 # survives a redeploy. A replay lives in the process that started it, so the stream must reach
 # the same instance: one instance (IDEA.md ceiling: one server process), CPU kept on between
@@ -44,7 +62,7 @@ MOUNTS="$(for s in $SECRETS; do printf '%s=%s:latest,' "$(tr 'a-z-' 'A-Z_' <<<"$
 gcloud run deploy "$SERVICE" --source . --region "$REGION" --project "$PROJECT" \
   --allow-unauthenticated \
   --set-secrets "${MOUNTS%,}" \
-  --set-env-vars "MODE=cloud,STORE_URL=gs://$STATE_BUCKET/$SERVICE" \
+  --set-env-vars "MODE=cloud,STORE_URL=gs://$STATE_BUCKET/$SERVICE$VOICE_ENV" \
   --labels "commit=$COMMIT" \
   --min-instances "$MIN_INSTANCES" \
   --max-instances 1 \
