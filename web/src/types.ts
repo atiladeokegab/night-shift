@@ -23,9 +23,9 @@ export interface Match {
 
 // Football and basketball: {home, away}; cricket: runs and wickets; f1: the lap and the top five.
 export interface F1Place {
-  pos: number
+  pos: number | null // null for a car that pitted before the feed gave its new place (it comes last)
   driver: string
-  gap: string // "leader", "+1.5s", or "" when timing lags
+  gap: string // "leader", "1.5 seconds", "in the pit lane", or "" when timing lags
 }
 
 export type Score =
