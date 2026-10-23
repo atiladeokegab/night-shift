@@ -86,6 +86,7 @@ def test_every_demo_match_has_a_map():
         "football-3869685",
         "basketball-0049700088",
         "basketball-0020500591",
+        "f1-9558",
     }
     assert {m["match_id"]: m.get("youtube_id") for m in list_matches()} == {
         "3906390": "jD1GwCcJV-0",
@@ -93,6 +94,7 @@ def test_every_demo_match_has_a_map():
         "3869685": "agrGb25mJzs",
         "0049700088": "kwAu78IiixE",
         "0020500591": "46nYnjGdQlk",
+        "9558": "yPvoKz6tyJs",
     }
 
 

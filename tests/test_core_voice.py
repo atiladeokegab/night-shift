@@ -173,6 +173,14 @@ def hoop(kind, outcome, period=2, clock="06:00", **detail):
         (hoop("Steal", "Steal", period=4, clock="00:18"), "[excited]"),
         (hoop("Free throw", "1 point", period=4, clock="00:43"), "[excited]"),
         (hoop("Field goal", "2 points"), None),  # a routine basket mid-game stays plain
+        ({"sport": "f1", "type": "Lead change", "outcome": "P1 on track"}, "[shouting]"),
+        ({"sport": "f1", "type": "Red flag", "outcome": "Red flag"}, "[shouting]"),
+        ({"sport": "f1", "type": "Finish", "outcome": "chequered flag"}, "[shouting]"),
+        ({"sport": "f1", "type": "Overtake", "outcome": "P3 on track"}, "[excited]"),
+        ({"sport": "f1", "type": "Pit stop", "outcome": "pits for soft tyres"}, "[excited]"),
+        ({"sport": "f1", "type": "Safety car", "outcome": "Safety car deployed"}, "[excited]"),
+        ({"sport": "f1", "type": "Last lap", "outcome": "final lap"}, "[hushed]"),
+        ({"sport": "f1", "type": "Retirement", "outcome": "out on lap 34"}, None),
     ],
 )
 def test_moment_kind_sets_the_audio_tag(moment, tag):
@@ -276,12 +284,13 @@ def test_voice_and_model_per_sport_come_from_env(tmp_path, monkeypatch):
         "connor": None,
         "viraj": "cricket",
         "sam": "basketball",
+        "announcer": "f1",
     }
 
 
 def test_a_raw_elevenlabs_voice_id_is_a_config_only_pick(tmp_path, monkeypatch):
     monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
-    monkeypatch.setenv("VOICE_FOOTBALL", "gU0LNdkMOQCOrPrwtbee")
+    monkeypatch.setenv("VOICE_FOOTBALL", "onwK4e9ZLuTAKqWW03F9")
     seen = []
     line = {"line_id": "f1", "sport": "football", "text": "Goal!"}
     with client_for(tmp_path, upstream(seen=seen), line) as client:
@@ -290,8 +299,8 @@ def test_a_raw_elevenlabs_voice_id_is_a_config_only_pick(tmp_path, monkeypatch):
         assert client.get("/lines/f1/audio?voice=football-pick").status_code == 200
     assert voices["football-pick"]["default_for"] == "football"
     assert voices["football-pick"]["lang"] == "en-GB" and voices["connor"]["default_for"] is None
-    assert "gU0LNdkMOQCOrPrwtbee" not in json.dumps(list(voices.values()))
-    assert [voice_in(r) for r in seen] == ["gU0LNdkMOQCOrPrwtbee"]  # the second request is cached
+    assert "onwK4e9ZLuTAKqWW03F9" not in json.dumps(list(voices.values()))
+    assert [voice_in(r) for r in seen] == ["onwK4e9ZLuTAKqWW03F9"]  # the second request is cached
 
 
 def test_empty_voice_settings_from_env_example_keep_the_defaults(monkeypatch):

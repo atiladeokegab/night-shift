@@ -147,6 +147,7 @@ def test_held_out_and_demo_matches():
     assert feed.held_out("football", "105") and not feed.held_out("football", "106")
     assert ("cricket", "1298150") in feed.DEMO and ("football", "3906390") in feed.DEMO
     assert {("basketball", "0049700088"), ("basketball", "0020500591")} <= feed.DEMO
+    assert ("f1", "9558") in feed.DEMO
 
 
 def test_cricket_clock_counts_legal_balls_within_each_over():
@@ -254,3 +255,121 @@ def test_nba_rows_rejects_an_id_that_is_not_a_game():
     for bad in ("49700088", "00497000ab", "0019700088", "../etc/passwd"):
         with pytest.raises(KeyError):
             feed.nba_rows(bad)
+
+
+# --- f1 ---
+
+RACE = {"sport": "f1", "match_id": "9", "laps": 3}
+
+
+def at(seconds: float) -> str:
+    seconds += 60  # the grid is read a few seconds before the start
+    return f"2024-07-07T14:{int(seconds) // 60:02d}:{seconds % 60:06.3f}+00:00"
+
+
+def race_rows():
+    """Three cars, three laps: a pass sent in reverse order, one handed straight back, one where
+    the passed car drops first, a pit stop for softs and a stop that swaps places below P1."""
+    drivers = [
+        {"driver_number": n, "first_name": f, "last_name": last, "team_name": t}
+        for n, f, last, t in [
+            (44, "Lewis", "Hamilton", "Mercedes"),
+            (1, "Max", "Verstappen", "Red Bull Racing"),
+            (4, "Lando", "Norris", "McLaren"),
+            (10, "Pierre", "Gasly", "Alpine"),
+        ]
+    ]
+    pos = lambda t, n, p: {"date": at(t), "driver_number": n, "position": p}  # noqa: E731
+    return {
+        "drivers": drivers,
+        "race_control": [
+            {"date": at(0), "category": "Other", "message": "SESSION STARTED"},
+            {"date": at(100), "category": "SafetyCar", "message": "SAFETY CAR DEPLOYED"},
+            {"date": at(170), "category": "Flag", "flag": "CHEQUERED", "message": "CHEQUERED FLAG"},
+        ],
+        "position": [
+            pos(-5, 1, 1),
+            pos(-5, 44, 2),
+            pos(-5, 4, 3),
+            pos(-5, 10, 4),
+            pos(20, 1, 2),
+            pos(20, 44, 1),  # one timestamp, the passed car's row first
+            pos(40, 4, 1),
+            pos(40, 44, 3),
+            pos(45, 4, 3),
+            pos(45, 44, 1),  # handed back in 5 s
+            pos(60, 1, 3),
+            pos(64, 4, 2),  # Verstappen drops, Norris moves up 4 s later
+            pos(110, 4, 3),
+            pos(110, 1, 2),  # Norris pits: Verstappen's P2 is not an overtake
+        ],
+        "intervals": [
+            {"date": at(150), "driver_number": 44, "gap_to_leader": 0.0},
+            {"date": at(150), "driver_number": 1, "gap_to_leader": 2.1},
+            {"date": at(150), "driver_number": 4, "gap_to_leader": 1.0},  # stale: behind P2
+        ],
+        "pit": [{"date": at(108), "driver_number": 4, "lap_number": 2, "pit_duration": 21.5}],
+        "stints": [{"driver_number": 4, "lap_start": 3, "compound": "SOFT"}],
+        "laps": [
+            {
+                "date_start": at(60 * (k - 1) + 1),
+                "driver_number": n,
+                "lap_number": k,
+                "lap_duration": 60.0,
+            }
+            for k in (1, 2, 3)
+            for n in (1, 4, 44)
+        ]
+        + [{"date_start": at(1), "driver_number": 10, "lap_number": 1, "lap_duration": None}],
+        "session_result": [
+            {"driver_number": 44, "position": 1, "gap_to_leader": 0},
+            {"driver_number": 1, "position": 2, "gap_to_leader": 1.234},
+            {"driver_number": 4, "position": 3, "gap_to_leader": 9.87},
+            {"driver_number": 10, "position": None, "dns": True},
+        ],
+    }
+
+
+def test_f1_calls_passes_pit_stops_the_safety_car_and_the_flag():
+    ms = feed.f1_moments(RACE, race_rows())
+    calls = [(m["clock"], m["type"], m["players"].get("driver"), m["outcome"]) for m in ms]
+    assert calls == [
+        ("00:00", "Lights out", None, "race start"),
+        ("00:20", "Lead change", "Lewis Hamilton", "P1 on track"),
+        ("01:04", "Overtake", "Lando Norris", "P2 on track"),
+        ("01:40", "Safety car", None, "Safety car deployed"),
+        ("01:48", "Pit stop", "Lando Norris", "pits for soft tyres"),
+        ("02:01", "Last lap", None, "final lap"),
+        ("02:50", "Finish", None, "chequered flag"),
+    ]  # no flap at 00:40, no overtake from the stop, and Gasly did not start: no retirement
+    assert ms[1]["players"] == {"driver": "Lewis Hamilton", "passed": "Max Verstappen"}
+    assert ms[2]["players"]["passed"] == "Max Verstappen" and ms[2]["period"] == 2
+    assert ms[4]["team"] == "McLaren" and ms[4]["detail"] == {
+        "tyres": "soft",
+        "pit_lane_s": 21.5,
+    }
+    assert ms[-1]["players"] == {"winner": "Lewis Hamilton"}
+    assert ms[-1]["score"]["top"] == [
+        {"pos": 1, "driver": "Lewis Hamilton", "gap": "leader"},
+        {"pos": 2, "driver": "Max Verstappen", "gap": "+1.2s"},
+        {"pos": 3, "driver": "Lando Norris", "gap": "+9.9s"},
+    ]
+
+
+def test_f1_standing_leaves_out_a_gap_that_lags_the_car_ahead():
+    rows = race_rows()
+    rows["session_result"] = []  # no classification: the flag reads the live gaps
+    top = feed.f1_moments(RACE, rows)[-1]["score"]["top"][:3]
+    assert [(c["driver"], c["gap"]) for c in top] == [
+        ("Lewis Hamilton", "leader"),
+        ("Max Verstappen", "+2.1s"),
+        ("Lando Norris", ""),
+    ]
+
+
+def test_openf1_rejects_a_session_key_that_is_not_a_number():
+    import pytest
+
+    for bad in ("latest", "9558&x=1", "../etc"):
+        with pytest.raises(KeyError):
+            feed.openf1("laps", bad)

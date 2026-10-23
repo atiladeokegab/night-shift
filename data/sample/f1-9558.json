@@ -1,0 +1,1264 @@
+{
+ "header": {
+  "sport": "f1",
+  "match_id": "9558",
+  "competition": "Formula 1",
+  "stage": "British Grand Prix, Silverstone",
+  "date": "2024-07-07",
+  "laps": 52
+ },
+ "moments": [
+  {
+   "sport": "f1",
+   "match_id": "9558",
+   "idx": 0,
+   "period": 1,
+   "clock": "00:00",
+   "type": "Lights out",
+   "team": "Mercedes",
+   "players": {
+    "leader": "George Russell"
+   },
+   "outcome": "race start",
+   "score": {
+    "lap": 1,
+    "laps": 52,
+    "top": [
+     {
+      "pos": 1,
+      "driver": "George Russell",
+      "gap": "leader"
+     },
+     {
+      "pos": 2,
+      "driver": "Lewis Hamilton",
+      "gap": ""
+     },
+     {
+      "pos": 3,
+      "driver": "Lando Norris",
+      "gap": ""
+     },
+     {
+      "pos": 4,
+      "driver": "Max Verstappen",
+      "gap": ""
+     },
+     {
+      "pos": 5,
+      "driver": "Oscar Piastri",
+      "gap": ""
+     }
+    ]
+   },
+   "detail": {}
+  },
+  {
+   "sport": "f1",
+   "match_id": "9558",
+   "idx": 1,
+   "period": 1,
+   "clock": "00:24",
+   "type": "Overtake",
+   "team": "Red Bull Racing",
+   "players": {
+    "driver": "Max Verstappen",
+    "passed": "Lando Norris"
+   },
+   "outcome": "P3 on track",
+   "score": {
+    "lap": 1,
+    "laps": 52,
+    "top": [
+     {
+      "pos": 1,
+      "driver": "George Russell",
+      "gap": "leader"
+     },
+     {
+      "pos": 2,
+      "driver": "Lewis Hamilton",
+      "gap": "+0.4s"
+     },
+     {
+      "pos": 3,
+      "driver": "Max Verstappen",
+      "gap": "+0.6s"
+     },
+     {
+      "pos": 4,
+      "driver": "Lando Norris",
+      "gap": ""
+     },
+     {
+      "pos": 5,
+      "driver": "Oscar Piastri",
+      "gap": "+0.8s"
+     }
+    ]
+   },
+   "detail": {}
+  },
+  {
+   "sport": "f1",
+   "match_id": "9558",
+   "idx": 2,
+   "period": 15,
+   "clock": "22:47",
+   "type": "Overtake",
+   "team": "McLaren",
+   "players": {
+    "driver": "Lando Norris",
+    "passed": "Max Verstappen"
+   },
+   "outcome": "P3 on track",
+   "score": {
+    "lap": 15,
+    "laps": 52,
+    "top": [
+     {
+      "pos": 1,
+      "driver": "George Russell",
+      "gap": "leader"
+     },
+     {
+      "pos": 2,
+      "driver": "Lewis Hamilton",
+      "gap": "+1.6s"
+     },
+     {
+      "pos": 3,
+      "driver": "Lando Norris",
+      "gap": "+4.7s"
+     },
+     {
+      "pos": 4,
+      "driver": "Max Verstappen",
+      "gap": "+4.8s"
+     },
+     {
+      "pos": 5,
+      "driver": "Oscar Piastri",
+      "gap": "+6.7s"
+     }
+    ]
+   },
+   "detail": {}
+  },
+  {
+   "sport": "f1",
+   "match_id": "9558",
+   "idx": 3,
+   "period": 18,
+   "clock": "27:18",
+   "type": "Lead change",
+   "team": "Mercedes",
+   "players": {
+    "driver": "Lewis Hamilton",
+    "passed": "George Russell"
+   },
+   "outcome": "P1 on track",
+   "score": {
+    "lap": 18,
+    "laps": 52,
+    "top": [
+     {
+      "pos": 1,
+      "driver": "Lewis Hamilton",
+      "gap": "leader"
+     },
+     {
+      "pos": 2,
+      "driver": "George Russell",
+      "gap": ""
+     },
+     {
+      "pos": 3,
+      "driver": "Lando Norris",
+      "gap": "+3.0s"
+     },
+     {
+      "pos": 4,
+      "driver": "Oscar Piastri",
+      "gap": "+5.6s"
+     },
+     {
+      "pos": 5,
+      "driver": "Max Verstappen",
+      "gap": "+6.9s"
+     }
+    ]
+   },
+   "detail": {}
+  },
+  {
+   "sport": "f1",
+   "match_id": "9558",
+   "idx": 4,
+   "period": 19,
+   "clock": "28:06",
+   "type": "Overtake",
+   "team": "McLaren",
+   "players": {
+    "driver": "Lando Norris",
+    "passed": "George Russell"
+   },
+   "outcome": "P2 on track",
+   "score": {
+    "lap": 19,
+    "laps": 52,
+    "top": [
+     {
+      "pos": 1,
+      "driver": "Lewis Hamilton",
+      "gap": "leader"
+     },
+     {
+      "pos": 2,
+      "driver": "Lando Norris",
+      "gap": "+1.3s"
+     },
+     {
+      "pos": 3,
+      "driver": "George Russell",
+      "gap": ""
+     },
+     {
+      "pos": 4,
+      "driver": "Oscar Piastri",
+      "gap": "+3.5s"
+     },
+     {
+      "pos": 5,
+      "driver": "Max Verstappen",
+      "gap": "+6.8s"
+     }
+    ]
+   },
+   "detail": {}
+  },
+  {
+   "sport": "f1",
+   "match_id": "9558",
+   "idx": 5,
+   "period": 19,
+   "clock": "28:10",
+   "type": "Conditions",
+   "team": "",
+   "players": {},
+   "outcome": "Low grip conditions",
+   "score": {
+    "lap": 19,
+    "laps": 52,
+    "top": [
+     {
+      "pos": 1,
+      "driver": "Lewis Hamilton",
+      "gap": "leader"
+     },
+     {
+      "pos": 2,
+      "driver": "Lando Norris",
+      "gap": "+1.3s"
+     },
+     {
+      "pos": 3,
+      "driver": "George Russell",
+      "gap": "+1.6s"
+     },
+     {
+      "pos": 4,
+      "driver": "Oscar Piastri",
+      "gap": "+3.5s"
+     },
+     {
+      "pos": 5,
+      "driver": "Max Verstappen",
+      "gap": "+6.8s"
+     }
+    ]
+   },
+   "detail": {}
+  },
+  {
+   "sport": "f1",
+   "match_id": "9558",
+   "idx": 6,
+   "period": 20,
+   "clock": "29:29",
+   "type": "Lead change",
+   "team": "McLaren",
+   "players": {
+    "driver": "Lando Norris",
+    "passed": "Lewis Hamilton"
+   },
+   "outcome": "P1 on track",
+   "score": {
+    "lap": 20,
+    "laps": 52,
+    "top": [
+     {
+      "pos": 1,
+      "driver": "Lando Norris",
+      "gap": "leader"
+     },
+     {
+      "pos": 2,
+      "driver": "Lewis Hamilton",
+      "gap": ""
+     },
+     {
+      "pos": 3,
+      "driver": "George Russell",
+      "gap": "+0.9s"
+     },
+     {
+      "pos": 4,
+      "driver": "Oscar Piastri",
+      "gap": "+1.9s"
+     },
+     {
+      "pos": 5,
+      "driver": "Max Verstappen",
+      "gap": "+6.3s"
+     }
+    ]
+   },
+   "detail": {}
+  },
+  {
+   "sport": "f1",
+   "match_id": "9558",
+   "idx": 7,
+   "period": 20,
+   "clock": "29:48",
+   "type": "Overtake",
+   "team": "McLaren",
+   "players": {
+    "driver": "Oscar Piastri",
+    "passed": "George Russell"
+   },
+   "outcome": "P3 on track",
+   "score": {
+    "lap": 20,
+    "laps": 52,
+    "top": [
+     {
+      "pos": 1,
+      "driver": "Lando Norris",
+      "gap": "leader"
+     },
+     {
+      "pos": 2,
+      "driver": "Lewis Hamilton",
+      "gap": "+1.5s"
+     },
+     {
+      "pos": 3,
+      "driver": "Oscar Piastri",
+      "gap": "+1.7s"
+     },
+     {
+      "pos": 4,
+      "driver": "George Russell",
+      "gap": ""
+     },
+     {
+      "pos": 5,
+      "driver": "Max Verstappen",
+      "gap": "+5.8s"
+     }
+    ]
+   },
+   "detail": {}
+  },
+  {
+   "sport": "f1",
+   "match_id": "9558",
+   "idx": 8,
+   "period": 20,
+   "clock": "30:50",
+   "type": "Overtake",
+   "team": "McLaren",
+   "players": {
+    "driver": "Oscar Piastri",
+    "passed": "Lewis Hamilton"
+   },
+   "outcome": "P2 on track",
+   "score": {
+    "lap": 20,
+    "laps": 52,
+    "top": [
+     {
+      "pos": 1,
+      "driver": "Lando Norris",
+      "gap": "leader"
+     },
+     {
+      "pos": 2,
+      "driver": "Oscar Piastri",
+      "gap": "+1.0s"
+     },
+     {
+      "pos": 3,
+      "driver": "Lewis Hamilton",
+      "gap": "+1.1s"
+     },
+     {
+      "pos": 4,
+      "driver": "George Russell",
+      "gap": "+2.2s"
+     },
+     {
+      "pos": 5,
+      "driver": "Max Verstappen",
+      "gap": "+5.1s"
+     }
+    ]
+   },
+   "detail": {}
+  },
+  {
+   "sport": "f1",
+   "match_id": "9558",
+   "idx": 9,
+   "period": 25,
+   "clock": "38:34",
+   "type": "Conditions",
+   "team": "",
+   "players": {},
+   "outcome": "Low grip conditions",
+   "score": {
+    "lap": 25,
+    "laps": 52,
+    "top": [
+     {
+      "pos": 1,
+      "driver": "Lando Norris",
+      "gap": "leader"
+     },
+     {
+      "pos": 2,
+      "driver": "Oscar Piastri",
+      "gap": "+1.4s"
+     },
+     {
+      "pos": 3,
+      "driver": "Lewis Hamilton",
+      "gap": "+3.5s"
+     },
+     {
+      "pos": 4,
+      "driver": "George Russell",
+      "gap": "+5.6s"
+     },
+     {
+      "pos": 5,
+      "driver": "Max Verstappen",
+      "gap": "+11.6s"
+     }
+    ]
+   },
+   "detail": {}
+  },
+  {
+   "sport": "f1",
+   "match_id": "9558",
+   "idx": 10,
+   "period": 27,
+   "clock": "40:57",
+   "type": "Pit stop",
+   "team": "Red Bull Racing",
+   "players": {
+    "driver": "Max Verstappen"
+   },
+   "outcome": "pits for intermediate tyres",
+   "score": {
+    "lap": 27,
+    "laps": 52,
+    "top": [
+     {
+      "pos": 1,
+      "driver": "Lando Norris",
+      "gap": "leader"
+     },
+     {
+      "pos": 2,
+      "driver": "Oscar Piastri",
+      "gap": "+0.4s"
+     },
+     {
+      "pos": 3,
+      "driver": "Lewis Hamilton",
+      "gap": "+2.3s"
+     },
+     {
+      "pos": 4,
+      "driver": "George Russell",
+      "gap": "+3.6s"
+     },
+     {
+      "pos": 5,
+      "driver": "Max Verstappen",
+      "gap": "+14.4s"
+     }
+    ]
+   },
+   "detail": {
+    "tyres": "intermediate",
+    "pit_lane_s": 28.3
+   }
+  },
+  {
+   "sport": "f1",
+   "match_id": "9558",
+   "idx": 11,
+   "period": 28,
+   "clock": "42:19",
+   "type": "Lead change",
+   "team": "McLaren",
+   "players": {
+    "driver": "Oscar Piastri",
+    "passed": "Lando Norris"
+   },
+   "outcome": "P1 in the pit stops",
+   "score": {
+    "lap": 28,
+    "laps": 52,
+    "top": [
+     {
+      "pos": 1,
+      "driver": "Oscar Piastri",
+      "gap": "leader"
+     },
+     {
+      "pos": 2,
+      "driver": "Lando Norris",
+      "gap": ""
+     },
+     {
+      "pos": 3,
+      "driver": "Lewis Hamilton",
+      "gap": "+2.8s"
+     },
+     {
+      "pos": 4,
+      "driver": "George Russell",
+      "gap": "+5.0s"
+     },
+     {
+      "pos": 5,
+      "driver": "Max Verstappen",
+      "gap": "+26.1s"
+     }
+    ]
+   },
+   "detail": {}
+  },
+  {
+   "sport": "f1",
+   "match_id": "9558",
+   "idx": 12,
+   "period": 28,
+   "clock": "42:30",
+   "type": "Pit stop",
+   "team": "McLaren",
+   "players": {
+    "driver": "Lando Norris"
+   },
+   "outcome": "pits for intermediate tyres",
+   "score": {
+    "lap": 28,
+    "laps": 52,
+    "top": [
+     {
+      "pos": 1,
+      "driver": "Oscar Piastri",
+      "gap": "leader"
+     },
+     {
+      "pos": 2,
+      "driver": "Lando Norris",
+      "gap": ""
+     },
+     {
+      "pos": 3,
+      "driver": "Lewis Hamilton",
+      "gap": "+2.8s"
+     },
+     {
+      "pos": 4,
+      "driver": "George Russell",
+      "gap": "+5.0s"
+     },
+     {
+      "pos": 5,
+      "driver": "Max Verstappen",
+      "gap": "+24.1s"
+     }
+    ]
+   },
+   "detail": {
+    "tyres": "intermediate",
+    "pit_lane_s": 28.6
+   }
+  },
+  {
+   "sport": "f1",
+   "match_id": "9558",
+   "idx": 13,
+   "period": 28,
+   "clock": "42:33",
+   "type": "Pit stop",
+   "team": "Mercedes",
+   "players": {
+    "driver": "Lewis Hamilton"
+   },
+   "outcome": "pits for intermediate tyres",
+   "score": {
+    "lap": 28,
+    "laps": 52,
+    "top": [
+     {
+      "pos": 1,
+      "driver": "Oscar Piastri",
+      "gap": "leader"
+     },
+     {
+      "pos": 2,
+      "driver": "Lando Norris",
+      "gap": ""
+     },
+     {
+      "pos": 3,
+      "driver": "Lewis Hamilton",
+      "gap": "+2.8s"
+     },
+     {
+      "pos": 4,
+      "driver": "George Russell",
+      "gap": "+5.0s"
+     },
+     {
+      "pos": 5,
+      "driver": "Max Verstappen",
+      "gap": "+22.0s"
+     }
+    ]
+   },
+   "detail": {
+    "tyres": "intermediate",
+    "pit_lane_s": 28.9
+   }
+  },
+  {
+   "sport": "f1",
+   "match_id": "9558",
+   "idx": 14,
+   "period": 28,
+   "clock": "42:40",
+   "type": "Pit stop",
+   "team": "Mercedes",
+   "players": {
+    "driver": "George Russell"
+   },
+   "outcome": "pits for intermediate tyres",
+   "score": {
+    "lap": 28,
+    "laps": 52,
+    "top": [
+     {
+      "pos": 1,
+      "driver": "Oscar Piastri",
+      "gap": "leader"
+     },
+     {
+      "pos": 2,
+      "driver": "Lando Norris",
+      "gap": "+12.4s"
+     },
+     {
+      "pos": 3,
+      "driver": "Lewis Hamilton",
+      "gap": "+16.2s"
+     },
+     {
+      "pos": 4,
+      "driver": "Max Verstappen",
+      "gap": "+20.3s"
+     },
+     {
+      "pos": 5,
+      "driver": "George Russell",
+      "gap": ""
+     }
+    ]
+   },
+   "detail": {
+    "tyres": "intermediate",
+    "pit_lane_s": 32.0
+   }
+  },
+  {
+   "sport": "f1",
+   "match_id": "9558",
+   "idx": 15,
+   "period": 29,
+   "clock": "44:13",
+   "type": "Lead change",
+   "team": "McLaren",
+   "players": {
+    "driver": "Lando Norris",
+    "passed": "Oscar Piastri"
+   },
+   "outcome": "P1 in the pit stops",
+   "score": {
+    "lap": 29,
+    "laps": 52,
+    "top": [
+     {
+      "pos": 1,
+      "driver": "Lando Norris",
+      "gap": "leader"
+     },
+     {
+      "pos": 2,
+      "driver": "Oscar Piastri",
+      "gap": ""
+     },
+     {
+      "pos": 3,
+      "driver": "Lewis Hamilton",
+      "gap": "+5.6s"
+     },
+     {
+      "pos": 4,
+      "driver": "Max Verstappen",
+      "gap": ""
+     },
+     {
+      "pos": 5,
+      "driver": "George Russell",
+      "gap": ""
+     }
+    ]
+   },
+   "detail": {}
+  },
+  {
+   "sport": "f1",
+   "match_id": "9558",
+   "idx": 16,
+   "period": 34,
+   "clock": "52:52",
+   "type": "Retirement",
+   "team": "Mercedes",
+   "players": {
+    "driver": "George Russell"
+   },
+   "outcome": "out on lap 34",
+   "score": {
+    "lap": 34,
+    "laps": 52,
+    "top": [
+     {
+      "pos": 1,
+      "driver": "Lando Norris",
+      "gap": "leader"
+     },
+     {
+      "pos": 2,
+      "driver": "Lewis Hamilton",
+      "gap": "+3.2s"
+     },
+     {
+      "pos": 3,
+      "driver": "Max Verstappen",
+      "gap": "+10.5s"
+     },
+     {
+      "pos": 4,
+      "driver": "George Russell",
+      "gap": "+15.8s"
+     },
+     {
+      "pos": 5,
+      "driver": "Carlos Sainz",
+      "gap": "+19.7s"
+     }
+    ]
+   },
+   "detail": {}
+  },
+  {
+   "sport": "f1",
+   "match_id": "9558",
+   "idx": 17,
+   "period": 39,
+   "clock": "61:27",
+   "type": "Pit stop",
+   "team": "Mercedes",
+   "players": {
+    "driver": "Lewis Hamilton"
+   },
+   "outcome": "pits for soft tyres",
+   "score": {
+    "lap": 39,
+    "laps": 52,
+    "top": [
+     {
+      "pos": 1,
+      "driver": "Lando Norris",
+      "gap": "leader"
+     },
+     {
+      "pos": 2,
+      "driver": "Lewis Hamilton",
+      "gap": "+2.2s"
+     },
+     {
+      "pos": 3,
+      "driver": "Max Verstappen",
+      "gap": "+7.7s"
+     },
+     {
+      "pos": 4,
+      "driver": "Oscar Piastri",
+      "gap": "+22.3s"
+     },
+     {
+      "pos": 5,
+      "driver": "Carlos Sainz",
+      "gap": ""
+     }
+    ]
+   },
+   "detail": {
+    "tyres": "soft",
+    "pit_lane_s": 30.0
+   }
+  },
+  {
+   "sport": "f1",
+   "match_id": "9558",
+   "idx": 18,
+   "period": 39,
+   "clock": "61:31",
+   "type": "Pit stop",
+   "team": "Red Bull Racing",
+   "players": {
+    "driver": "Max Verstappen"
+   },
+   "outcome": "pits for hard tyres",
+   "score": {
+    "lap": 39,
+    "laps": 52,
+    "top": [
+     {
+      "pos": 1,
+      "driver": "Lando Norris",
+      "gap": "leader"
+     },
+     {
+      "pos": 2,
+      "driver": "Carlos Sainz",
+      "gap": "+21.4s"
+     },
+     {
+      "pos": 3,
+      "driver": "Lewis Hamilton",
+      "gap": ""
+     },
+     {
+      "pos": 4,
+      "driver": "Max Verstappen",
+      "gap": ""
+     },
+     {
+      "pos": 5,
+      "driver": "Oscar Piastri",
+      "gap": "+22.3s"
+     }
+    ]
+   },
+   "detail": {
+    "tyres": "hard",
+    "pit_lane_s": 29.0
+   }
+  },
+  {
+   "sport": "f1",
+   "match_id": "9558",
+   "idx": 19,
+   "period": 39,
+   "clock": "61:46",
+   "type": "Pit stop",
+   "team": "McLaren",
+   "players": {
+    "driver": "Oscar Piastri"
+   },
+   "outcome": "pits for medium tyres",
+   "score": {
+    "lap": 39,
+    "laps": 52,
+    "top": [
+     {
+      "pos": 1,
+      "driver": "Lando Norris",
+      "gap": "leader"
+     },
+     {
+      "pos": 2,
+      "driver": "Carlos Sainz",
+      "gap": "+21.3s"
+     },
+     {
+      "pos": 3,
+      "driver": "Lewis Hamilton",
+      "gap": "+24.4s"
+     },
+     {
+      "pos": 4,
+      "driver": "Max Verstappen",
+      "gap": "+29.3s"
+     },
+     {
+      "pos": 5,
+      "driver": "Oscar Piastri",
+      "gap": ""
+     }
+    ]
+   },
+   "detail": {
+    "tyres": "medium",
+    "pit_lane_s": 29.2
+   }
+  },
+  {
+   "sport": "f1",
+   "match_id": "9558",
+   "idx": 20,
+   "period": 40,
+   "clock": "63:02",
+   "type": "Pit stop",
+   "team": "McLaren",
+   "players": {
+    "driver": "Lando Norris"
+   },
+   "outcome": "pits for soft tyres",
+   "score": {
+    "lap": 40,
+    "laps": 52,
+    "top": [
+     {
+      "pos": 1,
+      "driver": "Lando Norris",
+      "gap": "leader"
+     },
+     {
+      "pos": 2,
+      "driver": "Carlos Sainz",
+      "gap": "+21.3s"
+     },
+     {
+      "pos": 3,
+      "driver": "Lewis Hamilton",
+      "gap": "+21.8s"
+     },
+     {
+      "pos": 4,
+      "driver": "Max Verstappen",
+      "gap": ""
+     },
+     {
+      "pos": 5,
+      "driver": "Oscar Piastri",
+      "gap": "+39.1s"
+     }
+    ]
+   },
+   "detail": {
+    "tyres": "soft",
+    "pit_lane_s": 30.3
+   }
+  },
+  {
+   "sport": "f1",
+   "match_id": "9558",
+   "idx": 21,
+   "period": 40,
+   "clock": "63:08",
+   "type": "Lead change",
+   "team": "Mercedes",
+   "players": {
+    "driver": "Lewis Hamilton",
+    "passed": "Lando Norris"
+   },
+   "outcome": "P1 in the pit stops",
+   "score": {
+    "lap": 40,
+    "laps": 52,
+    "top": [
+     {
+      "pos": 1,
+      "driver": "Lewis Hamilton",
+      "gap": "leader"
+     },
+     {
+      "pos": 2,
+      "driver": "Lando Norris",
+      "gap": ""
+     },
+     {
+      "pos": 3,
+      "driver": "Carlos Sainz",
+      "gap": "+21.3s"
+     },
+     {
+      "pos": 4,
+      "driver": "Max Verstappen",
+      "gap": "+28.2s"
+     },
+     {
+      "pos": 5,
+      "driver": "Oscar Piastri",
+      "gap": ""
+     }
+    ]
+   },
+   "detail": {}
+  },
+  {
+   "sport": "f1",
+   "match_id": "9558",
+   "idx": 22,
+   "period": 40,
+   "clock": "63:23",
+   "type": "Pit stop",
+   "team": "Ferrari",
+   "players": {
+    "driver": "Carlos Sainz"
+   },
+   "outcome": "pits for hard tyres",
+   "score": {
+    "lap": 40,
+    "laps": 52,
+    "top": [
+     {
+      "pos": 1,
+      "driver": "Lewis Hamilton",
+      "gap": "leader"
+     },
+     {
+      "pos": 2,
+      "driver": "Lando Norris",
+      "gap": "+2.0s"
+     },
+     {
+      "pos": 3,
+      "driver": "Max Verstappen",
+      "gap": "+6.5s"
+     },
+     {
+      "pos": 4,
+      "driver": "Oscar Piastri",
+      "gap": "+17.3s"
+     },
+     {
+      "pos": 5,
+      "driver": "Carlos Sainz",
+      "gap": "+21.3s"
+     }
+    ]
+   },
+   "detail": {
+    "tyres": "hard",
+    "pit_lane_s": 29.0
+   }
+  },
+  {
+   "sport": "f1",
+   "match_id": "9558",
+   "idx": 23,
+   "period": 48,
+   "clock": "76:16",
+   "type": "Overtake",
+   "team": "Red Bull Racing",
+   "players": {
+    "driver": "Max Verstappen",
+    "passed": "Lando Norris"
+   },
+   "outcome": "P2 on track",
+   "score": {
+    "lap": 48,
+    "laps": 52,
+    "top": [
+     {
+      "pos": 1,
+      "driver": "Lewis Hamilton",
+      "gap": "leader"
+     },
+     {
+      "pos": 2,
+      "driver": "Max Verstappen",
+      "gap": "+3.3s"
+     },
+     {
+      "pos": 3,
+      "driver": "Lando Norris",
+      "gap": "+3.4s"
+     },
+     {
+      "pos": 4,
+      "driver": "Oscar Piastri",
+      "gap": "+13.9s"
+     },
+     {
+      "pos": 5,
+      "driver": "Carlos Sainz",
+      "gap": "+26.8s"
+     }
+    ]
+   },
+   "detail": {}
+  },
+  {
+   "sport": "f1",
+   "match_id": "9558",
+   "idx": 24,
+   "period": 51,
+   "clock": "80:16",
+   "type": "Pit stop",
+   "team": "Ferrari",
+   "players": {
+    "driver": "Carlos Sainz"
+   },
+   "outcome": "pits for soft tyres",
+   "score": {
+    "lap": 51,
+    "laps": 52,
+    "top": [
+     {
+      "pos": 1,
+      "driver": "Lewis Hamilton",
+      "gap": "leader"
+     },
+     {
+      "pos": 2,
+      "driver": "Max Verstappen",
+      "gap": "+2.8s"
+     },
+     {
+      "pos": 3,
+      "driver": "Lando Norris",
+      "gap": "+6.2s"
+     },
+     {
+      "pos": 4,
+      "driver": "Oscar Piastri",
+      "gap": "+13.3s"
+     },
+     {
+      "pos": 5,
+      "driver": "Carlos Sainz",
+      "gap": "+26.3s"
+     }
+    ]
+   },
+   "detail": {
+    "tyres": "soft",
+    "pit_lane_s": 28.7
+   }
+  },
+  {
+   "sport": "f1",
+   "match_id": "9558",
+   "idx": 25,
+   "period": 52,
+   "clock": "80:57",
+   "type": "Last lap",
+   "team": "Mercedes",
+   "players": {
+    "leader": "Lewis Hamilton"
+   },
+   "outcome": "final lap",
+   "score": {
+    "lap": 52,
+    "laps": 52,
+    "top": [
+     {
+      "pos": 1,
+      "driver": "Lewis Hamilton",
+      "gap": "leader"
+     },
+     {
+      "pos": 2,
+      "driver": "Max Verstappen",
+      "gap": "+2.6s"
+     },
+     {
+      "pos": 3,
+      "driver": "Lando Norris",
+      "gap": "+6.5s"
+     },
+     {
+      "pos": 4,
+      "driver": "Oscar Piastri",
+      "gap": "+12.9s"
+     },
+     {
+      "pos": 5,
+      "driver": "Carlos Sainz",
+      "gap": "+47.3s"
+     }
+    ]
+   },
+   "detail": {}
+  },
+  {
+   "sport": "f1",
+   "match_id": "9558",
+   "idx": 26,
+   "period": 52,
+   "clock": "82:26",
+   "type": "Finish",
+   "team": "Mercedes",
+   "players": {
+    "winner": "Lewis Hamilton"
+   },
+   "outcome": "chequered flag",
+   "score": {
+    "lap": 52,
+    "laps": 52,
+    "top": [
+     {
+      "pos": 1,
+      "driver": "Lewis Hamilton",
+      "gap": "leader"
+     },
+     {
+      "pos": 2,
+      "driver": "Max Verstappen",
+      "gap": "+1.5s"
+     },
+     {
+      "pos": 3,
+      "driver": "Lando Norris",
+      "gap": "+7.5s"
+     },
+     {
+      "pos": 4,
+      "driver": "Oscar Piastri",
+      "gap": "+12.4s"
+     },
+     {
+      "pos": 5,
+      "driver": "Carlos Sainz",
+      "gap": "+47.3s"
+     }
+    ]
+   },
+   "detail": {}
+  }
+ ]
+}
