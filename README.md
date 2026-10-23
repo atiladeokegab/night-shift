@@ -49,8 +49,8 @@ stands in for the embedded highlights, and the numbers are samples.</sub>
 - **Calls the moment, over the real match.** The page plays the match's official highlights (an
   embedded YouTube player, muted). As each key moment plays (shots, goals, saves, wickets, boundaries)
   the commentator looks up the facts it needs with tools (score, player, recent play) and calls it in
-  one short line, shown as a large subtitle and spoken aloud. A line never appears before its moment
-  plays in the video.
+  one short line, shown as a large subtitle and spoken aloud. The video player's clock drives the
+  commentary, so a line never runs ahead of the picture.
 - **Sounds like a commentator.** A goal, a saved penalty, a six or a wicket is called with a live
   commentator's excitement, at most 20 words, with every name and score still right.
 - **Your choice of voice.** The voice is a setting on the page: cricket defaults to an Indian
@@ -117,6 +117,16 @@ make dev     # the live page on localhost; set MUBIT_API_KEY in .env for real co
 All application code was written during the event. The only files brought in are the team's own deploy
 tooling (`Dockerfile`, `scripts/deploy.sh` and the bootstrap script), copied from our starter repo; that
 commit names its source.
+
+## What we'd build next
+
+Today Touchline calls replays of real football and cricket matches, with the commentary synced to the
+official footage. Next:
+
+- **More sports, then esports.** The same agent and tools, with a new adapter per sport, then
+  video-game events, where the match data already comes as a live feed.
+- **Live streams, not just replays.** Calling a match as it is broadcast, with the same producer fixes
+  feeding the same training loop.
 
 ## Team
 
