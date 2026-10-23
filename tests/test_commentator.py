@@ -223,6 +223,7 @@ def test_preamble_alone_is_no_line(said):
         "I have all the information I need from your message.\n\nGoal! Ann buries it.",
         "I have all the information I need from your message. Goal! Ann buries it.",
         "Based on the score, here goes: Goal! Ann buries it.",
+        "I have all the information I need from your message… Goal! Ann buries it.",
     ],
 )
 def test_preamble_never_becomes_the_line(said):
@@ -233,3 +234,12 @@ def test_preamble_never_becomes_the_line(said):
 def test_a_line_starting_with_now_is_kept():
     line = line_for(FOOT, [moment(FOOT, 0)], 0, Scripted(text("Now that is a strike from Ann!")))
     assert line["text"] == "Now that is a strike from Ann!"
+
+
+def test_one_untemplated_prompt_asks_for_a_broadcast_call_on_big_moments():
+    # A-3.6 offline: the live check (a judge on real lines) is tests/acceptance/test_A_3_6.py.
+    system = commentator.SYSTEM
+    assert "$" not in system and "{" not in system  # fixed text, never templated per sport
+    for big in ("goal", "saved or missed penalty", "six", "wicket", "emotion", "20 words"):
+        assert big in system
+    assert "calmly" in system  # routine moments stay calm

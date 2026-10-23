@@ -125,7 +125,7 @@ class NoLine(ValueError):
 # The model talking about its task, not the match: "I have all the information I need ...".
 _PREAMBLE = re.compile(
     r"^(?:I\b|I'(?:m|ve|ll|d)\b|Let me\b|Let's (?:see|check|look)\b|Based on\b"
-    r"|Here(?:'s| is)\b|(?:Okay|OK|Sure|Great|Alright),)[^.!?:\n]*[.!?:]*\s*"
+    r"|Here(?:'s| is)\b|(?:Okay|OK|Sure|Great|Alright),)[^.!?:…\n]*[.!?:…]*\s*"
 )
 
 
