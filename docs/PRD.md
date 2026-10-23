@@ -1,6 +1,4 @@
-<!-- Generated from the team PRD (v5: changes C-001 to C-004, approved 2026-10-23). This copy is what every agent builds and reviews against; it is refreshed whenever the PRD changes. The model's input is event data; the highlights video is display only. -->
-
-# night-shift: PRD v5
+# night-shift: PRD v6
 
 ## Problem
 Most matches in most sports are played with nobody calling them: grassroots and lower-league football, most of the women's game, club and county cricket. A clever model could commentate them, but it is too slow to call a moment while it is still on screen and too expensive to run for every moment of every match.
@@ -109,6 +107,8 @@ Why: What the judges see and hear
 - A-6.2@1 Scenario: one tap switches sport mid-demo, and the score bar, field and commentary follow (`tests/acceptance/test_A_6_2.py`)
 - A-6.3@1 Scenario: the voice is a setting on the page; by default cricket is called in an Indian commentator voice and football in a British one, and changing the voice changes the next line's audio without reloading (`tests/acceptance/test_A_6_3.py`)
 - A-6.4@2 Scenario: each demo match has a video map (YouTube id plus the video time of the first showing of each key moment) checked into data/; the server sends each mapped moment's line ahead of time tagged with its video time, and the page shows and speaks it when the YouTube player's current time reaches that video time (within 0.5 s); when the video buffers, pauses or is sought, the commentary waits for the player and never runs ahead of the picture (`tests/acceptance/test_A_6_4.py`)
+- A-6.5@1 Scenario: the home page is a wall of every demo match, each tile playing its highlights muted with no commentary; tapping a tile expands it to fill the screen and the commentator calls it, synced to the video as in A-6.4; one tap returns to the wall or opens another match, and the commentary follows the match on screen and never the one left behind (`tests/acceptance/test_A_6_5.py`)
+- A-6.6@1 Scenario: the commentator voice sounds like an excited broadcast commentator: the lead picks the voice and model from a recorded listening test (docs/voice.md names the pick and the samples compared), goals, wickets, sixes, saves and finishes are voiced with audible emotion, and each line's audio is ready before the video reaches its moment (`tests/acceptance/test_A_6_6.py`)
 
 ### R-7 [P2 · Proof] The proof panel shows quality, cost and latency
 rank 7 · state proposed · needs R-2, R-4 · touches `web/`, `core/`
@@ -126,13 +126,14 @@ Why: The submission and the demo criterion
 - A-9.1@1 Scenario: README.md has what it is, how to run it, the live URL, a screenshot and data credits (StatsBomb, Cricsheet), with no placeholders (`tests/acceptance/test_A_9_1.py`)
 - A-9.2@1 Scenario: docs/demo.md tells one human promise (every match gets a commentator) with the live call as its peak, at most one line on the tech, rehearsed once on the deployed URL (`tests/acceptance/test_A_9_2.py`)
 
-### R-10 Iconic extra screens after the core works: Messi v Mbappe, Jordan, Hamilton
+### R-10 Iconic extra screens after the core works: Messi v Mbappe, Jordan, Kobe, Hamilton
 rank 10 · state proposed · needs R-6 · touches `data/`, `agent/`, `core/`
 Why: Iconic moments that resonate with the audience; shows the one commentator generalises
 - A-10.1@1 Scenario: an iconic basketball game from real play-by-play data (Michael Jordan's last shot, 1998 NBA Finals Game 6 against Utah, or the nearest iconic Jordan game with real data) replays over its official highlights and the same commentator calls its key moments (made baskets in the closing minutes, lead changes, steals, the go-ahead shot, the final buzzer) with every name and score right (`tests/acceptance/test_A_10_1.py`)
 - A-10.2@1 Scenario: an iconic F1 race from real timing data (Lewis Hamilton's 2024 British Grand Prix win at Silverstone, or the nearest iconic race with real data) replays over its official highlights and the same commentator calls its key moments (overtakes and lead changes, pit stops, safety car, the last lap and the finish) with every driver, position and gap right (`tests/acceptance/test_A_10_2.py`)
 - A-10.3@1 Scenario: all four sports are one Mubit task: the system prompt, tools, message template and tool_choice are byte-identical for football, cricket, basketball and F1, and the match picker lists all four (`tests/acceptance/test_A_10_3.py`)
 - A-10.4@1 Scenario: the 2022 World Cup final, Argentina v France, from StatsBomb open data replays over its official highlights and the same commentator calls its key moments (Messi's penalty and his extra-time goal, Di Maria's goal, Mbappe's penalty and his volley, the shoot-out) with every name and score right (`tests/acceptance/test_A_10_4.py`)
+- A-10.5@1 Scenario: an iconic Kobe Bryant game from real play-by-play data (his 81 points against Toronto, 22 January 2006, or the nearest iconic Kobe game with real data) replays over its broadcast highlights and the same commentator calls its key moments (his big baskets, lead changes, the record-breaking points, the final buzzer) with every name and score right (`tests/acceptance/test_A_10_5.py`)
 
 ## References
 _(none)_
