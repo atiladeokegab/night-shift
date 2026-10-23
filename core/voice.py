@@ -26,8 +26,9 @@ CONCURRENCY = 3  # a whole match's lines arrive in seconds; ElevenLabs caps conc
 
 # The page's voice setting. ids are ours; eleven_id never leaves the server. VOICE_<SPORT> takes an
 # id here or any ElevenLabs voice id (all_voices) as the sport's default: the lead's pick from
-# docs/voice.md is config, not code. Viraj and Connor are ElevenLabs library voices: the first call on each is slow (13-16 s measured
-# 2026-10-23), so run `uv run python -m core.voice` before the demo.
+# docs/voice.md is config, not code. Viraj and Connor are ElevenLabs library voices: the first
+# call on each is slow (13-16 s measured 2026-10-23), so run `uv run python -m core.voice`
+# before the demo.
 VOICES = [
     {
         "id": "viraj",
@@ -89,7 +90,7 @@ def default_voice(sport: str | None, env=os.environ) -> dict:
 
 
 def model_for(sport: str | None, env=os.environ) -> str:
-    return env.get(f"VOICE_MODEL_{str(sport).upper()}", MODEL)
+    return env.get(f"VOICE_MODEL_{str(sport).upper()}") or MODEL  # empty in .env means unset
 
 
 class Speaker:

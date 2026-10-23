@@ -267,3 +267,11 @@ def test_a_raw_elevenlabs_voice_id_is_a_config_only_pick(tmp_path, monkeypatch):
     assert voices["football-pick"]["lang"] == "en-GB" and voices["connor"]["default_for"] is None
     assert "gU0LNdkMOQCOrPrwtbee" not in json.dumps(list(voices.values()))
     assert [voice_in(r) for r in seen] == ["gU0LNdkMOQCOrPrwtbee"]  # the second request is cached
+
+
+def test_empty_voice_settings_from_env_example_keep_the_defaults(monkeypatch):
+    from core.voice import default_voice, model_for
+
+    for name in ("VOICE_FOOTBALL", "VOICE_MODEL_FOOTBALL"):
+        monkeypatch.setenv(name, "")
+    assert default_voice("football")["id"] == "connor" and model_for("football") == "eleven_v3"
