@@ -37,7 +37,7 @@ def _score(header: dict, m: dict) -> str:
             so = m["detail"]["shootout"]
             text += f" (penalties {so['home']}-{so['away']})"
         return text
-    text = f"{m['team']} {s['runs']}/{s['wickets']}"
+    text = f"{m['team']} {s['runs']} for {s['wickets']}"  # said as written: runs, then wickets
     if "target" in s:
         need = max(0, s["target"] - s["runs"])
         text += f", target {s['target']}, need {need} from {m['detail']['balls_left']} balls"

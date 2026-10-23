@@ -246,3 +246,12 @@ def test_one_untemplated_prompt_asks_for_a_broadcast_call_on_big_moments():
     for rule in ("changes the score, the lead or the result", "emotion", "20 words"):
         assert rule in system
     assert "calmly" in system  # routine moments stay calm
+
+
+def test_cricket_score_reads_runs_for_wickets():
+    # "10/2" was read aloud backwards ("two for ten"); the message spells the order out.
+    past = [moment(CRIC, 2, score={"runs": 10, "wickets": 2})]
+    message = build_request(CRIC, past)["messages"][0]["content"]
+    assert "Score after this moment: A 10 for 2\n" in message
+    assert commentator.run_tool("get_score", {}, CRIC, past).startswith("A 10 for 2;")
+    assert "10/2" not in json.dumps(build_request(CRIC, past))
