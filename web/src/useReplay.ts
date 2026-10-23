@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react'
 import { createReplay, followReplay, type StreamStatus } from './api'
-import type { Line, Moment } from './types'
+import type { Line, Moment, Stats } from './types'
 
 export interface ReplayState {
   phase: 'idle' | 'starting' | 'live' | 'failed'
@@ -9,6 +9,7 @@ export interface ReplayState {
   lines: Line[] // newest first
   ended: boolean
   error: string | null // a server `error` event: the commentator failed mid-replay
+  stats: Stats | null // the latest `stats` event; store-wide, so it outlives a single replay
 }
 
 type Action =
@@ -17,22 +18,24 @@ type Action =
   | { type: 'failed' }
   | { type: 'moment'; moment: Moment }
   | { type: 'line'; line: Line }
+  | { type: 'stats'; stats: Stats }
   | { type: 'stream'; status: StreamStatus }
   | { type: 'error'; detail: string }
   | { type: 'end' }
 
-const initial: ReplayState = { phase: 'idle', stream: 'ok', moments: [], lines: [], ended: false, error: null }
+const initial: ReplayState = { phase: 'idle', stream: 'ok', moments: [], lines: [], ended: false, error: null, stats: null }
 
 // A reconnect gets the whole replay again, so moments and lines already held are dropped by key.
 function reduce(s: ReplayState, a: Action): ReplayState {
   switch (a.type) {
-    case 'start': return { ...initial, phase: 'starting' }
+    case 'start': return { ...initial, phase: 'starting', stats: s.stats }
     case 'started': return { ...s, phase: 'live' }
     case 'failed': return { ...s, phase: 'failed' }
     case 'moment':
       return s.moments.some((m) => m.idx === a.moment.idx) ? s : { ...s, moments: [...s.moments, a.moment] }
     case 'line':
       return s.lines.some((l) => l.line_id === a.line.line_id) ? s : { ...s, lines: [a.line, ...s.lines] }
+    case 'stats': return { ...s, stats: a.stats }
     case 'stream': return { ...s, stream: a.status }
     case 'error': return { ...s, error: a.detail }
     case 'end': return { ...s, ended: true, stream: 'ok' }
@@ -62,6 +65,7 @@ export function useReplay(onLine: (line: Line) => void) {
           dispatch({ type: 'line', line: e.line })
           said.current(e.line)
         }
+        if (e.type === 'stats') dispatch({ type: 'stats', stats: e.stats })
         if (e.type === 'error') dispatch({ type: 'error', detail: e.detail })
         if (e.type === 'end') dispatch({ type: 'end' })
       },

@@ -527,3 +527,53 @@ button.primary {
     stroke-dashoffset: 0;
   }
 }
+
+/* Proof panel */
+
+.side {
+  display: grid;
+  gap: 16px;
+}
+
+.proof h2 {
+  font-size: 1.5rem;
+  margin-bottom: 8px;
+}
+
+.proof dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+  margin: 0;
+}
+
+.proof dd {
+  margin: 0;
+  font-family: var(--condensed);
+  font-size: 1.9rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.proof .adapter {
+  margin-top: 8px;
+}
+
+.proof .adapter .result {
+  margin: 0;
+  font-weight: 600;
+  font-size: 1.1rem;
+  line-height: 1.3;
+}
+
+.proof .adapter .muted {
+  margin: 4px 0 0;
+  font-size: 0.875rem;
+}
+
+.proof .footnote {
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+}

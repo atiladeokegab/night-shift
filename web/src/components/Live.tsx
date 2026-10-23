@@ -4,6 +4,7 @@ import type { ReplayState } from '../useReplay'
 import type { useSpeech } from '../useSpeech'
 import { Ground } from './Ground'
 import { LineLog } from './LineLog'
+import { ProofPanel } from './ProofPanel'
 import { Pitch } from './Pitch'
 import { ScoreBar } from './ScoreBar'
 
@@ -19,7 +20,7 @@ interface Props {
 }
 
 // The live match page (docs/design.md "Screens"): score bar, controls, the field with the subtitle
-// under it, and the line log beside it (stacked under 760px).
+// under it, and the line log and proof panel beside it (stacked under 760px).
 export function Live({ match, replay, speech, canSwitchTo, onSwitch, onRetry, onReconnect, onBack }: Props) {
   const moment = replay.moments.at(-1) ?? null
   const latest = replay.lines[0]
@@ -84,6 +85,7 @@ export function Live({ match, replay, speech, canSwitchTo, onSwitch, onRetry, on
         </section>
         <aside className="side">
           <LineLog lines={replay.lines} moments={replay.moments} />
+          <ProofPanel live={replay.stats} />
         </aside>
       </div>
     </main>
