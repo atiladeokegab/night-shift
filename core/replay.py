@@ -3,6 +3,7 @@ moments ahead of time), asks the commentator for a Line per moment, stores each 
 moment, line and stats events for the SSE stream."""
 
 import asyncio
+import time
 import uuid
 from collections.abc import Callable
 
@@ -32,6 +33,7 @@ class Replay:
         self.id = uuid.uuid4().hex[:12]
         self.match_id = match_id
         self.speed = speed
+        self.started = time.monotonic()
         self.events: list[dict] = []
         self.done = False
         self._changed = asyncio.Condition()
@@ -66,6 +68,7 @@ async def run_replay(
     commentate: Callable[[dict, list[dict]], dict],
     store,
     video: dict | None = None,
+    speak: Callable[[dict, dict, float | None], None] | None = None,
 ) -> None:
     # A video map: only mapped moments are called, each tagged with its video time and sent as
     # soon as it is ready; the page holds each line until the player reaches that time.
@@ -93,6 +96,10 @@ async def run_replay(
                 continue
             line = {**line, **tag}
             store.append("lines", line)
+            # shortcut: due at replay start + video_t, as if the video starts with the replay;
+            # the player's own clock if the page ever sends it.
+            if speak:
+                speak(line, moment, replay.started + tag["video_t"] if tag else None)
             await replay.publish("line", line)
             await replay.publish("stats", stats(store))
     except Exception as exc:  # the stream says why it stopped instead of hanging open

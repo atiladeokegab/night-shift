@@ -16,7 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from core.replay import Replay, run_replay
 from core.stats import stats
 from core.store import open_store
-from core.voice import voice_router
+from core.voice import Speaker, voice_router
 
 WEB = Path(__file__).resolve().parent.parent / "web" / "dist"
 
@@ -56,6 +56,7 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
     store = store or open_store()
     deps = deps or default_deps()
     replays: dict[str, Replay] = {}
+    speaker = Speaker(tts_transport)
     tasks: set[asyncio.Task] = set()
 
     def need_deps() -> Deps:
@@ -81,7 +82,9 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
         replay = Replay(req.match_id, req.speed)
         replays[replay.id] = replay
         video = d.video_map(req.match_id)
-        task = asyncio.create_task(run_replay(replay, moments, d.commentate, store, video))
+        task = asyncio.create_task(
+            run_replay(replay, moments, d.commentate, store, video, speaker.prepare)
+        )
         tasks.add(task)
         task.add_done_callback(tasks.discard)
         return {"replay_id": replay.id}
@@ -139,7 +142,7 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
         """The backup demo page: one static file, so the demo runs even without web/."""
         return FileResponse(Path(__file__).with_name("stage.html"), media_type="text/html")
 
-    app.include_router(voice_router(store, tts_transport))
+    app.include_router(voice_router(store, speaker))
     # the built page (web/, #18) at /, mounted last so every API route above wins
     if WEB.is_dir():
         app.mount("/", StaticFiles(directory=WEB, html=True), name="web")
