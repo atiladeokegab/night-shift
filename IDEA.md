@@ -61,10 +61,10 @@ contracts; only the lead changes it.
 
 | Area | Directories | Owner | Issues |
 |---|---|---|---|
-| backend: core, commentator, data, eval, deploy | `core/`, `agent/`, `data/`, `eval/`, `scripts/`, `docs/`, `Makefile`, `pyproject.toml`, `Dockerfile`, `.dockerignore` | — | — |
-| web | `web/` | — | — |
-| tests | `tests/`, `data/sample/` | — | — |
-| submission | `README.md`, `docs/` | — | — |
+| backend: core, commentator, data, eval, deploy | `core/`, `agent/`, `data/`, `eval/`, `scripts/`, `docs/`, `Makefile`, `pyproject.toml`, `Dockerfile`, `.dockerignore` | @atiladeokegab [Prometheus], @atiladeokegab | #1, #3, #13, #14, #15, #16, #17, #20 |
+| web | `web/` | @PersiaF04 | #4, #18, #19 |
+| tests | `tests/`, `data/sample/` | @atiladeokegab [Prometheus], @atiladeokegab | #6, #11, #12 |
+| submission | `README.md`, `docs/` | @atiladeokegab [Prometheus], @atiladeokegab | #1, #21 |
 
 Deploy owner: @atiladeokegab (Zeus). Only they run `make deploy`, from `main` after it moves; two
 laptops deploying undo each other.
