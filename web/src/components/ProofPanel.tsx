@@ -6,7 +6,7 @@ interface Props {
   live: Stats | null // the latest `stats` event from the replay, newer than the first GET /stats
 }
 
-// The proof panel (docs/design.md): first-word latency, cost per line, lines, fixes and the adapter,
+// The proof panel (docs/design.md): the model's first-word latency, cost per line, lines, fixes and the adapter,
 // all from GET /stats, then updated with every `stats` event. Nothing here is computed in the browser.
 export function ProofPanel({ live }: Props) {
   const [fetched, setFetched] = useState<Stats | null>(null)
@@ -28,8 +28,8 @@ export function ProofPanel({ live }: Props) {
         <>
           {stats.lines === 0 && <p className="muted">No lines yet.</p>}
           <dl>
-            <Figure label="First word p50" value={seconds(stats.first_word_ms_p50)} />
-            <Figure label="First word p95" value={seconds(stats.first_word_ms_p95)} />
+            <Figure label="Model first word p50" value={seconds(stats.first_word_ms_p50)} />
+            <Figure label="Model first word p95" value={seconds(stats.first_word_ms_p95)} />
             <Figure label="Cost per line" value={dollars(stats.cost_per_line_usd)} />
             <Figure label="Lines" value={stats.lines ? String(stats.lines) : '–'} />
             <Figure label="Fixes" value={stats.lines ? String(stats.fixes) : '–'} />
@@ -37,7 +37,11 @@ export function ProofPanel({ live }: Props) {
           <AdapterResult adapter={stats.adapter} />
         </>
       )}
-      <p className="footnote">First word: time from the moment to the first spoken word. Measured through Mubit.</p>
+      {/* first_word_ms is when the model's first word of text arrives (#37 review): label only what is measured. */}
+      <p className="footnote">
+        Model first word: time from the moment to the commentator model's first word of text, measured
+        through Mubit. Waiting for the video and speaking the line come after it and are not included.
+      </p>
     </section>
   )
 }
