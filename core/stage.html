@@ -123,14 +123,20 @@ const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => Object.assign(document.createElement(tag), cls ? { className: cls } : {}, text != null ? { textContent: text } : {});
 const mmss = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
-let matches = [], match = null, es = null, yt = null, player = null, ytFailed = false;
+let matches = [], match = null, es = null, yt = null, player = null, ytFailed = false, apiFailed = false;
 let moments = {}, seen = new Set(), held = [], queue = [], logged = new Map(), lastT = 0;
 
 // YouTube IFrame API. If it cannot load (offline), lines fall back to showing as they arrive.
 const ytApi = new Promise((resolve) => { window.onYouTubeIframeAPIReady = () => resolve(window.YT); });
 const ytScript = Object.assign(document.createElement("script"), { src: "https://www.youtube.com/iframe_api" });
-const noVideo = () => { ytFailed = true; $("video").classList.add("off"); $("novideo").hidden = false; queue.splice(0).forEach(show); };
-ytScript.onerror = noVideo;
+const noVideo = (e) => {
+  ytFailed = true;
+  $("video").classList.add("off");
+  $("novideo").textContent = `Video unavailable${e && e.data ? ` (YouTube error ${e.data})` : ""}: lines show as they arrive.`;
+  $("novideo").hidden = false;
+  queue.splice(0).forEach(show);
+};
+ytScript.onerror = () => { apiFailed = true; noVideo(); };
 document.head.append(ytScript);
 
 function subtitle(text, mode, tag) {
@@ -267,9 +273,9 @@ function onState(e) {
 }
 
 function loadVideo(id) {
-  $("video").classList.toggle("off", !id);
-  $("novideo").hidden = !!id;
-  if (!id) return player && player.pauseVideo();
+  $("video").classList.toggle("off", !id || ytFailed);
+  $("novideo").hidden = !!id && !ytFailed;
+  if (!id || ytFailed) return player && player.pauseVideo();
   ytApi.then((YT) => {
     if (yt) return yt.loadVideoById(id);
     yt = new YT.Player("player", {
@@ -285,7 +291,7 @@ async function start(sport) {
   if (!m) return;
   if (es) es.close();
   stopVoice();
-  match = m; moments = {}; seen = new Set(); held = []; queue = []; logged = new Map(); lastT = 0;
+  match = m; ytFailed = apiFailed; moments = {}; seen = new Set(); held = []; queue = []; logged = new Map(); lastT = 0;
   $("log").replaceChildren();
   document.querySelectorAll("#sports button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.sport === sport));
   scorebar(null);
