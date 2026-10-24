@@ -221,3 +221,18 @@ def test_the_live_smoke_passes_on_a_replay_that_reuses_stored_insight_lines(tmp_
     monkeypatch.setattr(smoke.httpx, "Client", lambda **_: TestClient(app))
     assert smoke.live("http://testserver") == 0
     assert smoke.live("http://testserver") == 0  # its insight lines come from the store
+
+
+def test_the_live_smoke_fails_when_a_streamed_line_never_reached_the_store(tmp_path, monkeypatch):
+    class Lossy(Store):  # every line append is lost
+        def _write(self, kind, text):
+            if kind != "lines":
+                super()._write(kind, text)
+
+    monkeypatch.delenv("ELEVENLABS_API_KEY", raising=False)
+    calls = functools.partial(commentator.commentate, provider=FakeProvider())
+    app = create_app(store=Lossy(tmp_path), deps=Deps(list_matches, load_moments, calls, video_map))
+    monkeypatch.setattr(smoke.httpx, "Client", lambda **_: TestClient(app))
+    with pytest.raises(AssertionError, match="not in store"):
+        smoke.live("http://testserver")
+    assert TestClient(app).get("/lines/nope").status_code == 404
