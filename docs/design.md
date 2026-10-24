@@ -53,7 +53,7 @@ broadcast highlights embedded from YouTube (ITV for the final, the TV feed for I
 | `--bg` | `#06080F` | Page |
 | `--fg` | `#F6F4EF` | Text (warm white) |
 | `--muted` | `#F6F4EF` at 66% | Secondary text |
-| `--faint` | `#F6F4EF` at 42% | Labels, footnotes |
+| `--faint` | `#F6F4EF` at 42% | Labels |
 | `--glass` | `rgba(14, 18, 31, .55)` under a white sheen from 7% to 1.5% | Every card, bar and sheet |
 | `--line` / `--line-hi` | white at 10% / 20% | Glass borders and dividers / hover |
 | `--amber` | `#FFB547`; buttons a gradient `#FFC56B` → `#F5A524` with text `#1B1203` | The accent: the wordmark, primary buttons, the selected speed chip, the clock, the moment tag, timeline markers |
