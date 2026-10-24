@@ -347,15 +347,16 @@ function onState(e) {
   if (current && !current.ended) playing ? current.play().catch(() => {}) : current.pause();
 }
 
-function loadVideo(id) {
+// Start where the main page does, 10 s before the first mapped moment: video_t is the video's own clock.
+function loadVideo(id, start = 0) {
   $("video").classList.toggle("off", !id || ytFailed);
   $("novideo").hidden = !!id && !ytFailed;
   if (!id || ytFailed) return player && player.pauseVideo();
   ytApi.then((YT) => {
-    if (yt) return yt.loadVideoById(id);
+    if (yt) return yt.loadVideoById({ videoId: id, startSeconds: start });
     yt = new YT.Player("player", {
       videoId: id,
-      playerVars: { autoplay: 1, mute: 1, playsinline: 1, rel: 0 },
+      playerVars: { autoplay: 1, mute: 1, playsinline: 1, rel: 0, start },
       events: { onReady: (e) => { player = e.target; player.mute(); player.playVideo(); }, onStateChange: onState, onError: noVideo },
     });
   });
@@ -376,7 +377,7 @@ async function start(id) {
   document.querySelectorAll("#sports button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.match === id));
   scorebar(null);
   subtitle("Waiting for the first line…", "waiting", m.title);
-  loadVideo(m.youtube_id);
+  loadVideo(m.youtube_id, m.video_start);
   const r = await fetch("/replays", { method: "POST", headers: { "content-type": "application/json" },
     body: JSON.stringify({ match_id: m.match_id, speed: 10 }) }).catch(() => null);
   if (token !== run) return;
