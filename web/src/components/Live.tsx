@@ -26,7 +26,7 @@ interface Props {
   replayKey: number // changes with every started replay, so the video restarts with it
   switching: boolean // started from the sport switch: "Switching to cricket…"
   sports: Sport[] // the sports the server has matches for
-  voice: { status: VoiceStatus; chip: string; speaking: boolean }
+  voice: { status: VoiceStatus; chip: string; speaking: boolean; analyst?: string }
   video: VideoState
   onVideo: (state: VideoState) => void
   onClock: (clock: Clock | null) => void
@@ -155,7 +155,7 @@ export function Live(props: Props) {
   const noVideo = !gated || blocked || video === 'unavailable'
   const title = CARD_COPY[match.match_id]?.title ?? match.title?.split(',')[0] ?? match.match_id
   const speaker = caption?.speaker ?? line?.speaker
-  const onAirLabel = speaker === 'analyst' ? `Analyst · ${ANALYST[match.sport]}` : voiceLabel && `Lead · ${voiceLabel}`
+  const onAirLabel = speaker === 'analyst' ? ['Analyst', voice.analyst].filter(Boolean).join(' · ') : voiceLabel && `Lead · ${voiceLabel}`
   const first = replay.queuedMoments.reduce<typeof moment>((a, m) => (a && (a.video_t ?? 0) <= (m.video_t ?? 0) ? a : m), null)
 
   return (
@@ -274,9 +274,6 @@ export function Live(props: Props) {
     </div>
   )
 }
-
-// The sport's analyst by name, as core/voice.py's ANALYST_FOR reads them (#130).
-const ANALYST: Record<Sport, string> = { cricket: 'George', football: 'Sam', basketball: 'George', f1: 'Sam' }
 
 const mmss = (s: number) => {
   const t = Math.max(0, Math.ceil(s))
