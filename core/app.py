@@ -56,6 +56,7 @@ class Deps:
     look: Callable[[str, list[str]], dict] | None = None
     # a producer's fix as a Score check example (#321): (line, ids already sent) -> sent or None
     score_teach: Callable[[dict, set[str]], dict | None] | None = None
+    record: bool = False  # commentate takes `record=`: a checked line sent again, recorded (#399)
 
 
 def with_fixes(commentate, store):
@@ -112,6 +113,7 @@ def default_deps() -> Deps:
         teach,
         see,
         score_teach,
+        record=True,
     )
 
 
@@ -174,6 +176,8 @@ def create_app(
     looks: Looks | None = None,
 ) -> FastAPI:
     app = FastAPI(title="Touchline")
+    if not os.environ.get("MUBIT_API_KEY"):
+        log.warning("MUBIT_API_KEY unset: Mubit is off, lines use the fallback")
     graph.start()  # once per process; when it fails, Follow a player reads the packs
     store = store or open_store()
     deps = deps or default_deps()
@@ -194,7 +198,9 @@ def create_app(
 
     @app.get("/health")
     def health():
-        return {"status": "ok"}
+        from agent.commentator import mubit_status
+
+        return {"status": "ok", **mubit_status()}
 
     @app.get("/matches")
     def matches():
@@ -237,6 +243,13 @@ def create_app(
                 raise too_many(guard.until_tomorrow(), f"{OFF_TODAY}. Try again tomorrow.")
             if commentate is None:
                 raise too_many(60, "Lots of people are watching. Try again in a minute.")
+        record = None  # a checked line sent again, recorded: never a cached one, nor the smoke's
+        if d.record and not cached and not req.smoke:
+            fixed = commentate  # before the screen note: a line made from it is never recorded
+
+            def record(moment: dict, history: list[dict]) -> dict | None:
+                return fixed(moment, history, record=True)
+
         # a cached replay cost nothing: never a match for cost per full replay
         replay = Replay(req.match_id, req.speed, req.smoke or cached)
         replays[replay.id] = replay
@@ -258,6 +271,7 @@ def create_app(
                 jump or 0,
                 correct,
                 linecheck,
+                record,
             )
         )
         if cached:
@@ -317,18 +331,14 @@ def create_app(
             row = {"line_id": line["line_id"], **sent, "created_at": at}
             await asyncio.to_thread(store.append, "linecheck_fixes", row)
 
-    async def score_teach(line: dict) -> None:
-        """A fix as one Score check example (#321), unless that line was already sent."""
+    async def score_teach(line: dict, corrected: str) -> None:
+        """A fix as Score check examples (#321): the line as said and the producer's text."""
+        from eval.seed_scorecheck import send_fix
+
         try:
-            done = {r["id"] for r in await asyncio.to_thread(store.all, "scorecheck_examples")}
-            sent = await asyncio.to_thread(need_deps().score_teach, line, done)
+            await asyncio.to_thread(send_fix, store, line, corrected, need_deps().score_teach)
         except Exception as exc:
             log.warning("score check example for %s not sent: %s", line["line_id"], str(exc)[:300])
-            return
-        if sent and sent["kind"] != "error":
-            at = datetime.now(UTC).isoformat(timespec="seconds")
-            row = {**sent, "line_id": line["line_id"], "source": "fix", "created_at": at}
-            await asyncio.to_thread(store.append, "scorecheck_examples", row)
 
     def stop_later(replay: Replay) -> None:
         if replay.stopping:
@@ -462,8 +472,8 @@ def create_app(
             task = asyncio.create_task(teach(line))
             tasks.add(task)
             task.add_done_callback(tasks.discard)
-        if d.score_teach and req.reason in TEACHES:
-            task = asyncio.create_task(score_teach(line))
+        if d.score_teach:  # any reason: its label is the data's, and the fix passed the check
+            task = asyncio.create_task(score_teach(line, req.corrected_text))
             tasks.add(task)
             task.add_done_callback(tasks.discard)
         return fix
@@ -624,7 +634,14 @@ def create_app(
 
     @app.get("/stats")
     def get_stats():
-        return {**stats(store), "budget": guard.stats(store), "voice": speaker.health()}
+        from agent.commentator import mubit_status
+
+        return {
+            **stats(store),
+            "budget": guard.stats(store),
+            "voice": speaker.health(),
+            **mubit_status(),
+        }
 
     @app.get("/stage")
     def stage():

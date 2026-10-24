@@ -3,6 +3,7 @@ import { isDemo, lineAudioUrl } from './api'
 import { Floor, loudness, voiceOf, type Speaker } from './turns'
 import type { Line, Voice } from './types'
 
+const FADE_MS = 300
 type Said = Pick<Line, 'line_id' | 'text' | 'fill'> & { speaker?: Speaker }
 // `start` and `end` follow a viewer's answer on and off the air; `end(true)` when a decisive moment cut it off.
 type OnAir = { line: Said; voice: Voice | null; speaker: Speaker; answer?: boolean; big?: boolean; decisive?: boolean; fill?: boolean; start?: () => void; end?: (cut?: boolean) => void }
@@ -31,9 +32,16 @@ export function useSpeech() {
   const fetched = useRef<{ url: string; audio: HTMLAudioElement } | null>(null)
   const saying = useRef<{ text: string; until: number }[]>([]) // Mic on (#286): the last two lines said, and until when the mic may hear them
 
+  const fading = useRef<{ audio: HTMLAudioElement; timer: number } | null>(null) // a cut line on its way out (#379)
+
   // Stops the sound only.
   const stop = useCallback(() => {
     turn.current++
+    if (fading.current) {
+      clearInterval(fading.current.timer)
+      fading.current.audio.pause()
+      fading.current = null
+    }
     if (saying.current[0]?.until === Infinity) saying.current[0].until = performance.now() + 3000
     playing.current?.pause()
     playing.current = null
@@ -112,7 +120,18 @@ export function useSpeech() {
 
   // Says what holds the floor; when it ends, whatever waited for it (if still in time) goes next.
   const play = useCallback(
-    function play(item: OnAir) {
+    function play(item: OnAir, cut = false) {
+      // A big moment cut the line on air: it fades out over FADE_MS rather than stopping dead, then the call starts.
+      const old = playing.current
+      if (cut && old && !old.paused) {
+        turn.current++ // the faded line's events no longer count
+        playing.current = null
+        const step = old.volume / (FADE_MS / 30)
+        const timer = window.setInterval(() => { old.volume = Math.max(0, old.volume - step) }, 30)
+        fading.current = { audio: old, timer }
+        window.setTimeout(() => fading.current?.audio === old && play(item), FADE_MS)
+        return
+      }
       stop()
       item.start?.()
       const mine = turn.current
@@ -165,7 +184,7 @@ export function useSpeech() {
     (line: Said, voice: Voice | null, big = false, decisive = false) => {
       if (!on || silent.current) return
       const item: OnAir = { line, voice, speaker: line.speaker ?? 'lead', big, decisive, fill: line.fill }
-      if (floor.current.take(item, performance.now())) play(item)
+      if (floor.current.take(item, performance.now())) play(item, !!floor.current.cut)
       else if (!isDemo && !voice?.browser) {
         const url = lineAudioUrl(line.line_id, voiceOf(item.speaker, voice?.id).id)
         fetched.current = { url, audio: new Audio(url) } // an Audio loads its src at once

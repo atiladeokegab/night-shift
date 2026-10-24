@@ -100,6 +100,8 @@ test('axe on the review queue: each Fix button says its visible words first', as
   await page.route('**/review', (r) => r.fulfill({ json: [item] }))
   await page.goto('/#review')
   await expect(page.locator('.flag .btn.primary')).toBeVisible()
+  // the match server runs with no MUBIT_API_KEY: degraded, and the page says so (#401)
+  await expect(page.getByText('Mubit unavailable: lines use the fallback')).toBeVisible()
   expect(await serious(page), 'review').toEqual([])
 })
 

@@ -23,7 +23,7 @@ test('a line due while an answer is spoken waits for it, and is only shown once 
   assert.equal(floor.take(lead('save'), 20_000), true) // the floor is free again
 })
 
-test('turns wait for each other in order, the same speaker included: nothing is ever cut mid-line', () => {
+test('routine turns wait for each other in order, the same speaker included: only a big moment ever cuts', () => {
   const floor = new Floor<Said>()
   const shot = lead('shot')
   assert.equal(floor.take(shot, 0), true)
@@ -32,15 +32,39 @@ test('turns wait for each other in order, the same speaker included: nothing is 
   const rebound = floor.ended(shot, 1200)
   assert.equal(rebound?.id, 'rebound') // order kept
   assert.equal(floor.ended(rebound!, 1500)?.id, 'stat')
-  const goals = new Floor<Said>()
-  const numbers = analyst('numbers')
-  goals.take(numbers, 0)
-  assert.equal(goals.take(lead('save'), 100), false)
-  assert.equal(goals.take(lead('goal', true), 200), false) // a goal waits for the turn on air...
-  assert.equal(goals.ended(numbers, 900)?.id, 'goal') // ...then goes ahead of the routine call waiting
-  goals.clear() // a rewind, a pause or leaving drops the held lines too
-  assert.equal(goals.take(analyst('after'), 2000), true)
+  floor.clear() // a rewind, a pause or leaving drops the held lines too
+  assert.equal(floor.take(analyst('after'), 2000), true)
 })
+
+test('a big moment cuts a routine line (to fade out), and drops the routine turns waiting behind it', () => {
+  const floor = new Floor<Said>()
+  const numbers = analyst('numbers')
+  floor.take(numbers, 0)
+  floor.take(lead('save'), 100) // waits
+  const goal = lead('goal', true)
+  assert.equal(floor.take(goal, 200), true)
+  assert.equal(floor.cut, numbers) // the caller fades this one out
+  assert.equal(floor.ended(numbers, 300), null) // the faded line ends nothing
+  assert.equal(floor.ended(goal, 900), null) // and the routine call waiting was dropped
+})
+
+test('a routine turn never cuts, whoever is on air', () => {
+  const floor = new Floor<Said>()
+  floor.take(lead('goal', true), 0)
+  assert.equal(floor.take(lead('save'), 100), false)
+  assert.equal(floor.cut, null)
+})
+
+test("a big turn doesn't cut another big one; it goes next, ahead of routine turns", () => {
+  const floor = new Floor<Said>()
+  const first = lead('goal', true)
+  floor.take(first, 0)
+  floor.take(analyst('stat'), 100)
+  assert.equal(floor.take(lead('lead change', true), 200), false)
+  assert.equal(floor.cut, null)
+  assert.equal(floor.ended(first, 300)?.id, 'lead change')
+})
+
 test('a question asked mid-line is answered when that line ends, and held back while a big moment is due', () => {
   const floor = new Floor<Said>()
   let due = false
@@ -129,14 +153,19 @@ test('the commentary plays at the chosen volume, kept between 0 and 1, and muted
   assert.equal(loudness(0.8, true), 0)
 })
 
-test('a decisive moment waits for the answer on air like any other turn', () => {
+test('a decisive moment cuts the answer on air; a big one that is not decisive waits for it', () => {
   const floor = new Floor<Said>()
+  const cut: string[] = []
+  floor.onCut = (a) => cut.push(a.id)
   const answer: Said = { id: 'answer', speaker: 'analyst', answer: true }
   assert.equal(floor.take(answer, 0), true)
+  assert.equal(floor.take(lead('basket', true), 500), false)
+  assert.deepEqual(cut, [])
   const goal: Said = { id: 'goal', speaker: 'lead', big: true, decisive: true }
-  assert.equal(floor.take(goal, 1000), false)
-  assert.equal(floor.ended(answer, 4000)?.id, 'goal')
+  assert.equal(floor.take(goal, 1000), true)
+  assert.deepEqual(cut, ['answer'])
 })
+
 test('a goal, a wicket, a lead change and the final whistle are decisive; a basket or a six is not', () => {
   assert.equal(isDecisive({ type: 'Shot', outcome: 'Goal' }), true)
   assert.equal(isDecisive({ type: 'Own Goal Against', outcome: 'Own goal' }), true)
@@ -182,15 +211,14 @@ test('while the viewer talks and their answer waits, no fill line starts; a mome
   assert.equal(slow.take(comeback, VIEWER_MS + 1000), false) // the answer still waits: it goes first
 })
 
-test('a big moment waits for the turn on air to end, is not replaced by a routine line, and is never stale', () => {
+test('a big moment held behind another big one is not replaced by a routine line, and is never stale', () => {
   const floor = new Floor<Said>()
-  const talk = analyst('talk')
-  floor.take(talk, 0)
-  assert.equal(floor.take(lead('goal', true), 100), false)
-  assert.equal(floor.take(lead('routine'), 200), false) // does not replace the held goal
-  assert.equal(floor.ended(talk, 100 + HOLD_MAX_MS * 2)?.id, 'goal') // late, still said
+  const first = lead('goal', true)
+  floor.take(first, 0)
+  assert.equal(floor.take(lead('basket', true), 100), false)
+  assert.equal(floor.take(lead('routine'), 200), false)
+  assert.equal(floor.ended(first, 100 + HOLD_MAX_MS * 2)?.id, 'basket') // late, still said
 })
-
 test('one turn on air at a time: every take that returns true cut off the previous one', () => {
   const floor = new Floor<Said>()
   let air = 0
