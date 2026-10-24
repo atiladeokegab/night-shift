@@ -1,4 +1,4 @@
-import { useEffect, useState, type RefObject } from 'react'
+import { useEffect, useState, type ReactNode, type RefObject } from 'react'
 
 interface Props {
   card: RefObject<HTMLElement | null> // the video card, for fullscreen
@@ -13,6 +13,7 @@ interface Props {
   muted: boolean
   onVolume: (volume: number, muted: boolean) => void
   eyes?: { closed: boolean; onToggle: () => void } // Close your eyes (#277), only with a video to cover
+  children?: ReactNode // Let them watch (#291), beside it
 }
 
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
@@ -20,7 +21,7 @@ const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).
 // The playback controls on the bottom edge of the video card (#132): play/pause, a scrubber on the replay
 // clock, the commentary's mute and volume, and fullscreen. A seek only moves the picture: the replay reads
 // the new time from the player's clock, so no line shows or speaks before its moment (A-6.4).
-export function Controls({ card, paused, canPlay, onToggle, now, duration, marks, onSeek, volume, muted, onVolume, eyes }: Props) {
+export function Controls({ card, paused, canPlay, onToggle, now, duration, marks, onSeek, volume, muted, onVolume, eyes, children }: Props) {
   const [full, setFull] = useState(false)
   useEffect(() => {
     const sync = () => setFull(!!document.fullscreenElement)
@@ -57,6 +58,7 @@ export function Controls({ card, paused, canPlay, onToggle, now, duration, marks
       </button>
       <input className="vol" type="range" aria-label="Commentary volume" min={0} max={1} step={0.05} value={silent ? 0 : volume}
         onChange={(e) => onVolume(Number(e.target.value), false)} />
+      {children}
       {eyes && (
         <button className="ctl eyes-btn" aria-pressed={eyes.closed} aria-keyshortcuts="E" title="Close your eyes (E)" onClick={eyes.onToggle}>
           <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4">

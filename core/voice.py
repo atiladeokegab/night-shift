@@ -8,6 +8,7 @@ import logging
 import os
 import sys
 import time
+from datetime import UTC, datetime
 
 import httpx
 from fastapi import APIRouter, HTTPException
@@ -164,6 +165,19 @@ def model_for(sport: str | None, env=os.environ) -> str:
     return env.get(f"VOICE_MODEL_{str(sport).upper()}") or MODEL  # empty in .env means unset
 
 
+def failure(resp: httpx.Response) -> str:
+    """Why ElevenLabs refused: its own `detail.status` on a 401 or 429 (e.g. "quota_exceeded"), else
+    the HTTP status."""
+    if resp.status_code in (401, 429):
+        try:
+            detail = resp.json().get("detail")
+        except ValueError:
+            detail = None
+        if isinstance(detail, dict) and detail.get("status"):
+            return str(detail["status"])
+    return str(resp.status_code) if resp.status_code != 200 else "empty"
+
+
 def voice_of(line: dict) -> dict:
     """Who reads a line when the page picks no voice: the analyst's lines in the analyst voice."""
     if line.get("speaker") == "analyst":
@@ -183,6 +197,23 @@ class Speaker:
         self.jobs: dict[tuple[str, str], asyncio.Task] = {}
         self.tags: dict[str, str | None] = {}
         self.slots = asyncio.Semaphore(CONCURRENCY)
+        # shortcut: per process; one Cloud Run instance today, a shared store if it ever runs more
+        self.failing: dict | None = (
+            None  # {last_error, since} until ElevenLabs answers again (#306)
+        )
+
+    def health(self) -> dict:
+        """Who speaks the lines: ElevenLabs, or the browser since ElevenLabs last failed."""
+        if not os.environ.get("ELEVENLABS_API_KEY"):
+            return {"provider": "browser", "last_error": "not_configured", "since": None}
+        failing = self.failing or {"last_error": None, "since": None}
+        return {"provider": "browser" if self.failing else "elevenlabs", **failing}
+
+    def _failed(self, kind: str) -> None:
+        since = (self.failing or {}).get("since") or datetime.now(UTC).isoformat(timespec="seconds")
+        if kind == "quota_exceeded" and not self.failing:
+            log.error("ElevenLabs quota exceeded: lines fall back to browser speech")
+        self.failing = {"last_error": kind, "since": since}
 
     def prepare(self, line: dict, moment: dict, deadline: float | None = None) -> None:
         """Start the line's audio in its sport's voice; `deadline` is when (time.monotonic) its
@@ -299,10 +330,14 @@ class Speaker:
                     )
             except (httpx.HTTPError, TimeoutError) as exc:
                 log.warning("voice %s failed: %s", model, type(exc).__name__)
+                timeout = isinstance(exc, (TimeoutError, httpx.TimeoutException))
+                self._failed("timeout" if timeout else "network")
                 return None
         if resp.status_code != 200 or not resp.content:
             log.warning("voice %s answered %d", model, resp.status_code)
+            self._failed(failure(resp))
             return None
+        self.failing = None
         return resp.content
 
 
@@ -311,7 +346,7 @@ def warm(
 ) -> dict[str, int | None]:
     """Speak one short line in every voice, the sport picks included, on both models and its
     sport's VOICE_MODEL_<SPORT>; ms per voice, None if one failed. A shared voice is spoken once."""
-    took, warmed = {}, {}
+    took, warmed, quota = {}, {}, False
     with httpx.Client(transport=transport, timeout=30) as client:
         for v in all_voices(env):
             started = time.perf_counter()
@@ -328,10 +363,14 @@ def warm(
                         warmed[v["eleven_id"], model] = resp.status_code == 200 and bool(
                             resp.content
                         )
+                        if not warmed[v["eleven_id"], model] and failure(resp) == "quota_exceeded":
+                            quota = True  # every line would be browser speech
                     except httpx.HTTPError:
                         warmed[v["eleven_id"], model] = False
                 ok = ok and warmed[v["eleven_id"], model]
             took[v["id"]] = round((time.perf_counter() - started) * 1000) if ok else None
+    if quota:
+        log.error("ELEVENLABS QUOTA EXCEEDED: every line falls back to browser speech; add credits")
     return took
 
 
@@ -368,8 +407,10 @@ def voice_router(store, speaker: Speaker) -> APIRouter:
 
     @router.get("/lines/{line_id}/audio")
     async def line_audio(line_id: str, voice: str | None = None):
-        # only stored lines and answers are spoken, so the key can't read out arbitrary text
-        said = await asyncio.to_thread(lambda: store.all("lines") + store.all("answers"))
+        # only stored lines, answers and screen-note lines (#291) are spoken, so the key can't read
+        # out arbitrary text
+        kinds = ("lines", "answers", "looks")
+        said = await asyncio.to_thread(lambda: [x for k in kinds for x in store.all(k)])
         line = next((ln for ln in said if ln.get("line_id") == line_id), None)
         if line is None:
             raise HTTPException(404, f"no line {line_id!r}")

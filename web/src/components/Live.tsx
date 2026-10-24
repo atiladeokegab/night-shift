@@ -17,9 +17,11 @@ import type { Mic } from './MicButton'
 import { Nav, type Screen } from './Nav'
 import { ProfileCard } from './ProfileCard'
 import { ProofPanel } from './ProofPanel'
+import { FALLBACK_NOTE } from '../proof'
 import { ScoreBar } from './ScoreBar'
 import { ShotMap } from './ShotMap'
 import { VideoStage, type VideoState } from './VideoStage'
+import { Watch } from './Watch'
 
 export type VoiceStatus = 'on' | 'off' | 'unavailable'
 
@@ -29,7 +31,7 @@ interface Props {
   replayKey: number // changes with every started replay, so the video restarts with it
   switching: boolean // started from the sport switch: "Switching to cricket…"
   sports: Sport[] // the sports the server has matches for
-  voice: { status: VoiceStatus; chip: string; speaking: boolean; analyst?: string }
+  voice: { status: VoiceStatus; chip: string; speaking: boolean; analyst?: string; fellBack?: boolean }
   video: VideoState
   onVideo: (state: VideoState) => void
   onClock: (clock: Clock | null) => void
@@ -57,6 +59,7 @@ interface Props {
   muted?: boolean
   onVolume?: (volume: number, muted: boolean) => void
   closed?: boolean // "Close your eyes" (#277): the picture covered; local to the page unless App holds it
+  onLook?: (image: string, t: number) => Promise<boolean> // Let them watch (#291): a frame of the shared tab
 }
 
 // The live page (#132): a bounded 16:9 video card with the controls on its bottom edge and the caption card
@@ -230,7 +233,12 @@ export function Live(props: Props) {
             </div>
             <Controls card={card} paused={paused || ended} canPlay={canPlay} onToggle={ended ? onRetry : toggle} now={replay.duration ? Math.min(replay.now, replay.duration) : replay.now} duration={replay.duration}
               marks={marks} onSeek={(t) => transport?.seek(t)} volume={volume} muted={muted} onVolume={onVolume}
-              eyes={noVideo ? undefined : { closed: covered, onToggle: onEyes }} />
+              eyes={noVideo ? undefined : { closed: covered, onToggle: onEyes }}>
+              {/* not hidden at the stream's end: the picture plays on, and the server says when it takes no more */}
+              {!noVideo && props.onLook && replay.phase === 'live' && (
+                <Watch key={replayKey} onLook={props.onLook} time={() => replay.now} />
+              )}
+            </Controls>
           </section>
           {replay.stream === 'reconnecting' && (
             <div className="banner"><div className="glass warn" role="alert"><b />Reconnecting to the replay…</div></div>
@@ -285,11 +293,11 @@ export function Live(props: Props) {
             )}
           </div>
           <div className="pane lines-pane" role="tabpanel" id="pane-lines" aria-labelledby="tab-lines" data-on={tab === 'lines'}>
-            <LineLog lines={shown.lines} late={replay.late} fixes={replay.fixes} moments={shown.moments} onFix={onFix}
+            <LineLog lines={shown.lines} late={replay.late} fixes={replay.fixes} checks={replay.checks} moments={shown.moments} onFix={onFix}
               answers={replay.answers} interrupted={props.interrupted} onHear={props.onHear} onAsk={moment ? (q) => onAsk(q, moment.idx) : null} shooter={null} onShots={openMap} followed={followed} roster={roster} onUnfollow={() => setFollow(null)} voiced={voiced} mic={props.mic} />
           </div>
           <div className="pane" role="tabpanel" id="pane-proof" aria-labelledby="tab-proof" data-on={tab === 'proof'}>
-            <ProofPanel live={replay.stats} matchId={match.match_id} />
+            <ProofPanel live={replay.stats} matchId={match.match_id} fellBack={voice.fellBack} />
           </div>
           {mapped && (
             <div className="pane" role="tabpanel" id="pane-shots" aria-labelledby="tab-shots" data-on={tab === 'shots'}>
@@ -345,7 +353,7 @@ function OnAir({ voice, label, offAir, onOpen }: { voice: Props['voice']; label:
     )
   } else {
     if (voice.speaking) cls += ' on'
-    body = <><span className="rec" /><span className="lbl">ON AIR</span><span className="bars" aria-hidden><span /><span /><span /><span /></span><span className="who">{label}</span></>
+    body = <><span className="rec" /><span className="lbl">ON AIR</span><span className="bars" aria-hidden><span /><span /><span /><span /></span><span className="who">{voice.fellBack ? FALLBACK_NOTE : label}</span></>
   }
   const status = <span className="st" role={offAir || voice.status === 'on' ? 'status' : undefined}>{body}</span>
   if (!onOpen) return <span className={cls}>{status}</span>

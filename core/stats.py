@@ -157,6 +157,19 @@ def _autonomy(calls: list[dict]) -> dict:
     return {"called": n, "first_time": n - auto - human, "auto_fixed": auto, "to_human": human}
 
 
+def _linecheck(store) -> dict:
+    """Line check's second opinion on live lead lines (#298). Every live check is on a line the
+    rules check passed when it was said, so each flag is one the rules missed."""
+    checks = store.all("linechecks")
+    flags = sum(bool(c.get("wrong")) for c in checks)
+    return {
+        "checked": len(checks),
+        "flags": flags,
+        "rules_missed": flags,
+        "fixes_sent": len(store.all("linecheck_fixes")),  # producer fixes sent as examples
+    }
+
+
 def stats(store) -> dict:
     lines = store.all("lines")
     fixes = store.all("fixes")
@@ -204,5 +217,6 @@ def stats(store) -> dict:
         "voice_chars": sum(v.get("chars", 0) for v in voice),
         "autonomy": _autonomy(calls),
         "autonomy_by_match": {m: _autonomy(c) for m, c in by_match.items()},
+        "linecheck": _linecheck(store),
         **_per_match(store, lines, voice),
     }

@@ -14,6 +14,9 @@ commentary still plays on the match's own clock.
 
 - Open the wall, <https://night-shift-5zvig7nbvq-ew.a.run.app>, and check
   [`/health`](https://night-shift-5zvig7nbvq-ew.a.run.app/health) says ok.
+- Run `make demo-check` and go on only when every line says PASS: health, a first line within 30 s,
+  its ElevenLabs audio, the voice not on browser fallback, spend under the daily budget, and Line check
+  in `/stats`.
 - Warm the voices: with the ElevenLabs key in the environment, `uv run python -m core.voice` speaks a
   short line in every voice and prints FAILED for any that fail. A cold library voice can fail its
   first line.

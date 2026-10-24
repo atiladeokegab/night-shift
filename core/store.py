@@ -7,7 +7,18 @@ import os
 import threading
 from pathlib import Path
 
-KINDS = ("lines", "fixes", "auto_fixes", "adapter", "answers", "voice", "replays")
+KINDS = (
+    "lines",
+    "fixes",
+    "auto_fixes",
+    "adapter",
+    "answers",
+    "voice",
+    "replays",
+    "linechecks",  # Line check's second opinion on a live line (#298)
+    "linecheck_fixes",  # producer fixes sent to Line check as examples (#298)
+    "looks",  # frame calls and screen-note lines: that viewer's only (#291)
+)
 
 
 class Store:

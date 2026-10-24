@@ -1,13 +1,13 @@
 // The only module that talks to the match server (docs/CONTRACT.md, 'HTTP'):
 // GET /matches, GET /matches/{id}/start?at=, POST /replays {match_id, speed} -> {replay_id},
 // GET /replays/{id}/stream (SSE: moment, line, stats per moment; error; end last),
-// GET /stats, GET /voices, POST /lines/{id}/fix, POST /replays/{id}/ask, POST /replays/{id}/seen, GET /replays/{id}/players, .../players/{name}/shots and .../profile and GET /lines/{id}/audio?voice=<id>
+// GET /stats, GET /voices, POST /lines/{id}/fix, POST /replays/{id}/ask, POST /replays/{id}/seen, POST /replays/{id}/look, GET /replays/{id}/players, .../players/{name}/shots and .../profile and GET /lines/{id}/audio?voice=<id>
 // (ElevenLabs; 503 when the voice isn't configured).
 import { demoMatches, demoStats, streamDemo } from './demo'
 import { offAir, Refused, refused } from './ask'
 import { playersUrl, type Player, type Profile } from './follow'
 import type { Shots } from './shots'
-import type { Answer, Fix, Line, Match, Moment, ReviewItem, Stats, StreamEvent, Voice } from './types'
+import type { Answer, Fix, Line, LineCheck, Match, Moment, ReviewItem, Stats, StreamEvent, Voice } from './types'
 
 export const isDemo = new URLSearchParams(window.location.search).has('demo')
 
@@ -74,6 +74,7 @@ export function followReplay(
   source.addEventListener('line', (e) => onEvent({ type: 'line', line: JSON.parse(e.data) as Line }))
   source.addEventListener('stats', (e) => onEvent({ type: 'stats', stats: JSON.parse(e.data) as Stats }))
   source.addEventListener('fixed', (e) => onEvent({ type: 'fixed', fix: JSON.parse(e.data) as Fix }))
+  source.addEventListener('linecheck', (e) => onEvent({ type: 'linecheck', check: JSON.parse(e.data) as LineCheck }))
   source.addEventListener('answer', (e) => onEvent({ type: 'answer', answer: JSON.parse(e.data) as Answer }))
   source.addEventListener('error', (e) => {
     // A server `error` event carries {detail}; a dropped connection is a plain Event with no data.
@@ -174,6 +175,23 @@ export async function askCommentator(replayId: string, question: string, momentI
     // the network failed: off air below
   }
   return offAir(question, momentIdx)
+}
+
+// POST /replays/{id}/look (#291): one frame of the shared tab, base64 JPEG, and the video time. false: send
+// no more (the replay is over or has had every frame it takes, a 404 or 410); a 429 or a failure is one frame
+// skipped. The demo has no commentators to watch.
+export async function lookAt(replayId: string, image: string, t: number): Promise<boolean> {
+  if (isDemo) return false
+  try {
+    const res = await fetch(`/replays/${encodeURIComponent(replayId)}/look`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image, t }),
+    })
+    return res.status !== 404 && res.status !== 410
+  } catch {
+    return true
+  }
 }
 
 // GET /replays/{id}/players/{name}/shots (#120), up to the moment on screen. null: no shot record for

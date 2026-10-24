@@ -73,7 +73,15 @@ export interface Line {
 
 // GET /stats and the `stats` SSE event (CONTRACT.md); percentiles are null until there is a line.
 // cost_per_line_usd is null until a line has a cost; adapter.state is collecting until a version is recorded.
+// GET /stats `voice` (#306): who speaks the lines, and ElevenLabs' last failure while it is failing.
+export interface VoiceHealth {
+  provider: 'elevenlabs' | 'browser'
+  last_error: string | null // e.g. "quota_exceeded", "timeout", "429"
+  since: string | null // ISO time the failing began
+}
+
 export interface Stats {
+  voice?: VoiceHealth // GET /stats only: the `stats` event leaves it out
   lines: number
   fixes: number
   mubit_requests: number
@@ -98,6 +106,22 @@ export interface Stats {
   // #204: the lead's calls by how the number check left them, over every match and per match_id
   autonomy?: Autonomy
   autonomy_by_match?: Record<string, Autonomy>
+  linecheck?: LineCheckStats // #298
+}
+
+// #298: Line check's second opinion on live lead lines; every flag is on a line the rules check passed
+export interface LineCheckStats {
+  checked: number
+  flags: number
+  rules_missed: number
+  fixes_sent: number // producer fixes sent to Line check as examples
+}
+
+// The `linecheck` SSE event (#298): Line check's answer on one line. labels null: no canonical reply.
+export interface LineCheck {
+  line_id: string
+  labels: Record<'score' | 'leader' | 'player_total' | 'event', 'ok' | 'wrong' | 'not_said'> | null
+  wrong: string[]
 }
 
 // called = first_time + auto_fixed + to_human: passed the check, fixed by the retry, or the retry failed
@@ -187,6 +211,7 @@ export type StreamEvent =
   | { type: 'line'; line: Line }
   | { type: 'stats'; stats: Stats }
   | { type: 'fixed'; fix: Fix }
+  | { type: 'linecheck'; check: LineCheck }
   | { type: 'answer'; answer: Answer }
   | { type: 'error'; detail: string }
   | { type: 'end' }

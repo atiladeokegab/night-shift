@@ -24,9 +24,10 @@ What you hear are **replays, as if live**: real matches' event data played back 
 
 <!-- DEMO GIF SLOT (build-140): the demo GIF, full width, with a one-line caption under it. -->
 
-**How well the check works:** on 300 lines the live site had said, labelled by a separate model
-before the check ran, it caught 8 of the 15 wrong lines (recall 53%) and flagged no right line for a
-wrong number (precision 100%, 8 of 8). A small sample; [what it misses](#how-well-the-check-works).
+**How well the check works:** on 300 new lines the live site had said, labelled by a separate model
+before the check ran, it caught 1 of the 6 wrong lines (recall 17%) with no false alarm (precision
+100%, 1 of 1), exactly as before #293: on unseen lines the new rules caught nothing more. On the 300
+lines the rules were written against it catches 14 of 15, a tuned-on score. Small samples; [both sets](#how-well-the-check-works).
 
 [**Try it live**](https://night-shift-5zvig7nbvq-ew.a.run.app) · [**Correction loop**](#correction-loop-with-evidence) · [**For judges**](#for-judges) · [**Real numbers**](#real-numbers) · [**Architecture**](docs/ARCHITECTURE.md) · [**Known limitations**](#known-limitations) · [**Checks**](#checks) · [**Run it**](#run-it) · [**Demo script**](docs/demo.md)
 
@@ -356,63 +357,106 @@ because no version has passed.
 
 Before a lead line is spoken, the number check reads it against the moment's data
 ([`core/insight.py`](core/insight.py) `wrong_numbers`, which includes the event check). We measured
-it on 300 lines the live site had already said.
+it twice, on two separate sets of 300 lines the live site had already said.
 
-**Precision 100% (8 of 8 flags were wrong lines). Recall 53% (8 of 15 wrong lines caught).**
+**On lines it was never tuned on, recall did not improve.** On 300 held-out lines it caught 1 of
+the 6 wrong lines (recall 17%) and flagged no right line (precision 100%, 1 of 1): the same as the
+check before #293. The first set is the one the new rules were written against, so its 14 of 15 is a
+tuned-on score, not the result.
 
-| | Lines | Wrong | Flagged | Caught | Missed | False alarms | Precision | Recall |
-|---|---|---|---|---|---|---|---|---|
-| All | 300 | 15 | 8 | 8 | 7 | 0 | 100% | 53% |
-| Basketball | 93 | 4 | 2 | 2 | 2 | 0 | 100% | 50% |
-| Cricket | 56 | 6 | 4 | 4 | 2 | 0 | 100% | 67% |
-| F1 | 25 | 0 | 0 | 0 | 0 | 0 | n/a | n/a |
-| Football | 126 | 5 | 2 | 2 | 3 | 0 | 100% | 40% |
+| Labels | Checker | Lines | Wrong | Flagged | Caught | Missed | False alarms | Precision | Recall |
+|---|---|---|---|---|---|---|---|---|---|
+| **Held-out** (new lines) | after #293 | 300 | 6 | 1 | 1 | 5 | 0 | **100% (1 of 1)** | **17% (1 of 6)** |
+| Held-out (new lines) | before #293 | 300 | 6 | 1 | 1 | 5 | 0 | 100% (1 of 1) | 17% (1 of 6) |
+| First set | before #293 | 300 | 15 | 8 | 8 | 7 | 0 | 100% (8 of 8) | 53% (8 of 15) |
+| First set: the set the rules were written against | after #293 | 300 | 15 | 14 | 14 | 1 | 0 | 100% (14 of 14) | 93% (14 of 15) |
 
-**How the lines were picked.** From a read-only copy of the live store's lines (24 October 2026,
-about 15:40 UTC; 6,446 records), we kept each distinct lead line once, per match, moment and text,
-and left out the analyst's lines and the fallback lines, which are built from the data. We drew 300
-of them, stratified by match: 30 from each of the 7 matches (F1 had only 25 distinct lines, so all
-25), and the rest by each match's share, with a fixed seed (219). 13 are the lead's replies to the
-analyst. Only 6 of the 300 had been through the live check when they were said, because most were
-said before it marked lines; the rest are scored here for the first time.
+With 6 wrong lines, one more catch or miss moves held-out recall by about 17 points.
 
-**Who labelled them.** The lines were labelled by a separate agent reading the match data, before
-running the check. That agent was a model, not a person. It read each line with the match header,
-the moment's data, the eight moments before it and, for a reply, what the analyst had just said. It
-had no access to the checker. It labelled each line right or wrong by the written rules in
-[`eval/checker_eval.py`](eval/checker_eval.py) (`RULES`): a number the data contradicts or does not
-give, a wrong player or team, a wrong lead or level claim, a wrong event, or leaked reasoning is
-wrong; leaving something out is never wrong. The labels were committed before the checker was run on
-them ([`eval/checker_labels.jsonl`](eval/checker_labels.jsonl)).
+**A note on cricket streaks.** A rule for cricket streaks ("back-to-back sixes") was built and then
+dropped. On the held-out set it flagged two lines that the labeller called right:
+- "Kohli makes it four in a row!" at 17.6. Kohli's fours before it came at 17.1 and 17.3. After the
+  four at 17.3 he kept the strike, so 17.4 was his, and 17.4 and 17.5 together made only 2 runs.
+- "back-to-back maximums for Hardik" at 11.6. Pandya's six before it came at 11.1. After it he kept
+  the strike, so 11.2 was his, and 11.2 and 11.3 together made 1 run.
 
-**What it misses.** The 7 wrong lines it let through:
+By the ball numbers neither streak happened, so the labels may be wrong. We did not change them, and
+the precision on unseen lines must not drop, so the rule is out. It is the first set's one miss.
 
-- "Bulls down two with ninety seconds to play!" (two lines, Jordan's Bulls). The clock said 1:45.
-  The check lets a basketball clock round to the half minute, so it accepts ninety.
-- "Back-to-back sixes off Patel!" (Pakistan v India). A dot ball came between them. The check does
-  not test streak claims.
-- "Iftikhar Ahmed to 18 off six balls". The data gives 18 from three sixes in four balls, and 24 off
-  the last six. The check does not test a batter's count over a span.
-- "Lautaro Martínez with the half volley, it's blocked away!" (World Cup final). The shot went off
-  target. The event check does not tell blocked from off target.
-- "Argentina three, France three in the shootout". The shootout was 1-1; 3-3 was the match score.
-- "Argentina three, France two, still level". The numbers are right, but "still level" is not. In
-  football, the check tests a level claim only on a goal.
+**Two sets, and why.** The first set's 7 misses showed six kinds of wrong line the check did not
+test: a basketball clock said to the second, a streak ("back-to-back sixes"), a batter's runs over a
+span of balls, blocked vs off target vs saved, the shootout's score vs the match score, and a level
+claim on a football moment that is not a goal. We added a general rule for each one (#293), except
+the cricket streak (above), and tested each rule on lines of our own as well, right lines included:
+a time in minutes and seconds, the shot clock, a negated or wished-for streak, "not wide", and
+"were level" or "level with the last defender". Fixing a set's own misses makes its score look better
+than the check really is, so we drew a second, held-out set and labelled it before the new rules
+ran on it.
 
-**Read these numbers with care.** 15 wrong lines is a small count. One more catch moves recall by 7
-points, and a 95% interval for 8 of 15 runs from about 30% to 75%. Precision of 8 of 8 means at
-least about 68% at the same confidence. The labels are a model's reading of the data, so they can be
-wrong too.
+**How the lines were picked.** Both sets come from read-only copies of the live store's lines. Each
+set keeps every distinct line once, by match, moment and text. Fallback lines are left out, because
+they are built from the data. Each set is stratified by match: 30 lines from each match, or all of
+them when a match has fewer, and the rest by each match's share, with a fixed seed.
+- First set: seed 219, from a copy taken on 24 October 2026 at about 15:40 UTC (6,446 records). It
+  has lead lines only, 13 of them replies. Only 6 of its lines had been through the live check when
+  they were said.
+- Held-out set: seed 293, from a copy taken on 24 October 2026 at about 18:17 UTC (7,170 records).
+  It excludes all 300 lines of the first set and includes the analyst's lines (47 of them). 90 of
+  its lines had already passed the live check when they were said, so its wrong lines are the ones
+  that check let through.
+
+**Who labelled them.** Each set was labelled by a separate, fresh agent, before the check was run on
+it. Both agents were models, not people. Each agent read every line with:
+- the match header;
+- the moment's data;
+- the eight moments before it;
+- for a reply, what the analyst had just said;
+- for the analyst, what the analyst was given.
+
+Neither agent had access to the checker. Both labelled each line right or wrong by the same written
+rules in [`eval/checker_eval.py`](eval/checker_eval.py) (`RULES`). A line is wrong if it has:
+- a number the data contradicts or does not give;
+- a wrong player or team;
+- a wrong lead or level claim;
+- a wrong event;
+- leaked reasoning.
+
+Leaving something out is never wrong. Each set's labels were committed before the checker was run
+on it ([`eval/checker_labels.jsonl`](eval/checker_labels.jsonl),
+[`eval/heldout_labels.jsonl`](eval/heldout_labels.jsonl)).
+
+**What it still misses.** The 5 held-out lines labelled wrong that it let through are of kinds it
+does not test:
+- an analyst line calling a two-pointer a three, with the wrong points total;
+- "at the halfway mark" with 12 of 20 overs bowled;
+- "Tottenham still lead one-nil" when Tottenham led 2-1;
+- "one kick away" after the shootout's winning kick;
+- "Kohli! Two sixes tonight". The labeller saw only this six in the eight moments it was shown. The
+  match data has an earlier Kohli six at 11.4, so we think this label is mistaken too.
+
+**Read these numbers with care.** These are small counts:
+- 6 wrong held-out lines put a 95% interval for recall of about 3% to 56%;
+- 1 of 1 flag puts precision at no less than about 21%;
+- the first set's 14 of 15 is about 70% to 99% at the same confidence, but on lines the rules
+  were written for;
+- three of the 6 held-out wrong labels were judgement calls: "one kick away" after the winning
+  kick, "the halfway mark" at 12 overs, and Kohli's "two sixes".
+
+The labels are a model's reading of the data, so they can be wrong too, as the two cricket streak
+lines above may show.
 
 **Omissions are counted apart.** The live check also retries a line that leaves out a milestone or
 how a shot ended. The labels never call an omission wrong, so the figures above leave those reasons
-out. Counted as the live check counts them, it also flags 14 lines labelled right, for a precision of
-36%. Each such line is regenerated once; if the retry fails too, the line built from the data is
-said instead, and the failed try goes to the producer's fix queue.
+out. Counted as the live check counts them, the precision falls to 10% on the held-out set (9 lines
+labelled right also flagged) and to 50% on the first set (14). Each such line is regenerated once.
+If the retry fails too, the line built from the data is said instead, and the failed try goes to
+the producer's fix queue.
 
-Rerun it with `uv run python -m eval.checker_eval`. The test
-[`tests/test_checker_eval.py`](tests/test_checker_eval.py) fails if the checker drops below 90%
-precision or 50% recall on these labels.
+Rerun it with `uv run python -m eval.checker_eval` (the first set) and
+`uv run python -m eval.checker_eval --heldout`. The test
+[`tests/test_checker_eval.py`](tests/test_checker_eval.py) fails if the checker drops below what is
+measured today on either set. [`tests/test_recall_classes.py`](tests/test_recall_classes.py) holds a
+wrong and a right line for each of the six rules.
 
 ## The problem
 
@@ -556,10 +600,10 @@ The commentator's tools and the shot map read per-match stats packs ([`data/pack
 
 ## Known limitations
 
-- **The number check misses about half the wrong lines.** On 300 labelled live lines it caught 8 of
-  the 15 wrong ones (recall 53%) and flagged no right line (precision 100%, 8 of 8); counted with
-  omissions, as the live check retries them, precision is 36%. It checks the score, the leader and
-  the key numbers, not every claim ([how well the check works](#how-well-the-check-works)).
+- **The number check misses most wrong lines it was not tuned on.** On 300 new labelled live lines
+  it caught 1 of the 6 wrong ones (recall 17%, no better than before #293), with no false alarm
+  (precision 100%, 1 of 1). It checks the score, the leader and the key
+  numbers, not every claim ([how well the check works](#how-well-the-check-works)).
 - **The voice comes seconds after the moment.** From the moment to its line's audio ready on the
   server: p50 3.6 s, p95 10.5 s over 177 lead lines (`/stats` `by_speaker.lead.audio_first_ms`, 24
   October 2026 at 17:12 UTC). The text's first word is out in about half a second.

@@ -315,7 +315,7 @@ export default function App() {
           replayKey={current.key}
           switching={current.switching}
           sports={sports}
-          voice={{ status: voiceStatus, chip: chipName(voice), speaking: speech.speaking, analyst }}
+          voice={{ status: voiceStatus, chip: chipName(voice), speaking: speech.speaking, analyst, fellBack: speech.fellBack }}
           video={video}
           onVideo={onVideo}
           onClock={replay.setClock}
@@ -324,6 +324,7 @@ export default function App() {
           onVoiceSheet={() => setVoiceSheet(true)}
           onFix={(line) => setFixing({ line, phase: 'edit' })}
           onAsk={askCommentator}
+          onLook={replay.look}
           mic={{ airing: speech.airing, duck: speech.duck }}
           interrupted={interrupted}
           onHear={hearAgain}
