@@ -232,3 +232,17 @@ test('E toggles the cover, but not typed into Ask or with a modifier (#277)', ()
   assert.equal(key('e', page, { ctrlKey: true }), false)
   assert.equal(key('w', page), false)
 })
+
+test('a whole match with no video says what it is, never that highlights can\'t play (#284)', () => {
+  const whole = { ...match, match_id: '7457', sport: 'football' as const, youtube_id: undefined, video_start: undefined }
+  const html = videoCard(render({ match: whole, video: 'unavailable' }))
+  assert.match(html, /<p class="novideo">Whole match, every key moment · described from the match data<\/p>/)
+  assert.ok(!html.includes("Highlights can't play here"))
+  assert.match(html, /aria-label="[^"]* match"/)
+})
+
+test('a video that should play but can\'t keeps saying so, and the commentary carries on (#284)', () => {
+  const html = videoCard(render({ video: 'unavailable' }))
+  assert.match(html, /<p class="novideo">Highlights can&#x27;t play here\. Commentary carries on, timed to the replay\.<\/p>/)
+  assert.ok(!html.includes('described from the match data'))
+})
