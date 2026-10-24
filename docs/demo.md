@@ -130,6 +130,9 @@ Then one of these, matching the adapter's state on the panel:
   not our product: it holds those calls, the data our own commentator trains on. Our own commentator
   isn't trained yet, so we won't show you a number we don't have."
 
+  On the off-air path no line was heard today, so open with "Every line Touchline has called came from
+  the big model, Claude Haiku" instead, and skip pointing at the Lines card: it is empty.
+
 ### 7. Close (1:55–2:00)
 
 "Every match deserves a commentator. Now every match can have one."
@@ -167,8 +170,10 @@ Each step was checked on the deployed URL (main at 42f73cc, the wall live) in he
 build server. This is not the timed rehearsal, which still needs a person.
 
 - **YouTube refused to play in headless Chrome** (error 150; tiles say "Highlights unavailable here"
-  or stay black). YouTube lists all six videos as embeddable, so this is most likely the headless
-  browser on a cloud server. Confirm playback on the demo laptop.
+  or stay black). Three of the six videos embed (Kobe's 81, Jordan's last shot and India v
+  Pakistan); the other three are commentary only, because their owners block embedding (#104). For the
+  three that embed, this is most likely the headless browser on a cloud server. Confirm playback on
+  the demo laptop.
 - **Wall:** six tiles. Tapping Spain v England went full screen, and the first call came 5.9 s later.
   ← Wall took 0.1 s. India v Pakistan's first call came 20.2 s after the tap; that run's first audio
   request returned 503, and the same request returned 200 in 2.5 s when retried.
