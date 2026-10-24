@@ -831,7 +831,9 @@ def test_the_name_note_and_length_reminder_reach_the_user_message_only(tmp_path)
     assert all(insight.MIN_WORDS <= length(q) <= insight.COMEBACK_WORDS for q in lead)
     assert {length(q) for q in analyst} > {insight.ANALYST_WORDS}  # some had less room
     assert {angle(q) for q in analyst} <= {None, *insight.ANGLES.values()}  # None: the ball
-    assert len({angle(q) for q in analyst} - {None}) >= 3 and not any(map(angle, lead))
+    assert len({angle(q) for q in analyst} - {None}) >= 2 and not any(
+        map(angle, lead)
+    )  # a stretch stays on a player (#378)
 
 
 @pytest.mark.parametrize(
