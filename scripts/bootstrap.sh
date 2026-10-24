@@ -4,9 +4,9 @@
 # (the IAM grants re-add a binding that is already there, which leaves the policy unchanged).
 #   PROJECT=<gcp-project-id> [REGION=europe-west1] [STATE_BUCKET=<PROJECT>-state] \
 #     [DEPLOY_AS=<account that will run deploy.sh; default: you>] \
-#     MUBIT_API_KEY=... ELEVENLABS_API_KEY=... scripts/bootstrap.sh
-# The secrets are the SECRETS list in scripts/deploy.sh. A value is read only when its secret is
-# created; rotate one with `gcloud secrets versions add SECRET --data-file=-`.
+#     MUBIT_API_KEY=... ELEVENLABS_API_KEY=... [CONVERSE_LLM_SECRET=...] scripts/bootstrap.sh
+# Required and optional secrets are listed in scripts/deploy.sh. A value is read only when its
+# secret is created; rotate one with `gcloud secrets versions add SECRET --data-file=-`.
 set -euo pipefail
 
 : "${PROJECT:?set PROJECT to the GCP project id}"
@@ -15,6 +15,7 @@ STATE_BUCKET="${STATE_BUCKET:-$PROJECT-state}"
 DEPLOY_AS="${DEPLOY_AS:-$(gcloud config get-value account)}"
 SECRETS="$(sed -n 's/^SECRETS="\(.*\)"$/\1/p' "$(dirname "$0")/deploy.sh")"
 : "${SECRETS:?no SECRETS= line in scripts/deploy.sh}"
+OPTIONAL_SECRETS="$(sed -n 's/^OPTIONAL_SECRETS="\(.*\)"$/\1/p' "$(dirname "$0")/deploy.sh")"
 GENERATED=""  # secrets made up when created without a value; none here
 APIS="run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com
   secretmanager.googleapis.com storage.googleapis.com iam.googleapis.com iamcredentials.googleapis.com"
@@ -54,10 +55,13 @@ grant gcloud storage buckets add-iam-policy-binding "gs://$STATE_BUCKET" "${P[@]
 # Secrets: the value comes from the env var named after the secret (mubit-api-key reads
 # MUBIT_API_KEY), printf so no trailing newline lands in it; a GENERATED one with no value
 # gets a random one.
-for secret in $SECRETS; do
+for secret in $SECRETS $OPTIONAL_SECRETS; do
   var="$(tr 'a-z-' 'A-Z_' <<<"$secret")"
   if ! found gcloud secrets describe "$secret" "${P[@]}"; then
     value="${!var:-}"
+    if [[ -z "$value" && " $OPTIONAL_SECRETS " == *" $secret "* ]]; then
+      continue
+    fi
     if [[ -z "$value" && " $GENERATED " == *" $secret "* ]]; then
       value="$(openssl rand -hex 24)"
       echo "bootstrap: generated $secret; read it with" \

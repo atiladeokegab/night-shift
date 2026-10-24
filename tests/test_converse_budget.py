@@ -1,4 +1,4 @@
-"""Talk turns share the fan's Ask limit and count toward the daily model budget."""
+"""Talk streams preserve actual model usage and request IDs for the daily budget."""
 
 from types import SimpleNamespace
 
@@ -20,7 +20,7 @@ ENV = {
 }
 
 
-def app_for(tmp_path, monkeypatch, *, asks_per_hour=20, daily_budget=50.0, usage=True):
+def app_for(tmp_path, monkeypatch, *, daily_budget=50.0, usage=True):
     for key, value in ENV.items():
         monkeypatch.setenv(key, value)
 
@@ -47,7 +47,7 @@ def app_for(tmp_path, monkeypatch, *, asks_per_hour=20, daily_budget=50.0, usage
     store = Store(tmp_path)
     guard = Guard(
         env={
-            "ASKS_PER_HOUR": str(asks_per_hour),
+            "ASKS_PER_HOUR": "20",
             "DAILY_BUDGET_USD": str(daily_budget),
         }
     )
@@ -93,35 +93,55 @@ def spoken(resp):
     )
 
 
-def test_each_turn_uses_the_fan_ip_captured_when_context_was_minted(tmp_path, monkeypatch):
-    client, provider, _, _ = app_for(tmp_path, monkeypatch, asks_per_hour=3)
-    with client:
-        ctx = mint(client, start_replay(client), ip="198.51.100.7")
-        responses = [turn(client, ctx, ip=f"203.0.113.{i}") for i in range(1, 4)]
+def test_actual_sdk_stream_usage_and_request_id_are_recorded(tmp_path, monkeypatch):
+    client, _, store, guard = app_for(tmp_path, monkeypatch, daily_budget=0.000001)
 
-    assert [response.status_code for response in responses] == [200, 200, 429]
-    assert len(provider.requests) == 2
+    class Stream:
+        response = SimpleNamespace(headers={"X-Middleware-Request-Id": "streamed-123"})
 
+        def __enter__(self):
+            return self
 
-def test_a_paid_stream_is_recorded_and_the_next_turn_sees_the_daily_cap(tmp_path, monkeypatch):
-    client, provider, store, guard = app_for(tmp_path, monkeypatch, daily_budget=0.000001)
+        def __exit__(self, *_):
+            return None
+
+        def __iter__(self):
+            yield SimpleNamespace(type="text", text="Player1 scored for the Reds.")
+
+        def get_final_message(self):
+            return SimpleNamespace(
+                content=[SimpleNamespace(type="text", text="Player1 scored for the Reds.")],
+                usage=SimpleNamespace(input_tokens=11, output_tokens=7),
+            )
+
+    class Messages:
+        calls = 0
+
+        def stream(self, **_):
+            self.calls += 1
+            return Stream()
+
+    messages = Messages()
+    sdk = SimpleNamespace(client=SimpleNamespace(messages=messages))
+    monkeypatch.setattr(commentator, "unrecorded_provider", lambda: sdk)
+
     with client:
         ctx = mint(client, start_replay(client))
         first = turn(client, ctx)
         rows_after_first = store.all("answers")
-        spent_after_first = guard.spent_today(store)
         second = turn(client, ctx)
+        spent_after_first = guard.spent_today(store)
 
-    assert first.status_code == 200 and "So far," in spoken(first)
+    assert first.status_code == 200 and "Player1 scored for the Reds." in spoken(first)
     assert len(rows_after_first) == 1
     row = rows_after_first[0]
     assert row["replay_id"]
     assert row["model"] == commentator.MODEL
-    assert row["tokens_in"] > 0 and row["tokens_out"] > 0
-    assert row["mubit_request_ids"] == ["fake-1"]
+    assert row["tokens_in"] == 11 and row["tokens_out"] == 7
+    assert row["mubit_request_ids"] == ["streamed-123"]
     assert spent_after_first >= guard.budget
     assert second.status_code == 200 and "off air for today" in spoken(second).lower()
-    assert len(provider.requests) == 1
+    assert messages.calls == 1
     assert len(store.all("answers")) == 1
 
 
