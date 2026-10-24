@@ -69,7 +69,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .card .art .crests { position: absolute; right: 6%; top: 38%; width: 30%; height: auto; overflow: visible; }
 .card .art .by-label { display: none; }
 .card .art::after { content: ""; position: absolute; inset: 0;
-  background: linear-gradient(90deg, rgba(6, 8, 15, .94) 0%, rgba(6, 8, 15, .72) 42%, rgba(6, 8, 15, .05) 78%); }
+  background: linear-gradient(90deg, rgba(6, 8, 15, .94) 0%, rgba(6, 8, 15, .92) 62%, rgba(6, 8, 15, .05) 88%); }
 .card-body { position: relative; height: 100%; max-width: 64%; padding: 32px; display: flex; flex-direction: column; gap: 10px; }
 .card h2 { font: 600 2.1rem/1.05 var(--display); letter-spacing: -.025em; margin: 6px 0 0; }
 .card .detail { margin: 0; color: var(--muted); font-size: .92rem; }
@@ -77,8 +77,8 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .meta { display: grid; gap: 6px; margin: auto 0 4px; padding-top: 18px; color: rgba(246, 244, 239, .82); font-size: .82rem; }
 .meta span { display: inline-flex; align-items: center; gap: 6px; }
 .meta .voice::before { content: ""; width: 12px; height: 12px; background: currentColor; -webkit-mask: var(--mic) center / contain no-repeat; mask: var(--mic) center / contain no-repeat; }
-.speeds { margin-bottom: 8px; }
-.speeds span { padding: 6px 12px; font-size: .82rem; background: rgba(6, 8, 15, .4); }
+.chips.speeds { margin-bottom: 8px; flex-wrap: nowrap; gap: 6px; } /* three speeds on one row in the narrowest card; .chips, later in the file, wraps */
+.speeds span { padding: 6px 9px; font-size: .82rem; background: rgba(6, 8, 15, .4); white-space: nowrap; }
 .card .btn { align-self: flex-start; }
 .card.ghost { min-height: 400px; background: linear-gradient(100deg, #0B0F1C 30%, #141a2c 50%, #0B0F1C 70%); background-size: 300% 100%; animation: shimmer 1.6s linear infinite; }
 @keyframes shimmer { to { background-position: -150% 0; } }
@@ -439,8 +439,8 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .tile .clip { position: absolute; inset: 0; opacity: 0; transition: opacity .6s var(--ease); pointer-events: none; }
 .tile .clip.on { opacity: 1; }
 .tile .clip iframe { position: absolute; top: 50%; left: 50%; width: 100%; height: 100%; border: 0; transform: translate(-50%, -50%) scale(1.02); pointer-events: none; }
-/* Dark enough under the text that a thumbnail's own lettering ("81", "CHI 83") can't wash out the label. */
-.tile-shade { position: absolute; inset: 0; background: linear-gradient(0deg, rgba(6, 8, 15, .95) 0%, rgba(6, 8, 15, .75) 45%, rgba(6, 8, 15, .2) 75%, rgba(6, 8, 15, 0) 90%); }
+/* Dark enough under the text that a thumbnail's own lettering ("81", "CHI 83", "MASTERCLASS") can't wash out the title. */
+.tile-shade { position: absolute; inset: 0; background: linear-gradient(0deg, rgba(6, 8, 15, .96) 0%, rgba(6, 8, 15, .92) 55%, rgba(6, 8, 15, .86) 70%, rgba(6, 8, 15, .4) 88%, rgba(6, 8, 15, .1) 100%); }
 .tile-body { position: absolute; left: 20px; right: 20px; bottom: 18px; display: grid; gap: 6px; text-shadow: 0 1px 10px rgba(0, 0, 0, .9), 0 0 2px rgba(0, 0, 0, .7); }
 .tile .label { color: rgba(246, 244, 239, .85); }
 .tile-title { font: 600 1.5rem/1.1 var(--display); letter-spacing: -.02em; }

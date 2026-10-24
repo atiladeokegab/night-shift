@@ -15,6 +15,17 @@ class Store:
         self.root = Path(root)
         self.root.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
+        # kind -> (stamp, text): stats() reads every kind after each line (#243), so a kind is
+        # fetched again only once its stamp changes, and our own appends extend it in place
+        self._cache: dict[str, tuple] = {}
+
+    def _stamp(self, kind: str):
+        """Changes whenever the kind is written, by this process or another; cheap to get."""
+        try:
+            st = (self.root / f"{kind}.jsonl").stat()
+        except FileNotFoundError:
+            return None
+        return st.st_size, st.st_mtime_ns
 
     def _read(self, kind: str) -> str:
         path = self.root / f"{kind}.jsonl"
@@ -22,17 +33,32 @@ class Store:
             return path.read_text() if path.exists() else ""
 
     def _write(self, kind: str, text: str) -> None:
-        with (self.root / f"{kind}.jsonl").open("a") as f:
+        # newline="": the bytes written are the row's on every OS, as append's size check expects
+        with (self.root / f"{kind}.jsonl").open("a", newline="") as f:
             f.write(text)
 
     def all(self, kind: str) -> list[dict]:
-        return [json.loads(row) for row in self._read(kind).splitlines() if row.strip()]
+        stamp = self._stamp(kind)  # before the read: a write after it only costs a fetch
+        cached = self._cache.get(kind)
+        if not cached or cached[0] != stamp:
+            cached = self._cache[kind] = (stamp, self._read(kind))
+        return [json.loads(row) for row in cached[1].splitlines() if row.strip()]
 
     def append(self, kind: str, record: dict) -> dict:
         if kind not in KINDS:
             raise ValueError(f"unknown kind {kind!r}")
+        row = json.dumps(record) + "\n"
         with self._lock:
-            self._write(kind, json.dumps(record) + "\n")
+            before = self._stamp(kind)
+            self._write(kind, row)
+            cached, after = self._cache.get(kind), self._stamp(kind)
+            grew = (after[0] if after else 0) - (before[0] if before else 0)
+            # only our row landed since we read it; another process's append in between (our lock
+            # is this process's only) or a lost write: fetch it all again on the next read
+            if cached and cached[0] == before and grew == len(row.encode()):
+                self._cache[kind] = (after, cached[1] + row)
+            else:
+                self._cache.pop(kind, None)
         return record
 
 
@@ -48,9 +74,14 @@ class GcsStore(Store):
         self.bucket = (client or storage.Client()).bucket(bucket)
         self.prefix = prefix.strip("/")
         self._lock = threading.Lock()
+        self._cache = {}
 
     def _blob(self, kind: str):
         return self.bucket.blob(f"{self.prefix}/{kind}.jsonl" if self.prefix else f"{kind}.jsonl")
+
+    def _stamp(self, kind: str):
+        blob = self.bucket.get_blob(self._blob(kind).name)  # metadata only, never the object
+        return blob.generation if blob else None
 
     def _read(self, kind: str) -> str:
         blob = self._blob(kind)
@@ -69,9 +100,11 @@ class GcsStore(Store):
                 gen = blob.generation if blob else 0
                 try:
                     text = blob.download_as_text(if_generation_match=gen) if blob else ""
-                    self._blob(kind).upload_from_string(
-                        text + json.dumps(record) + "\n", if_generation_match=gen
-                    )
+                    text += json.dumps(record) + "\n"
+                    out = self._blob(kind)
+                    out.upload_from_string(text, if_generation_match=gen)
+                    # the upload loads the new generation; None (unknown) just fetches next time
+                    self._cache[kind] = (out.generation, text)
                     return record
                 except PreconditionFailed:
                     continue

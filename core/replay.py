@@ -17,6 +17,8 @@ from core.stats import stats
 log = logging.getLogger("touchline.replay")
 # never the provider's text: it can carry its console URL and request id onto the screen
 OFF_AIR = "Commentator is off air for a moment"
+# provider errors in a row before the replay goes off air; fewer skip only their own lines (#243)
+MAX_FAILED = 3
 
 
 def moment_seconds(moment: dict) -> float:
@@ -139,6 +141,25 @@ async def run_replay(
         await replay.publish("line", line)
         await replay.publish("stats", await asyncio.to_thread(stats, store))
 
+    failed = 0  # provider errors in a row
+
+    async def call(idx: int, fn: Callable, *args):
+        """A moment's or a stat gap's call: a provider error (a 500, a timeout, an overload) skips
+        only that line (None), so the match goes on; the third in a row ends the replay."""
+        nonlocal failed
+        try:
+            got = await asyncio.to_thread(fn, *args)
+        except Exception as exc:
+            failed += 1
+            if failed >= MAX_FAILED:
+                raise
+            name = type(exc).__name__
+            log.warning("replay %s skipped %s: %s: %s", replay.match_id, idx, name, str(exc)[:300])
+            await replay.publish("moment_off_air", {"code": "moment_off_air", "idx": idx})
+            return None
+        failed = 0
+        return got
+
     fixes: list[asyncio.Task] = []
     spoke: list[str] = []  # every line this replay said, cached ones too: what the match cost
     try:
@@ -167,7 +188,8 @@ async def run_replay(
             header = None
         if gaps and not start_idx:  # the cold open (#221): once, before the first mapped moment
             first = min(video_t, key=video_t.get)
-            opened = await asyncio.to_thread(
+            opened = await call(
+                first,
                 gaps.cold_open,
                 [m for m in moments if m["idx"] < first],
                 next(m for m in moments if m["idx"] == first),
@@ -175,7 +197,9 @@ async def run_replay(
                 video_t[first],
                 commentate,
             )
-            for stat, said_line in opened:  # its score is the one before the first mapped moment
+            for stat, said_line in (
+                opened or []
+            ):  # its score is the one before the first mapped moment
                 await replay.publish("moment", {**stat, "video_t": said_line["video_t"]})
                 await say(said_line, stat)
                 recent.append(said_line["text"])
@@ -226,7 +250,7 @@ async def run_replay(
                     "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
                 }
             else:  # commentate sees only moments up to this one: later events never reach the model
-                line = await asyncio.to_thread(insight.checked, commentate, moment, list(history))
+                line = await call(moment["idx"], insight.checked, commentate, moment, list(history))
             history.append(moment)
             if line is not None:  # None: the commentator had nothing usable to say
                 rejected = line.pop("rejected", None)
@@ -245,8 +269,8 @@ async def run_replay(
                 t = insight.due_after(t, said)
                 if end is None or t > end - insight.CLEAR_S:
                     break
-                got = await asyncio.to_thread(
-                    gaps.line, list(history), n, t, commentate, said, list(recent)
+                got = await call(
+                    moment["idx"], gaps.line, list(history), n, t, commentate, said, list(recent)
                 )
                 if got is None:
                     break
