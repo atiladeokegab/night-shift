@@ -107,7 +107,10 @@ async def run_replay(
             said = {
                 ln["moment_idx"]: ln
                 for ln in await asyncio.to_thread(store.all, "lines")
-                if ln.get("match_id") == replay.match_id and ln.get("speaker", "lead") == "lead"
+                # the moment's own line, not the lead's later reply to the analyst at its idx
+                if ln.get("match_id") == replay.match_id
+                and ln.get("speaker", "lead") == "lead"
+                and "reply" not in ln
             }
             fixed = {f["line_id"]: f for f in await asyncio.to_thread(store.all, "fixes")}
             for moment in moments:
