@@ -44,3 +44,24 @@ test('a late or history line is skipped but still counted as seen', () => {
   assert.deepEqual(fresh(lines, seen, ['b']), [])
   assert.deepEqual(fresh([...lines, { line_id: 'c' }], seen, ['b']).map((l) => l.line_id), ['c'])
 })
+
+// Live, Lakers-Raptors at speed 4: ~12 lines for one moment arrive within 0.3 s.
+test('in a burst every big call is said, in order, and only fills are dropped', () => {
+  type T = Turn & { id: string }
+  const burst: T[] = []
+  for (let i = 0; i < 12; i++) {
+    burst.push(i % 3 === 0 ? { id: `call${i}`, speaker: 'lead', big: true } : { id: `fill${i}`, speaker: 'analyst', fill: true })
+  }
+  const floor = new Floor<T>()
+  const said: string[] = []
+  let on: T | null = null
+  for (const t of burst) if (floor.take(t, 0)) {
+      on = on ?? t
+      said.push(t.id)
+    }
+  while (on) {
+    on = floor.ended(on, 1)
+    if (on) said.push(on.id)
+  }
+  assert.deepEqual(said, ['call0', 'call3', 'call6', 'call9']) // every call, in order; no fill
+})
