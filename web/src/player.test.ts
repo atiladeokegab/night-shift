@@ -26,13 +26,14 @@ class FakePlayer {
 const api = { Player: FakePlayer, PlayerState } as unknown as typeof YT
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
-function mount(startMs = 1000) {
+function mount(startMs = 1000, vars?: Record<string, string | number>) {
   const calls: string[] = []
   const hooks = {
     onClock: (c: unknown) => calls.push(c ? 'clock' : 'clock null'),
     onState: (s: string) => calls.push(s),
+    onPlaying: () => calls.push('playing'),
   }
-  const cleanup = mountPlayer(api, {} as HTMLElement, 'abcdefghijk', 485, hooks, startMs)
+  const cleanup = mountPlayer(api, {} as HTMLElement, 'abcdefghijk', 485, hooks, startMs, vars)
   return { player: FakePlayer.made.at(-1)!, calls, cleanup }
 }
 
@@ -88,8 +89,31 @@ test('a player that starts playing in time keeps its clock', async () => {
   m.player.ready()
   m.player.change(PlayerState.PLAYING)
   await sleep(40)
-  assert.deepEqual(m.calls, ['ok', 'clock'])
+  assert.deepEqual(m.calls, ['ok', 'clock', 'playing'])
   m.cleanup()
+})
+
+// A wall tile (A-6.5): it shows its clip only on onPlaying, and settles on its poster on 'unavailable'.
+test('a wall tile clip loops without captions and is shown only once it is really playing', () => {
+  const m = mount(1000, { loop: 1, playlist: 'abcdefghijk', cc_load_policy: 0 })
+  assert.equal(m.player.options.playerVars!.loop, 1)
+  assert.equal(m.player.options.playerVars!.cc_load_policy, 0)
+  assert.equal(m.player.options.playerVars!.start, 485)
+  m.player.ready() // ready is not playing: the black-tile bug
+  m.player.change(PlayerState.BUFFERING)
+  assert.ok(!m.calls.includes('playing'))
+  m.player.change(PlayerState.PLAYING)
+  assert.deepEqual(m.calls, ['ok', 'clock', 'playing'])
+  m.cleanup()
+})
+
+test('a wall tile clip that is ready but never plays gives up, and never shows', async () => {
+  const m = mount(20, { loop: 1 })
+  m.player.ready()
+  await sleep(40)
+  assert.deepEqual(m.calls, ['ok', 'clock', 'clock null', 'unavailable'])
+  m.player.change(PlayerState.PLAYING) // a destroyed player's late PLAYING
+  assert.ok(!m.calls.includes('playing'))
 })
 
 test('an IFrame API script that never loads rejects after the timeout, and the next try loads again', async () => {

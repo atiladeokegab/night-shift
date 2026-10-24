@@ -10,14 +10,16 @@ export const START_MS = 15_000 // a new player has this long to be ready and sta
 interface Hooks {
   onClock: (clock: Clock | null) => void
   onState: (state: VideoState) => void
+  onPlaying?: () => void // the picture is actually moving (a wall tile shows its clip only then)
 }
 
 // Creates the player in `target` at `start` seconds and returns its cleanup. Every callback checks
 // `live` first, so a destroyed player's late onReady, onError or start timer never touches the clock
 // of the player that replaced it. A player that errors, or isn't playing `startMs` after it was
 // created (never ready, or stuck), gives up for good:
-// the stage says so and the replay's own clock takes over (useReplay's unGate).
-export function mountPlayer(api: typeof YT, target: HTMLElement, youtubeId: string, start: number, hooks: Hooks, startMs = START_MS): () => void {
+// the stage says so and the replay's own clock takes over (useReplay's unGate). `vars` adds player vars
+// (a wall tile loops and hides captions).
+export function mountPlayer(api: typeof YT, target: HTMLElement, youtubeId: string, start: number, hooks: Hooks, startMs = START_MS, vars: Record<string, string | number> = {}): () => void {
   let live = true
   let started = false
   let timer: ReturnType<typeof setTimeout> | undefined
@@ -35,7 +37,7 @@ export function mountPlayer(api: typeof YT, target: HTMLElement, youtubeId: stri
   const player = new api.Player(target, {
     videoId: youtubeId,
     host: 'https://www.youtube-nocookie.com',
-    playerVars: { autoplay: 1, mute: 1, playsinline: 1, rel: 0, modestbranding: 1, controls: 0, start },
+    playerVars: { autoplay: 1, mute: 1, playsinline: 1, rel: 0, modestbranding: 1, controls: 0, start, ...vars },
     events: {
       onReady: (e) => {
         if (!live) return
@@ -51,7 +53,9 @@ export function mountPlayer(api: typeof YT, target: HTMLElement, youtubeId: stri
         })
       },
       onStateChange: (e) => {
-        if (live && e.data === api.PlayerState.PLAYING) started = true
+        if (!live || e.data !== api.PlayerState.PLAYING) return
+        started = true
+        hooks.onPlaying?.()
       },
       // The embed won't play here (removed, region-blocked, embedding off).
       onError: fail,
