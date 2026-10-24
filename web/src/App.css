@@ -443,6 +443,9 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .tile-shade { position: absolute; inset: 0; background: linear-gradient(0deg, rgba(6, 8, 15, .96) 0%, rgba(6, 8, 15, .92) 55%, rgba(6, 8, 15, .86) 70%, rgba(6, 8, 15, .7) 88%, rgba(6, 8, 15, .6) 100%); }
 .tile-body { position: absolute; left: 20px; right: 20px; bottom: 18px; display: grid; gap: 6px; text-shadow: 0 1px 10px rgba(0, 0, 0, .9), 0 0 2px rgba(0, 0, 0, .7); }
 .tile .label { color: rgba(246, 244, 239, .85); line-height: 1.4; } /* the long-tail kicker runs to two lines */
+/* "Tap to hear it called" on its own line on every tile, so the titles in a row line up; font-size 0 hides its " · " */
+.tile-cta > span:last-child { display: block; font-size: 0; }
+.tile-cta > span:last-child .nw { font-size: .85rem; }
 .tile-title { font: 600 1.5rem/1.1 var(--display); letter-spacing: -.02em; }
 .tile-detail { color: var(--muted); font-size: .85rem; }
 .tile-cta { color: var(--amber); font: 600 .85rem/1.35 var(--body); margin-top: 4px; }
