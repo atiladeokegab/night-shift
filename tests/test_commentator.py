@@ -445,6 +445,8 @@ def _mubit(monkeypatch, primary_status, fallback=True, record="off", primary_s=0
         )
 
     monkeypatch.setattr(commentator, "_provider", None)
+    monkeypatch.setattr(commentator, "_trainer", None)
+    monkeypatch.setattr(commentator, "_unrecorded", None)
     monkeypatch.setenv("MUBIT_API_KEY", "fake-lent")
     monkeypatch.setenv("MUBIT_RECORD", record)
     if fallback:
@@ -453,7 +455,8 @@ def _mubit(monkeypatch, primary_status, fallback=True, record="off", primary_s=0
         monkeypatch.delenv("MUBIT_FALLBACK_KEY", raising=False)
     provider = commentator.default_provider()
     http = httpx.Client(transport=httpx.MockTransport(handle))
-    for p in (provider, getattr(provider, "fallback", None)):
+    trainer, unrecorded = commentator.correction_provider(), commentator.unrecorded_provider()
+    for p in (provider, provider.fallback, trainer, unrecorded, unrecorded.fallback):
         if p is not None:
             p.client = p.client.with_options(http_client=http)
     return provider, seen
@@ -477,6 +480,41 @@ def test_the_owners_key_records_and_the_lent_key_stays_unrecorded(monkeypatch):
     provider, seen = _mubit(monkeypatch, 402, record="off")
     _two_lines(provider)
     assert seen == [("fake-lent", "off"), ("fake-owner", None), ("fake-owner", None)]
+
+
+def test_a_fix_records_on_the_owners_key_while_lines_stay_unrecorded(monkeypatch):
+    # #161: the lent key never records, so a fix sent on it trained nothing
+    provider, seen = _mubit(monkeypatch, 200, record="off")
+    moments = [moment(FOOT, 0)]
+    line = line_for(FOOT, moments, 0, provider)
+    sent = commentator.correct(line, "Ann saves it!", FOOT, moments)
+    assert seen == [("fake-lent", "off"), ("fake-owner", None)] and sent["recorded"] is True
+
+
+def test_a_fix_to_an_analyst_line_goes_unrecorded_and_says_so(monkeypatch):
+    provider, seen = _mubit(monkeypatch, 200, record="off")
+    stat = {**moment(FOOT, 1), "type": "Stat"}
+    moments = [moment(FOOT, 0), stat]
+    line = {**line_for(FOOT, moments, 1, provider), "moment_idx": 1}
+    sent = commentator.correct(line, "Ann has two saves.", FOOT, moments)
+    assert seen[-1] == ("fake-lent", "off") and sent["recorded"] is False
+
+
+def test_a_fix_after_a_402_reports_the_owners_key_recording_it(monkeypatch):
+    # the lent key is unrecorded; once a 402 moves the provider to the owner's key, it records
+    provider, seen = _mubit(monkeypatch, 402, record="off")
+    moments = [moment(FOOT, 0)]
+    line = line_for(FOOT, moments, 0, provider)
+    sent = commentator.correct(line, "Ann saves it!", FOOT, moments, provider=provider)
+    assert seen == [("fake-lent", "off"), ("fake-owner", None), ("fake-owner", None)]
+    assert sent["recorded"] is True
+
+
+def test_without_an_owners_key_a_fix_goes_as_its_line_did(monkeypatch):
+    provider, seen = _mubit(monkeypatch, 200, fallback=False, record="off")
+    moments = [moment(FOOT, 0)]
+    sent = commentator.correct(line_for(FOOT, moments, 0, provider), "Ann saves it!", FOOT, moments)
+    assert seen == [("fake-lent", "off"), ("fake-lent", "off")] and sent["recorded"] is False
 
 
 def test_a_500_does_not_switch_keys(monkeypatch):

@@ -52,7 +52,7 @@ Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026. Track: Own
 | [Ask, by typing](#ask-by-typing-or-by-voice) | Live | [`POST /replays/{id}/ask`](core/app.py), [`agent/ask.md`](agent/ask.md) |
 | [Ask, by voice](#ask-by-typing-or-by-voice) | Live (#145) | [`web/src/voice.ts`](web/src/voice.ts), [`web/src/components/MicButton.tsx`](web/src/components/MicButton.tsx), [`web/src/voice.test.ts`](web/src/voice.test.ts) |
 | [Follow a player: shot map](#follow-a-player) | Live | [`GET /replays/{id}/players/{name}/shots`](core/app.py), [`web/src/components/ShotMap.tsx`](web/src/components/ShotMap.tsx) |
-| [Follow a player: picker and profile card](#follow-a-player) | In progress (#140) | |
+| [Follow a player: picker and profile card](#follow-a-player) | Live (#140, #152) | [`GET /replays/{id}/players/{name}/profile`](core/app.py), [`web/src/components/ProfileCard.tsx`](web/src/components/ProfileCard.tsx) |
 | [Producer fixes](#producer-fixes) | Live | [`POST /lines/{id}/fix`](core/app.py), [`tests/test_core_fix.py`](tests/test_core_fix.py) |
 | [Big model vs ours](#big-model-vs-ours) | Live under the Proof card (#144, #147, #150) | [`data/side_by_side.json`](data/side_by_side.json), [`eval/side_by_side.py`](eval/side_by_side.py) |
 | [The Proof panel](#the-proof-panel) | Live | [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats), [`core/stats.py`](core/stats.py) |
@@ -60,7 +60,7 @@ Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026. Track: Own
 
 #### The six matches
 
-<img src="docs/img/wall.png" alt="The home page: the line A live AI commentator for matches nobody calls above the heading Pick a match, then tiles for Battle of the Bridge (Chelsea 2-2 Tottenham, 2016), Messi v Mbappé (the 2022 World Cup final) and India v Pakistan (T20 World Cup 2022), each with its sport, result, voice and a Start replay button; below them the tops of Kobe's 81 v Toronto, Jordan's last shot and Verstappen, P17 to P1." width="100%">
+<img src="docs/img/wall.png" alt="The home page, under the Touchline. logo and the Live, Fixtures and About links: the line A live AI commentator for matches nobody calls above the heading Tap a match to hear it called, then six tiles, each with its sport, title, competition and date and the link Tap to hear it called: Battle of the Bridge (Premier League, Chelsea v Tottenham, 2 May 2016), Messi v Mbappé (2022 World Cup final, Argentina v France, 18 Dec 2022), India v Pakistan (T20 World Cup, MCG, Melbourne, 23 Oct 2022), Kobe's 81 v Toronto (Lakers v Raptors, 22 Jan 2006), Jordan's last shot as a Bull (1998 NBA Finals, Game 6, Jazz v Bulls, 14 Jun 1998) and Verstappen, P17 to P1 (2024 São Paulo Grand Prix, Interlagos, 3 Nov 2024). Below them, the credits for the match data and the highlights." width="100%">
 
 Six famous matches in four sports, each replayed from real event data over its broadcast highlights
 and called by the same commentator with the same prompt. A line is never shown or spoken before its
@@ -116,8 +116,15 @@ match's pre-match pack) and tonight's so far, with hit rate by zone. It reads on
 one on screen ([`core/app.py`](core/app.py) `shots`, [`core/predict.py`](core/predict.py),
 [`tests/test_core_shots.py`](tests/test_core_shots.py)).
 
-**In progress (#140):** a Follow picker for anyone in the match, their lines highlighted in the log,
-and a profile card with their record coming in and tonight's line.
+Or follow anyone in the match: search for them in the Follow picker, and a profile card shows their
+record before tonight and tonight's so far, while their lines are marked in the log. Like the shot
+map, it reads only moments up to the one on screen ([`core/app.py`](core/app.py) `players` and
+`profile`, [`core/predict.py`](core/predict.py),
+[`web/src/components/FollowPicker.tsx`](web/src/components/FollowPicker.tsx),
+[`web/src/components/ProfileCard.tsx`](web/src/components/ProfileCard.tsx),
+[`tests/test_follow.py`](tests/test_follow.py), [`web/src/follow.test.ts`](web/src/follow.test.ts)).
+
+<img src="docs/img/follow.png" alt="The live page during Kobe's 81, LAK 65-75 RAP, 06:22, Q3, on the live site after #152. On the right, a profile card: Following Kobe Bryant, Los Angeles Lakers, with an Unfollow button; Before tonight 461 of 1036 (44%) in 38 games; Tonight 16 of 26 (62%); and a Shot map · Kobe Bryant chip. Below it, the Lines card with a bar reading Following Kobe Bryant · 2 lines and a Clear button. His two lines, Kobe Bryant from three, assisted by Devean George! at 06:22 and Kobe Bryant with the running jumper, 30 points for Bryant, Lakers trail 53 to 69. at 09:36, are edged in amber and tagged BRYANT; between them, the analyst's line, Before tonight he's made 461 of 1036 shots, 44 percent over 38 games, so thirty points here is a big night above his usual rate. Under the video, the caption marked LEAD repeats the three. The video area says Highlights can't play here, because the browser was headless." width="100%">
 
 #### Producer fixes
 
@@ -143,7 +150,7 @@ every live page.
 
 #### The Proof panel
 
-<img src="docs/img/proof.png" alt="The Proof card: model first text word p50 0.53 s and p95 0.78 s, cost per line $0.0018, the lines count and 0 fixes; the adapter: Training, Mubit is building the adapter; adapter cost not measurable, because Mubit doesn't report it to the app; and a note on what first text word measures." width="50%">
+<img src="docs/img/proof.png" alt="The Proof card: first word median 0.54 s and p95 1.34 s, cost per line $0.0019, the count of lines across all matches, and 0 fixes; the adapter: Training, Mubit is building the adapter. Under it, a note: first word is the time from the moment to the first word of the model's text reply, measured through Mubit, not counting the rest of the line, speech synthesis or playback; the adapter's cost is not measurable, because Mubit doesn't report it to the app." width="50%">
 
 Live latency, cost per line, lines called, fixes and the adapter's state, computed from the store and
 the same numbers as `GET /stats` ([`web/src/components/ProofPanel.tsx`](web/src/components/ProofPanel.tsx),
@@ -240,14 +247,17 @@ producer fixes go into the same task as corrections. That smaller model is what 
    off (`MUBIT_RECORD=off` in [`scripts/deploy.sh`](scripts/deploy.sh)); training traffic comes from
    the replay script on the owner's key. If the lent key runs out, the commentator moves to the
    owner's key, which records. Ask answers and side-by-side runs are always unrecorded.
-5. **A producer's fix is built as training signal.** A fix is stored beside the original line and
-   sent back through the same Mubit task and session. No fix has been made on the live site yet
-   (`fixes` is 0 in `/stats`), so the adapters so far were trained on recorded commentary only.
-6. **Counted at Mubit.** Each line stores the Mubit request id of every call it made, and
-   `GET /stats` counts calls from those ids.
-7. **The trained model is measured, not assumed.** 6 adapters so far, none ready, best 55.8% on Mubit's test
-   ([Real numbers](#real-numbers)). The aim is that it matches the big model at lower cost; we make
-   no claim that it beats it.
+5. **A producer's fix is recorded to Mubit for training.** A fix is stored beside the original line
+   and sent as the next turn of that line's request on the owner's key (`MUBIT_FALLBACK_KEY`) with
+   recording on, whatever `MUBIT_RECORD` says; a fix to an analyst's stat line stays unrecorded,
+   like those lines. The Proof card shows the fixes recorded and how many count toward the next
+   adapter. No fix has been made on the live site yet (`fixes` is 0 in `/stats`), so the adapters
+   so far were trained on recorded commentary only.
+6. **Mubit request ids we stored.** Each line stores the Mubit request id of every call it made,
+   and `GET /stats` counts calls from those ids; nothing checks them against Mubit's console.
+7. **The trained model is measured, not assumed.** 6 adapter versions trained, none has passed Mubit's
+   test yet (best 55.8%), and the app does not call an adapter ([Real numbers](#real-numbers)). The
+   aim is that one matches the big model at lower cost; we make no claim that any does.
 
 ## Architecture
 
