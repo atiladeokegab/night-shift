@@ -53,7 +53,13 @@ def line(m, history):
 
 def test_after_a_jump_the_status_comes_from_the_moment_on_screen(tmp_path):
     provider, store = FakeProvider(), Store(tmp_path)
-    deps = Deps(lambda: [], load_moments, line, status=partial(st.status, provider=provider))
+
+    def ask(*_):
+        raise AssertionError("a status phrase never reaches the Ask prompt")
+
+    deps = Deps(
+        lambda: [], load_moments, line, ask=ask, status=partial(st.status, provider=provider)
+    )
     client = TestClient(create_app(store=store, deps=deps))
     with client:
         body = {"match_id": JORDAN, "speed": 1e6, "start_idx": 29}
@@ -65,6 +71,7 @@ def test_after_a_jump_the_status_comes_from_the_moment_on_screen(tmp_path):
     said = resp.json()
     assert resp.status_code == 200 and said["status"] and said["moment_idx"] == 30
     assert said["text"] == "quarter 4, 00:37. Utah Jazz 86, Chicago Bulls 85. Utah Jazz lead 86-85."
+    assert [r["system"] for r in provider.requests] == [st.SYSTEM]  # its own task, not Ask's
     sent = provider.requests[-1]["messages"][0]["content"]
     assert "Last event: Field goal, 2 points (Chicago Bulls" in sent and "00:18" not in sent
     assert store.all("answers") == [said]
