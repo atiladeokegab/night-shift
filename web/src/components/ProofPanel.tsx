@@ -45,7 +45,7 @@ export function ProofPanel({ live }: Props) {
   }
   return (
     <>
-      <section className="panel glass" aria-label="Proof" aria-live="polite">
+      <section className="panel glass" aria-label="Proof">
         <div className="panel-h"><h3>Proof</h3></div>
         {body}
         <p className="small">

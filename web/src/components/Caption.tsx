@@ -7,14 +7,15 @@ interface Props {
   fixed?: boolean // a producer's fix replaced the line
   asked?: string // an answer's question
   children?: ReactNode // a state in place of the caption: waiting, off air
+  announce?: boolean // #170: read out by a screen reader only while the voice is silent, never over it
 }
 
 // The caption card docked under the video (#132): the current caption with a speaker chip and the moment
 // tag; for Ask, App's "A viewer asks: ..." and then the answer under its question. Long text wraps inside the card, never clipped.
-export function Caption({ caption, tag, fixed, asked, children }: Props) {
+export function Caption({ caption, tag, fixed, asked, children, announce }: Props) {
   const speaker = caption?.kind === 'question' ? 'Viewer' : caption?.speaker === 'analyst' ? 'Analyst' : 'Lead'
   return (
-    <section className={`caption glass${fixed ? ' fixed' : ''}`} aria-label="Caption" aria-live="polite">
+    <section className={`caption glass${fixed ? ' fixed' : ''}`} aria-label="Caption" aria-live={announce ? 'polite' : 'off'}>
       {children ?? (caption && (
         <div key={caption.kind + caption.text}>
           <div className="cap-h">

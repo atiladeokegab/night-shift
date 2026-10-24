@@ -16,6 +16,7 @@ interface Props {
   shooter: string | null // the latest shooter on screen, in a sport with a shot map (#120)
   onShots: (name: string) => void
   followed?: string | null // the followed player's lines stand out (#140)
+  voiced?: boolean // #170: an answer is spoken, so a screen reader hears only that it is ready
   roster?: string[] // everyone in the match, so a shared surname needs the full name
   onUnfollow?: () => void
 }
@@ -24,7 +25,7 @@ interface Props {
 // first-text-word time ("first word" in the mockup: the #37 review asked for the measured thing's name)
 // and "Fix". A fixed line shows the correction over the struck-through original. Viewers' questions and
 // the commentator's answers (#117) sit among the lines at the moment they were asked.
-export function LineLog({ lines, late, fixes, moments, onFix, answers, onAsk, shooter, onShots, followed, roster, onUnfollow }: Props) {
+export function LineLog({ lines, late, fixes, moments, onFix, answers, onAsk, shooter, onShots, followed, roster, onUnfollow, voiced }: Props) {
   const said = (l: Line) => fixes[l.line_id]?.corrected_text ?? l.text
   const theirs = followed ? lines.filter((l) => names(said(l), followed, roster)).length : 0
   return (
@@ -41,7 +42,7 @@ export function LineLog({ lines, late, fixes, moments, onFix, answers, onAsk, sh
         </div>
       )}
       {shooter && <button className="btn sm shots-open" onClick={() => onShots(shooter)}>Shot map · {shooter}</button>}
-      <p className="sr-only" aria-live="polite">{answers[0] ? `Touchline: ${answers[0].text}` : ''}</p>
+      <p className="sr-only" aria-live="polite">{!answers[0] ? '' : voiced && !answers[0].off_air ? 'Answer ready' : `Touchline: ${answers[0].text}`}</p>
       {lines.length === 0 && answers.length === 0 ? (
         <p className="hint">Lines appear here as Touchline calls them.</p>
       ) : (

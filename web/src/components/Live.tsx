@@ -136,10 +136,14 @@ export function Live(props: Props) {
   const marks = [...replay.moments, ...replay.queuedMoments].filter((m) => m.video_t !== undefined)
     .map((m) => ({ t: m.video_t!, done: m.video_t! <= replay.now }))
   const canPlay = !!transport && video === 'ok' && !busy
+  // #170: with the voice audible, lines are heard, never also announced; a screen reader hears state changes only.
+  const voiced = voice.status === 'on' && !muted && volume > 0
+  const title = match.title?.split(',')[0] ?? match.match_id
 
   return (
     <div className="live">
       <Nav current="live" onGo={onGo} />
+      <p className="sr-only" role="status">{replay.phase === 'live' ? (paused ? 'Paused' : `Playing ${title}`) : ''}</p>
       <div className="live-body">
         <main className="live-main">
           <div className="pickbar glass">
@@ -193,7 +197,7 @@ export function Live(props: Props) {
           {replay.phase === 'live' && video !== 'loading' && (
             replay.error ? (
               // A calm state whatever the server sent: the error payload goes to the console only.
-              <Caption caption={null}>
+              <Caption caption={null} announce>
                 <div className="cap-state" role="status">
                   <p>Commentator is off air for a moment</p>
                   <button className="btn sm" onClick={onRetry}>Retry</button>
@@ -201,9 +205,9 @@ export function Live(props: Props) {
               </Caption>
             ) : caption ? (
               <Caption caption={{ ...caption, speaker: caption.speaker ?? line?.speaker }} fixed={!!line && !!replay.fixes[line.line_id]}
-                tag={tagged ? momentTag(tagged) : undefined} asked={answer?.question} />
+                tag={tagged ? momentTag(tagged) : undefined} asked={answer?.question} announce={!voiced} />
             ) : (
-              <Caption caption={null}><p className="cap-state" aria-live="polite">Waiting for the first moment…</p></Caption>
+              <Caption caption={null} announce><p className="cap-state">Waiting for the first moment…</p></Caption>
             )
           )}
         </main>
@@ -225,7 +229,7 @@ export function Live(props: Props) {
           </div>
           <div className="pane lines-pane" role="tabpanel" id="pane-lines" aria-labelledby="tab-lines" data-on={tab === 'lines'}>
             <LineLog lines={shown.lines} late={replay.late} fixes={replay.fixes} moments={shown.moments} onFix={onFix}
-              answers={replay.answers} onAsk={moment ? (q) => onAsk(q, moment.idx) : null} shooter={null} onShots={openMap} followed={followed} roster={roster} onUnfollow={() => setFollow(null)} />
+              answers={replay.answers} onAsk={moment ? (q) => onAsk(q, moment.idx) : null} shooter={null} onShots={openMap} followed={followed} roster={roster} onUnfollow={() => setFollow(null)} voiced={voiced} />
           </div>
           <div className="pane" role="tabpanel" id="pane-proof" aria-labelledby="tab-proof" data-on={tab === 'proof'}>
             <ProofPanel live={replay.stats} />
