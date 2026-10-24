@@ -630,7 +630,12 @@ def create_app(
     def get_stats():
         from agent.commentator import mubit_status
 
-        return {**stats(store), "budget": guard.stats(store), "voice": speaker.health(), **mubit_status()}
+        return {
+            **stats(store),
+            "budget": guard.stats(store),
+            "voice": speaker.health(),
+            **mubit_status(),
+        }
 
     @app.get("/stage")
     def stage():
