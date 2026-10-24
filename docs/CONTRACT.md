@@ -95,8 +95,9 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   that moment: earlier moments are never called. They are sent first, untimed (no `video_t`), so the score
   and clock are already there, each followed by the last line stored for it with `history: true`
   (shown, never spoken), then that line's latest `fixed` if it has one. 422 if no such moment.
-- `GET /replays/{id}/stream` → SSE: per moment `moment`, `line`, `stats` in that order; `error`
-  `{code: "commentator_off_air", detail}` if the commentator fails, where `detail` is a fixed
+- `GET /replays/{id}/stream` → SSE: per moment `moment`, `line`, `stats` in that order; a failed
+  call skips only its line with `moment_off_air` `{code: "moment_off_air", idx}` (the page may
+  ignore it); `error` `{code: "commentator_off_air", detail}` after 3 failures in a row, where `detail` is a fixed
   viewer-safe string ("Commentator is off air for a moment"), never the provider's error text (that
   goes to the server log); `end` last. A late subscriber gets the whole replay. (core)
   For a match with a video map, only mapped moments are called, the `moment` and `line` events carry
