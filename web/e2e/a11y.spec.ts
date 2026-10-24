@@ -84,7 +84,7 @@ for (const width of WIDTHS) {
     expect(await smallTargets(page), 'live').toEqual([])
     // #375: T opens the Teams panel and puts the focus on its heading
     await page.keyboard.press('t')
-    await expect(page.getByRole('heading', { name: 'Teams', level: 3 })).toBeFocused()
+    await expect(page.getByRole('heading', { name: 'Teams', level: 2 })).toBeFocused()
     await expect(page.getByText('Los Angeles Lakers: won 1 of their last 1')).toBeVisible()
     expect(await serious(page), 'teams').toEqual([])
     expect(await smallTargets(page), 'teams').toEqual([])
