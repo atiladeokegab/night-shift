@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { answeredAt, isStale } from '../ask'
 import { clockText, momentTag } from '../moment'
+import { eyesKey } from '../eyes'
 import { embeds, posterUrl, setPlaying, showNoVideoCaption, shownCaption, watchUrl, type Transport } from '../player'
 import type { Caption as CaptionData } from '../turns'
 import { SPORT_NAMES, type Answer, type Line, type Match, type Sport } from '../types'
@@ -53,6 +54,7 @@ interface Props {
   volume?: number // the commentary voice, 0 to 1
   muted?: boolean
   onVolume?: (volume: number, muted: boolean) => void
+  closed?: boolean // "Close your eyes" (#277): the picture covered; local to the page unless App holds it
 }
 
 // The live page (#132): a bounded 16:9 video card with the controls on its bottom edge and the caption card
@@ -103,6 +105,11 @@ export function Live(props: Props) {
     setLocalVolume({ volume: v, muted: m })
     props.onVolume?.(v, m)
   }
+  // Close your eyes (#277): a black cover over the picture; the player under it is never paused or unmounted,
+  // because the lines follow its clock.
+  const [localClosed, setLocalClosed] = useState(false)
+  const closed = props.closed ?? localClosed
+  const onEyes = useCallback(() => setLocalClosed((c) => !c), [])
   const [chosenTab, setTab] = useState<'follow' | 'lines' | 'proof' | 'shots'>('lines')
   const tab = chosenTab === 'shots' && !mapped ? 'lines' : chosenTab // a sport with no shot map shows Lines
 
@@ -156,6 +163,17 @@ export function Live(props: Props) {
     .map((m) => ({ t: m.video_t!, done: m.video_t! <= replay.now }))
   const canPlay = !!transport && video === 'ok' && !busy
   const noVideo = !gated || blocked || video === 'unavailable'
+  const covered = closed && !noVideo
+  useEffect(() => {
+    if (noVideo) return
+    const down = (e: KeyboardEvent) => {
+      if (!eyesKey(e)) return
+      e.preventDefault()
+      onEyes()
+    }
+    window.addEventListener('keydown', down)
+    return () => window.removeEventListener('keydown', down)
+  }, [noVideo, onEyes])
   const title = CARD_COPY[match.match_id]?.title ?? match.title?.split(',')[0] ?? match.match_id
   const speaker = caption?.speaker ?? line?.speaker
   const onAirLabel = speaker === 'analyst' ? ['Analyst', voice.analyst].filter(Boolean).join(' · ') : voiceLabel && `Lead · ${voiceLabel}`
@@ -182,17 +200,18 @@ export function Live(props: Props) {
             {onNext && <button className="btn next" disabled={busy} aria-label="Next match" onClick={onNext}><span>Next match </span>→</button>}
           </div>
       </Nav>
-      <p className="sr-only" role="status">{replay.phase === 'live' ? (paused ? 'Paused' : `Playing ${title}`) : ''}</p>
+      <p className="sr-only" role="status">{replay.phase === 'live' ? `${paused ? 'Paused' : `Playing ${title}`}${covered ? ' · Video covered' : ''}` : ''}</p>
       <div className="live-body">
         <main className="live-main">
           <section className="vcard" ref={card} aria-label={`${match.title ?? match.match_id} highlights`} data-video={noVideo ? 'off' : undefined}>
             {/* A tap on the picture plays or pauses it; the Play button is the keyboard's way in. */}
-            <div className="frame" onClick={canPlay ? toggle : undefined}>
+            <div className="frame" data-eyes={covered ? 'closed' : undefined} onClick={canPlay ? toggle : undefined}>
               <div id="video" className={video === 'unavailable' && !busy ? 'off' : dim ? 'dim' : undefined}>
                 {blocked && <img className="still" alt="" src={posterUrl(match.youtube_id!)} />}
                 {replay.phase === 'live' && <VideoStage key={replayKey} youtubeId={blocked ? undefined : match.youtube_id} start={match.video_start ?? 0}
                   onClock={onClock} onState={onVideo} onTransport={onTransport} />}
               </div>
+              {covered && <div className="eyes" aria-hidden><p>{caption?.text}</p></div>}
               <div className="bug">
                 <ScoreBar match={match} moment={moment} moments={shown.moments} />
                 <OnAir voice={voice} label={onAirLabel} offAir={!!replay.error} onOpen={busy ? undefined : onVoiceSheet} />
@@ -205,7 +224,8 @@ export function Live(props: Props) {
               {overlay}
             </div>
             <Controls card={card} paused={paused || ended} canPlay={canPlay} onToggle={ended ? onRetry : toggle} now={replay.duration ? Math.min(replay.now, replay.duration) : replay.now} duration={replay.duration}
-              marks={marks} onSeek={(t) => transport?.seek(t)} volume={volume} muted={muted} onVolume={onVolume} />
+              marks={marks} onSeek={(t) => transport?.seek(t)} volume={volume} muted={muted} onVolume={onVolume}
+              eyes={noVideo ? undefined : { closed: covered, onToggle: onEyes }} />
           </section>
           {replay.stream === 'reconnecting' && (
             <div className="banner"><div className="glass warn" role="alert"><b />Reconnecting to the replay…</div></div>

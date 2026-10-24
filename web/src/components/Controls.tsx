@@ -12,6 +12,7 @@ interface Props {
   volume: number // the commentary voice, 0 to 1; the video stays muted
   muted: boolean
   onVolume: (volume: number, muted: boolean) => void
+  eyes?: { closed: boolean; onToggle: () => void } // Close your eyes (#277), only with a video to cover
 }
 
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
@@ -19,7 +20,7 @@ const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).
 // The playback controls on the bottom edge of the video card (#132): play/pause, a scrubber on the replay
 // clock, the commentary's mute and volume, and fullscreen. A seek only moves the picture: the replay reads
 // the new time from the player's clock, so no line shows or speaks before its moment (A-6.4).
-export function Controls({ card, paused, canPlay, onToggle, now, duration, marks, onSeek, volume, muted, onVolume }: Props) {
+export function Controls({ card, paused, canPlay, onToggle, now, duration, marks, onSeek, volume, muted, onVolume, eyes }: Props) {
   const [full, setFull] = useState(false)
   useEffect(() => {
     const sync = () => setFull(!!document.fullscreenElement)
@@ -56,6 +57,15 @@ export function Controls({ card, paused, canPlay, onToggle, now, duration, marks
       </button>
       <input className="vol" type="range" aria-label="Commentary volume" min={0} max={1} step={0.05} value={silent ? 0 : volume}
         onChange={(e) => onVolume(Number(e.target.value), false)} />
+      {eyes && (
+        <button className="ctl eyes-btn" aria-pressed={eyes.closed} aria-keyshortcuts="E" title="Close your eyes (E)" onClick={eyes.onToggle}>
+          <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4">
+            {eyes.closed ? <path d="M1.5 8s2.5-4.5 6.5-4.5S14.5 8 14.5 8 12 12.5 8 12.5 1.5 8 1.5 8zM2.5 2.5l11 11" />
+              : <path d="M1.5 8.5c1.6 2 3.8 3 6.5 3s4.9-1 6.5-3M4 10.6l-1 1.6M8 11.5v1.9M12 10.6l1 1.6" />}
+          </svg>
+          <span>Close your eyes</span>
+        </button>
+      )}
       <button className="ctl" aria-label={full ? 'Exit fullscreen' : 'Fullscreen'}
         onClick={() => (full ? document.exitFullscreen() : card.current?.requestFullscreen())?.catch(() => {})}>
         <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.5">
