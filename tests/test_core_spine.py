@@ -247,3 +247,44 @@ def test_a_stream_that_reconnects_in_time_keeps_its_replay(tmp_path, monkeypatch
 
     body = asyncio.run(run())
     assert body.count(b"event: line") == len(short) and b"event: end" in body
+
+
+class SlowStore(Store):
+    """A store whose every read and write takes 0.2 s, like a slow bucket."""
+
+    def all(self, kind):
+        import time
+
+        time.sleep(0.2)
+        return super().all(kind)
+
+    def append(self, kind, record):
+        import time
+
+        time.sleep(0.2)
+        return super().append(kind, record)
+
+
+def test_health_answers_fast_while_a_slow_store_appends_lines(tmp_path):
+    import asyncio
+    import time
+
+    import httpx
+
+    deps = Deps(lambda: [], lambda mid: LONG[:6], fake_commentate)
+    app = create_app(SlowStore(tmp_path), deps)
+
+    async def run():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://t") as c:
+            await c.post("/replays", json={"match_id": "long", "speed": 1e6})
+            took = []
+            for _ in range(10):
+                started = time.perf_counter()
+                assert (await c.get("/health")).status_code == 200
+                took.append(time.perf_counter() - started)
+                await asyncio.sleep(0.1)
+            return took
+
+    took = asyncio.run(run())
+    assert max(took) < 0.1, took

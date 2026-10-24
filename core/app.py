@@ -160,7 +160,8 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
     @app.post("/lines/{line_id}/fix")
     async def fix_line(line_id: str, req: FixRequest):
         d = need_deps()
-        line = next((ln for ln in store.all("lines") if ln.get("line_id") == line_id), None)
+        lines = await asyncio.to_thread(store.all, "lines")
+        line = next((ln for ln in lines if ln.get("line_id") == line_id), None)
         if line is None:
             raise HTTPException(404, f"no line {line_id!r}")
         if d.correct is None:
@@ -172,7 +173,8 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
             sent = await asyncio.to_thread(d.correct, line, req.corrected_text, **more)
         except Exception as exc:  # nothing is stored, so the page can send the fix again
             raise HTTPException(503, f"correction not sent: {exc}") from exc
-        fix = store.append(
+        fix = await asyncio.to_thread(
+            store.append,
             "fixes",
             {
                 "line_id": line_id,
@@ -188,7 +190,7 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
                 e["data"].get("line_id") == line_id for e in replay.events if e["event"] == "line"
             ):
                 await replay.publish("fixed", fix)
-                await replay.publish("stats", stats(store))
+                await replay.publish("stats", await asyncio.to_thread(stats, store))
         return fix
 
     @app.post("/replays/{replay_id}/ask")
@@ -220,7 +222,9 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
                 "off_air": True,
             }
         else:
-            reply = store.append("answers", {**said, "replay_id": replay_id})
+            reply = await asyncio.to_thread(
+                store.append, "answers", {**said, "replay_id": replay_id}
+            )
         await replay.publish("answer", reply)
         return reply
 

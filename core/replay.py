@@ -83,7 +83,8 @@ async def run_replay(
     # A video map: only mapped moments are called, each tagged with its video time and sent as
     # soon as it is ready; the page holds each line until the player reaches that time.
     video_t = {m["idx"]: m["video_t"] for m in video["moments"]} if video else None
-    gaps = insight.Gaps(replay.match_id, store) if video else None
+    # every store call runs in a thread: a slow bucket must never stall the event loop (#156)
+    gaps = await asyncio.to_thread(insight.Gaps, replay.match_id, store) if video else None
 
     async def say(line: dict, moment: dict) -> None:
         # shortcut: due as if the video starts with the replay at its `start` second;
@@ -92,7 +93,7 @@ async def run_replay(
             due = replay.started + line["video_t"] - video.get("start", 0) if video else None
             speak(line, moment, due)
         await replay.publish("line", line)
-        await replay.publish("stats", stats(store))
+        await replay.publish("stats", await asyncio.to_thread(stats, store))
 
     try:
         last = None
@@ -114,7 +115,8 @@ async def run_replay(
             line = await asyncio.to_thread(commentate, moment, list(history))
             history.append(moment)
             if line is not None:  # None: the commentator had nothing usable to say
-                await say(store.append("lines", {**line, **tag, "speaker": "lead"}), moment)
+                ln = {**line, **tag, "speaker": "lead"}
+                await say(await asyncio.to_thread(store.append, "lines", ln), moment)
             if not tag:
                 continue
             # the quiet stretch until the next mapped moment: stat lines, each due once the
