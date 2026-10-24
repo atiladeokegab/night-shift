@@ -32,3 +32,11 @@ def test_stage_matches_the_app_and_hides_empty_pieces(tmp_path):
     assert "#score:empty, #sync:empty, .panel.lines:has(.log:empty)" in page
     # The sync text wraps on a phone, so its pill drops the full round.
     assert ".sync { border-radius: 12px; line-height: 1.3; text-wrap: balance; }" in page
+
+
+def test_stage_starts_each_video_at_its_video_start(tmp_path):
+    # From 0, Jordan waited 6:08 and Kobe 8:10 for the first line on /stage (#57).
+    page = TestClient(create_app(store=Store(tmp_path))).get("/stage").text
+    assert "loadVideo(m.youtube_id, m.video_start);" in page
+    assert "rel: 0, start }" in page  # the first match: the player's own start
+    assert "loadVideoById({ videoId: id, startSeconds: start })" in page  # every later one
