@@ -7,7 +7,7 @@ import { demoMatches, demoStats, streamDemo } from './demo'
 import { offAir, Refused, refused } from './ask'
 import { playersUrl, type Player, type Profile } from './follow'
 import type { Shots } from './shots'
-import type { Answer, Fix, Line, LineCheck, Ledger, LineCheckExample, Match, Moment, ReviewItem, Stats, StreamEvent, Teams, Voice } from './types'
+import type { Answer, Fix, Line, LineCheck, Ledger, LineCheckExample, Match, Moment, ReviewItem, ScoreCheckExample, Stats, StreamEvent, Teams, Voice } from './types'
 
 export const isDemo = new URLSearchParams(window.location.search).has('demo')
 
@@ -136,6 +136,22 @@ export async function waitForExample(fix: Fix, tries = 30, every = 2000): Promis
     if (ex && ex.created_at >= since) return ex
   }
   return null
+}
+
+// GET /lines/{id} → the Score check examples a fix sent (#400): the line as said and the fixed text, sent
+// one after the other after the fix is answered. `seen` gets each new count; it stops at two or a minute.
+export async function waitForScoreExamples(fix: Fix, seen: (xs: ScoreCheckExample[]) => void, tries = 30, every = 2000): Promise<void> {
+  if (isDemo) return
+  const since = typeof fix.created_at === 'string' ? fix.created_at : ''
+  let n = 0
+  for (let i = 0; i < tries && n < 2; i++) {
+    await new Promise((r) => setTimeout(r, every))
+    const res = await fetch(`/lines/${encodeURIComponent(fix.line_id)}`).catch(() => null)
+    const all: ScoreCheckExample[] = res?.ok ? ((await res.json()).scorecheck_examples ?? []) : []
+    const xs = all.filter((x) => x.created_at >= since)
+    if (xs.length > n) seen(xs)
+    n = Math.max(n, xs.length)
+  }
 }
 
 // GET /review (#171): stored lines the number check flags. The demo has no store, so nothing.

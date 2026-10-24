@@ -155,6 +155,17 @@ export interface LineCheckExample {
   created_at: string
 }
 
+// GET /lines/{id}'s `scorecheck_examples` (#392, #400): a Score check example a fix of the line sent,
+// the line as said or the fixed text, each labelled from the event data
+export interface ScoreCheckExample {
+  line_id: string
+  text: string
+  gold: 'ok' | 'wrong' | 'not_said'
+  kind: 'matched' | 'corrected' | 'uncorrected'
+  mubit_request_id: string | null
+  created_at: string
+}
+
 // The `linecheck` SSE event (#298): Line check's answer on one line. labels null: no canonical reply.
 export interface LineCheck {
   line_id: string
