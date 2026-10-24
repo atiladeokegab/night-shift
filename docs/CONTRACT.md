@@ -95,6 +95,12 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   that moment: earlier moments are never called. They are sent first, untimed (no `video_t`), so the score
   and clock are already there, each followed by the last line stored for it with `history: true`
   (shown, never spoken), then that line's latest `fixed` if it has one. 422 if no such moment.
+  The budget guard (#244, core/guard.py): 429 with `Retry-After` past `REPLAYS_PER_HOUR` starts
+  from one client (the first `X-Forwarded-For` hop) in an hour. With `MAX_LIVE_REPLAYS` replays
+  already making lines, or today's spend past `DAILY_BUDGET_USD`, the replay plays each moment's
+  stored line again as a new Line (`cached`: the stored line's id, no tokens), with no model or voice
+  call and never counted as a full replay; 429 `{detail}` if the match has no stored lines. A 429's
+  `detail` is viewer-safe: the page shows it.
 - `GET /replays/{id}/stream` → SSE: per moment `moment`, `line`, `stats` in that order; `error`
   `{code: "commentator_off_air", detail}` if the commentator fails, where `detail` is a fixed
   viewer-safe string ("Commentator is off air for a moment"), never the provider's error text (that
@@ -118,8 +124,10 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   past the last moment the replay has sent, so the answer cannot spoil what is still to come. Stored
   in `answers` and spoken by `GET /lines/{line_id}/audio`, like a line; published as `answer` on the
   replay stream. Off air (the commentator call failed) it answers 200 with `{off_air: true, text:
-  "Commentator is off air for a moment"}`, stores nothing and is still published. 404 unknown
-  replay, 409 a question already in flight on this replay or no moment sent yet, 422 bad question.
+  "Commentator is off air for a moment"}`, stores nothing and is still published. Past
+  `DAILY_BUDGET_USD` the same, with `text` and `notice` "Commentator is off air for today". 404 unknown
+  replay, 409 a question already in flight on this replay or no moment sent yet, 422 bad question,
+  429 with `Retry-After` past `ASKS_PER_HOUR` from one client in an hour.
 - `GET /replays/{id}/players/{name}/shots?moment_idx=` → `{player, sport, season: [{x, y, made,
   zone}], tonight: [{x, y, made, idx}], zones: [{zone, attempts, made, rate}]}` (core, #120): the
   player's pre-match shots from `data/packs/` plus tonight's up to `moment_idx` (default: the latest
@@ -152,13 +160,17 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   for the moment's kind (in the TTS text only, never the stored line); one retry, then
   `eleven_flash_v2_5` without the tag; `VOICE_MODEL_<SPORT>` overrides the model. The audio is
   made when the replay stores the line and cached, due before the video reaches its moment.
-  404 for an unknown line or voice; 503 with no `ELEVENLABS_API_KEY` or every attempt failed,
+  404 for an unknown line or voice; 503 with no `ELEVENLABS_API_KEY`, every attempt failed or
+  today's spend past `DAILY_BUDGET_USD`,
   and the page then uses browser speech. The key never reaches the browser; each call logs
   `voice line=<id> first_byte_ms=<n> model=<model>`. (core)
 - `GET /stats` → `{lines, fixes, mubit_requests, first_word_ms_p50, first_word_ms_p95,
   latency_ms_p50, latency_ms_p95, tokens_in, tokens_out, cost_per_line_usd, adapter, by_speaker,
   fixes_recorded, fixes_toward_next, voice_chars, matches_measured, cost_per_match_usd,
-  model_cost_per_match_usd, voice_cost_per_match_usd, fixes_auto, autonomy, autonomy_by_match}` (core). The `stats` SSE event carries the same object.
+  model_cost_per_match_usd, voice_cost_per_match_usd, fixes_auto, autonomy, autonomy_by_match,
+  budget}` (core). The `stats` SSE event carries the same object, without `budget`.
+  - `budget: {daily_budget_usd, spent_today_usd, off_air}` (#244): the cap (null when off), the
+    model and voice spend of lines and answers created today (UTC), and whether it is past the cap.
   - `by_speaker: {lead, analyst}`, each `{model, lines, first_word_ms_p50, first_word_ms_p95,
     cost_per_line_usd}`: the lead's calls and the analyst's stat lines apart (a line with no
     `speaker` is the lead's).

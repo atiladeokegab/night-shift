@@ -486,6 +486,15 @@ make check   # lint and the test suite, offline
 make dev     # the server on localhost; set MUBIT_API_KEY in .env for real commentary
 ```
 
+The live site's budget guard reads these settings; `0` turns one off, and tests and `make smoke` run with all four off.
+
+| Setting | Default | What it limits |
+|---|---|---|
+| `MAX_LIVE_REPLAYS` | 4 | Replays making new lines at once. Past it, a replay plays the match's stored lines with no model or voice call, or the page says to try again in a minute |
+| `REPLAYS_PER_HOUR` | 10 | Replay starts per visitor (the first `X-Forwarded-For` hop) in any hour; then 429 with `Retry-After` |
+| `ASKS_PER_HOUR` | 20 | Asks per visitor in any hour; then 429 with `Retry-After` |
+| `DAILY_BUDGET_USD` | 5 | Today's model and voice spend (UTC). Past it, replays play stored lines in browser speech and Ask answers "Commentator is off air for today"; `GET /stats` shows `budget` |
+
 ## Data and video
 
 - Football: [StatsBomb open data](https://github.com/statsbomb/open-data), used under its licence.
