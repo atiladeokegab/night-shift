@@ -252,6 +252,32 @@ The same labelled lines, lead lines only, through Line check: a keyed run of
 result is a row of the README's table. A Line check flag only sends the line to the producer's fix queue; it never stops the line
 being said. The samples are small: one catch moves these a lot.
 
+## Keyboard and screen reader
+
+Each keyboard or screen-reader claim the README or the site makes, the code that does it, and the test
+that covers it. Paths are under `web/`.
+
+| Claim | Code | Test |
+|---|---|---|
+| **E** closes your eyes, but not while typing or with Ctrl, Cmd or Alt | [`src/eyes.ts:2`](../web/src/eyes.ts#L2), [`src/components/Live.tsx:209`](../web/src/components/Live.tsx#L209) | [`src/live.test.ts:251`](../web/src/live.test.ts#L251) (the key rule; no browser test presses E) |
+| Close your eyes is a toggle button with its key named (`aria-pressed`, `aria-keyshortcuts="E"`); the cover keeps the line and the score, and the player runs on | [`src/components/Controls.tsx:63`](../web/src/components/Controls.tsx#L63), [`src/components/Live.tsx:256`](../web/src/components/Live.tsx#L256) | [`src/live.test.ts:215`](../web/src/live.test.ts#L215), [`:231`](../web/src/live.test.ts#L231) |
+| **T** opens the Teams tab and moves focus to its heading | [`src/components/Live.tsx:198`](../web/src/components/Live.tsx#L198), [`:322`](../web/src/components/Live.tsx#L322) | [`e2e/teams.spec.ts:61`](../web/e2e/teams.spec.ts#L61), [`e2e/a11y.spec.ts:107`](../web/e2e/a11y.spec.ts#L107) |
+| **W** asks "Where are we?" (the button's title says so) | [`src/components/LineLog.tsx:171`](../web/src/components/LineLog.tsx#L171), [`:183`](../web/src/components/LineLog.tsx#L183) | not tested |
+| **Talk** pauses the match; Enter starts it, Escape ends it and resumes, also while connecting | [`src/components/Converse.tsx:45`](../web/src/components/Converse.tsx#L45), [`:82`](../web/src/components/Converse.tsx#L82) | [`e2e/talk.spec.ts:49`](../web/e2e/talk.spec.ts#L49), [`:77`](../web/e2e/talk.spec.ts#L77), [`:118`](../web/e2e/talk.spec.ts#L118) |
+| 12 s of silence after the commentator ends Talk | [`src/converse.ts:11`](../web/src/converse.ts#L11), [`src/components/Converse.tsx:62`](../web/src/components/Converse.tsx#L62) | [`e2e/converse-lifecycle.spec.ts:105`](../web/e2e/converse-lifecycle.spec.ts#L105) (fake clock) |
+| The caption is a live region only while the voice is silent, so a screen reader never reads over it | [`src/components/Caption.tsx:22`](../web/src/components/Caption.tsx#L22), [`src/components/Live.tsx:222`](../web/src/components/Live.tsx#L222) | [`e2e/a11y.spec.ts:155`](../web/e2e/a11y.spec.ts#L155) (off while voiced; the silent case is not tested) |
+| An answer is announced: "Answer ready" while voiced, its text when silent | [`src/components/LineLog.tsx:65`](../web/src/components/LineLog.tsx#L65) | [`e2e/a11y.spec.ts:164`](../web/e2e/a11y.spec.ts#L164) (voiced case) |
+| State changes are announced: playing, paused, screen covered, off air, voice off | [`src/components/Live.tsx:244`](../web/src/components/Live.tsx#L244), [`:416`](../web/src/components/Live.tsx#L416) | [`e2e/a11y.spec.ts:153`](../web/e2e/a11y.spec.ts#L153), [`src/live.test.ts:142`](../web/src/live.test.ts#L142) |
+| Keyboard only, in order: Tab to a match, Enter, it is called aloud; Tab to Ask, type, Enter | [`src/components/Wall.tsx:132`](../web/src/components/Wall.tsx#L132), [`src/components/LineLog.tsx:192`](../web/src/components/LineLog.tsx#L192) | [`e2e/a11y.spec.ts:130`](../web/e2e/a11y.spec.ts#L130) |
+| A visible focus ring; Tab never enters the video embed | [`src/App.css:20`](../web/src/App.css#L20), [`src/player.ts:125`](../web/src/player.ts#L125) | [`e2e/a11y.spec.ts:149`](../web/e2e/a11y.spec.ts#L149), [`src/player.test.ts:61`](../web/src/player.test.ts#L61) |
+| A sheet (voice, fix, shot map) takes the focus, Escape closes it, and focus returns | [`src/focus.ts:5`](../web/src/focus.ts#L5) | [`e2e/a11y.spec.ts:168`](../web/e2e/a11y.spec.ts#L168) (the voice sheet) |
+| One h1 per live page, then an h2 per panel | [`src/components/Live.tsx:247`](../web/src/components/Live.tsx#L247) | [`src/live.test.ts:317`](../web/src/live.test.ts#L317), [`:333`](../web/src/live.test.ts#L333) |
+| Follow: a labelled search box (combobox, Escape closes the list); the card is a region named "Following <player>" | [`src/components/FollowPicker.tsx:39`](../web/src/components/FollowPicker.tsx#L39), [`src/components/ProfileCard.tsx:28`](../web/src/components/ProfileCard.tsx#L28) | not tested |
+| No serious or critical axe finding on the wall, the live page and the review queue, at 390 and 1280 px, also with the fallback font and 200% text | the pages above | [`e2e/a11y.spec.ts:90`](../web/e2e/a11y.spec.ts#L90), [`:116`](../web/e2e/a11y.spec.ts#L116) |
+
+Not tested yet: the W key, the Follow box and card by keyboard, and the silent-voice branches of the caption
+and the answer. The code for each is linked above.
+
 ## The problem
 
 On 10 October 2026 Sky Sports launched live descriptive audio commentary for the Premier League:

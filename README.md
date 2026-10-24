@@ -75,6 +75,10 @@ Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026. Track: Own
 3. Tap **Fix** on any line: a producer corrects it, and the fix goes back through Mubit.
 4. Read the **Proof** card, then check it: `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/stats`.
 
+**Keyboard and screen reader:** E, T, W, Talk with Escape, focus order, live captions and the Follow
+card, each traced to its code and its test, or marked not tested:
+[the table](docs/evidence.md#keyboard-and-screen-reader).
+
 ### What's new tonight
 
 - **A graph of teams and players:** SurrealDB holds the seasons around our matches in football (612 matches), basketball and cricket, and answers only from matches before this one, so nothing later leaks.
