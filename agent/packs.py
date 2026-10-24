@@ -4,6 +4,7 @@ A pack holds only the players and teams in the match, and only their shots from 
 season or tournament, up to the day before the match. `tonight` is the match's own shots, each
 linked to the sample moment that reveals it, so runtime filters to idx <= the current moment.
 Cricket has no shots: its players carry batting by phase and bowling, and `tonight` is every ball.
+F1 has neither: each driver carries their earlier races' grid and finish, and `tonight` is empty.
 Built offline from the feed's caches and committed, so runtime needs no network.
 """
 
@@ -13,6 +14,7 @@ import copy
 import csv
 import io
 import json
+import sys
 import tarfile
 from collections import defaultdict
 from datetime import date, timedelta
@@ -28,12 +30,14 @@ SAMPLE = ROOT / "data" / "sample"
 SHOT_CAP = 300  # each player's most recent pre-match shots on the map; totals and zones count all
 
 # match -> its source: shufinskiy/nba_data shot archives (the regular-season file has no playoffs),
-# a StatsBomb (competition, season), or the year of Cricsheet T20Is
+# a StatsBomb (competition, season), the year of Cricsheet T20Is, or the year of OpenF1 races
 MATCHES = {
     ("basketball", "0020500591"): ("shotdetail_2005",),
     ("basketball", "0049700088"): ("shotdetail_1997", "shotdetail_po_1997"),
     ("football", "3869685"): (43, 106),
+    ("football", "3754092"): (2, 27),  # Premier League 2015/16
     ("cricket", "1298150"): ("2022",),
+    ("f1", "9636"): (2024,),
 }
 
 
@@ -368,17 +372,85 @@ def cricket_pack(match_id: str, sample: dict, season: tuple) -> dict:
     return pack
 
 
+# --- f1 -----------------------------------------------------------------------------------
+
+
+def f1_pack(match_id: str, sample: dict, season: tuple) -> dict:
+    """Each driver's races earlier in the season: grid (their first position row), finish (the
+    classified result, none for a DNF, DNS or DSQ), and from those the averages and wins."""
+    header = sample["header"]
+
+    def drivers(key: str) -> dict:
+        """Car number -> (name as the feed names them, team) in one session."""
+        return {
+            d["driver_number"]: (
+                feed._s(f"{d['first_name']} {d['last_name']}"),
+                feed._s(d["team_name"]),
+            )
+            for d in feed.openf1("drivers", key)
+        }
+
+    players = {
+        name: {"team": team, "games": 0, "results": []} for name, team in drivers(match_id).values()
+    }
+    url = f"{feed.OPENF1}/sessions?year={season[0]}&session_name=Race"
+    races = sorted(
+        (
+            s
+            for s in json.loads(feed._fetch(url, f"of1_sessions_{season[0]}_race.json"))
+            if s["date_start"][:10] < header["date"] and not s.get("is_cancelled")
+        ),
+        key=lambda s: s["date_start"],
+    )
+    for s in races:
+        key = str(s["session_key"])
+        grid = {}
+        for r in sorted(feed.openf1("position", key), key=lambda r: r["date"]):
+            grid.setdefault(r["driver_number"], r["position"])
+        # by name, not number: a reserve can race under another number for another team
+        names = {n: name for n, (name, _) in drivers(key).items()}
+        for r in feed.openf1("session_result", key):
+            if names.get(r["driver_number"]) not in players:
+                continue
+            out = r.get("dnf") or r.get("dns") or r.get("dsq")
+            p = players[names[r["driver_number"]]]
+            p["games"] += 1
+            p["results"].append(
+                {
+                    "date": s["date_start"][:10],
+                    "race": feed._s(s["location"]),
+                    "grid": grid.get(r["driver_number"]),
+                    "finish": None if out else r["position"],
+                }
+            )
+    for p in players.values():
+        done = [r for r in p["results"] if r["finish"]]
+        both = [r for r in done if r["grid"]]
+        p["finishes"] = len(done)
+        p["avg_finish"] = round(sum(r["finish"] for r in done) / len(done), 1) if done else None
+        p["avg_gained"] = (
+            round(sum(r["grid"] - r["finish"] for r in both) / len(both), 1) if both else None
+        )
+        p["wins"] = sum(r["finish"] == 1 for r in done)
+    source = f"OpenF1 {season[0]} races"
+    return _pack(header, source, None, races[0]["date_start"][:10], players, {}, [])
+
+
 def build(sport: str, match_id: str) -> dict:
     sample = json.loads((SAMPLE / f"{sport}-{match_id}.json").read_text())
-    make = {"basketball": basketball_pack, "football": football_pack, "cricket": cricket_pack}[
-        sport
-    ]
+    make = {
+        "basketball": basketball_pack,
+        "football": football_pack,
+        "cricket": cricket_pack,
+        "f1": f1_pack,
+    }[sport]
     return make(match_id, sample, MATCHES[(sport, match_id)])
 
 
-def main() -> None:
+def main(argv: list[str]) -> None:
+    """Every pack, or only the one named: `python -m agent.packs football 3754092`."""
     PACKS.mkdir(parents=True, exist_ok=True)
-    for sport, match_id in MATCHES:
+    for sport, match_id in [tuple(argv)] if argv else MATCHES:
         pack = build(sport, match_id)
         path = PACKS / f"{sport}-{match_id}.json"
         path.write_text(json.dumps(pack, ensure_ascii=False, separators=(",", ":")) + "\n")
@@ -387,4 +459,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])

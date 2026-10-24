@@ -7,9 +7,11 @@ from pathlib import Path
 import pytest
 
 from agent import packs
+from core import predict
 
 DATA = Path(__file__).resolve().parent.parent / "data"
-MATCHES = [f"{sport}-{match_id}" for sport, match_id in packs.MATCHES if sport != "cricket"]
+ALL = [f"{sport}-{match_id}" for sport, match_id in packs.MATCHES]
+MATCHES = [f"{sport}-{match_id}" for sport, match_id in packs.MATCHES if sport in predict.SHOTS]
 CRICKET = "cricket-1298150"
 
 
@@ -104,3 +106,39 @@ def test_cricket_tonight_reveals_each_ball_no_earlier_than_its_moment():
         final = max(m["score"]["runs"] for m in moments if m["period"] == inn)
         upto = max(m["idx"] for m in moments if m["period"] == inn)
         assert sum(b["runs"] for b in balls if b["innings"] == inn and b["idx"] <= upto) == final
+
+
+@pytest.mark.parametrize("name", ALL)
+def test_every_pack_record_is_dated_before_the_match_day(name):
+    pack, sample = load(name)
+    day = sample["header"]["date"]
+    assert pack["window"]["from"] <= pack["window"]["to"] < day
+    records = pack.get("matches", []) + [
+        r for p in pack["players"].values() for r in p.get("shots", []) + p.get("results", [])
+    ]
+    assert records and all(r["date"] < day for r in records)
+
+
+@pytest.mark.parametrize("name", ALL)
+def test_everyone_named_in_the_moments_resolves_in_the_pack(name):
+    pack, sample = load(name)
+    named = {n for m in sample["moments"] for n in m["players"].values()}
+    named |= {t["driver"] for m in sample["moments"] for t in m["score"].get("top", [])}
+    assert named
+    for n in named:
+        assert predict.find(pack, n) == n
+
+
+def test_f1_season_before_sao_paulo():
+    pack, sample = load("f1-9636")
+    assert pack["tonight"] == [] and len(pack["players"]) == 20
+    max_ = pack["players"]["Max Verstappen"]
+    assert max_["team"] == "Red Bull Racing" and max_["games"] == 20 and max_["wins"] == 7
+    assert max_["results"][-1] == {
+        "date": "2024-10-27",
+        "race": "Mexico City",
+        "grid": 2,
+        "finish": 6,
+    }
+    # Bearman raced as 38 for Ferrari in Jeddah and as 50 for Haas in Baku: both count
+    assert [r["race"] for r in pack["players"]["Oliver Bearman"]["results"]] == ["Jeddah", "Baku"]
