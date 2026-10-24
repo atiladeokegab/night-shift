@@ -244,7 +244,10 @@ def correct(
         {"role": "assistant", "content": line["text"]},
         {"role": "user", "content": CORRECTION.format(text=corrected_text)},
     ]
-    reply = (provider or provider_for(past[-1])).call(request)
+    if provider is None:  # a moment's fix trains on the owner's key; a Stat's stays unrecorded
+        trainer = correction_provider() if past[-1]["type"] != "Stat" else None
+        provider = trainer or provider_for(past[-1])
+    reply = provider.call(request)
     # the echo, not a spoken line: untrimmed, so a correction over 20 words can still match
     said = " ".join(b["text"] for b in reply["content"] if b["type"] == "text").split()
     return {
@@ -268,6 +271,19 @@ def default_provider():
         fallback = MubitProvider(owner) if owner else None
         _provider = MubitProvider(key, record=record, fallback=fallback) if key else FakeProvider()
     return _provider
+
+
+_trainer = None
+
+
+def correction_provider():
+    """Mubit on the owner's key, recorded whatever MUBIT_RECORD says: a producer's fix is the example
+    the owner's app trains on, and the lent key never records. None without MUBIT_FALLBACK_KEY."""
+    global _trainer
+    owner = os.environ.get("MUBIT_FALLBACK_KEY")
+    if _trainer is None and owner:
+        _trainer = MubitProvider(owner, record=True)
+    return _trainer
 
 
 _unrecorded = None
