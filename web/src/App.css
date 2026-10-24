@@ -353,7 +353,12 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   .controls .time { min-width: 0; }
   .controls .vol { display: none; } /* a phone's own buttons set the volume; mute stays */
   .caption { padding: 12px 14px; min-height: 84px; }
-  .stats { grid-template-columns: 1fr 1fr; }
+  /* six tracks: figures in pairs, the three per-match costs on one row */
+  .stats { grid-template-columns: repeat(6, 1fr); }
+  .stats > div { grid-column: span 3; }
+  .stats > .cost { grid-column: span 2; }
+  .stats .cap { grid-column: 1 / -1; }
+  .stats .cap + div { grid-column: 1 / span 3; }
   .voices { grid-template-columns: 1fr; }
   .sheet { --pad: 20px; max-height: calc(100svh - 16px); }
   .scrim { place-items: end center; padding: 8px; }
