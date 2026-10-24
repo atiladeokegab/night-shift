@@ -107,7 +107,7 @@ function Tile({ match, onOpen, onJump }: { match: Match; onOpen: (m: Match) => v
     <div className={note ? 'tile-wrap hero' : 'tile-wrap'}>
     <button className="tile" onClick={() => onOpen(match)}>
       {match.youtube_id && (
-        <img className="poster" alt="" loading="lazy" onError={(e) => { e.currentTarget.hidden = true }} src={posterUrl(match.youtube_id)} />
+        <img className="poster" alt="" loading="lazy" onError={(e) => { e.currentTarget.hidden = true }} src={posterUrl(match.youtube_id, note ? 'maxresdefault' : 'hqdefault')} />
       )}
       <div className={`clip${playing && !broken ? ' on' : ''}`} ref={host} aria-hidden />
       <span className="tile-shade" />
