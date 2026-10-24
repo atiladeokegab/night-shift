@@ -17,6 +17,7 @@ html { background: var(--bg); }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 400 16px/1.5 var(--body); -webkit-font-smoothing: antialiased; }
 button { font: inherit; color: inherit; cursor: pointer; }
 button:disabled { cursor: not-allowed; opacity: .4; }
+button[aria-busy="true"]:disabled { cursor: progress; opacity: 1; } /* busy, not off: "Connecting" stays readable */
 :focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; border-radius: 6px; }
 .num { font-variant-numeric: tabular-nums; }
 .label { font: 600 .7rem/1 var(--body); letter-spacing: .16em; text-transform: uppercase; color: var(--faint); }
@@ -124,12 +125,12 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .eyes p { margin: 0; max-width: 30ch; text-align: center; color: #fff; font: 600 clamp(1.25rem, 3.2vw, 2.4rem)/1.3 var(--display); text-wrap: balance; }
 .frame[data-eyes] .onair, .frame[data-eyes] .bug::before { visibility: hidden; }
 /* The score bug and ON AIR pill: small, inside the card's top edge, and the only things on the picture. */
-.bug { position: absolute; top: 10px; left: 10px; right: 10px; z-index: 2; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; pointer-events: none; }
-/* A shade behind the bug, so the video's own title never shows through it (#153). */
-.bug::before { content: ""; position: absolute; z-index: -1; inset: -10px -10px auto; height: 88px; background: linear-gradient(180deg, rgba(3, 5, 10, .82), rgba(3, 5, 10, 0)); }
+.bug { position: absolute; bottom: 10px; left: 10px; right: 10px; z-index: 2; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; pointer-events: none; }
+/* The bug sits at the picture's foot, so the video's own title (top) stays readable; a shade keeps it legible over the picture (#153). */
+.bug::before { content: ""; position: absolute; z-index: -1; inset: auto -10px -10px; height: 88px; background: linear-gradient(0deg, rgba(3, 5, 10, .82), rgba(3, 5, 10, 0)); }
 .bug button.onair { position: relative; pointer-events: auto; color: var(--fg); cursor: pointer; }
 /* The pill is under 44px tall; an invisible hit area, growing down into the picture so the frame never clips it, makes the target 44px. */
-.bug button.onair::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: max(100%, 44px); }
+.bug button.onair::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: max(100%, 44px); }
 .onair .st { display: contents; }
 .bug .scorebar { padding: 7px 12px; gap: 6px 10px; font-size: .9rem; border-radius: 12px; min-width: 0; }
 .bug .score { font-size: 1.1rem; }
@@ -211,7 +212,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .banner .warn b { background: var(--amber); animation: rec 1.4s ease-out infinite; }
 .banner .err b { background: var(--err); }
 /* The caption card: the speaker chip and moment tag, then the line; long text wraps, never clipped. */
-.caption { padding: 14px 18px; min-height: 96px; display: grid; align-content: center; }
+.caption { padding: 14px 18px; min-height: 96px; display: grid; grid-template-columns: minmax(0, 1fr); align-content: center; }
 .cap-h { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
 /* The header's end: a question waiting for its answer, else the match's name. One line, never wrapping. */
 .cap-side { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; color: var(--muted); font: 500 .85rem/1.2 var(--body); }
@@ -221,7 +222,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .chip { font: 600 .65rem/1 var(--body); letter-spacing: .14em; text-transform: uppercase; padding: 5px 8px; border-radius: 6px; color: var(--fg); background: rgba(255, 255, 255, .1); }
 .chip.analyst { color: var(--fix); background: rgba(124, 212, 255, .12); }
 .chip.viewer { color: var(--muted); }
-.caption .tag { font: 600 .65rem/1 var(--body); letter-spacing: .16em; text-transform: uppercase; color: var(--amber); padding: 5px 9px; border-radius: 999px;
+.caption .tag { min-width: 0; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 600 .65rem/1 var(--body); letter-spacing: .16em; text-transform: uppercase; color: var(--amber); padding: 5px 9px; border-radius: 999px;
   background: rgba(255, 181, 71, .1); border: 1px solid rgba(255, 181, 71, .28); }
 .caption .tag.fixed { color: var(--fix); background: rgba(124, 212, 255, .1); border-color: rgba(124, 212, 255, .3); }
 .caption p { margin: 0; overflow-wrap: anywhere; }
@@ -243,6 +244,8 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .panel.lines { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .panel.lines .log { max-height: calc(100svh - var(--nav-h) - 180px); } /* the Lines card fits the sidebar's window, Proof peeks below */
 .panel-h { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
+.panel-h .panel-act { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; }
+.panel-h .label + .panel-act { margin-left: 12px; }
 .panel h2 { margin: 0; font: 600 1.05rem/1 var(--display); letter-spacing: -.01em; }
 .panel .hint { margin: 0; color: var(--muted); font-size: .85rem; }
 .log { list-style: none; margin: 0 -6px; padding: 0 6px 28px; display: grid; gap: 4px; overflow: auto; min-height: 0; scrollbar-width: thin;
@@ -263,7 +266,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .pill.fixed { color: #06202d; background: var(--fix); }
 .pill.late { color: var(--muted); border: 1px solid var(--line-hi); }
 .pill.check { color: var(--muted); border: 1px solid var(--line-hi); text-transform: none; letter-spacing: 0; font-weight: 500; } /* #298 */
-.pill.check.flag { color: var(--on-amber); background: var(--amber); border-color: transparent; }
+.pill.check.flagged { color: var(--on-amber); background: var(--amber); border-color: transparent; }
 .pill.served { color: var(--muted); border: 1px solid var(--line-hi); text-transform: none; letter-spacing: 0; font-weight: 500; } /* a model id, as Mubit wrote it */
 /* Ask the commentator (#117): the form under the Lines heading; a question and its answer sit in the log on a
    tint of their own, apart from the play-by-play. 16px text so a phone doesn't zoom into the field. */
@@ -387,7 +390,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   .card h2 { font-size: 1.8rem; }
   .meta { margin-top: 4px; padding-top: 8px; }
   /* The score bug keeps to the picture's top edge: no period, no voice name or bars. */
-  .bug { top: 6px; left: 6px; right: 6px; }
+  .bug { left: 6px; right: 6px; bottom: 6px; }
   .bug .scorebar { padding: 5px 9px; font-size: .78rem; gap: 4px 8px; }
   .bug .score { font-size: .95rem; }
   .bug .clock { font-size: .82rem; }
@@ -526,6 +529,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .profile .stat-lines { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; align-items: baseline; }
 .profile .stat-lines dd { margin: 0; font-size: .95rem; }
 .profile .zones { width: 100%; }
+.profile .zones td:not(.rate) { white-space: normal; } /* "· 0 off 1 tonight" wraps at 390 px rather than widening the card */
 .profile .laps { width: 100%; display: block; }
 .profile .laps .grid { stroke: var(--line); }
 .profile .laps text { fill: var(--muted); font: 500 10px var(--body); }
@@ -576,3 +580,6 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .flag .others summary { cursor: pointer; color: var(--muted); }
 .flag .others ul { margin: 6px 0 0; padding-left: 18px; color: var(--muted); display: grid; gap: 4px; }
 .stats dd a { color: var(--amber); display: inline-block; padding: 12px 0; margin: -12px 0; } /* a 44 px tap target, same layout (#170) */
+.training { margin: 0 0 24px; }
+.training h2 { margin: 0; }
+.training ol { margin: 0; padding-left: 20px; display: grid; gap: 8px; color: var(--muted); }

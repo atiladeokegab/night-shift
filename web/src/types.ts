@@ -157,6 +157,28 @@ export interface LineCheckExample {
   created_at: string
 }
 
+// GET /lines/{id}'s `scorecheck_examples` (#392, #400): a Score check example a fix of the line sent,
+// the line as said or the fixed text, each labelled from the event data
+export interface ScoreCheckExample {
+  line_id: string
+  text: string
+  gold: 'ok' | 'wrong' | 'not_said'
+  kind: 'matched' | 'corrected' | 'uncorrected'
+  mubit_request_id: string | null
+  created_at: string
+  fix_uid?: string // the Fix that sent it (rows since #400)
+}
+
+// GET /lines/{id}'s `scorecheck_receipts` (#400): one per Fix once its Score check send has ended
+export interface ScoreCheckReceipt {
+  fix_uid: string
+  sent: number // the examples it wrote: 0 when each was already sent or can't be labelled
+  failed: boolean // a Mubit call failed
+}
+
+// A fix's Score check send as the review page knows it (#400): no receipt within the deadline is unknown
+export type TrainingState = 'pending' | 'sent' | 'none' | 'failed' | 'unknown'
+
 // The `linecheck` SSE event (#298): Line check's answer on one line. labels null: no canonical reply.
 export interface LineCheck {
   line_id: string
@@ -258,6 +280,7 @@ export interface Fix {
   reply_passed?: boolean // the commentator's corrected reply passed the number check
   recorded?: boolean // Mubit recorded it for training (#161)
   mubit_request_id?: string | null // the correction call's request id (#239)
+  fix_uid?: string // #400: names its Score check examples and receipt
 }
 
 // POST /replays/{id}/ask's answer and the `answer` SSE event (#117). `line_id` so it is spoken like a line;
