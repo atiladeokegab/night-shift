@@ -198,7 +198,7 @@ export function Live(props: Props) {
               ))}
               {overlay}
             </div>
-            <Controls card={card} paused={paused || ended} canPlay={canPlay} onToggle={ended ? onRetry : toggle} now={replay.now} duration={replay.duration}
+            <Controls card={card} paused={paused || ended} canPlay={canPlay} onToggle={ended ? onRetry : toggle} now={replay.duration ? Math.min(replay.now, replay.duration) : replay.now} duration={replay.duration}
               marks={marks} onSeek={(t) => transport?.seek(t)} volume={volume} muted={muted} onVolume={onVolume} />
           </section>
           {replay.stream === 'reconnecting' && (
@@ -315,7 +315,7 @@ function OnAir({ voice, label, offAir, onOpen }: { voice: Props['voice']; label:
     )
   } else {
     if (voice.speaking) cls += ' on'
-    body = <><span className="rec" />ON AIR<span className="bars" aria-hidden><span /><span /><span /><span /></span><span className="who">{label}</span></>
+    body = <><span className="rec" /><span className="lbl">ON AIR</span><span className="bars" aria-hidden><span /><span /><span /><span /></span><span className="who">{label}</span></>
   }
   const status = <span className="st" role={offAir || voice.status === 'on' ? 'status' : undefined}>{body}</span>
   if (!onOpen) return <span className={cls}>{status}</span>
