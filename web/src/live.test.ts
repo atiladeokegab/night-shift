@@ -241,6 +241,13 @@ test('with no video, Close your eyes still covers the page to its line and score
   }
 })
 
+test('with eyes closed, no no-video note sits over the big line', () => {
+  // A film take showed "Highlights can't play here…" across the eyes-closed line.
+  const open = videoCard(render({ video: 'unavailable' }))
+  assert.match(open, /<p class="novideo">Highlights can&#x27;t play here/, 'the note shows with eyes open')
+  assert.ok(!videoCard(render({ video: 'unavailable', closed: true })).includes('class="novideo"'))
+})
+
 test('E toggles the cover, but not typed into Ask or with a modifier (#277)', () => {
   const key = (k: string, target: unknown = null, mods = {}) =>
     eyesKey({ key: k, repeat: false, ctrlKey: false, metaKey: false, altKey: false, target: target as EventTarget, ...mods })

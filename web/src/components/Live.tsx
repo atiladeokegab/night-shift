@@ -221,8 +221,9 @@ export function Live(props: Props) {
                 <ScoreBar match={match} moment={moment} moments={shown.moments} />
                 <OnAir voice={voice} label={onAirLabel} offAir={!!replay.error} onOpen={busy ? undefined : onVoiceSheet} />
               </div>
-              {/* A whole match has no video by design; only a video that should play and can't says so (#284). */}
-              {!gated && replay.phase === 'live' && replay.stream === 'ok' && !replay.error ? (
+              {/* A whole match has no video by design; only a video that should play and can't says so (#284).
+                  Eyes closed, no note: the cover shows only the line and the score. */}
+              {covered ? null : !gated && replay.phase === 'live' && replay.stream === 'ok' && !replay.error ? (
                 <p className="novideo">{coverage(match)} · described from the match data</p>
               ) : showNoVideoCaption(replay, video) && (blocked ? (
                 <p className="novideo">Commentary only · <a href={watchUrl(match)} target="_blank" rel="noopener noreferrer">highlights on YouTube ↗</a></p>
