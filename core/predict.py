@@ -29,6 +29,51 @@ def load_pack(sport: str, match_id: str) -> dict | None:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def pack(sport: str, match_id: str) -> dict | None:
+    """The match's pre-match pack: the graph's over data/packs, which keeps what the graph lacks
+    (`source`, a player's shot locations), else data/packs alone, else None."""
+    from core import graph  # graph imports this module
+
+    file, found = load_pack(sport, match_id), graph.pack(match_id)
+    if not (file and found):
+        return found or file
+    players = {n: {**file["players"].get(n, {}), **p} for n, p in found["players"].items()}
+    return {**file, **found, "players": {**file["players"], **players}}
+
+
+def season_text(sport: str, name: str, before: str) -> str:
+    """A player's season before the match, from the graph; "" when it has none."""
+    from core import graph
+
+    s = graph.player_season(sport, name, before)
+    if not s:
+        return ""
+    totals = ", ".join(f"{v} {k}" for k, v in (s.get("totals") or {}).items())
+    said = f"{name}, {s['competition']} {s['season']} before this match: {s['matches']} matches"
+    return said + (f", {totals}." if totals else ".")
+
+
+def _results(rows: list[dict]) -> str:
+    return "; ".join(
+        f"{r['date']} {r['result']} {r['score']} {'v' if r['home'] else 'at'} {r['opponent']}"
+        for r in rows
+    )
+
+
+def form_texts(sport: str, home: str, away: str, before: str) -> list[str]:
+    """Each team's last results and their meetings before the match, from the graph."""
+    from core import graph
+
+    out = [
+        f"{team}, the last {len(rows)} before this match: {_results(rows)}."
+        for team in (home, away)
+        if (rows := graph.team_form(sport, team, before))
+    ]
+    if rows := graph.head_to_head(sport, home, away, before):
+        out.append(f"{home} against {away} before this match: {_results(rows)}.")
+    return out
+
+
 def _so_far(pack: dict, moments: list, idx: int) -> list[dict]:
     """The match's own shots or balls that moments[idx] has revealed: never a later one."""
     if not 0 <= idx < len(moments):
