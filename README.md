@@ -75,15 +75,18 @@ Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026. Track: Own
 
 - **A graph of teams and players:** SurrealDB holds the seasons around our matches in football (612 matches), basketball and cricket, and answers only from matches before this one, so nothing later leaks.
 - **Talk:** press **Talk** and the match pauses while you speak with the commentator; each answer goes through Claude via Mubit and the same check as Ask. Escape, or 12 s of silence, resumes.
-- **One speaking queue:** no line cuts another off mid-word; a big moment goes first, and routine lines that have gone stale are dropped.
+- **One speaking queue:** ordinary commentary lines queue; a decisive moment can fade and interrupt
+  a spoken answer, and routine lines that have gone stale are dropped.
 - **Teams tab:** press **T** for each side's form, their last meetings and the squad, as they stood before the match.
-- **One broadcast pair:** both voices share one tone per moment, lit up for a big moment and calm for a routine one, and in quiet stretches they take turns on one player.
+- **One broadcast pair:** the event call lifts for a big moment; stat interjections and comebacks stay
+  calm, and in quiet stretches the pair take turns on one player.
 
 Everything else, with its code and tests: [every feature](docs/features.md).
 
 ## Mubit: training, not serving
 
-Every model call goes through Mubit, which records the traffic as training data. Mubit's console,
+Every model call goes through Mubit. Training runs and eligible correction examples are recorded;
+Ask and Talk answers are unrecorded, and deployed commentary defaults to recording off. Mubit's console,
 read by hand on 24 October 2026 at about 19:15 UTC ([`data/mubit_console.json`](data/mubit_console.json)),
 shows 8 tasks, 7 adapters and 0 serving: the best commentary task scores 58.3% against a 95% target.
 No adapter has passed, the app cannot call one, and we make no claim that any matches the big model.
