@@ -22,6 +22,7 @@ const icon = (
 export function MicButton({ disabled, onHeard, onSend, onHint }: Props) {
   const [listening, setListening] = useState(false)
   const release = useRef<(() => void) | null>(null)
+  const mounted = useRef(false)
   const latest = useRef({ disabled, onHeard, onSend, onHint }) // the window's key handlers see the newest props
   useEffect(() => {
     latest.current = { disabled, onHeard, onSend, onHint }
@@ -37,15 +38,16 @@ export function MicButton({ disabled, onHeard, onSend, onHint }: Props) {
     setListening(true)
     latest.current.onHeard('')
     release.current = listen(make, {
-      heard: (t) => latest.current.onHeard(t),
-      done: (t) => over(() => latest.current.onSend(t)),
-      hint: (h) => over(() => latest.current.onHint(h)),
+      heard: (t) => mounted.current && latest.current.onHeard(t),
+      done: (t) => mounted.current && over(() => latest.current.onSend(t)),
+      hint: (h) => mounted.current && over(() => latest.current.onHint(h)),
     })
   }
   const letGo = () => release.current?.()
 
   useEffect(() => {
     if (!make) return
+    mounted.current = true
     // Space is push-to-talk unless a field or another button has focus (it types or clicks there).
     const away = (e: KeyboardEvent) =>
       e.code !== 'Space' || (e.target as Element | null)?.closest?.('input, textarea, select, [contenteditable], button:not(.mic)')
@@ -64,6 +66,7 @@ export function MicButton({ disabled, onHeard, onSend, onHint }: Props) {
     return () => {
       window.removeEventListener('keydown', down)
       window.removeEventListener('keyup', up)
+      mounted.current = false
       release.current?.()
     }
   }, [])
