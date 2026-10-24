@@ -79,13 +79,18 @@ class Tap:
                 elif event.type == "content_block_start" and event.content_block.type == "tool_use":
                     self.on_tool()
             msg = stream.get_final_message()
+            headers = getattr(getattr(stream, "response", None), "headers", {})
+        request_id = next(
+            (value for key, value in headers.items() if key.lower() == "x-middleware-request-id"),
+            None,
+        )
         return {
             "content": [commentator._block(b) for b in msg.content],
             "usage": {
                 "input_tokens": msg.usage.input_tokens,
                 "output_tokens": msg.usage.output_tokens,
             },
-            "request_id": None,
+            "request_id": request_id,
         }
 
 
@@ -232,6 +237,7 @@ def converse_router(*, need_deps, viewed, asked_so_far, guard, store, env=os.env
         contexts[ctx] = {
             "replay_id": replay_id,
             "moment_idx": past[-1]["idx"],
+            "client_ip": client_ip(request),
             "expires": now + CTX_TTL_S,
             "turns": 0,
         }
@@ -254,15 +260,51 @@ def converse_router(*, need_deps, viewed, asked_so_far, guard, store, env=os.env
             raise HTTPException(404, "unknown conversation")
         if held["turns"] >= MAX_TURNS:
             raise HTTPException(429, "conversation is over")
+        if wait := guard.asks.hit(held["client_ip"]):
+            raise HTTPException(
+                429,
+                "That's a lot of questions. Try again in a few minutes.",
+                {"Retry-After": str(wait)},
+            )
         held["turns"] += 1
         d = need_deps()
         replay = viewed(held["replay_id"])
         past, lines = asked_so_far(replay, d.load_moments(replay.match_id), held["moment_idx"])
+
+        def counted_ask(question, moments, prior_lines, **kwargs):
+            result = d.ask(question, moments, prior_lines, **kwargs)
+            if (
+                result
+                and result.get("model")
+                and all(
+                    isinstance(result.get(key), int) and result[key] >= 0
+                    for key in ("tokens_in", "tokens_out")
+                )
+            ):
+                usage = {
+                    key: result[key]
+                    for key in (
+                        "line_id",
+                        "sport",
+                        "match_id",
+                        "moment_idx",
+                        "model",
+                        "tokens_in",
+                        "tokens_out",
+                        "mubit_request_ids",
+                        "created_at",
+                    )
+                    if key in result
+                }
+                store.append("answers", {**usage, "replay_id": replay.id})
+                guard._spent = None
+            return result
+
         question = question_of(messages)
         if question and body.get("stream", True) and d.ask:
             if await asyncio.to_thread(guard.off_air, store):
                 return StreamingResponse(sse(OFF_TODAY), media_type="text/event-stream")
-            said = speak(d.ask, commentator.unrecorded_provider(), question, past, lines)
+            said = speak(counted_ask, commentator.unrecorded_provider(), question, past, lines)
             return StreamingResponse(sse_of(said), media_type="text/event-stream")
         text = OFF_AIR
         if question:
@@ -271,7 +313,7 @@ def converse_router(*, need_deps, viewed, asked_so_far, guard, store, env=os.env
                     text = OFF_TODAY
                 elif d.ask and (
                     said := await asyncio.to_thread(
-                        insight.checked_answer, d.ask, question, past, lines
+                        insight.checked_answer, counted_ask, question, past, lines
                     )
                 ):
                     text = said["text"]
