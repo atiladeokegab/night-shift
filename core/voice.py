@@ -351,9 +351,11 @@ def voice_router(store, speaker: Speaker) -> APIRouter:
         first = {}  # a pick reusing a voice names the entry it repeats, so the page lists it once
         for v in voices:
             first.setdefault(v["eleven_id"], v["id"])
+        analyst = {s: analyst_voice(s)["id"] for s in sports}  # the page names who reads them
         return [
             {**{k: v[k] for k in ("id", "label", "lang")}, "default_for": default.get(v["id"])}
             | ({"same_as": first[v["eleven_id"]]} if first[v["eleven_id"]] != v["id"] else {})
+            | ({"analyst_for": a} if (a := [s for s in sports if analyst[s] == v["id"]]) else {})
             for v in voices
         ]
 
