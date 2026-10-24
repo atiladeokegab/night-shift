@@ -176,16 +176,17 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .panel.lines { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .panel-h { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
 .panel h3 { margin: 0; font: 600 1.05rem/1 var(--display); letter-spacing: -.01em; }
-.panel .hint { margin: 0; color: var(--faint); font-size: .85rem; }
+.panel .hint { margin: 0; color: var(--muted); font-size: .85rem; }
 .log { list-style: none; margin: 0 -6px; padding: 0 6px 28px; display: grid; gap: 4px; overflow: auto; min-height: 0; scrollbar-width: thin;
-  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 44px), transparent); mask-image: linear-gradient(180deg, #000 calc(100% - 44px), transparent); }
+  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 20px), transparent); mask-image: linear-gradient(180deg, #000 calc(100% - 20px), transparent); }
+/* The fade is short, so an older line cut at the foot reads as "more below", not as blank space. */
 .log li { display: grid; grid-template-columns: 52px 1fr auto; gap: 4px 10px; padding: 12px 0; border-top: 1px solid var(--line); }
 .log li:first-child { border-top: 0; padding-top: 2px; }
 .log li:first-child .text > span:first-child { animation: rise .38s var(--ease); }
 .log .when { font: 600 .8rem/1.55 var(--display); color: var(--amber); }
 .log .text { min-width: 0; font-size: .92rem; line-height: 1.45; }
 .log .orig { color: var(--faint); text-decoration: line-through; font-size: .82rem; margin-top: 4px; }
-.log .meta-l { grid-column: 2; display: flex; gap: 8px; align-items: center; font-size: .72rem; color: var(--faint); }
+.log .meta-l { grid-column: 2; display: flex; gap: 8px; align-items: center; font-size: .72rem; color: var(--muted); }
 .log .fixed .text > span:first-child { color: var(--fix); }
 .log .late .text > span:first-child { color: var(--faint); text-decoration: line-through; }
 .log .btn.sm { grid-column: 3; grid-row: 1; }
@@ -199,7 +200,8 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .stats .wide { grid-column: 1 / -1; padding-top: 14px; border-top: 1px solid var(--line); }
 .stats .wide dd { font: 500 .95rem/1.4 var(--body); letter-spacing: 0; }
 .stats .wide dd.good::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--live); margin-right: 8px; vertical-align: 1px; }
-.panel .small { margin: 14px 0 0; font-size: .75rem; color: var(--faint); line-height: 1.45; }
+/* Small text takes --muted, not --faint: --faint is under 4:1 on the panels. */
+.panel .small { margin: 14px 0 0; font-size: .75rem; color: var(--muted); line-height: 1.45; }
 .err-text { color: var(--err); margin: 0; }
 
 /* Sheets: producer fix and voice setting */
