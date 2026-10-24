@@ -242,7 +242,7 @@ A model can describe the rest, if it speaks while the moment is still on screen 
 enough to run for every match. Touchline's model costs $0.0019 a line, with the voice not included,
 and has the first word of its text out in 0.54 s and the full line in 0.9 s (medians from the live
 site's [`/stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats) on 24 October 2026 at
-13:52 UTC). With the voice, one full replay of the Kobe's 81 highlights (60 lines, all spoken)
+13:52 UTC). With the voice, one full replay of Kobe's 81 highlights (60 lines, all spoken)
 cost $0.70: $0.15 for the model and $0.54 for 6,909 characters of ElevenLabs speech. The voice price
 assumes an ElevenLabs subscription tier ($0.08 per 1,000 characters); pay-as-you-go is $0.10 per
 1,000, a quarter more for the voice. A full live match has more moments than a highlights
