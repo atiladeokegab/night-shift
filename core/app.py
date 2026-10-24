@@ -120,7 +120,9 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
         # a jump starts the video just before its moment (#163), as GET /matches' peak_video_start
         video = d.video_map(req.match_id) if jump is None else d.video_map(req.match_id, jump)
         task = asyncio.create_task(
-            run_replay(replay, moments, d.commentate, store, video, speaker.prepare, jump or 0)
+            run_replay(
+                replay, moments, d.commentate, store, video, speaker.prepare, jump or 0, d.correct
+            )
         )
         tasks.add(task)
         task.add_done_callback(tasks.discard)
