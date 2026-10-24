@@ -364,6 +364,7 @@ class Gaps:
         self.calls = 0
         self.overran = False  # the last line was dropped for running into the next moment (#297)
         self._pack = None
+        self._form_facts = None
         self._header = None
         self._balls = None
 
@@ -393,6 +394,15 @@ class Gaps:
             self._pack = predict.pack(m.get("sport", ""), self.match_id) or {}
         return self._pack
 
+    def form(self, past: list[dict]) -> list[str]:
+        """Reuse successful pre-match form facts for this replay; empty lookups may recover."""
+        if self._form_facts:
+            return self._form_facts
+        facts = _form(self.pack(past[-1]), past)
+        if facts:
+            self._form_facts = facts
+        return facts
+
     def wrong(self, text: str, stat: dict, past: list[dict]) -> list[str]:
         """What an analyst line or reply gets wrong against its stat and the moments before it."""
         return wrong_numbers(text, stat, self.header() or None, past)
@@ -417,7 +427,8 @@ class Gaps:
         order.sort(key=lambda k: KINDS[k][0] != prefer)  # what the lead just asked about, first
         for k in order:
             kind, make = KINDS[k]
-            for detail in make(self.pack(past[-1]), past):
+            details = self.form(past) if kind == "form" else make(self.pack(past[-1]), past)
+            for detail in details:
                 if detail not in self.used:
                     if opens:
                         self.opens = k + 1
