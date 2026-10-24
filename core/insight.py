@@ -4,6 +4,7 @@ moments up to the one it follows and the pre-match pack, and it goes through the
 call as any line, so the Mubit task stays one task. Insight lines are kept in the store and reused
 by later replays of the same match."""
 
+import math
 import re
 from collections import Counter
 
@@ -14,8 +15,10 @@ WORDS_PER_S = 2.7  # a line has likely finished speaking after its words at this
 PAUSE_S = 2.0  # then this breath before the next insight
 CLEAR_S = 6.0  # no insight starts closer than this to the next mapped moment
 MAX_CALLS = 160  # new insight calls per replay; cached ones are free
-REPLY_EVERY = 4  # every 4th line in a quiet stretch is the lead replying to the analyst
-VERSION = 2  # stored insights of another version are never reused (v1 re-called the play)
+REPLY_EVERY = 3  # every 3rd line in a quiet stretch is the lead replying to the analyst
+PER_GAP = 3  # then the stretch ends: two analyst lines and the reply (#162)
+# stored insights of another version are never reused (v1 re-called the play, v2 tallied counts)
+VERSION = 3
 RECENT = 6  # the key moments that count as recent play for momentum
 
 
@@ -172,12 +175,15 @@ def _tallies(pack, past):
             counts = Counter(
                 f"{m['type']} ({m['outcome']})" if m.get("outcome") else m["type"] for m in mine
             )
-            said = ", ".join(f"{k} x{v}" for k, v in counts.items())
-            # basketball keeps the shooter's running total on each basket
+            # basketball keeps the shooter's running total: the key moments' counts beside it
+            # never add up to it, and were said as if they did ("eleven twos" for 81)
             pts = [(m.get("detail") or {}).get("player_points") for m in mine]
             pts = [p for p in pts if p is not None] if label == "player" else []
-            total = f"; {pts[-1]} points in all" if pts else ""
-            out.append(f"{name} tonight, in the key moments so far: {said}{total}")
+            if pts:
+                out.append(f"{name} tonight: {pts[-1]} points so far")
+                continue
+            said = ", ".join(f"{k} x{v}" for k, v in counts.items())
+            out.append(f"{name} tonight, in the key moments so far: {said}")
     return out
 
 
@@ -264,8 +270,9 @@ class Gaps:
     """One replay's insights: rotates the kinds, never repeats a detail, reuses stored lines and
     caps new calls."""
 
-    def __init__(self, match_id: str, store):
+    def __init__(self, match_id: str, store, replay_id: str | None = None):
         self.match_id = match_id
+        self.replay_id = replay_id  # stored on its new lines: what this replay spent
         self.store = store
         self.cached = {
             (i["after_idx"], i["n"]): ln
@@ -276,6 +283,7 @@ class Gaps:
         }
         self.used: set[str] = set()
         self.turn = 0
+        self.opens = 0
         self.calls = 0
         self._pack = None
 
@@ -286,15 +294,21 @@ class Gaps:
 
     def next_stat(self, past: list[dict], first: bool = False) -> tuple[str, str] | None:
         """The next kind in turn with a detail not said yet in this replay; a stretch's first
-        insight takes the pre-match pack's profile or odds when there is a pack."""
-        order = [(self.turn + i) % len(KINDS) for i in range(len(KINDS))]
-        if first and self.pack(past[-1]):
-            order.sort(key=lambda k: KINDS[k][0] not in ("player profile", "next to score"))
+        insight takes the pre-match pack's profile or odds when there is a pack, in a turn of its
+        own, and the rest of the stretch the other kinds, so two lines a stretch reach them all."""
+        opens = first and bool(self.pack(past[-1]))
+        start = self.opens if opens else self.turn
+        order = [(start + i) % len(KINDS) for i in range(len(KINDS))]
+        if self.pack(past[-1]):
+            order.sort(key=lambda k: (KINDS[k][0] in ("player profile", "next to score")) != opens)
         for k in order:
             kind, make = KINDS[k]
             for detail in make(self.pack(past[-1]), past):
                 if detail not in self.used:
-                    self.turn = k + 1
+                    if opens:
+                        self.opens = k + 1
+                    else:
+                        self.turn = k + 1
                     return kind, detail
         return None
 
@@ -313,6 +327,8 @@ class Gaps:
         analyst speaks the insights and hears the line before it (`before`); now and then the
         lead replies to the analyst. A line that repeats one of the `recent` ones is never said."""
         m = past[-1]
+        if n >= PER_GAP:
+            return None
         reply = n % REPLY_EVERY == REPLY_EVERY - 1
         role, speaker = ("reply", "lead") if reply else ("insight", "analyst")
         ln = self.cached.get((m["idx"], n))
@@ -347,7 +363,14 @@ class Gaps:
                 said_as = {**said_as, "kind": picked[0], "detail": picked[1]}
             key = {"match_id": self.match_id, "after_idx": m["idx"], "n": n}
             ln = self.store.append(
-                "lines", {**said, "video_t": video_t, "speaker": speaker, role: {**key, **said_as}}
+                "lines",
+                {
+                    **said,
+                    "video_t": video_t,
+                    "speaker": speaker,
+                    "replay_id": self.replay_id,
+                    role: {**key, **said_as},
+                },
             )
         if not reply:
             self.used.add(said_as["detail"])
@@ -402,6 +425,215 @@ def repeats(text: str, recent: list[str]) -> bool:
         if events & ptoks and names & {w for w, cap in before if cap}:
             return True
     return False
+
+
+UNITS = (
+    "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen "
+    "fifteen sixteen seventeen eighteen nineteen"
+).split()
+TENS = {
+    w: 10 * i
+    for i, w in enumerate("twenty thirty forty fifty sixty seventy eighty ninety".split(), 2)
+}
+ORDINALS = {
+    w: i
+    for i, w in enumerate("first second third fourth fifth sixth seventh eighth ninth".split(), 1)
+}
+
+
+def said(text: str) -> list:
+    """The line as words, each number phrase as one float: digits or words ("ninety-six",
+    "eighty-first", "one hundred and four"), and scores as spoken ("one twenty-two", "one oh-four").
+    A lone "one" is a pronoun as often as a number, and a lone ordinal a place: both stay words."""
+    out, cur, words = [], None, []
+
+    def flush():
+        nonlocal cur, words
+        if cur is not None and words not in (["one"], ["a"]):
+            out.append(float(cur))
+        else:
+            out.extend(words)
+        cur, words = None, []
+
+    for w in re.findall(r"\d+(?:\.\d+)?|[a-z]+|[^\w\s'’-]", text.lower()):
+        if not w[0].isalnum():  # punctuation ends a number: "for four, ninety-three needed"
+            flush()
+            continue
+        unit = words and len(words) == 1 and words[0] in UNITS[1:10]  # "one" in "one twenty-two"
+        if w[0].isdigit():
+            flush()
+            out.append(float(w))
+        elif unit and (w in TENS or w in UNITS[10:] or w == "oh"):
+            cur, words = (
+                cur * 100 + (TENS.get(w) or (UNITS.index(w) if w != "oh" else 0)),
+                [*words, w],
+            )
+        elif w in TENS:
+            if not (cur and cur % 100 == 0):
+                flush()
+            cur, words = (cur or 0) + TENS[w], [*words, w]
+        elif w in UNITS or (w in ORDINALS and cur):
+            v = UNITS.index(w) if w in UNITS else ORDINALS[w]
+            if not (cur and cur % 10 == 0 and v < 10):
+                flush()
+            cur, words = (cur or 0) + v, [*words, w]
+        elif w == "hundred" and (cur or words == ["a"]):
+            cur, words = (cur or 1) * 100, [*words, w]
+        elif w == "a":
+            flush()
+            words = ["a"]
+        elif not (w == "and" and cur and cur % 100 == 0):
+            flush()
+            out.append(w)
+    flush()
+    return out
+
+
+def numbers(text: str) -> list[float]:
+    """Every number said in the line (see `said`)."""
+    return [w for w in said(text) if isinstance(w, float)]
+
+
+def _given(m: dict, header: dict | None = None) -> set[float]:
+    """The numbers this moment's own data gives: score, margin or runs needed, clock (and the
+    minute after it, as football says it), period, outcome and details, and the match's stage
+    ("Game 6"). Recent play is not here: a number from an earlier moment is how a wide becomes
+    "a six"."""
+    from agent.commentator import _detail
+
+    s = m.get("score") or {}
+    src = " ".join(
+        [str(s), str(m.get("clock")), str(m.get("period")), str(m.get("outcome")), _detail(m)]
+        + [str((header or {}).get(k, "")) for k in ("competition", "stage")]
+    )
+    given = set(numbers(src)) | {float(x) for x in re.findall(r"\d+", src)}
+    if "home" in s:
+        given.add(float(abs(s["home"] - s["away"])))
+    if "target" in s:
+        given.add(float(max(0, s["target"] - s["runs"])))
+    if clock := re.match(r"(\d+):", str(m.get("clock"))):
+        minute = int(clock[1])
+        given.add(float(minute + 1))
+        if m.get("sport") == "basketball" and (sec := re.match(r"\d+:(\d+)", m["clock"])):
+            left = minute * 60 + int(sec[1])  # "ninety seconds to play", "one forty-five"
+            given |= {float(left), float(minute * 100 + int(sec[1]))}
+            given |= {float(f(left / k) * k) for k in (10, 30, 60) for f in (math.floor, math.ceil)}
+        if m.get("sport") == "football":  # "the end of the ninety", "four minutes left"
+            for full in (45, 90, 105, 120):
+                given |= {float(full), float(full - minute), float(full - minute - 1)}
+    return given
+
+
+def _ball(m: dict) -> int:
+    over, ball = str(m["clock"]).split(".")
+    return int(over) * 6 + int(ball)
+
+
+def _streaks(m: dict, past: list[dict]) -> set[float]:
+    """Counts recent play gives a cricket boundary or wicket: the last k of the moment's own kind
+    by its own batter (bowler for a wicket), the balls they span and the runs they made ("three
+    sixes in four balls", "18 off six balls"). Only these kinds: a wide must not borrow a six."""
+    if m.get("sport") != "cricket" or m.get("type") not in ("Six", "Four", "Wicket"):
+        return set()
+    role = "bowler" if m["type"] == "Wicket" else "batter"
+    who = (m.get("players") or {}).get(role)
+    same = [
+        p
+        for p in past
+        if p["idx"] < m["idx"] and p["type"] == m["type"] and p["players"].get(role) == who
+    ] + [m]
+    out = set()
+    for k in range(1, len(same) + 1):
+        last = same[-k:]
+        runs = sum((p.get("detail") or {}).get("runs_batter") or 0 for p in last)
+        out |= {float(k), float(_ball(m) - _ball(last[0]) + 1), float(runs)}
+    return out
+
+
+# The model reasoning aloud instead of calling the moment ("Wait—I need to reconsider ..."): only at
+# the start of a clause, so "they'll have to wait for the review" is still commentary.
+SELF_TALK = re.compile(
+    r"(?:^|[.!?,;:—–]\s*)(?:wait\s*[—–-]|wait,\s*i\b|i need to\b|let me\b|reconsider|actually\b)"
+    r"|\bthe recent play (?:and|shows|lists)\b",
+    re.I,
+)
+
+
+def talks_to_itself(text: str) -> bool:
+    return bool(SELF_TALK.search(text))
+
+
+def wrong_numbers(
+    text: str, m: dict, header: dict | None = None, past: list[dict] = ()
+) -> list[str]:
+    """What a moment's line gets wrong against the moment's own data and the counts its recent
+    play gives (`past`: the moments before it); [] when nothing."""
+    s, d = m.get("score") or {}, m.get("detail") or {}
+    given = _given(m, header) | _streaks(m, past)
+    words = said(text)
+    heard = [  # "Number 23" names a player, it is no stat
+        n
+        for prev, n in zip(["", *words], words, strict=False)
+        if isinstance(n, float) and prev != "number"
+    ]
+    wrong = [f"{n:g} is not in the moment" for n in heard if n not in given]
+    if talks_to_itself(text):
+        wrong.append("the line talks to itself")
+    if "milestone" in d and not set(numbers(d["milestone"])) & set(numbers(text)):
+        wrong.append(f"the milestone is unsaid: {d['milestone']}")
+    if m.get("sport") == "cricket":
+        score = {(s.get("runs"), s.get("wickets")), (s.get("wickets"), s.get("runs"))}
+        for a, w, b in zip(words, words[1:], words[2:], strict=False):
+            # wickets first ("India two for ten") is a broadcast convention too
+            if w == "for" and isinstance(a, float) and isinstance(b, float) and (a, b) not in score:
+                wrong.append(f"{a:g} for {b:g} is not runs for wickets")
+        left = d.get("balls_left")
+        if (
+            left is not None
+            and left > 1
+            and re.search(r"\b(final|last) (ball|delivery)", text, re.I)
+        ):
+            wrong.append(f"{left} balls are left, not one")
+        if (
+            "target" in s
+            and s["runs"] != s["target"] - 1
+            and re.search(r"\b(level|tied|all square)\b", text, re.I)
+        ):
+            wrong.append("the scores are not level")
+    return wrong
+
+
+def fallback_text(header: dict, m: dict) -> str:
+    """A line built only from the moment's data, said when the commentator's numbers stay wrong."""
+    from agent.commentator import _score
+
+    who, d = _who(m), m.get("detail") or {}
+    said = f"{m['type']}, {m['outcome']}" if m.get("outcome") else m["type"]
+    parts = [f"{said}, {who}." if who else f"{said}."]
+    extra = d.get("milestone") or (d.get("chase") if "need" not in d.get("chase", "need") else None)
+    if extra:
+        parts.append(f"{extra[0].upper()}{extra[1:]}.")
+    return " ".join([*parts, f"{_score(header, m)}."])
+
+
+def checked(commentate, moment: dict, history: list[dict]) -> dict | None:
+    """A moment's line whose numbers match the moment: regenerated once when they don't, then
+    replaced by the line built from the moment's data. A Stat line is the analyst's, and passes."""
+    line = commentate(moment, history)
+    if not (line and line.get("text")) or moment.get("type") == "Stat":
+        return line
+    from data.matches import match_header
+
+    try:
+        header = match_header(moment["match_id"])
+    except KeyError:  # not a bundled match: nothing to build a line from, so it is not checked
+        return line
+    if not wrong_numbers(line["text"], moment, header, history):
+        return line
+    again = commentate(moment, history)
+    if again and again.get("text") and not wrong_numbers(again["text"], moment, header, history):
+        return again
+    return {**(again or line), "text": fallback_text(header, moment), "fallback": True}
 
 
 def stat_moment(m: dict, said_as: dict, reply: bool) -> dict:

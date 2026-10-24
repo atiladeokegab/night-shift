@@ -1,10 +1,11 @@
 // The only module that talks to the match server (docs/CONTRACT.md, 'HTTP'):
 // GET /matches, POST /replays {match_id, speed} -> {replay_id},
 // GET /replays/{id}/stream (SSE: moment, line, stats per moment; error; end last),
-// GET /stats, GET /voices, POST /lines/{id}/fix, POST /replays/{id}/ask, GET /replays/{id}/players/{name}/shots and GET /lines/{id}/audio?voice=<id>
+// GET /stats, GET /voices, POST /lines/{id}/fix, POST /replays/{id}/ask, POST /replays/{id}/seen, GET /replays/{id}/players, .../players/{name}/shots and .../profile and GET /lines/{id}/audio?voice=<id>
 // (ElevenLabs; 503 when the voice isn't configured).
 import { demoMatches, demoStats, streamDemo } from './demo'
 import { offAir } from './ask'
+import { playersUrl, type Player, type Profile } from './follow'
 import type { Shots } from './shots'
 import type { Answer, Fix, Line, Match, Moment, Stats, StreamEvent, Voice } from './types'
 
@@ -29,12 +30,12 @@ export async function getStats(): Promise<Stats> {
   return res.json()
 }
 
-export async function createReplay(matchId: string, speed: number): Promise<string> {
+export async function createReplay(matchId: string, speed: number, startIdx?: number): Promise<string> {
   if (isDemo) return matchId
   const res = await fetch('/replays', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ match_id: matchId, speed }),
+    body: JSON.stringify({ match_id: matchId, speed, start_idx: startIdx }),
   })
   if (!res.ok) throw new Error(`POST /replays failed (${res.status})`)
   return ((await res.json()) as { replay_id: string }).replay_id
@@ -42,6 +43,10 @@ export async function createReplay(matchId: string, speed: number): Promise<stri
 
 // Follows a replay's stream from the start; a late or reconnected subscriber gets every event again,
 // so the caller drops moments and lines it already has. Returns a function that stops listening.
+// The page's heartbeat once a replay's stream has ended, well under the server's FORGET_S (60 s), so a
+// paused viewer can still ask about the moment on screen (#156). It stops when the page leaves the replay.
+const SEEN_MS = 20_000
+
 export function followReplay(
   replayId: string,
   onEvent: (e: StreamEvent) => void,
@@ -75,12 +80,18 @@ export function followReplay(
       onStatus('reconnecting')
     }
   })
+  let beat: number | undefined
   source.addEventListener('end', () => {
     // Close before the server does, or EventSource reconnects and replays the whole match again.
     source.close()
+    const seen = () => fetch(`/replays/${encodeURIComponent(replayId)}/seen`, { method: 'POST' }).catch(() => {})
+    beat = window.setInterval(seen, SEEN_MS)
     onEvent({ type: 'end' })
   })
-  return () => source.close()
+  return () => {
+    source.close()
+    window.clearInterval(beat)
+  }
 }
 
 // POST /lines/{id}/fix. A 503 means the Mubit call failed and nothing was stored, so it can be sent again.
@@ -127,6 +138,24 @@ export async function getShots(replayId: string, name: string, momentIdx: number
   const res = await fetch(`/replays/${encodeURIComponent(replayId)}/players/${encodeURIComponent(name)}/shots?moment_idx=${momentIdx}`)
   if (res.status === 404) return null
   if (!res.ok) throw new Error(`GET shots failed (${res.status})`)
+  return res.json()
+}
+
+// GET /replays/{id}/players (#140): everyone in the match so far; empty in the demo, which has no server.
+export async function getPlayers(replayId: string, at: number): Promise<Player[]> {
+  if (isDemo) return []
+  const res = await fetch(playersUrl(replayId, at))
+  if (res.status === 404) return []
+  if (!res.ok) throw new Error(`GET players failed (${res.status})`)
+  return res.json()
+}
+
+// GET /replays/{id}/players/{name}/profile (#140), up to the moment on screen. null: no such player.
+export async function getProfile(replayId: string, name: string, momentIdx: number): Promise<Profile | null> {
+  if (isDemo) return null
+  const res = await fetch(`/replays/${encodeURIComponent(replayId)}/players/${encodeURIComponent(name)}/profile?moment_idx=${momentIdx}`)
+  if (res.status === 404) return null
+  if (!res.ok) throw new Error(`GET profile failed (${res.status})`)
   return res.json()
 }
 

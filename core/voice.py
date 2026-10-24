@@ -177,8 +177,9 @@ class Speaker:
 
     # shortcut: the last KEEP_JOBS lines' audio is kept in this process's memory; a bucket if
     # older lines must replay with ElevenLabs audio or Cloud Run runs more than one instance.
-    def __init__(self, transport: httpx.AsyncBaseTransport | None = None):
+    def __init__(self, transport: httpx.AsyncBaseTransport | None = None, store=None):
         self.transport = transport
+        self.store = store  # gets a `voice` record per line spoken: the characters billed (#174)
         self.jobs: dict[tuple[str, str], asyncio.Task] = {}
         self.tags: dict[str, str | None] = {}
         self.slots = asyncio.Semaphore(CONCURRENCY)
@@ -263,12 +264,25 @@ class Speaker:
                     least = PREPARED_V3_S if ahead else 0.0
                     audio = await self._tts(client, key, voice, model, text, until, least, lane)
                     if audio:
+                        await self._spent(line, model, text)
                         return audio, model
             until = min(end, time.monotonic() + FALLBACK_TIMEOUT_S)
             audio = await self._tts(
                 client, key, voice, FALLBACK_MODEL, line["text"], until, FALLBACK_MIN_S, lane
             )
-            return (audio, FALLBACK_MODEL) if audio else None
+            if not audio:
+                return None
+            await self._spent(line, FALLBACK_MODEL, line["text"])
+            return audio, FALLBACK_MODEL
+
+    async def _spent(self, line: dict, model: str, text: str) -> None:
+        # shortcut: counts calls that returned audio; a timed-out call ElevenLabs still bills is
+        # missed, so voice cost is a floor. Its usage API per request if that gap matters.
+        if self.store is not None:
+            said = {"line_id": line["line_id"], "replay_id": line.get("replay_id")}
+            await asyncio.to_thread(
+                self.store.append, "voice", {**said, "model": model, "chars": len(text)}
+            )
 
     async def _tts(
         self, client, key, voice, model, text, until, least=0.0, lane=None

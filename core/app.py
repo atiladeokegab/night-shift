@@ -17,7 +17,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 
-from core import insight
+from core import insight, predict
 from core.predict import load_pack, shot_points
 from core.replay import OFF_AIR, Replay, run_replay
 from core.stats import stats
@@ -26,7 +26,7 @@ from core.voice import Speaker, voice_router
 
 log = logging.getLogger("night_shift.app")
 REJOIN_S = 10.0  # a replay with no open stream this long is stopped: its lines cost model calls
-FORGET_S = 60.0  # a finished replay is forgotten this long after REJOIN_S, once nobody streams it
+FORGET_S = 60.0  # a finished replay is forgotten once nobody streams or touches it this long
 
 WEB = Path(__file__).resolve().parent.parent / "web" / "dist"
 
@@ -36,7 +36,7 @@ class Deps:
     list_matches: Callable[[], list[dict]]
     load_moments: Callable[[str], list[dict]]
     commentate: Callable[[dict, list[dict]], dict]
-    video_map: Callable[[str], dict | None] = lambda match_id: None
+    video_map: Callable[..., dict | None] = lambda match_id, start_idx=None: None
     correct: Callable[[dict, str], dict] | None = None
     ask: Callable[[str, list[dict], list[dict]], dict] | None = None
 
@@ -54,6 +54,7 @@ def default_deps() -> Deps:
 class ReplayRequest(BaseModel):
     match_id: str
     speed: float = Field(10.0, gt=0)
+    start_idx: int | None = Field(None, ge=0)  # start at this moment: nothing before it is called
 
 
 class FixRequest(BaseModel):
@@ -87,7 +88,7 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
     store = store or open_store()
     deps = deps or default_deps()
     replays: dict[str, Replay] = {}
-    speaker = Speaker(tts_transport)
+    speaker = Speaker(tts_transport, store)
     tasks: set[asyncio.Task] = set()
     running: dict[str, asyncio.Task] = {}  # replay id: its run_replay task, until it ends
     asking: set[str] = set()  # replay ids with a viewer's question in flight
@@ -112,9 +113,13 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
             moments = d.load_moments(req.match_id)
         except (KeyError, FileNotFoundError) as exc:
             raise HTTPException(404, f"no match {req.match_id!r}") from exc
+        jump = req.start_idx
+        if jump is not None and not any(m["idx"] == jump for m in moments):
+            raise HTTPException(422, f"no moment {jump} in {req.match_id!r}")
         replay = Replay(req.match_id, req.speed)
         replays[replay.id] = replay
-        video = d.video_map(req.match_id)
+        # a jump starts the video just before its moment (#163), as GET /matches' peak_video_start
+        video = d.video_map(req.match_id) if jump is None else d.video_map(req.match_id, jump)
         task = asyncio.create_task(
             run_replay(
                 replay,
@@ -123,6 +128,7 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
                 store,
                 video,
                 partial(speaker.prepare, replay=replay.id),
+                jump or 0,
             )
         )
         tasks.add(task)
@@ -143,12 +149,23 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
         asyncio.get_running_loop().call_later(playing + REJOIN_S + FORGET_S, forget, replay)
 
     def forget(replay: Replay) -> None:
-        """Drop a finished replay's events from memory; one still streamed waits another round."""
-        if replay.listeners:
-            forget_later(replay)
+        """Drop a finished replay's events from memory once nobody streams it and no viewer has
+        touched it for FORGET_S: a paused page's heartbeat (POST .../seen) keeps it for Ask."""
+        idle = time.monotonic() - replay.seen
+        if replay.listeners or idle < FORGET_S:
+            wait = FORGET_S if replay.listeners else FORGET_S - idle
+            asyncio.get_running_loop().call_later(wait, forget, replay)
         else:
             replays.pop(replay.id, None)
             speaker.lanes.pop(replay.id, None)
+
+    def viewed(replay_id: str) -> Replay:
+        """The replay a viewer's request names, marked as still watched."""
+        replay = replays.get(replay_id)
+        if replay is None:
+            raise HTTPException(404, f"no replay {replay_id!r}")
+        replay.seen = time.monotonic()
+        return replay
 
     def abandon(replay: Replay) -> None:
         """Stop a replay nobody follows, and its voice jobs, so they free the 3 shared slots."""
@@ -161,9 +178,7 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
 
     @app.get("/replays/{replay_id}/stream")
     async def stream(replay_id: str):
-        replay = replays.get(replay_id)
-        if replay is None:
-            raise HTTPException(404, f"no replay {replay_id!r}")
+        replay = viewed(replay_id)
 
         async def sse():
             replay.listeners += 1
@@ -175,10 +190,16 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
                 yield "event: end\ndata: {}\n\n"
             finally:  # the client went away: a reconnect within REJOIN_S keeps the replay going
                 replay.listeners -= 1
+                replay.seen = time.monotonic()
                 if not replay.listeners:
                     stop_later(replay)
 
         return StreamingResponse(sse(), media_type="text/event-stream")
+
+    @app.post("/replays/{replay_id}/seen", status_code=204)
+    def seen(replay_id: str) -> None:
+        """The page's heartbeat while it shows the replay, paused or not, once its stream ends."""
+        viewed(replay_id)
 
     @app.get("/lines/{line_id}")
     def get_line(line_id: str):
@@ -213,6 +234,7 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
                 "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
                 "mubit_request_id": sent["mubit_request_id"],
                 "reply_matched": sent["reply_matched"],
+                "recorded": sent.get("recorded", False),  # sent to Mubit for training (#161)
             },
         )
         for replay in list(replays.values()):  # a replay may start during the awaits below
@@ -226,9 +248,7 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
     @app.post("/replays/{replay_id}/ask")
     async def ask(replay_id: str, req: AskRequest):
         d = need_deps()
-        replay = replays.get(replay_id)
-        if replay is None:
-            raise HTTPException(404, f"no replay {replay_id!r}")
+        replay = viewed(replay_id)
         if replay_id in asking:
             raise HTTPException(409, "a question is already in flight")
         past, lines = asked_so_far(replay, d.load_moments(replay.match_id), req.moment_idx)
@@ -263,9 +283,7 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
         """A player's shot map: pre-match shots plus tonight's up to the moment on screen, never
         past the last moment sent, so a later shot never shows. No LLM: it works off air."""
         d = need_deps()
-        replay = replays.get(replay_id)
-        if replay is None:
-            raise HTTPException(404, f"no replay {replay_id!r}")
+        replay = viewed(replay_id)
         past, _ = asked_so_far(replay, d.load_moments(replay.match_id), moment_idx)
         if not past:
             raise HTTPException(409, "nothing has happened yet")
@@ -276,6 +294,36 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
             return shot_points(pack, past, len(past) - 1, name)
         except (ValueError, KeyError) as exc:
             raise HTTPException(404, f"no shot map for {name!r} in this match") from exc
+
+    def pack_so_far(replay_id: str, moment_idx: int | None) -> tuple[dict, list[dict]]:
+        """The replay's pack and its moments up to the one on screen, cut like the shot map's."""
+        d = need_deps()
+        replay = viewed(replay_id)
+        moments = d.load_moments(replay.match_id)
+        pack = load_pack(moments[0]["sport"], replay.match_id) if moments else None
+        if pack is None:
+            raise HTTPException(404, "no pre-match pack for this match")
+        return pack, asked_so_far(replay, moments, moment_idx)[0]
+
+    @app.get("/replays/{replay_id}/players")
+    def players(replay_id: str, moment_idx: int | None = None):
+        """Everyone in the match (#140): the pack's roster plus anyone the moments so far name,
+        those first. Works before the first moment, from the roster alone."""
+        pack, past = pack_so_far(replay_id, moment_idx)
+        return predict.players(pack, past)
+
+    @app.get("/replays/{replay_id}/players/{name}/profile")
+    def profile(replay_id: str, name: str, moment_idx: int | None = None):
+        """A player's record before the match and tonight up to the moment on screen (#140)."""
+        pack, past = pack_so_far(replay_id, moment_idx)
+        if not past:
+            raise HTTPException(409, "nothing has happened yet")
+        try:
+            name = predict.find(pack, name)
+        except KeyError:  # named in a moment but not in the pack: tonight only
+            if name not in {p["name"] for p in predict.players(pack, past)}:
+                raise HTTPException(404, "no such player in this match") from None
+        return predict.profile(pack, past, len(past) - 1, name)
 
     @app.get("/stats")
     def get_stats():

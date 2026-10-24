@@ -19,6 +19,8 @@ export interface Match {
   youtube_id?: string
   video_start?: number // the second the video starts at, just before its first mapped moment
   embed?: boolean // false: the owner blocks embedding, so a poster and a YouTube link instead
+  peak_idx?: number // "Jump to the big moment" (#163) starts the replay at this moment
+  peak_video_start?: number // and the video at this second
 }
 
 // Football and basketball: {home, away}; cricket: runs and wickets; f1: the lap and the top five.
@@ -62,6 +64,7 @@ export interface Line {
   first_word_ms?: number | null // null when the provider reported no first text word
   video_t?: number // A-6.4@2: shown and spoken when the player reaches it (#47)
   speaker?: 'lead' | 'analyst' // #130: the moment's call, or a stat line between moments; none is the lead
+  history?: boolean // #163: said in an earlier replay, before a jump's moment: shown, never spoken
 }
 
 // GET /stats and the `stats` SSE event (CONTRACT.md); percentiles are null until there is a line.
@@ -78,6 +81,22 @@ export interface Stats {
   tokens_out: number
   cost_per_line_usd?: number | null
   adapter?: Adapter | null
+  by_speaker?: { lead: SpeakerStats; analyst: SpeakerStats } // #161: Haiku's calls apart from Sonnet's stat lines
+  fixes_recorded?: number // fixes Mubit recorded for training; `fixes` counts every stored fix
+  fixes_toward_next?: number // recorded fixes since the latest adapter record (#161)
+  // #174: a full replay's mean spend over matches_measured of them; null when it can't be measured
+  matches_measured?: number
+  cost_per_match_usd?: number | null
+  model_cost_per_match_usd?: number | null
+  voice_cost_per_match_usd?: number | null
+}
+
+export interface SpeakerStats {
+  model: string // the models seen, comma-separated
+  lines: number
+  first_word_ms_p50: number | null
+  first_word_ms_p95: number | null
+  cost_per_line_usd: number | null
 }
 
 export interface Adapter {
@@ -96,6 +115,7 @@ export interface Fix {
   reason: string
   created_at?: number | string
   reply_matched?: boolean
+  recorded?: boolean // Mubit recorded it for training (#161)
 }
 
 // POST /replays/{id}/ask's answer and the `answer` SSE event (#117). `line_id` so it is spoken like a line;

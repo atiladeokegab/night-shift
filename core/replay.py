@@ -49,6 +49,7 @@ class Replay:
         # a video replay's lines are all sent ahead: when (time.monotonic) the viewer reaches the
         # last one, so it is not forgotten while the video still plays (core/app.py)
         self.ends_at: float | None = None
+        self.seen = self.started  # a viewer's last request (time.monotonic), for FORGET_S
         self._changed = asyncio.Condition()
 
     async def publish(self, event: str, data: dict) -> None:
@@ -82,6 +83,7 @@ async def run_replay(
     store,
     video: dict | None = None,
     speak: Callable[[dict, dict, float | None], None] | None = None,
+    start_idx: int = 0,
 ) -> None:
     # A video map: only mapped moments are called, each tagged with its video time and sent as
     # soon as it is ready; the page holds each line until the player reaches that time.
@@ -89,14 +91,17 @@ async def run_replay(
     if video_t:
         replay.ends_at = replay.started + max(video_t.values()) - video.get("start", 0)
     # every store call runs in a thread: a slow bucket must never stall the event loop (#156)
-    gaps = await asyncio.to_thread(insight.Gaps, replay.match_id, store) if video else None
+    gaps = (
+        await asyncio.to_thread(insight.Gaps, replay.match_id, store, replay.id) if video else None
+    )
 
     async def say(line: dict, moment: dict) -> None:
         # shortcut: due as if the video starts with the replay at its `start` second;
         # the player's own clock if the page ever sends it.
         if speak:
             due = replay.started + line["video_t"] - video.get("start", 0) if video else None
-            speak(line, moment, due)
+            # this replay's id, so a cached line spoken again is charged to the replay that spoke it
+            speak({**line, "replay_id": replay.id}, moment, due)
         await replay.publish("line", line)
         await replay.publish("stats", await asyncio.to_thread(stats, store))
 
@@ -106,8 +111,33 @@ async def run_replay(
         # the texts said so far: a stat line that nearly repeats one of the last few is dropped;
         # a moment's own line is news, so it is always said
         recent: list[str] = []
+        # a jump (#163): earlier play is on screen from the start, its score and clock and the lines
+        # already said for it, untimed so nothing waits for the picture; it is never called again
+        if start_idx:
+            said = {
+                ln["moment_idx"]: ln
+                for ln in await asyncio.to_thread(store.all, "lines")
+                # the moment's own line, not the lead's later reply to the analyst at its idx
+                if ln.get("match_id") == replay.match_id
+                and ln.get("speaker", "lead") == "lead"
+                and "reply" not in ln
+            }
+            fixed = {f["line_id"]: f for f in await asyncio.to_thread(store.all, "fixes")}
+            for moment in moments:
+                if moment["idx"] < start_idx:
+                    await replay.publish("moment", moment)
+                    if moment["idx"] in said:
+                        old = {k: v for k, v in said[moment["idx"]].items() if k != "video_t"}
+                        await replay.publish("line", {**old, "history": True})
+                        if (
+                            old["line_id"] in fixed
+                        ):  # shown in its fixed wording, as when it was fixed
+                            await replay.publish("fixed", fixed[old["line_id"]])
         for moment in moments:
             tag = {}
+            if moment["idx"] < start_idx:  # a jump (#163): published above, never called
+                history.append(moment)
+                continue
             if video_t is None:
                 at = moment_seconds(moment)
                 if last is not None and at > last:
@@ -120,11 +150,11 @@ async def run_replay(
                 continue
             await replay.publish("moment", {**moment, **tag})
             # commentate sees only moments up to this one: later events never reach the model
-            line = await asyncio.to_thread(commentate, moment, list(history))
+            line = await asyncio.to_thread(insight.checked, commentate, moment, list(history))
             history.append(moment)
             if line is not None:  # None: the commentator had nothing usable to say
-                ln = {**line, **tag, "speaker": "lead"}
-                await say(await asyncio.to_thread(store.append, "lines", ln), moment)
+                said_line = {**line, **tag, "speaker": "lead", "replay_id": replay.id}
+                await say(await asyncio.to_thread(store.append, "lines", said_line), moment)
                 recent.append(line.get("text") or "")
             if not tag:
                 continue
@@ -146,6 +176,9 @@ async def run_replay(
                 await say({**said_line, "video_t": t}, stat)
                 said = said_line["text"]
                 recent.append(said)
+        if not start_idx:  # played from kick-off to its last moment: a match for cost per match
+            done = {"replay_id": replay.id, "match_id": replay.match_id}
+            await asyncio.to_thread(store.append, "replays", done)
     except Exception as exc:  # the stream says why it stopped instead of hanging open
         # the provider's status and error type, e.g. Mubit's 402 when its credit runs out
         name = type(exc).__name__

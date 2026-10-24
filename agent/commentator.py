@@ -85,6 +85,13 @@ def _period(m: dict) -> str:
     return "penalty shootout" if m["period"] == 5 else f"period {m['period']}"
 
 
+def _outcome(m: dict) -> str:
+    """The outcome, with a football moment's place right beside it (#172): left in Details alone,
+    the model never said it."""
+    where = m["detail"].get("where")
+    return (m["outcome"] or "none") + (f", {where}" if where else "")
+
+
 def describe(m: dict) -> str:
     return f"{m['clock']} {m['type']}, {m['outcome']} ({m['team']}; {_players(m)})"
 
@@ -103,7 +110,7 @@ def render_message(header: dict, past: list[dict]) -> str:
         period=_period(m),
         clock=m["clock"],
         type=m["type"],
-        outcome=m["outcome"] or "none",
+        outcome=_outcome(m),
         team=m["team"],
         players=_players(m),
         score=_score(header, m),
@@ -244,12 +251,17 @@ def correct(
         {"role": "assistant", "content": line["text"]},
         {"role": "user", "content": CORRECTION.format(text=corrected_text)},
     ]
-    reply = (provider or provider_for(past[-1])).call(request)
+    if provider is None:  # a moment's fix trains on the owner's key; a Stat's stays unrecorded
+        trainer = correction_provider() if past[-1]["type"] != "Stat" else None
+        provider = trainer or provider_for(past[-1])
+    reply = provider.call(request)
     # the echo, not a spoken line: untrimmed, so a correction over 20 words can still match
     said = " ".join(b["text"] for b in reply["content"] if b["type"] == "text").split()
     return {
         "mubit_request_id": reply["request_id"],
         "reply_matched": said == corrected_text.split(),
+        # True only when Mubit records it for training (FakeProvider never does)
+        "recorded": getattr(provider, "record", False),
     }
 
 
@@ -268,6 +280,19 @@ def default_provider():
         fallback = MubitProvider(owner) if owner else None
         _provider = MubitProvider(key, record=record, fallback=fallback) if key else FakeProvider()
     return _provider
+
+
+_trainer = None
+
+
+def correction_provider():
+    """Mubit on the owner's key, recorded whatever MUBIT_RECORD says: a producer's fix is the
+    example the owner's app trains on, and the lent key never records. None without an owner key."""
+    global _trainer
+    owner = os.environ.get("MUBIT_FALLBACK_KEY")
+    if _trainer is None and owner:
+        _trainer = MubitProvider(owner, record=True)
+    return _trainer
 
 
 _unrecorded = None
@@ -401,6 +426,7 @@ class MubitProvider:
         import anthropic
 
         self.fallback = fallback
+        self.record = record
 
         headers = {} if record else {"x-middleware-record": "off"}
         self.client = anthropic.Anthropic(
@@ -426,6 +452,7 @@ class MubitProvider:
                     "mubit: the key ran out of credit (402); switching to MUBIT_FALLBACK_KEY"
                 )
                 self.client = self.fallback.client  # sticky: no failed call before every line
+                self.record = self.fallback.record
             reply = self.fallback.call(request)
             if reply["first_word_ms"] is not None:  # the viewer waited through the 402 as well
                 reply["first_word_ms"] += failed_ms

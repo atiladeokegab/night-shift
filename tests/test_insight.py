@@ -26,7 +26,7 @@ KOBE, CHELSEA = "0020500591", "3754092"
 
 def letters(n: int) -> str:
     """A word of its own for each n, so no two fake lines nearly repeat each other."""
-    return "".join(chr(97 + int(d)) for d in str(n))
+    return "x" + "".join(chr(97 + int(d)) for d in str(n))  # "x": never a stop word like "be"
 
 
 class Fake(FakeProvider):
@@ -72,7 +72,7 @@ class Sized:
         return {"line_id": uuid.uuid4().hex, "moment_idx": moment["idx"], "text": said.strip()}
 
 
-def test_kobe_one_viewing_fills_every_quiet_stretch_at_the_spacing_without_repeats(tmp_path):
+def test_kobe_one_viewing_fills_each_quiet_stretch_up_to_the_cap_without_repeats(tmp_path):
     store, sized = Store(tmp_path), Sized()
     lines, _ = replay(KOBE, store, calls=sized)
     assert 0 < sized.stats <= insight.MAX_CALLS
@@ -84,7 +84,8 @@ def test_kobe_one_viewing_fills_every_quiet_stretch_at_the_spacing_without_repea
         after = [ln for ln in lines if gap(ln).get("after_idx") == line["moment_idx"]]
         assert line["speaker"] == "lead"
         assert [gap(ln)["n"] for ln in after] == list(range(len(after)))
-        for n, ln in enumerate(after):  # the analyst, and every 4th line the lead's reply
+        assert len(after) <= insight.PER_GAP  # two analyst lines a gap, then the reply (#162)
+        for n, ln in enumerate(after):  # the analyst, and every 3rd line the lead's reply
             reply = n % insight.REPLY_EVERY == insight.REPLY_EVERY - 1
             assert ("reply" in ln, ln["speaker"]) == (reply, "lead" if reply else "analyst")
         t, said = line["video_t"], line["text"]
@@ -92,11 +93,13 @@ def test_kobe_one_viewing_fills_every_quiet_stretch_at_the_spacing_without_repea
             assert ln["video_t"] == pytest.approx(insight.due_after(t, said))
             assert ln["video_t"] <= end - insight.CLEAR_S
             t, said = ln["video_t"], ln["text"]
-        assert insight.due_after(t, said) > end - insight.CLEAR_S, "the stretch was left quiet"
-        filled += end - line["video_t"] >= 14
+        full = len(after) == insight.PER_GAP
+        assert full or insight.due_after(t, said) > end - insight.CLEAR_S, "left quiet"
+        filled += full
     assert filled >= 10
     details = [ln["insight"]["detail"] for ln in lines if "insight" in ln]
-    assert len(details) == len(set(details)) > 60
+    assert len(details) == len(set(details)) >= 25
+    assert len({ln["insight"]["kind"] for ln in lines if "insight" in ln}) >= 4  # all kinds
     sized.stats = 0
     replay(KOBE, store, calls=sized)
     assert sized.stats == 0  # the second viewing is all cache
@@ -123,11 +126,8 @@ def test_a_later_event_never_reaches_the_insights_before_it(tmp_path, monkeypatc
     assert not any(p in gap(ln)["detail"] for ln in before for p in planted)
     early = asked[: len(before)]
     assert not any(p in q for q in early for p in planted)
-    # the probe can go red: once the planted event is past, the insights do use it
-    later = [
-        ln["insight"]["detail"] for ln in lines if ln.get("insight", {}).get("after_idx", 0) > 9
-    ]
-    assert any(p in d for d in later for p in planted)
+    # the probe can go red: once the planted event is past, the insight requests do hear it
+    assert any(p in q for q in asked[len(before) :] for p in planted)
 
 
 def test_an_insight_request_has_the_analysts_prompt_and_a_lines_message(tmp_path):
@@ -328,7 +328,8 @@ def test_the_analyst_never_restates_the_leads_call(tmp_path):
     lines, _ = replay(CHELSEA, store, calls=calls)
     assert opened and all(ln["text"] != "Palmer scores, and Chelsea lead 1-0." for ln in lines)
     assert [ln["text"] for ln in store.all("lines")] == [ln["text"] for ln in lines]
-    assert sum(ln["text"] == GOAL for ln in lines) == len(video_map(CHELSEA)["moments"])
+    # a moment's own line is always said (where 1-0 is the wrong score, the number check's)
+    assert sum(not gap(ln) for ln in lines) == len(video_map(CHELSEA)["moments"])
     assert any("insight" in ln for ln in lines)  # the next kind took the slot
 
 
@@ -395,12 +396,13 @@ def test_the_stat_is_the_event_and_the_moments_shooter_stays_out():
         assert shooter not in rows["Event"] + rows["Players"] + rows["Details"]
 
 
-def test_new_insight_calls_stop_at_the_cap(tmp_path):
+def test_new_insight_calls_stop_at_the_cap(tmp_path, monkeypatch):
+    # three lines a gap keep Kobe well under 160 calls, so a lower cap shows it still holds
+    monkeypatch.setattr(insight, "MAX_CALLS", 20)
     store = Store(tmp_path)
-    counts = [len(stat_calls(replay(KOBE, store)[1])) for _ in range(3)]
-    assert counts[0] == insight.MAX_CALLS == 160
-    # FakeProvider's 7-word lines leave room for more than 120 on Kobe: the second viewing tops up
-    assert 0 < counts[1] <= insight.MAX_CALLS and counts[2] == 0
+    counts = [len(stat_calls(replay(KOBE, store)[1])) for _ in range(4)]
+    # each viewing tops up the stretches the one before left quiet, until all are cached
+    assert counts[0] == counts[1] == 20 and 0 < counts[2] <= 20 and counts[3] == 0
 
 
 def test_no_video_no_insights(tmp_path):

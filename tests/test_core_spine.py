@@ -375,3 +375,42 @@ def test_a_video_replay_is_kept_until_its_video_has_played_out(tmp_path, monkeyp
             return mid_video, (await c.get(f"/replays/{rid}/stream")).status_code
 
     assert asyncio.run(run()) == (200, 404)
+
+
+def test_a_paused_viewer_asks_after_the_video_should_have_ended_and_an_idle_one_is_forgotten(
+    tmp_path, monkeypatch
+):
+    # the stream ended once every line was sent: only the page's heartbeat says it is still watching
+    import asyncio
+
+    import httpx
+
+    from core import app as core_app
+
+    monkeypatch.setattr(core_app, "REJOIN_S", 0.05)
+    monkeypatch.setattr(core_app, "FORGET_S", 0.2)
+    video = {"start": 0, "moments": [{"idx": 0, "video_t": 0.0}, {"idx": 1, "video_t": 0.1}]}
+
+    def ask(question, past, lines):
+        return {"line_id": "q", "moment_idx": past[-1]["idx"], "question": question, "text": "1-0"}
+
+    def line(m, history):  # with its moment, as the real commentator's line has
+        return {**fake_commentate(m, history), "moment_idx": m["idx"]}
+
+    deps = Deps(lambda: [], lambda mid: LONG[:2], line, video_map=lambda m: video, ask=ask)
+    app = create_app(Store(tmp_path), deps)
+
+    async def run():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://t") as c:
+            rid = (await c.post("/replays", json={"match_id": "long"})).json()["replay_id"]
+            await sse(app, rid)  # every line sent and the stream closed
+            for _ in range(8):  # paused on moment 0 well past ends_at + REJOIN_S + FORGET_S
+                await asyncio.sleep(0.1)
+                assert (await c.post(f"/replays/{rid}/seen")).status_code == 204
+            q = {"question": "What's the score?", "moment_idx": 0}
+            asked = (await c.post(f"/replays/{rid}/ask", json=q)).status_code
+            await asyncio.sleep(0.5)  # the page is gone: no heartbeat for FORGET_S
+            return asked, (await c.post(f"/replays/{rid}/seen")).status_code
+
+    assert asyncio.run(run()) == (200, 404)
