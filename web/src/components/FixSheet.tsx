@@ -38,7 +38,7 @@ export function FixSheet({ line, phase, onSend, onCancel }: Props) {
         <div className="field">
           <label className="label" htmlFor="fix-text">Corrected line</label>
           <textarea id="fix-text" ref={box} value={text} disabled={sending} onChange={(e) => setText(e.target.value)} />
-          {!text.trim() && <p className="hint">Type the corrected line, or reject it.</p>}
+          {!text.trim() && <p className="hint">Type the corrected line.</p>}
         </div>
         <div className="field">
           <span className="label">What was wrong</span>
@@ -55,10 +55,6 @@ export function FixSheet({ line, phase, onSend, onCancel }: Props) {
         <div className="actions">
           <button className="btn primary" disabled={sending || !text.trim()} onClick={() => onSend(text.trim(), reason)}>
             {sending ? <><span className="spin sm" />Sending fix…</> : 'Send fix'}
-          </button>
-          {/* POST /lines/{id}/fix answers 422 to a blank correction, so a reject can't be sent yet (#47). */}
-          <button className="btn danger" disabled title="Rejecting a line needs a way to send it (asked in #47)">
-            Reject line
           </button>
           <span className="spacer" />
           <button className="btn" disabled={sending} onClick={onCancel}>Cancel</button>
