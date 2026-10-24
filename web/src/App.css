@@ -160,7 +160,8 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .spin { width: 28px; height: 28px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .15); border-top-color: var(--amber); animation: spin .9s linear infinite; }
 .spin.sm { width: 16px; height: 16px; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.novideo { position: absolute; top: 46%; left: var(--gut); right: calc(var(--side-w) + var(--gut) + 16px); transform: translateY(-50%); z-index: 1; text-align: center; color: var(--faint); font-size: .95rem; }
+/* Its own small backdrop, so it reads over a bright frame like the subtitle does. */
+.novideo { position: absolute; top: 46%; left: var(--gut); right: calc(var(--side-w) + var(--gut) + 16px); transform: translateY(-50%); z-index: 1; width: fit-content; margin: 0 auto; padding: 6px 12px; border-radius: 10px; background: rgba(6, 8, 15, .78); text-align: center; color: var(--muted); font-size: .95rem; text-shadow: 0 1px 2px rgba(0, 0, 0, .9); }
 .banner { position: absolute; top: 148px; left: var(--gut); right: calc(var(--side-w) + var(--gut) + 16px); z-index: 3; display: flex; justify-content: center; }
 .banner > div { display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 16px; border-radius: 14px; font: 500 .92rem/1.3 var(--body); }
 .banner .warn { border-color: rgba(255, 181, 71, .45); }
@@ -273,6 +274,8 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   /* The score bar keeps two rows (teams and score; clock and period or chase): no REPLAY tag or rule. */
   .scorebar .replay, .scorebar .sep { display: none; }
   .subtitle { bottom: 170px; gap: 12px; }
+  /* Under the score bar, clear of the moment tag; an alert banner takes the spot while it shows. */
+  .novideo { top: 148px; transform: none; font-size: .85rem; }
   /* The scrim sized to the phone's subtitle lane (two lines and the tag above the two-row dock), so
      the players above it stay in the clear (docs/design.md "never sits on the players"). */
   .shade { background: linear-gradient(180deg, rgba(6, 8, 15, .78) 0%, rgba(6, 8, 15, 0) 24%),
