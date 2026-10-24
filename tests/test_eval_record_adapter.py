@@ -66,13 +66,15 @@ def test_each_task_keeps_its_own_latest_record_and_adapter_stays_commentary(tmp_
     s = stats(store)
     line_check = s["adapters"]["line_check"]
     assert line_check["recorded_at"] == store.all("adapter")[-2]["created_at"]
-    assert {k: v for k, v in line_check.items() if k != "recorded_at"} == {
+    assert {k: v for k, v in line_check.items() if k not in ("recorded_at", "versions")} == {
         "state": "passed",  # Mubit's gate was recorded as passed
         "version": 1,
+        "version_id": None,
         "score": 82.0,
         "target": None,
         "passed": True,
         "kept": None,  # the latest record didn't say: not carried over from the one before
+        "source": "Mubit console",
     }
     where = s["adapters"]["where_are_we"]
     assert (where["version"], where["score"], where["target"], where["passed"]) == (
@@ -110,3 +112,20 @@ def test_bad_task_results_are_refused_and_nothing_is_written(tmp_path, args):
     with pytest.raises(SystemExit):
         main(args, {"STORE_DIR": str(tmp_path)})
     assert Store(tmp_path).all("adapter") == []
+
+
+def test_each_version_stays_on_record_with_its_id_and_source(tmp_path):
+    """v1 then v2 of Score check (#321): both shown, each as its latest record says it."""
+    env = {"STORE_DIR": str(tmp_path)}
+    v1 = ["--task", "score_check", "--status", "ready", "--version", "1", "--version-id", "ad_1"]
+    main([*v1, "--score", "88", "--target", "95", "--failed"], env)
+    main([*v1, "--score", "88.5", "--target", "95", "--failed"], env)  # a re-read replaces it
+    main(
+        ["--task", "score_check", "--status", "ready", "--version", "2", "--version-id", "ad_2"]
+        + ["--score", "96", "--target", "95", "--passed", "--source", "Mubit console, History"],
+        env,
+    )
+    sc = stats(Store(tmp_path))["adapters"]["score_check"]
+    assert (sc["version"], sc["version_id"], sc["source"]) == (2, "ad_2", "Mubit console, History")
+    v = [(x["version"], x["version_id"], x["score"], x["passed"]) for x in sc["versions"]]
+    assert v == [(1, "ad_1", 88.5, False), (2, "ad_2", 96.0, True)]
