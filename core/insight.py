@@ -65,7 +65,9 @@ def _cricket_facts(pack, name, tonight, part, over):
     mine = [t for t in tonight if t["batter"] == name]
     if mine:
         bat.append(f"{name} batting tonight: {sum(t['runs'] for t in mine)} off {len(mine)} balls.")
-    for ph in sorted(("powerplay", "middle", "death"), key=lambda ph: ph != phase(over)):
+    for ph in sorted(
+        ("powerplay", "middle", "death"), key=lambda ph: over is None or ph != phase(over)
+    ):
         b = p["batting"].get(ph) or {}
         if b.get("balls"):
             bat.append(
@@ -117,8 +119,12 @@ def _profiles(pack, past):
     # then the rest of the roster: a pre-match record is known before the match starts
     rest = sorted(pack["players"], key=lambda n: -pack["players"][n].get("games", 0))
     tonight = [t for t in pack.get("tonight") or [] if t["idx"] <= past[-1]["idx"]]
-    cricket = pack["sport"] == "cricket"  # its clock is the over: 11.3
-    over = int(str(past[-1].get("clock") or "0").split(".")[0]) if cricket else 0
+    over = None
+    if pack["sport"] == "cricket":  # its clock is the over: 11.3; other sports' is "16:15"
+        try:
+            over = int(str(past[-1].get("clock")).split(".")[0])
+        except ValueError:
+            pass  # no over to read: the phase is unknown, so the phases keep their usual order
     out = []
     for name in dict.fromkeys([*role, *rest]):
         try:

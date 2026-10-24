@@ -202,6 +202,13 @@ def test_a_profile_is_one_short_fact_at_a_time():
         assert facts and all(d.count(".") <= 2 and len(d.split()) <= 16 for d in facts), sport
 
 
+def test_a_profile_never_reads_a_match_clock_as_an_over():
+    for sport, match_id in (("football", "3869685"), ("basketball", KOBE), ("cricket", "1298150")):
+        moments = load_moments(match_id)[:5]
+        past = moments[:-1] + [{**moments[-1], "clock": "16:15"}]
+        assert insight._profiles(load_pack(sport, match_id), past), sport
+
+
 def test_the_analyst_model_is_a_setting_and_the_lines_model_never_moves(tmp_path, monkeypatch):
     monkeypatch.setenv("ANALYST_MODEL", "claude-sonnet-test")
     lines, fake = replay(CHELSEA, Store(tmp_path))
