@@ -163,7 +163,7 @@ def tag_for(moment: dict) -> str | None:
     if moment.get("type") == "Stat":  # a stat line or comeback: its moment's intensity, by speaker
         return PAIR_TAG[intensity(moment)]
     tag = _call_tag(moment)
-    return PAIR_TAG["medium"] if tag == "[shouting]" and intensity(moment) == "medium" else tag
+    return None if tag == "[shouting]" and intensity(moment) == "medium" else tag  # not a big one
 
 
 def all_voices(env=os.environ) -> list[dict]:
