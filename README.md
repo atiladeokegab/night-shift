@@ -154,7 +154,7 @@ every live page.
 
 #### The Proof panel
 
-<img src="docs/img/proof.png" alt="The Proof card, split by speaker. Lead: claude-haiku-4-5, claude-sonnet-5-5, its line count across all matches; first word median 0.54 s and p95 0.86 s, cost per line $0.0018. Analyst: claude-haiku-4-5, claude-sonnet-5-5, its line count across all matches; first word median 0.81 s and p95 2.94 s, cost per line $0.0024. Training: Your fixes Mubit trains on, Fixes 66, Next adapter 66 of 25. Adapter: Training, Mubit is building the adapter. Under it, a note: first word is the time from the moment to the first word of the model's text reply, measured through Mubit, not counting the rest of the line, speech synthesis or playback; the adapter's cost is not measurable, because Mubit doesn't report it to the app." width="50%">
+<img src="docs/img/proof.png" alt="The Proof card, split by speaker. Lead: claude-haiku-4-5, claude-sonnet-5-5, its line count across all matches; first word median 0.54 s and p95 0.86 s, cost per line $0.0018. Analyst: claude-haiku-4-5, claude-sonnet-5-5, its line count across all matches; first word median 0.78 s and p95 2.94 s, cost per line $0.0024. Training: Your fixes Mubit trains on, Fixes 0, Next adapter 0 of 25. Adapter: Training, Mubit is building the adapter. Under it, a note: first word is the time from the moment to the first word of the model's text reply, measured through Mubit, not counting the rest of the line, speech synthesis or playback; the adapter's cost is not measurable, because Mubit doesn't report it to the app." width="50%">
 
 Live latency, cost per line and lines called, split by lead and analyst (#166); the fixes Mubit trains
 on and how many count toward the next adapter; and the adapter's state. All computed from the store,
@@ -214,8 +214,15 @@ Split by speaker (`by_speaker`, same read):
 
 The overall p95 (1,333 ms) is above the lead's (863 ms) because the analyst's lines are slower.
 
-"First word" is from the moment to the first word of the model's text reply, not the audio:
+"First word" is the time from the moment to the first word of the model's text reply, not the audio:
 speech synthesis and playback come after it.
+
+**One match, voice included: $0.70.** Measured on a keyed run of Kobe's 81 highlights: 60 lines,
+all 60 spoken, $0.15 of model and $0.54 of voice (6,909 characters), at list prices
+([#181](https://github.com/atiladeokegab/night-shift/pull/181); `cost_per_match_usd` in `/stats`,
+[`core/stats.py`](core/stats.py) `_per_match`, [`tests/test_match_cost.py`](tests/test_match_cost.py)).
+The voice price assumes an ElevenLabs subscription tier, $0.08 per 1,000 characters for `eleven_v3`;
+pay-as-you-go is $0.10, which would make the voice about $0.68 and the match about $0.83.
 
 **The adapter, exactly as it stands.** Mubit has trained 6 adapter versions on our task's recorded lines. All 6 are "not
 ready": none has passed Mubit's test yet, and the best scored 55.8% on Mubit's test. That is the record in [`data/side_by_side.json`](data/side_by_side.json), copied by hand from
