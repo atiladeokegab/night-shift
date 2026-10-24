@@ -574,10 +574,16 @@ def _tally(header: dict, past: list[dict]) -> str:
     )
 
 
-# Capitalised words in a question that are no name: "Has Neymar scored?" asks about Neymar alone.
-_ASKED = set(
+# Capitalised words in a question that are no name: a sentence's opening word ("Has Neymar
+# scored?" asks about Neymar alone), the game's own words ("Who scored in the Final?"), and dates.
+_NOT_NAMES = set(
     "has have had did does do is are was were will would can could should how who what when where"
-    " which why whose tell give and or but so tonight".split()
+    " which why whose tell give and or but so tonight today now please any anyone anybody everyone"
+    " there it its this that these those they he she we you your my me hey hi ok okay yes no wow"
+    " final finals cup world half extra time penalty penalties shootout league quarter overtime"
+    " game match goal score season round semi championship playoffs playoff trophy"
+    " monday tuesday wednesday thursday friday saturday sunday january february march april may"
+    " june july august september october november december".split()
 )
 
 
@@ -592,7 +598,7 @@ def _strangers(question: str, header: dict, past: list[dict]) -> list[str]:
     except KeyError:  # a match with no data file: its moments so far
         moments = past
     pack = predict.load_pack(header["sport"], header["match_id"]) or {}
-    names = [str(header.get(k) or "") for k in ("home", "away", "competition", "stage")]
+    names = [str(header.get(k) or "") for k in ("home", "away", "competition", "stage", "venue")]
     names += [str(m.get("team") or "") for m in moments]
     names += [str(v) for m in moments for v in (m.get("players") or {}).values()]
     names += [str(n) for n in (*pack.get("players", ()), *pack.get("teams", ()))]
@@ -609,7 +615,7 @@ def _strangers(question: str, header: dict, past: list[dict]) -> list[str]:
         words = [
             w
             for w in run.split()
-            if re.split(r"['’]", w.lower())[0] not in _ASKED and not w.isupper()
+            if re.split(r"['’-]", w.lower())[0] not in _NOT_NAMES and not w.isupper()
         ]
         if words and not all(map(is_known, words)):
             out.append(" ".join(words))

@@ -118,3 +118,19 @@ def test_a_name_not_in_the_match_is_named_in_the_message():
     spurs = match_header("3754092")  # a nickname or a surname alone is no stranger
     assert _strangers("Are Spurs winning? Has Son scored?", spurs, []) == []
     assert _strangers("Did Frank Lampard score?", spurs, []) == ["Frank Lampard"]
+
+
+def test_the_games_own_words_are_no_strangers():
+    # #336: a judge will ask about "the Final"; a game word or a date must not be called a player
+    final = match_header("3869685")
+    assert _strangers("Who scored in the World Cup Final?", final, []) == []
+    assert _strangers("Is Neymar playing?", final, []) == ["Neymar"]
+    spurs = match_header("3754092")  # a Premier League game: Final is still no player
+    for q in (
+        "Who scored in the Final?",
+        "Was there a Penalty in Extra Time?",
+        "Any VAR checks before Half-time?",
+        "Did the MVP score on Monday in May?",
+        "Please, who leads the League?",
+    ):
+        assert _strangers(q, spurs, []) == [], q
