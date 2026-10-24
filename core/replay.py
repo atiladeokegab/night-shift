@@ -169,7 +169,8 @@ async def run_replay(
                 video_t[first],
                 commentate,
             )
-            for stat, said_line in opened:  # its Stat moment is never shown: no score jumps ahead
+            for stat, said_line in opened:  # its score is the one before the first mapped moment
+                await replay.publish("moment", {**stat, "video_t": said_line["video_t"]})
                 await say(said_line, stat)
                 recent.append(said_line["text"])
         # a jump (#163): earlier play is on screen from the start, its score and clock and the lines

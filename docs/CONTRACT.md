@@ -70,7 +70,7 @@ and refuses to start without `STORE_URL=gs://bucket/prefix`.
   `video_start`: the lead's welcome naming the match, then the analyst's light line (`open: {...,
   kind: "cold open", n: 0 | 1, kickoff}`), each kept only if it ends 2 s before the first call and
   within 15 s; said over the last moment before the first mapped one, else (`kickoff`) over the
-  first with its counts zeroed and no history. Its Stat moment is not streamed, only its Lines.
+  first with its counts zeroed and no history.
   All three are cached per (match_id, after_idx, n, v: 4) and reused by later replays; a replay
   makes at most 160 new calls for them. A fix on any goes back, unrecorded, with that line's own
   Stat request.

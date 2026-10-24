@@ -48,11 +48,9 @@ def stream(tmp_path, video):
 def test_mapped_match_calls_only_mapped_moments_with_their_video_time(tmp_path):
     events = stream(tmp_path, F1_VIDEO)
     opening = sum(n == "line" and "open" in d for n, d in events)  # the cold open (#221) first
-    assert [n for n, _ in events] == ["line", "stats"] * opening + ["moment", "line", "stats"] * 2 + [
-        "end"
-    ]
+    assert [n for n, _ in events] == ["moment", "line", "stats"] * (opening + 2) + ["end"]
     lines = [d for n, d in events if n == "line" and "open" not in d]
-    moments = [d for n, d in events if n == "moment"]
+    moments = [d for n, d in events if n == "moment" and d["type"] != "Stat"]
     assert [(ln["line_id"], ln["video_t"]) for ln in lines] == [("f1-0", 12.5), ("f1-2", 80.0)]
     assert [m["video_t"] for m in moments] == [12.5, 80.0]
 
