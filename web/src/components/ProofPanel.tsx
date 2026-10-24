@@ -34,6 +34,7 @@ export function ProofPanel({ live }: Props) {
     body = (
       <>
         <dl className="stats">
+          {stats.matches_measured !== undefined && <PerMatch stats={stats} />}
           {groups.map(([name, s]) => <Speaker key={name} name={name} s={s} />)}
           {/* own heading so the fix counts don't read as the analyst's */}
           <div className="wide">
@@ -67,10 +68,27 @@ export function ProofPanel({ live }: Props) {
         <p className="small">
           First word: time from the moment to the first word of the model's text reply, measured through
           Mubit. Finishing the line, speech synthesis and playback are not included.
+          Cost per match: one replay run start to finish, at list prices. Model: its LLM tokens; Voice: its speech characters.
           {stats?.adapter && !stats.adapter.cost_measurable && " Adapter cost: not measurable; Mubit doesn't report it to the app."}
         </p>
       </section>
       <SideBySide />
+    </>
+  )
+}
+
+// what one full replay costs us, the model and the voice apart (#174)
+function PerMatch({ stats }: { stats: Stats }) {
+  const n = stats.matches_measured ?? 0
+  return (
+    <>
+      <div className="wide">
+        <dt className="label">Cost per match</dt>
+        <dd>{n ? `Model + Voice, mean of ${n} full ${n === 1 ? 'replay' : 'replays'}` : 'Shows once a match plays start to finish'}</dd>
+      </div>
+      <Figure label="Total" value={cents(stats.cost_per_match_usd)} />
+      <Figure label="Model" value={cents(stats.model_cost_per_match_usd)} />
+      <Figure label="Voice" value={cents(stats.voice_cost_per_match_usd)} />
     </>
   )
 }
@@ -113,6 +131,10 @@ function adapterText(adapter?: Adapter | null): string {
 
 function seconds(ms: number | null): string {
   return ms === null ? '–' : `${(ms / 1000).toFixed(2)} s`
+}
+
+function cents(usd: number | null | undefined): string {
+  return usd === null || usd === undefined ? '–' : `$${usd.toFixed(2)}`
 }
 
 function dollars(usd: number | null | undefined): string {

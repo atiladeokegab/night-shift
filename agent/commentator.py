@@ -85,6 +85,13 @@ def _period(m: dict) -> str:
     return "penalty shootout" if m["period"] == 5 else f"period {m['period']}"
 
 
+def _outcome(m: dict) -> str:
+    """The outcome, with a football moment's place right beside it (#172): left in Details alone,
+    the model never said it."""
+    where = m["detail"].get("where")
+    return (m["outcome"] or "none") + (f", {where}" if where else "")
+
+
 def describe(m: dict) -> str:
     return f"{m['clock']} {m['type']}, {m['outcome']} ({m['team']}; {_players(m)})"
 
@@ -103,7 +110,7 @@ def render_message(header: dict, past: list[dict]) -> str:
         period=_period(m),
         clock=m["clock"],
         type=m["type"],
-        outcome=m["outcome"] or "none",
+        outcome=_outcome(m),
         team=m["team"],
         players=_players(m),
         score=_score(header, m),
