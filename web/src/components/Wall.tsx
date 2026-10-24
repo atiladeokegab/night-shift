@@ -67,6 +67,7 @@ function Tile({ match, onOpen, onJump }: { match: Match; onOpen: (m: Match) => v
   const [broken, setBroken] = useState(!plays)
   const title = CARD_COPY[match.match_id]?.title ?? match.title?.split(',')[0] ?? match.match_id
   const detail = CARD_COPY[match.match_id]?.detail ?? match.title?.split(',').slice(1).join(',').trim()
+  const note = CARD_COPY[match.match_id]?.note
 
   // Muted, looping, without controls or captions: the tile is a moving picture, never a second commentary.
   // The clip shows only once it is really playing; a clip that errors or isn't playing in TILE_START_MS
@@ -104,7 +105,7 @@ function Tile({ match, onOpen, onJump }: { match: Match; onOpen: (m: Match) => v
       <div className={`clip${playing && !broken ? ' on' : ''}`} ref={host} aria-hidden />
       <span className="tile-shade" />
       <span className="tile-body">
-        <span className="label">{SPORT_NAMES[match.sport]}</span>
+        <span className="label">{SPORT_NAMES[match.sport]}{note && ` · ${note}`}</span>
         <span className="tile-title">{title}</span>
         {detail && <span className="tile-detail">{phrases(detail)}</span>}
         <span className="tile-cta">{phrases(blocked ? 'Commentary only · Tap to hear it called →' : 'Tap to hear it called →')}</span>

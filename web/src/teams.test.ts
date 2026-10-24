@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import type { Match, Moment, Sport } from './types.ts'
-import { chipName, commentatorName, cricketScore, sheetName, sheetVoices, voiceName } from './teams.ts'
+import { CARD_COPY, chipName, commentatorName, cricketScore, sheetName, sheetVoices, voiceName, wallOrder } from './teams.ts'
 
 const voice = (label: string) => ({ id: 'v', label, lang: 'en-GB', default_for: null })
 
@@ -73,4 +73,11 @@ test('while off air the badge reads OFF AIR, and a voice change is announced by 
   assert.match(live, /if \(offAir\) \{[\s\S]*?cls \+= ' off'[\s\S]*?OFF AIR/)
   const app = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8')
   assert.match(app, /say\(`\$\{chipName\(v\)\} from the next line\.`\)/)
+})
+
+test('the WSL match leads the football list with its quiet note; the rest keep their order', () => {
+  const m = (sport: Sport, match_id: string) => ({ sport, match_id }) as Match
+  const ids = wallOrder([m('cricket', '1298150'), m('football', '3869685'), m('football', '3913122'), m('football', '3754092')])
+  assert.deepEqual(ids.map((x) => x.match_id), ['3913122', '3869685', '3754092', '1298150'])
+  assert.equal(CARD_COPY['3913122'].note, 'No described broadcast')
 })
