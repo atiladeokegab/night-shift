@@ -66,3 +66,20 @@ test('the cricket Follow card keeps its table and Unfollow inside its padding at
   await inside(page, '.profile .zones', '.profile', 20)
   await inside(page, '.profile .panel-h .btn', '.profile', 20)
 })
+
+test('Talk reads "Connecting" at full strength while its session starts', async ({ page }) => {
+  const moment = {
+    sport: 'basketball', match_id: '0020500591', idx: 0, period: 1, clock: '10:35', type: 'Field goal',
+    team: 'Toronto Raptors', players: { shooter: 'Morris Peterson' }, outcome: '2 points', score: { home: 2, away: 2 }, detail: {},
+  }
+  await replay(page, [['moment', moment]])
+  await page.route('**/converse/*/*/token*', () => new Promise(() => {})) // the token never comes: Connecting stays
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/')
+  await page.getByRole('button', { name: /^Basketball ?Kobe's 81/ }).click()
+  await page.getByRole('button', { name: 'Talk' }).click()
+  const connecting = page.getByRole('button', { name: 'Connecting' })
+  await expect(connecting).toBeDisabled()
+  await expect(connecting).toHaveAttribute('aria-busy', 'true')
+  await expect(connecting).toHaveCSS('opacity', '1')
+})
