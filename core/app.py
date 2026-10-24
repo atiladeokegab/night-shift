@@ -3,6 +3,7 @@ commentator come from data/ and agent/ (#13) through `Deps`, so tests inject the
 
 import asyncio
 import json
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -17,6 +18,9 @@ from core.replay import Replay, run_replay
 from core.stats import stats
 from core.store import open_store
 from core.voice import Speaker, voice_router
+
+log = logging.getLogger("night_shift.app")
+REJOIN_S = 10.0  # a replay with no open stream this long is stopped: its lines cost model calls
 
 WEB = Path(__file__).resolve().parent.parent / "web" / "dist"
 
@@ -58,6 +62,7 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
     replays: dict[str, Replay] = {}
     speaker = Speaker(tts_transport)
     tasks: set[asyncio.Task] = set()
+    running: dict[str, asyncio.Task] = {}  # replay id: its run_replay task, until it ends
 
     def need_deps() -> Deps:
         if deps is None:
@@ -87,7 +92,24 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
         )
         tasks.add(task)
         task.add_done_callback(tasks.discard)
+        running[replay.id] = task
+        task.add_done_callback(lambda _: running.pop(replay.id, None))
+        stop_later(replay)  # in case no stream ever opens
         return {"replay_id": replay.id}
+
+    def stop_later(replay: Replay) -> None:
+        if replay.stopping:
+            replay.stopping.cancel()
+        replay.stopping = asyncio.get_running_loop().call_later(REJOIN_S, abandon, replay)
+
+    def abandon(replay: Replay) -> None:
+        """Stop a replay nobody follows, and its voice jobs, so they free the 3 shared slots."""
+        task = running.get(replay.id)
+        if replay.listeners or task is None:
+            return
+        log.warning("replay %s stopped: no stream for %.0f s", replay.match_id, REJOIN_S)
+        task.cancel()
+        speaker.drop({e["data"]["line_id"] for e in replay.events if e["event"] == "line"})
 
     @app.get("/replays/{replay_id}/stream")
     async def stream(replay_id: str):
@@ -96,9 +118,17 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
             raise HTTPException(404, f"no replay {replay_id!r}")
 
         async def sse():
-            async for e in replay.follow():
-                yield f"event: {e['event']}\ndata: {json.dumps(e['data'])}\n\n"
-            yield "event: end\ndata: {}\n\n"
+            replay.listeners += 1
+            if replay.stopping:
+                replay.stopping.cancel()
+            try:
+                async for e in replay.follow():
+                    yield f"event: {e['event']}\ndata: {json.dumps(e['data'])}\n\n"
+                yield "event: end\ndata: {}\n\n"
+            finally:  # the client went away: a reconnect within REJOIN_S keeps the replay going
+                replay.listeners -= 1
+                if not replay.listeners:
+                    stop_later(replay)
 
         return StreamingResponse(sse(), media_type="text/event-stream")
 
