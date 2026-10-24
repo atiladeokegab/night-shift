@@ -204,7 +204,14 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
     come from the latest `adapter` record in the store, which `python -m eval.record_adapter` appends
     from Mubit's console; before one exists, `not_trained` and nulls. `kept` is never inferred from
     stored lines, since a stored line doesn't prove Mubit kept it. `cost_measurable` is false while
-    the app can't call the adapter.
+    the app can't call the adapter. These are the commentary task's: a record with no `task` is
+    commentary's, and another task's record leaves this key and `fixes_toward_next` alone.
+  - `adapters: {[task]: {status, version: int|null, score: number|null, target: number|null,
+    passed: bool|null, kept: int|null, recorded_at}}`: each Mubit task's latest `adapter` record
+    (#209), keyed `commentary`, `where_are_we` or `line_check`; a task with no record is absent.
+    `score` is the console's "matched N% of the provider model's answers", `target` its target (e.g.
+    95) and `passed` its gate; `kept` is the console's kept examples, never requests. Each field is only what
+    `python -m eval.record_adapter --task ...` recorded from the console; null where it didn't say.
 
 ## Agent
 

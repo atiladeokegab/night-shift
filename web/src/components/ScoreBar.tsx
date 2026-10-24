@@ -31,7 +31,7 @@ function Football({ match, moment }: { match: Match; moment: Moment | null }) {
       <span className="score num">{s && 'home' in s ? `${s.home}–${s.away}` : '0–0'}</span>
       <Team team={away} />
       <span className="sep" />
-      <span className="clock num">{moment ? clockText(moment) : match.sport === 'basketball' ? '12:00' : '00:00'}</span>
+      <span className="clock num">{!moment ? (match.sport === 'basketball' ? '12:00' : '00:00') : match.sport === 'football' && moment.period === 5 ? 'Shootout' : clockText(moment)}</span>
       <span className="period">{moment ? periodText(moment) : match.sport === 'basketball' ? 'Q1' : '1st half'}</span>
     </>
   )

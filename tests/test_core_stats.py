@@ -111,6 +111,12 @@ def test_fixes_toward_the_next_adapter_count_since_its_latest_record(tmp_path):
     store.append("adapter", {"status": "training", "created_at": "2026-10-24T13:00:00+00:00"})
     store.append("fixes", fix("b", "14"))
     assert stats(store)["fixes_recorded"] == 2 and stats(store)["fixes_toward_next"] == 1
+    # another task's adapter record isn't commentary's: the count toward the next one runs on
+    store.append(
+        "adapter",
+        {"task": "line_check", "status": "ready", "created_at": "2026-10-24T15:00:00+00:00"},
+    )
+    assert stats(store)["fixes_toward_next"] == 1
 
 
 def test_only_recorded_fixes_count_as_recorded(tmp_path):
