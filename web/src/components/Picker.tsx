@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { cardArt } from '../art'
-import { CARD_COPY, defaultVoice, matchTeams, voiceName } from '../teams'
+import { CARD_COPY, commentatorName, defaultVoice, matchTeams, voiceName } from '../teams'
 import { SPORT_NAMES, type Match, type Voice } from '../types'
 import { Nav, type Screen } from './Nav'
 
@@ -75,7 +75,7 @@ function Card({ match, voices, onStart }: { match: Match; voices: Voice[]; onSta
           </p>
         )}
         {copy && <p className="result">{copy.result}</p>}
-        <div className="meta">{voice && <span className="voice">{voice} commentator</span>}</div>
+        <div className="meta">{voice && <span className="voice">{commentatorName(voice)}</span>}</div>
         <div className="chips speeds" role="radiogroup" aria-label="Speed">
           {SPEEDS.map(([value, name]) => (
             <label key={value} title={match.youtube_id && value !== 1 ? 'The highlights play in real time' : undefined}>

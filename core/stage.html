@@ -243,10 +243,38 @@ function logLine(line, late) {
   $("log").prepend(li);
 }
 
+// The main page's tag (web/src/moment.ts momentTag): "28:29 · Goal", "Over 19.4 · No-ball · Six".
+function momentTag(m) {
+  const sentence = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  const clock = m.sport === "cricket" ? `Over ${m.clock}` : m.sport === "f1" ? `Lap ${m.period}` : m.clock;
+  return `${clock} · ${momentName(m, sentence)}`;
+}
+
+function momentName(m, sentence) {
+  const d = m.detail || {}, s = m.score || {};
+  if (m.sport === "basketball" || m.sport === "f1") return sentence(m.outcome || m.type);
+  if (m.sport === "cricket") {
+    if (s.target && s.runs >= s.target) return `${m.team} win`;
+    if (m.type === "No ball") return d.runs_batter === 6 ? "No-ball · Six" : d.runs_batter === 4 ? "No-ball · Four" : "No-ball";
+    if (["Six", "Four", "Wicket"].includes(m.type)) return m.type;
+    return sentence(m.outcome || m.type);
+  }
+  if (m.type === "Own Goal Against") return "Own goal";
+  if (m.type === "Shot") {
+    if (m.outcome === "Goal") return "Goal";
+    if (d.shot_type === "Penalty") return m.outcome === "Saved" ? "Penalty saved" : "Penalty";
+    if (m.outcome === "Post") return "Off the woodwork";
+    return m.outcome === "Saved" ? "Saved" : "Shot";
+  }
+  if (d.card) return sentence(String(d.card).toLowerCase());
+  if (m.type === "Injury Stoppage") return "Stoppage";
+  return sentence(m.type.toLowerCase());
+}
+
 function show(line) {
   const m = moments[line.moment_idx];
   if (m) scorebar(m);
-  subtitle(line.text, "", m ? `${m.type} · ${m.clock}` : "Live");
+  subtitle(line.text, "", m ? momentTag(m) : "Live");
   logLine(line, false);
   speak(line);
   refreshStats();
