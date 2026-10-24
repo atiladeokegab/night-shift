@@ -10,7 +10,7 @@
 [![ElevenLabs](https://img.shields.io/badge/ElevenLabs-commentator%20voice-000000?logo=elevenlabs&logoColor=white)](https://elevenlabs.io)
 [![Cloud Run](https://img.shields.io/badge/Cloud%20Run-live-4285F4?logo=googlecloud&logoColor=white)](https://night-shift-5zvig7nbvq-ew.a.run.app)
 
-**A live AI commentator for every match nobody calls. A big model calls each moment through Mubit, which is training a smaller commentator on those calls (6 adapter versions so far, none passed yet), with every producer fix kept as a correction.**
+**Automated audio description for live sport, for the matches no human describer covers.** A big model calls each key moment through Mubit, which is training a smaller commentator on those calls (6 adapter versions so far, none passed yet), with every producer fix kept as a correction.
 
 [**Try it live**](https://night-shift-5zvig7nbvq-ew.a.run.app) · [**For judges**](#for-judges) · [**Real numbers**](#real-numbers) · [**Architecture**](docs/ARCHITECTURE.md) · [**Known limitations**](#known-limitations) · [**Run it**](#run-it) · [**Demo script**](docs/demo.md)
 
@@ -161,7 +161,7 @@ the same numbers as `GET /stats` ([`web/src/components/ProofPanel.tsx`](web/src/
 Each criterion weighs the same; one line each, with where to check it.
 
 - **Use of Mubit (a correction becomes a model update):** every call goes through one Mubit task; its recorded lines have trained [6 adapter versions](#real-numbers) so far (none passed yet), and a producer's [fix](#producer-fixes) is stored beside the line as the correction for the next version.
-- **Usefulness (a real recurring task):** most matches every weekend have no commentator; Touchline calls [six real matches in four sports](#the-six-matches) from their real event data.
+- **Usefulness (a real recurring task):** live audio description of sport is [voluntary and patchy](#the-problem), and the one big broadcaster's service covers the top flight only; Touchline speaks the key moments of [six real matches in four sports](#the-six-matches) from their real event data.
 - **Technical execution:** a line in [0.53 s to its first word](#real-numbers) (p50), gated on the video's clock, an offline test suite (`make check`) and a live smoke test on every deploy; [architecture](docs/ARCHITECTURE.md) and [known limitations](#known-limitations).
 - **Demo:** two minutes on the live URL, scripted in [docs/demo.md](docs/demo.md); the [60-second path](#the-60-second-path) above is the short version.
 
@@ -169,13 +169,16 @@ Each criterion weighs the same; one line each, with where to check it.
 
 > **Vision, not what's built.** This weekend's build is the six replays above. This is the full product.
 
-- **Any live match, any sport.** A commentator in any language or voice, for the leagues, clubs and
-  broadcasters with no commentary budget: lower-league and grassroots football, the women's game,
-  club and county cricket.
-- **A trained commentator per broadcaster, owned by them.** Each broadcaster gets its own cheap
-  commentator as a Mubit adapter, trained on its own matches, and every producer correction is a
-  training signal that makes it better.
-- **The fan-facing layer.** Ask by typing or voice, a choice of voices, and Follow a player, on any match.
+- **Every streamed match, described aloud.** Leagues, clubs, rights holders and streaming platforms
+  switch it on for the long tail of matches they stream with no describer, in any language or voice:
+  lower-league and grassroots football, the women's game, club and county cricket.
+- **A describer per broadcaster, owned by them.** Each broadcaster gets its own cheap commentator as
+  a Mubit adapter, trained on its own matches, and every producer correction is a training signal
+  that makes it better.
+- **Built for fans who can't see the screen.** Audio first, with keyboard and screen reader working
+  throughout (#170), and football moments that say where on the pitch they happened, from the event
+  data's own locations (#172). Both are in progress.
+- **The fan layer.** Ask by typing or voice, a choice of voices, and Follow a player, on any match.
 - **At scale,** Redis fans each match's lines out to every viewer and caches them across instances,
   and SurrealDB holds players, teams, matches and seasons as a graph
   ([docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#at-scale-a-plan-not-built)).
@@ -208,19 +211,43 @@ because no version has passed.
 
 ## The problem
 
-Somewhere tonight a county cricket chase goes to the last ball, and nobody calls it. A women's
-league side scores the goal of its season, and the stream is silent. Most matches in most sports are
-played like this: grassroots and lower-league football, most of the women's game, club and county
-cricket. Fans following a stream or a live score get a bare ticker, or nothing.
+At least 2.2 billion people have a near or distance vision impairment
+([WHO](https://www.who.int/news-room/fact-sheets/detail/blindness-and-visual-impairment)). For a fan
+who can't see the screen, a match that nobody describes is a match they can't follow.
 
-A big model could commentate them. But it is too slow to call a moment while the moment is still on
-screen, and too expensive to run for every moment of every match.
+<!-- QUOTE PLACEHOLDER: a blind or low-vision fan on following a match that nobody describes.
+The lead supplies the quote and who said it; set it here as a blockquote. -->
+
+Live audio description of sport is voluntary and patchy. In UK football some top clubs, such as
+Manchester City, and some smaller ones, such as Wrexham, Bolton, Cardiff and Altrincham, run
+audio-descriptive commentary, and a Level Playing Field survey found few clubs offering it live
+([Disability News Service](https://www.disabilitynewsservice.com/premier-league-should-be-ashamed-of-treatment-of-blind-fans/)).
+Sky Sports launched live descriptive audio commentary for the Premier League on 10 October 2026: one
+match a day each game week, about 109 of the league's 380 games a season, and none below the top
+flight ([ISPreview](https://www.ispreview.co.uk/index.php/2026/10/sky-sports-to-introduce-live-subtitles-and-live-descriptive-audio-commentary.html)).
+Rules don't close the gap: in the US the FCC requires the top networks to describe 87.5 hours a
+quarter, and live sport is effectively outside it
+([Federal Register](https://www.govinfo.gov/content/pkg/FR-2024-03-12/html/2024-05186.htm)). Where a
+club does describe its matches, the money can come from the fans: one supporters' association funded
+a £4,000 audio-description project at Wrexham, including four years of running it
+([Level Playing Field](https://www.levelplayingfield.org.uk/news-item/audio-description-commentary-at-wrexham-afc)).
+
+A model can describe the rest, if it speaks while the moment is still on screen and costs little
+enough to run for every match. Touchline's model costs $0.0019 a line, with the voice not included,
+and has the first word of its text out in 0.54 s and the full line in 0.9 s (medians from the live
+site's [`/stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats) on 24 October 2026 at
+13:52 UTC).
+
+**Who it's for:** fans who can't see the screen. **Who pays:** rights holders, leagues, clubs and
+streaming platforms, for the long tail of matches they stream with no describer.
 
 ## What Touchline is
 
-**Touchline** gives every match a commentator. It plays a match's broadcast highlights, and as each
-key moment plays it calls it in one short, emotional line, read aloud in a commentator's voice and
-shown as a large subtitle.
+**Touchline** describes a match aloud for fans who can't see it. It plays a match's broadcast
+highlights, and as each key moment plays (a goal, a wicket, a three) it calls it in one short line,
+read aloud in a commentator's voice and shown as a large subtitle. It describes key moments, not
+every pass: what happened and who did it, often with the score. Making the page itself work without sight
+(#170) and saying where on the pitch a football moment happened (#172) are in progress.
 
 One agent calls every sport. It reads the match's real event feed, looks up the score, the player and
 recent play with tools, and never sees anything from later in the match than the moment it is
