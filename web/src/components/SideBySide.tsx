@@ -18,10 +18,10 @@ export function SideBySide() {
       </div>
       <p className="hint">
         <strong>Our commentator: {view.paired ? adapter.status : 'training on Mubit'}.</strong> {adapter.adapters}{' '}
-        adapter versions so far, best {adapter.best_match_pct}% agreement with the big model
+        adapter versions so far, best {adapter.best_match_pct}% on Mubit's test
         {view.paired
-          ? ` (Mubit's test: ${adapter.status}).`
-          : "; not yet passing Mubit's test, so it isn't served. Lines appear here beside the big model's once a version passes."}
+          ? ` (${adapter.status}).`
+          : "; not yet passing it, so it isn't served. Lines appear here beside the big model's once a version passes."}
       </p>
       <Costs big={view.bigCost} ours={view.oursCost} />
       <p className="label" style={{ margin: '16px 0 0', lineHeight: 1.4 }}>
