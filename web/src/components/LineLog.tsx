@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { withAnswers } from '../ask'
+import { names } from '../follow'
 import { clockText } from '../moment'
 import type { Answer, Fix, Line, Moment } from '../types'
 
@@ -13,13 +14,14 @@ interface Props {
   onAsk: ((question: string) => Promise<void>) | null // null until a moment is on screen
   shooter: string | null // the latest shooter on screen, in a sport with a shot map (#120)
   onShots: (name: string) => void
+  followed?: string | null // the followed player's lines stand out (#140)
 }
 
 // The Lines card (docs/design.md): every line so far, newest first, with its clock, the model's
 // first-text-word time ("first word" in the mockup: the #37 review asked for the measured thing's name)
 // and "Fix". A fixed line shows the correction over the struck-through original. Viewers' questions and
 // the commentator's answers (#117) sit among the lines at the moment they were asked.
-export function LineLog({ lines, late, fixes, moments, onFix, answers, onAsk, shooter, onShots }: Props) {
+export function LineLog({ lines, late, fixes, moments, onFix, answers, onAsk, shooter, onShots, followed }: Props) {
   return (
     <section className="panel lines glass" aria-label="Lines">
       <div className="panel-h">
@@ -51,7 +53,7 @@ export function LineLog({ lines, late, fixes, moments, onFix, answers, onAsk, sh
             const firstWord = l.first_word_ms != null // undefined or null: only the whole reply was timed
             const ms = l.first_word_ms ?? l.latency_ms
             return (
-              <li key={l.line_id} className={fix ? 'fixed' : isLate ? 'late' : undefined}>
+              <li key={l.line_id} className={fix ? 'fixed' : isLate ? 'late' : undefined} data-follow={names(m, followed) || undefined}>
                 <span className="when num">{m ? clockText(m, true) : ''}</span>
                 <div className="text">
                   <span>{fix ? fix.corrected_text : l.text}</span>
