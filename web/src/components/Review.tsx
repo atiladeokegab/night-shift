@@ -91,7 +91,7 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
               )}
             </div>
             <button className="btn primary" onClick={() => setFixing({ item, phase: 'edit' })}
-              aria-label={`Fix the line at ${when(item)}, ${item.match}`}>
+              aria-label={`Fix this line at ${when(item)}, ${item.match}`}>
               Fix this line
             </button>
           </li>
