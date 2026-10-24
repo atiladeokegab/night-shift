@@ -155,7 +155,10 @@ def _heard(lines: list[dict], voice: list[dict]) -> dict:
     ids = {ln.get("line_id") for ln in lines}
     # a line with no audio has no voice record with a time: left out, never counted as 0
     heard = [
-        v["audio_first_ms"] for v in voice if v.get("line_id") in ids and "audio_first_ms" in v
+        # audio ready before the video reached its moment: no wait
+        max(0, v["audio_first_ms"])
+        for v in voice
+        if v.get("line_id") in ids and "audio_first_ms" in v
     ]
     return {
         "audio_first_ms_p50": _pct(heard, 0.5),

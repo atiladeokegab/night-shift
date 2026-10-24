@@ -202,6 +202,48 @@ def test_moment_to_audio_counts_only_lines_with_audio(tmp_path, monkeypatch):
     assert lead["audio_first_ms_p50"] >= 50 and lead["audio_first_ms_p95"] >= 50
 
 
+def test_moment_to_audio_runs_from_when_the_video_reaches_the_moment(tmp_path, monkeypatch):
+    # a video replay makes its lines ahead: audio ready 30 s before the video reaches the moment is
+    # no wait, not 50 ms from the moment's publish
+    import asyncio
+    import uuid
+
+    import httpx
+
+    from core.replay import Replay, run_replay
+    from core.voice import Speaker
+
+    async def slow_voice(request):
+        await asyncio.sleep(0.05)
+        return httpx.Response(200, content=b"mp3")
+
+    def commentate(moment, history):
+        return {"line_id": uuid.uuid4().hex, "text": "Shot!", "model": "claude-haiku-4-5"}
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "fake-eleven")
+    moment = {"sport": "football", "match_id": "f1", "idx": 0, "clock": "03:10", "type": "Shot"}
+    video = {"youtube_id": "abcdefghijk", "moments": [{"idx": 0, "video_t": 30.0}]}
+    store = Store(tmp_path)
+    speaker = Speaker(httpx.MockTransport(slow_voice), store)
+    seen = {}
+
+    def speak(line, said_for, due):
+        if said_for is moment:  # the moment's own line, not the cold open's
+            seen[line["line_id"]] = line["moment_at"] - due
+        speaker.prepare(line, said_for, due)
+
+    async def run():
+        await run_replay(Replay("f1", speed=1e6), [moment], commentate, store, video, speak)
+        await asyncio.gather(*speaker.jobs.values())
+
+    asyncio.run(run())
+    [(line_id, wait)] = seen.items()
+    assert wait == 0  # from the video's moment, not its publish 30 s before
+    [voiced] = [v for v in store.all("voice") if v["line_id"] == line_id]
+    assert voiced["audio_first_ms"] < 0  # ready ahead of the moment, by how much
+    assert stats_mod._heard([{"line_id": line_id}], [voiced])["audio_first_ms_p95"] == 0
+
+
 def test_served_by_counts_its_own_lines_on_a_store_mostly_from_before_it(tmp_path):
     # #250 review: one new line after deploy must not stamp its model on 500 lines it never saw
     store = Store(tmp_path)

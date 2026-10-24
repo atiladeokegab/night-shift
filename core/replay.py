@@ -157,8 +157,11 @@ async def run_replay(
         # the player's own clock if the page ever sends it.
         if speak:
             due = replay.started + line["video_t"] - video.get("start", 0) if video else None
+            # moment to audio runs from when the viewer sees the moment: a line made ahead is
+            # shown when the video reaches it, not when it was published
+            seen = max(replay.moment_at, due) if timed and due is not None else replay.moment_at
             # this replay's id, so a cached line spoken again is charged to the replay that spoke it
-            speak({**line, "replay_id": replay.id, "moment_at": replay.moment_at}, moment, due)
+            speak({**line, "replay_id": replay.id, "moment_at": seen}, moment, due)
         spoke.append(line["line_id"])
         # untimed: said as soon as it is here, not when the video's clock reaches it
         await replay.publish(

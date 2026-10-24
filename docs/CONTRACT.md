@@ -262,7 +262,8 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
     and lines built from the data carry none). The Proof card says "Served by ..." alone only when
     `served_lines` equals `lines`; otherwise it shows `model` and "served by ... on N lines". The
     lead's also has `audio_first_ms_p50`, `audio_first_ms_p95` and
-    `audio_lines` (#233): ms from its moment's publish to its audio ready on the server, over the
+    `audio_lines` (#233): ms from its moment's publish (in a video replay, the video reaching the
+    moment, if later; audio ready before then is 0) to its audio ready on the server, over the
     `audio_lines` lead lines voiced when the replay stored them; both percentiles are null when
     `audio_lines` is 0.
   - `fixes_recorded: int`: fixes with `recorded: true`; `fixes` counts every stored fix.
