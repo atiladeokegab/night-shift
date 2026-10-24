@@ -500,6 +500,16 @@ def test_a_fix_to_an_analyst_line_goes_unrecorded_and_says_so(monkeypatch):
     assert seen[-1] == ("fake-lent", "off") and sent["recorded"] is False
 
 
+def test_a_fix_after_a_402_reports_the_owners_key_recording_it(monkeypatch):
+    # the lent key is unrecorded; once a 402 moves the provider to the owner's key, it records
+    provider, seen = _mubit(monkeypatch, 402, record="off")
+    moments = [moment(FOOT, 0)]
+    line = line_for(FOOT, moments, 0, provider)
+    sent = commentator.correct(line, "Ann saves it!", FOOT, moments, provider=provider)
+    assert seen == [("fake-lent", "off"), ("fake-owner", None), ("fake-owner", None)]
+    assert sent["recorded"] is True
+
+
 def test_without_an_owners_key_a_fix_goes_as_its_line_did(monkeypatch):
     provider, seen = _mubit(monkeypatch, 200, fallback=False, record="off")
     moments = [moment(FOOT, 0)]
