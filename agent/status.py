@@ -66,19 +66,35 @@ def _people(m: dict) -> str:
     return said
 
 
+def _crease(m: dict) -> str:
+    """The cricket batters at the crease after this ball ("A and B"): not the one just dismissed."""
+    p = m["players"]
+    return " and ".join(
+        n for n in (p.get("batter"), p.get("non_striker")) if n and n != p.get("out")
+    )
+
+
 def _lead(m: dict) -> str:
     """Who leads (#185), a chase's state, F1's P1, or nobody yet in a first innings; at the end,
     who won ("Argentina won the shootout 4-2")."""
     d, s = m["detail"], m["score"]
+    if m["sport"] == "cricket" and m["type"] not in END:  # who is in, and what it has cost
+        down = f", {s['wickets']} down" if s["wickets"] else ""
+        crease = f"; {c} batting" if (c := _crease(m)) else ""
+        return f"{_cricket_lead(m, d)}{down}{crease}"
     if d.get("lead") or d.get("chase"):
         lead = d.get("lead") or d["chase"]
     elif s.get("top"):
         lead = f"{min(s['top'], key=lambda c: c['pos'])['driver']} leads"
     elif m["sport"] == "cricket":
-        return f"no one yet, {m['team']} batting first"
+        return _cricket_lead(m, d)
     else:
         return "see the score"
     return re.sub(r"\bleads?\b", "won", lead, count=1) if m["type"] in END else lead
+
+
+def _cricket_lead(m: dict, d: dict) -> str:
+    return d.get("lead") or d.get("chase") or f"no one yet, {m['team']} batting first"
 
 
 def build_request(header: dict, m: dict) -> dict:
@@ -109,6 +125,8 @@ def fallback_text(header: dict, m: dict) -> str:
     if s.get("top"):  # F1: its score line gives the lap
         return f"{_score(header, m)}. {_lead(m)}."
     state = _lead(m) if d.get("lead") else _score(header, m)
+    if m["sport"] == "cricket" and m["type"] not in END and (c := _crease(m)):
+        state += f". {c} batting"
     if "shootout" in d:  # the shootout's lead alone hides the match score
         return (
             f"{_when(m)}, {s['home']}-{s['away']} after extra time. {state[0].upper()}{state[1:]}."
@@ -164,7 +182,16 @@ def status(past: list[dict], header: dict | None = None, provider=None) -> dict:
         wrong = insight.wrong_numbers(text, {**m, "detail": d}, header, past[:-1])
         # nor say how the last shot ended: "where are we" is the state, the event is optional
         wrong = [w for w in wrong if not w.startswith("the line never says how the shot ended")]
-        return bool(text) and says_score(text, m) and not wrong and not leads_at_the_end(text, m)
+        # a cricket status names a batter at the crease (the surname will do)
+        crease = m["sport"] != "cricket" or m["type"] in END or not (c := _crease(m))
+        named = crease or any(n.split()[-1].lower() in text.lower() for n in c.split(" and "))
+        return (
+            bool(text)
+            and says_score(text, m)
+            and named
+            and not wrong
+            and not leads_at_the_end(text, m)
+        )
 
     text = None
     try:

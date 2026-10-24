@@ -16,6 +16,7 @@ from pathlib import Path
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -145,7 +146,10 @@ class AskRequest(BaseModel):
 
 
 # "Where are we?" asked in words, typed or by voice (#186): the status task answers it, not Ask
-STATUS_ASK = re.compile(r"(?:so )?(?:where are we|what(?:'s| is) the score)(?: now| at)?")
+STATUS_ASK = re.compile(
+    r"(?:so )?(?:where are we|what(?:'s| is) the score|who(?:'s| is) (?:batting|at the crease))"
+    r"(?: now| at)?"
+)
 
 
 def wants_status(question: str) -> bool:
@@ -661,7 +665,8 @@ def create_app(
             need_deps=need_deps, viewed=viewed, asked_so_far=asked_so_far, guard=guard, store=store
         )
     )
-    # the built page (web/, #18) at /, mounted last so every API route above wins
+    # the built page (web/, #18) at /, mounted last so every API route above wins; gzipped (#438),
+    # the SSE stream and the API not
     if WEB.is_dir():
-        app.mount("/", StaticFiles(directory=WEB, html=True), name="web")
+        app.mount("/", GZipMiddleware(StaticFiles(directory=WEB, html=True)), name="web")
     return app

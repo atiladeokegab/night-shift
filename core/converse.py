@@ -101,12 +101,13 @@ ABOUT_VIEWER = re.compile(r"^(?:So )?[Tt]he (?:viewer|fan|user)\b")
 SENTENCE = re.compile(r"(?<=[.!?])\s+")
 
 
-def checked(text: str, question: str, past: list[dict], lines: list[dict]) -> bool:
-    """Ask's number and claim checks on a piece of an answer."""
-    one = {"text": text}
+def checked(answer: dict, question: str, past: list[dict], lines: list[dict]) -> bool:
+    """Ask's number and claim checks on a sentence or completed answer."""
+    text = answer["text"]
     return not (
-        insight.wrong_answer(one, question, past, lines)
+        insight.wrong_answer(answer, question, past, lines)
         + insight.wrong_claims(text, past, question)
+        + insight.wrong_lead_move(text, past)
     )
 
 
@@ -177,7 +178,7 @@ async def speak(ask, inner, question: str, past: list[dict], lines: list[dict]):
             heard = commentator.spoken(sentence, words_left, ask=True)
             if not heard or ABOUT_VIEWER.match(heard):
                 continue
-            if not checked(heard, question, past, lines):
+            if not checked({"text": heard}, question, past, lines):
                 log.warning("converse: a sentence failed the number check")
                 failed = True
                 break
@@ -197,10 +198,7 @@ async def speak(ask, inner, question: str, past: list[dict], lines: list[dict]):
         made = await task
     except Exception:  # logged by the done-callback
         made = None
-    if made and not (
-        insight.wrong_answer(made, question, past, lines)
-        + insight.wrong_claims(made["text"], past, question)
-    ):
+    if made and checked(made, question, past, lines):
         yield made["text"]
         return
     # no text event we know, a failed answer or call: Ask's own path, so the fan is never in silence

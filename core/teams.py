@@ -62,6 +62,7 @@ def build(sport: str, header: dict) -> dict:
                 "team": t,
                 "form": _ask("team_form", sport, t, before, **g),
                 "squad": squads[t],
+                "note": None if squads[t] else _ask("first_match", sport, t, before) or None,
             }
             for t in sides
         ],
