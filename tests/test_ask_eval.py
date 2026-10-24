@@ -1,8 +1,8 @@
 """The Ask eval (#319): a judge's counts are in the message, own goals add up, and a right answer
 gets through the route's path and its check."""
 
-from agent.commentator import FakeProvider, answer
-from data.matches import load_moments
+from agent.commentator import FakeProvider, _strangers, answer
+from data.matches import load_moments, match_header
 from eval.ask_eval import QUESTIONS, ask, verdict
 
 
@@ -90,3 +90,18 @@ def test_the_verdicts():
     assert verdict("France have had six shots.", q) == "wrong"
     assert verdict("I can't say, but it's 2-2.", q) == "refused"
     assert verdict("Commentator is off air for a moment", q) == "refused"
+
+
+def test_a_name_not_in_the_match_is_named_in_the_message():
+    # #332: the keyed run dodged Neymar and LeBron James; it is told they are not in the match
+    provider = FakeProvider()
+    answer("Has Neymar scored? Or Mbappe?", load_moments("3869685")[:46], [], provider=provider)
+    said = provider.requests[0]["messages"][0]["content"]
+    assert 'so say plainly they are not in it: "Neymar"\n' in said
+    kobe = match_header("0020500591")
+    assert _strangers("How many points has LeBron James scored?", kobe, []) == ["LeBron James"]
+    for q in ("How many points does Kobe have?", "Are the Raptors winning?", "What's the score?"):
+        assert _strangers(q, kobe, []) == [], q
+    spurs = match_header("3754092")  # a nickname or a surname alone is no stranger
+    assert _strangers("Are Spurs winning? Has Son scored?", spurs, []) == []
+    assert _strangers("Did Frank Lampard score?", spurs, []) == ["Frank Lampard"]

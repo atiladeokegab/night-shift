@@ -13,6 +13,7 @@ import re
 import time
 import uuid
 from datetime import UTC, datetime
+from difflib import get_close_matches
 from pathlib import Path
 from string import Template
 
@@ -573,6 +574,48 @@ def _tally(header: dict, past: list[dict]) -> str:
     )
 
 
+# Capitalised words in a question that are no name: "Has Neymar scored?" asks about Neymar alone.
+_ASKED = set(
+    "has have had did does do is are was were will would can could should how who what when where"
+    " which why whose tell give and or but so tonight".split()
+)
+
+
+def _strangers(question: str, header: dict, past: list[dict]) -> list[str]:
+    """The names in a viewer's question that are no player or team in this match (#332), so a trap
+    ("Has Neymar scored?") is answered plainly, not dodged. Known names come from every moment and
+    the pack's squad: a substitute who comes on later is no stranger, and nothing later is said."""
+    from data.matches import load_moments
+
+    try:
+        moments = load_moments(header["match_id"])
+    except KeyError:  # a match with no data file: its moments so far
+        moments = past
+    pack = predict.load_pack(header["sport"], header["match_id"]) or {}
+    names = [str(header.get(k) or "") for k in ("home", "away", "competition", "stage")]
+    names += [str(m.get("team") or "") for m in moments]
+    names += [str(v) for m in moments for v in (m.get("players") or {}).values()]
+    names += [str(n) for n in (*pack.get("players", ()), *pack.get("teams", ()))]
+    known = {w for n in names for w in re.findall(r"[\w'’-]+", predict._fold(n))}
+
+    def is_known(word: str) -> bool:  # "Mbappe" is Mbappé, "Spurs" is Tottenham Hotspur
+        w = predict._fold(word)
+        return bool(get_close_matches(w, known, 1, 0.8)) or (
+            len(w) >= 4 and any(w[:4] in k for k in known)
+        )
+
+    out = []
+    for run in re.findall(r"\b[A-Z][\w'’-]*(?:\s+[A-Z][\w'’-]*)*", question):
+        words = [
+            w
+            for w in run.split()
+            if re.split(r"['’]", w.lower())[0] not in _ASKED and not w.isupper()
+        ]
+        if words and not all(map(is_known, words)):
+            out.append(" ".join(words))
+    return out
+
+
 def answer(
     question: str,
     past: list[dict],
@@ -602,6 +645,11 @@ def answer(
             + ("\n".join(_goal(header, p) for p in _goals(past)) or "- none yet")
         )
     request["messages"][0]["content"] += _tally(header, past)
+    if strangers := _strangers(question, header, past):
+        request["messages"][0]["content"] += (
+            "\nNot a player or team in this match, so say plainly they are not in it: "
+            + ", ".join(json.dumps(n, ensure_ascii=False) for n in strangers)
+        )
     request["messages"][0]["content"] += "\n" + QUESTION.format(lines=heard, question=quoted)
     if wrong:
         request["messages"][0]["content"] += (
