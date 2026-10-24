@@ -36,14 +36,15 @@ MESSAGE = Template(
 )
 
 
-def request(message: str) -> dict:
-    """The one request shape: temperature 0, no tools, its own user_id."""
+def request(message: str, match_id: str, idx: int) -> dict:
+    """The one request shape: temperature 0, no tools. Mubit sets test cases aside by session
+    (user_id), so one session per moment keeps a moment's near-identical lines on one side."""
     return {
         "model": MODEL,
         "max_tokens": 60,
         "temperature": 0,
         "system": SYSTEM,
-        "metadata": {"user_id": "line-check"},
+        "metadata": {"user_id": f"line-check-{match_id}-{idx}"},
         "messages": [{"role": "user", "content": message}],
     }
 

@@ -238,11 +238,24 @@ def test_dry_runs_offline_and_scores_held_out(tmp_path, capsys):
 
 def test_the_task_is_pinned():
     """Mubit groups calls into one task only when prompt, tools, format and model are identical:
-    change this hash only with a deliberate edit to agent/linecheck.py."""
-    req = linecheck.request(linecheck.MESSAGE.template)
+    change these hashes only with a deliberate edit to agent/linecheck.py."""
+    assert (
+        hashlib.sha256(linecheck.SYSTEM.encode()).hexdigest()
+        == "d5969bf755d4ef087d8b4804ffed1df2781b8780a04341af33306dd49fa80e22"
+    )
+    req = linecheck.request(linecheck.MESSAGE.template, "M", 0)
     digest = hashlib.sha256(json.dumps(req, sort_keys=True).encode()).hexdigest()
-    assert digest == "2eb1f287d0c636cf25e8b94b3165442fa6997197620fd1036776ddc700869de5"
+    assert digest == "0b4e55f6ded3323f8ce68c1e1fd3cd2afd02e093df3dbc51bcdd565fc5e8f651"
     assert req["temperature"] == 0 and "tools" not in req
+
+
+def test_one_mubit_session_per_moment():
+    """Mubit sets test cases aside by session: a moment's lines share one, moments never do."""
+    one = seed_linecheck.request({"match_id": "1298150", "idx": 5, "text": "Four!"})
+    two = seed_linecheck.request({"match_id": "1298150", "idx": 5, "text": "FOUR! Masood!"})
+    other = seed_linecheck.request({"match_id": "1298150", "idx": 6, "text": "Four!"})
+    assert one["metadata"] == two["metadata"] == {"user_id": "line-check-1298150-5"}
+    assert other["metadata"]["user_id"] == "line-check-1298150-6"
 
 
 def test_go_keeps_eight_in_flight_and_reports_every_example(capsys):
@@ -261,7 +274,7 @@ def test_pilot_reports_gold_and_repeat_agreement(capsys):
             return {"content": [{"type": "text", "text": dumps(ex["gold"])}]}
 
     tally = seed_linecheck.pilot(exs, Echo())
-    assert tally["n"] == tally["agree"] == tally["same"] == len(exs)
+    assert tally["n"] == tally["agree"] == tally["same"] == tally["event"] == len(exs)
     tally = seed_linecheck.pilot(exs, FakeProvider())  # no JSON: never the gold, same each time
-    assert tally["agree"] == 0 and tally["same"] == len(exs)
+    assert tally["agree"] == tally["score"] == 0 and tally["same"] == len(exs)
     assert "agrees with gold 0.0%, same on repeat 100.0%" in capsys.readouterr().out

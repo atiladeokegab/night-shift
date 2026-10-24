@@ -12,7 +12,7 @@ import hashlib
 import re
 
 from agent.commentator import _match, _outcome, _score
-from agent.linecheck import FIELDS, LABELS, MESSAGE, dumps, parse, request  # noqa: F401
+from agent.linecheck import FIELDS, LABELS, MESSAGE, SYSTEM, dumps, parse, request  # noqa: F401
 from agent.status import _lead, _people
 from core import insight
 from data.matches import leader
@@ -65,7 +65,7 @@ def facts(header: dict, m: dict, past: list[dict]) -> str:
 
 
 def build_request(header: dict, m: dict, past: list[dict], text: str) -> dict:
-    return request(facts(header, m, past).replace("$line", text, 1))
+    return request(facts(header, m, past).replace("$line", text, 1), m["match_id"], m["idx"])
 
 
 # --- the claims ------------------------------------------------------------------------------

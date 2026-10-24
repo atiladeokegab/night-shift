@@ -119,10 +119,10 @@ def go(exs: list[dict], provider, workers: int = WORKERS) -> Counter:
     return tally
 
 
-def _pilot_one(ex: dict, provider) -> tuple[bool, bool, str]:
+def _pilot_one(ex: dict, provider) -> tuple[dict | None, bool, str]:
     first = _text(provider.call(request(ex)))
     again = _text(provider.call(request(ex)))
-    return parse(first) == ex["gold"], first == again, first
+    return parse(first), first == again, first
 
 
 def pilot(exs: list[dict], provider, workers: int = WORKERS) -> Counter:
@@ -133,13 +133,15 @@ def pilot(exs: list[dict], provider, workers: int = WORKERS) -> Counter:
         for fut in as_completed(futures):
             ex = futures[fut]
             try:
-                agree, same, said = fut.result()
+                got, same, said = fut.result()
             except Exception as exc:  # the key is never printed
                 print(f"ERR {ex['id']} {type(exc).__name__}", flush=True)
                 tally["error"] += 1
                 continue
             tally["n"] += 1
+            agree = got == ex["gold"]
             tally["agree"] += agree
+            tally.update(f for f in FIELDS if got and got[f] == ex["gold"][f])
             tally["same"] += same
             if not (agree and same):
                 print(
@@ -152,6 +154,8 @@ def pilot(exs: list[dict], provider, workers: int = WORKERS) -> Counter:
         f"pilot {tally['n']}: agrees with gold {tally['agree'] / n:.1%},"
         f" same on repeat {tally['same'] / n:.1%}, errors {tally['error']}"
     )
+    for f in FIELDS:
+        print(f"{f:>12}: agrees {tally[f] / n:.1%}")
     return tally
 
 
