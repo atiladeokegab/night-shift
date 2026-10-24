@@ -103,10 +103,11 @@ function Tile({ match, onOpen, onJump }: { match: Match; onOpen: (m: Match) => v
   }, [plays, match.youtube_id, match.video_start])
 
   return (
-    <div className="tile-wrap">
+    // The long-tail match (a card with a note) is the wide hero, so the famous six sit in an even grid below it
+    <div className={note ? 'tile-wrap hero' : 'tile-wrap'}>
     <button className="tile" onClick={() => onOpen(match)}>
       {match.youtube_id && (
-        <img className="poster" alt="" loading="lazy" onError={(e) => { e.currentTarget.hidden = true }} src={posterUrl(match.youtube_id)} />
+        <img className="poster" alt="" loading="lazy" onError={(e) => { e.currentTarget.hidden = true }} src={posterUrl(match.youtube_id, note ? 'maxresdefault' : 'hqdefault')} />
       )}
       <div className={`clip${playing && !broken ? ' on' : ''}`} ref={host} aria-hidden />
       <span className="tile-shade" />

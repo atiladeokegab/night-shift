@@ -1,5 +1,5 @@
 """The app factory: every route of the spine. The match catalogue, the Moment loader and the
-commentator come from data/ and agent/ (#13) through `Deps`, so tests inject their own."""
+commentator come from data/ and agent/ through `Deps`, so tests inject their own."""
 
 import asyncio
 import hmac
@@ -26,7 +26,7 @@ from core.stats import stats
 from core.store import open_store
 from core.voice import Speaker, voice_router
 
-log = logging.getLogger("night_shift.app")
+log = logging.getLogger("touchline.app")
 REJOIN_S = 10.0  # a replay with no open stream this long is stopped: its lines cost model calls
 FORGET_S = 60.0  # a finished replay is forgotten once nobody streams or touches it this long
 
@@ -45,7 +45,8 @@ class Deps:
 
 
 def default_deps() -> Deps:
-    """Wire #13's loaders and commentator; None until they land, and the replay routes say 503."""
+    """Wire the loaders and the commentator; None if agent/ or data/ fail to import, and the replay
+    routes say 503."""
     try:
         from agent.commentator import answer, commentate, correct
         from agent.status import status
@@ -98,7 +99,7 @@ def asked_so_far(replay: Replay, moments: list[dict], on_screen: int | None):
 
 
 def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> FastAPI:
-    app = FastAPI(title="Night Shift")
+    app = FastAPI(title="Touchline")
     store = store or open_store()
     deps = deps or default_deps()
     replays: dict[str, Replay] = {}
@@ -219,7 +220,9 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
         line = next((ln for ln in store.all("lines") if ln.get("line_id") == line_id), None)
         if line is None:
             raise HTTPException(404, f"no line {line_id!r}")
-        return line
+        # its latest fix, Mubit request id included: one correction traced end to end (#239)
+        fix = next((f for f in reversed(store.all("fixes")) if f.get("line_id") == line_id), None)
+        return {**line, "fix": fix} if fix else line
 
     @app.post("/lines/{line_id}/fix")
     async def fix_line(line_id: str, req: FixRequest, x_producer_token: str = Header(default="")):
@@ -253,7 +256,7 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
                 "corrected_text": req.corrected_text,
                 "reason": req.reason,
                 "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
-                "mubit_request_id": sent["mubit_request_id"],
+                "mubit_request_id": sent.get("mubit_request_id"),  # the correction call's (#239)
                 "reply_matched": sent["reply_matched"],
                 "recorded": sent.get("recorded", False),  # sent to Mubit for training (#161)
             },

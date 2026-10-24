@@ -4,15 +4,15 @@ import { Floor, loudness, voiceOf, type Speaker } from './turns'
 import type { Line, Voice } from './types'
 
 type Said = Pick<Line, 'line_id' | 'text'> & { speaker?: Speaker }
-// `start` and `end` follow a viewer's answer on and off the air.
-type OnAir = { line: Said; voice: Voice | null; speaker: Speaker; answer?: boolean; big?: boolean; start?: () => void; end?: () => void }
+// `start` and `end` follow a viewer's answer on and off the air; `end(true)` when a decisive moment cut it off.
+type OnAir = { line: Said; voice: Voice | null; speaker: Speaker; answer?: boolean; big?: boolean; decisive?: boolean; start?: () => void; end?: (cut?: boolean) => void }
 
 // Reads each line aloud (A-6.3@1): the server's ElevenLabs audio (GET /lines/{id}/audio?voice=<id>, #25)
 // first, the browser's own speech in that voice's language when the route answers 503 or fails, or
 // when the voice is one of the page's browser voices. Each line is read in its speaker's voice (#131):
 // the lead in the voice the viewer chose, the analyst in the sport's analyst voice. The Floor decides
 // who speaks when: a line by the same speaker cuts off the one before it, so the voice never falls
-// behind the match; only a big moment cuts in on the other speaker; nothing cuts off a viewer's answer.
+// behind the match; only a big moment cuts in on the other speaker; only a decisive one cuts off a viewer's answer.
 // `speaking` drives the design's "On air" bars; volume and mute apply to the commentary only.
 export function useSpeech() {
   const available = typeof window !== 'undefined' && 'speechSynthesis' in window
@@ -129,11 +129,12 @@ export function useSpeech() {
     [stop, speakInBrowser],
   )
 
-  // A line as its moment plays. `big` (a goal, a wicket, a basket, an overtake) may cut in on the other speaker.
+  // A line as its moment plays. `big` (a goal, a wicket, a basket, an overtake) may cut in on the other speaker;
+  // `decisive` (a goal, a wicket, a lead change, the final whistle) stops a viewer's answer.
   const say = useCallback(
-    (line: Said, voice: Voice | null, big = false) => {
+    (line: Said, voice: Voice | null, big = false, decisive = false) => {
       if (!on || silent.current) return
-      const item: OnAir = { line, voice, speaker: line.speaker ?? 'lead', big }
+      const item: OnAir = { line, voice, speaker: line.speaker ?? 'lead', big, decisive }
       if (floor.current.take(item, performance.now())) play(item)
     },
     [on, play],
@@ -141,18 +142,19 @@ export function useSpeech() {
 
   // A viewer's answer, in the analyst's voice at a natural gap (#139): it waits until the line on air
   // ends with no big moment due (`bigDue`), checked again every 250 ms while the air is quiet. `started`
-  // runs as it goes on air; resolves when it has been said (or hushed). null when the voice is off or
-  // muted, so the caller shows the answer for a read time instead.
+  // runs as it goes on air; resolves when it has been said (or hushed), true when a decisive moment cut it
+  // off. null when the voice is off or muted, so the caller shows the answer for a read time instead.
   const sayAnswer = useCallback(
-    (answer: Said, voice: Voice | null, started: () => void, bigDue: () => boolean): Promise<void> | null => {
+    (answer: Said, voice: Voice | null, started: () => void, bigDue: () => boolean): Promise<boolean> | null => {
       if (!on || silent.current) return null
       aired.current?.() // a newer answer replaces the one still waiting or on air
       floor.current.bigDue = bigDue
-      return new Promise<void>((resolve) => {
-        const end = () => {
+      floor.current.onCut = (cut) => cut.end?.(true)
+      return new Promise<boolean>((resolve) => {
+        const end = (cut = false) => {
           clearInterval(wait)
           if (aired.current === end) aired.current = null
-          resolve()
+          resolve(cut)
         }
         const item: OnAir = { line: answer, voice, speaker: 'analyst', answer: true, start: started, end }
         const wait = setInterval(() => {

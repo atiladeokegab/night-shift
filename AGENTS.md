@@ -2,7 +2,7 @@
 
 You work in a hackathon team. The lead agreed the idea in `IDEA.md` with the team and split it into
 GitHub Issues; "the lead" means the lead or one of their agents. Follow these rules exactly: they keep
-five people's agents from overwriting each other. Commands work in bash, zsh, Git Bash and PowerShell
+every teammate's agents from overwriting each other. Commands work in bash, zsh, Git Bash and PowerShell
 with GitHub CLI 2.63+; use `gh issue view` and `gh pr view` only with `--json`; keep `"@me"` in quotes.
 Write every comment to a `.git/*.md` file with your own file tool (in Windows PowerShell never `>`, which
 writes UTF-16: use `Set-Content -Encoding utf8`) and post it with `--body-file`.
@@ -10,11 +10,10 @@ writes UTF-16: use `Set-Content -Encoding utf8`) and post it with `--body-file`.
 ## 1. How the product is built
 The code starts from the team's starter, copied in as the first commit after planning. Build against
 `docs/CONTRACT.md` (shared shapes, endpoints, errors, tools) and keep it one system:
-- **One factory.** Every app, router and page is mounted by `create_app()` in `starter/runtime/factory.py`.
-- **One store.** All state goes through `starter/core/store.py` (`snapshot`, `mutate`, `publish`).
-- **One gateway.** Every tool call and external effect goes through `starter/core/gateway.py`.
-- **No simulated success outside the gateway.** Only it may simulate an effect, marked `SIMULATED`.
-- **`make dev` runs every part**, offline with no keys; a new part joins it in the same PR.
+- **One factory.** Every router and the page are mounted by `create_app()` in `core/app.py`.
+- **One store.** All state goes through `core/store.py` (`all`, `append`).
+- **`make dev` runs the server** (`core.main:app`, which also serves the built page from `web/dist`),
+  offline with no keys; a new server part joins it in the same PR.
 - **Current docs.** Read a library's current docs (Context7 if your tool has it) before using its API.
 - **Files stay under 1,000 lines.** Split before you cross it.
 - **Run `make check` before `DONE:`** (§7); until the starter lands, HACKATHON.md's `Smoke:`.
@@ -74,7 +73,7 @@ and `Contract:` bind; `Approach:`, `Preferences:` and seeded tasks are suggestio
    inside the vertical's, `Depends on: #N` where needed (the web page's first task copies
    `docs/mockup/` into your area). Show your human, then open each as a sub-issue. Never add an
    `agent:*` label to one, even on a shared or borrowed account: those belong to the lead's agents,
-   and the hub sends that issue's reviews to the agent it names.
+   and the lead's tooling routes that issue's reviews to the agent it names.
    ```bash
    gh issue create --label task --assignee "@me" --title "<what>" --body-file .git/task.md
    gh api -X POST "repos/{owner}/{repo}/issues/<vertical N>/sub_issues" -F sub_issue_id="$(gh api "repos/{owner}/{repo}/issues/<new N>" --jq .id)"
@@ -108,8 +107,8 @@ one go. Comment again only if blocked. Before DONE: and on `integration moved`:
 `git pull --no-rebase origin integration`, fix conflicts in your area, push (outside it: ask the lead).
 **Small changes need no issue:** a docs, copy or number fix in your area goes on your open issue's
 branch as its own commit; list it in that issue's DONE:.
-**Setup took you over 10 minutes** (an install, an account, a flag, an error)? Add what fixed it to
-`docs/SETUP.md` in three lines (symptom, fix, check) on the same branch, so the next agent doesn't pay again.
+**Setup took you over 10 minutes** (an install, an account, a flag, an error)? Write what fixed it in
+three lines (symptom, fix, check) in your issue's DONE:, so the next agent doesn't pay again.
 
 ## 6. Your area, change-requests, questions
 Your **area** is the directories `IDEA.md` lists against your name: change anything there. New work in

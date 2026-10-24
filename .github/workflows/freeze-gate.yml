@@ -1,6 +1,6 @@
 name: freeze-gate
-# After code freeze only fixes merge into integration. gh-sync --init makes this a required
-# check and keeps the FREEZE_AT repo variable in step with the event's code freeze (UTC).
+# After code freeze only fixes merge into integration. The lead's merge tooling makes this a
+# required check and keeps the FREEZE_AT repo variable in step with the event's code freeze (UTC).
 on:
   pull_request:
     branches: [integration]
@@ -18,5 +18,5 @@ jobs:
           if [ "$(date -u +%s)" -lt "$(date -u -d "$FREEZE_AT" +%s)" ]; then
             echo "Before code freeze ($FREEZE_AT)."; exit 0; fi
           case ",$LABELS," in *,fix,*) echo "After code freeze, labelled fix: allowed."; exit 0;; esac
-          echo "::error::Code freeze was $FREEZE_AT. Only fixes merge now: ask Zeus to add the 'fix' label if this is one."
+          echo "::error::Code freeze was $FREEZE_AT. Only fixes merge now: ask the lead to add the 'fix' label if this is one."
           exit 1

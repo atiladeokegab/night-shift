@@ -154,6 +154,58 @@ def test_gold_reads_take_the_lead_go_ahead_extend_all_apiece(match_id, idx, text
     assert _gold(match_id, idx, text)["leader"] == lead
 
 
+@pytest.mark.parametrize(
+    "match_id, idx, text, want",
+    [  # the gaps the first recorded run showed
+        (
+            "0020500591",
+            5,
+            "Kobe Bryant with the jump shot, his 43rd point! Lakers trail the Raptors, 67 to 77.",
+            _labels("ok", "ok", "ok", "ok"),
+        ),
+        (
+            "0020500591",
+            7,
+            "Kobe Bryant with the reverse layup! Raptors trail the Lakers 81 to 85.",
+            _labels("ok", "wrong", "not_said", "ok"),
+        ),
+        (
+            "3869685",
+            25,
+            "Mbappé! Penalty! France pulls one back, two-one to Argentina!",
+            _labels("ok", "ok", "not_said", "ok"),
+        ),
+        (
+            "3869685",
+            25,
+            "Mbappé! Penalty! France pulls one back, two-one to France!",
+            _labels("ok", "wrong", "not_said", "ok"),
+        ),
+        (
+            "3869685",
+            1,
+            "De Paul with the chance from open play, blocked away! Still goalless.",
+            _labels("ok", "not_said", "not_said", "ok"),
+        ),
+        (
+            "3869685",
+            25,
+            "Mbappé! Penalty! Still goalless!",
+            _labels("wrong", "not_said", "not_said", "ok"),
+        ),
+        # a save called a goal: the gold is right that the event is wrong
+        (
+            "3869685",
+            34,
+            "GOAL! Messi with the left foot in open play, but Lloris is equal to it, two-two!",
+            _labels("ok", "not_said", "not_said", "wrong"),
+        ),
+    ],
+)
+def test_gold_reads_trail_the_team_n_m_to_a_team_and_goalless(match_id, idx, text, want):
+    assert _gold(match_id, idx, text) == want
+
+
 def test_gold_never_guesses_a_number_it_cannot_place():
     # 47 is Bryant's total, said without "points": a total or not, code can't tell
     assert _gold("0020500591", 6, "Kobe Bryant from deep, 47 now!") is None

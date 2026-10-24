@@ -14,6 +14,7 @@ from pathlib import Path
 SAMPLE = Path(__file__).resolve().parent / "sample"
 VIDEO = Path(__file__).resolve().parent / "video"
 VIDEO_LEAD_S = 10  # the video starts this long before its first mapped moment: time for v3
+VIDEO_OPEN_S = 25  # from the start, room for the cold open (#221) too; a jump keeps VIDEO_LEAD_S
 # StatsBomb's women's sides: "Bristol City WFC", "Spain Women's"; said "Bristol City", "Spain"
 CLUB_SUFFIX = re.compile(r"\s+(?:WFC|LFC|FC|Women's|Women)$", re.I)
 # "Jump to the big moment" (#163): the moment each jump starts at, a beat before its peak.
@@ -178,7 +179,8 @@ def video_map(match_id: str, start_idx: int | None = None) -> dict | None:
         return None
     vmap = json.loads(found[0].read_text(encoding="utf-8"))
     first = next((m for m in vmap["moments"] if m["idx"] >= (start_idx or 0)), vmap["moments"][-1])
-    return {**vmap, "start": max(0, int(first["video_t"]) - VIDEO_LEAD_S)}
+    lead = VIDEO_LEAD_S if start_idx else VIDEO_OPEN_S
+    return {**vmap, "start": max(0, int(first["video_t"]) - lead)}
 
 
 def match_header(match_id: str) -> dict:

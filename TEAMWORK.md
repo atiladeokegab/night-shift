@@ -179,9 +179,9 @@ and your issue reopened with the failing output: fix it on the same branch and p
 | Rule | Why |
 |---|---|
 | Read `IDEA.md` and `HACKATHON.md` first | You build a part of one agreed idea, not your own version of it |
-| One factory, one store, one gateway; `make dev` runs everything; files under 1,000 lines | When the right way is the only easy way, five agents build one product, not five |
+| One factory (`create_app()` in `core/app.py`), one store (`core/store.py`); `make dev` runs the server; files under 1,000 lines | When the right way is the only easy way, every teammate's agents build one product, not several |
 | Check the clock in UTC every session | After code freeze, no new features; after submit, nothing at all |
-| Only work on issues | "Just build the whole frontend" is how five agents overwrite each other |
+| Only work on issues | "Just build the whole frontend" is how agents overwrite each other |
 | Review fixes first, every session | A PR waiting on you blocks everyone who depends on it |
 | One issue at a time | Small PRs get reviewed fast; big ones sit |
 | Post a plan before the first commit | Mistakes are cheapest to catch before any code exists |
@@ -239,7 +239,7 @@ Every one of these happened for real while this kit was tested.
 | **Question** | An issue asking the owner of an area something; your agent keeps building on its guess meanwhile |
 | **Code freeze** | The time after which only fixes, demo and submission work are allowed |
 | **Gated path** | A file whose change waits for review before merging: the runner, safety, prompts, the core, the contract, eval scoring, dependencies, CI |
-| **Starter** | The team's own backbone, written before the event and copied in as the first code commit: app factory, data store, tool gateway, case runner, deploy |
+| **Starter** | The team's own backbone, written before the event and copied in as the first code commit. Here only its deploy tooling was copied in; the app factory is `core/app.py` and the store `core/store.py` |
 | **Contract** | `docs/CONTRACT.md`: the shapes, endpoints, errors and tools every area builds against. Only the lead changes it |
 
 ## Pre-existing work

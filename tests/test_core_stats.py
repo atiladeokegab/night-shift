@@ -100,6 +100,42 @@ def test_served_by_lists_what_mubit_said_answered_the_lead_lines(tmp_path):
     assert lead["model"] == "claude-haiku-4-5"  # what was asked stays apart
 
 
+def test_moment_to_audio_counts_only_lines_with_audio(tmp_path, monkeypatch):
+    # #233: a voice that takes 50 ms; a second line it never voices is left out, not counted as 0
+    import asyncio
+
+    import httpx
+
+    from core.replay import Replay, run_replay
+    from core.voice import Speaker
+
+    async def slow_voice(request):
+        await asyncio.sleep(0.05)
+        silent = b"no audio" in request.content
+        return httpx.Response(500 if silent else 200, content=b"mp3")
+
+    def commentate(moment, history):
+        text = "Shot!" if moment["idx"] == 0 else "no audio"
+        return {"line_id": f"f1-{moment['idx']}", "text": text, "model": "claude-haiku-4-5"}
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "fake-eleven")
+    moments = [
+        {"sport": "football", "match_id": "f1", "idx": i, "clock": c, "type": "Shot"}
+        for i, c in enumerate(["03:10", "03:11"])
+    ]
+    store = Store(tmp_path)
+    speaker = Speaker(httpx.MockTransport(slow_voice), store)
+
+    async def run():
+        await run_replay(Replay("f1", speed=1e6), moments, commentate, store, None, speaker.prepare)
+        await asyncio.gather(*speaker.jobs.values())
+
+    asyncio.run(run())
+    lead = stats(store)["by_speaker"]["lead"]
+    assert lead["lines"] == 2 and lead["audio_lines"] == 1
+    assert lead["audio_first_ms_p50"] >= 50 and lead["audio_first_ms_p95"] >= 50
+
+
 def fix(line_id, at, recorded=True):
     return {"line_id": line_id, "created_at": f"2026-10-24T{at}:00:00+00:00", "recorded": recorded}
 

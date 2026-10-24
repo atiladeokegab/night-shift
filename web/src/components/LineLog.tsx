@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { withAnswers } from '../ask'
+import { answeredAt, isStale, withAnswers } from '../ask'
 import { names, shortName } from '../follow'
 import { MicButton } from './MicButton'
 import { clockText } from '../moment'
@@ -13,6 +13,8 @@ interface Props {
   moments: Moment[]
   onFix: (line: Line) => void
   answers: Answer[] // newest first
+  interrupted?: string[] // answers a decisive moment cut off: marked, with "Hear it again"
+  onHear?: (answer: Answer) => void
   onAsk: ((question: string) => Promise<void>) | null // null until a moment is on screen
   shooter: string | null // the latest shooter on screen, in a sport with a shot map (#120)
   onShots: (name: string) => void
@@ -32,7 +34,7 @@ function count(lines: Line[]): string {
   return [called && `${called} called`, earlier && `${earlier} earlier`].filter(Boolean).join(' · ')
 }
 
-export function LineLog({ lines, late, fixes, moments, onFix, answers, onAsk, shooter, onShots, followed, roster, onUnfollow, voiced }: Props) {
+export function LineLog({ lines, late, fixes, moments, onFix, answers, interrupted = [], onHear, onAsk, shooter, onShots, followed, roster, onUnfollow, voiced }: Props) {
   const said = (l: Line) => fixes[l.line_id]?.corrected_text ?? l.text
   const theirs = followed ? lines.filter((l) => names(said(l), followed, roster)).length : 0
   return (
@@ -56,13 +58,20 @@ export function LineLog({ lines, late, fixes, moments, onFix, answers, onAsk, sh
         <ul className="log">
           {withAnswers(lines, answers).map(({ line: l, answer: a }) => {
             if (a) {
+              const at = answeredAt(a, moments)
               return (
-                <li key={a.line_id} className={`qa${a.off_air ? ' off' : ''}`}>
+                <li key={a.line_id} className={`qa${a.off_air ? ' off' : ''}${isStale(a, moments) ? ' stale' : ''}`}>
                   <span className="when">Ask</span>
                   <div className="text">
-                    <div className="q">{a.question}</div>
+                    <div className="q">{a.question}{at && <span className="at"> · {at}</span>}</div>
                     <span>{a.text}</span>
                   </div>
+                  {interrupted.includes(a.line_id) && (
+                    <>
+                      {onHear && <button className="btn sm" onClick={() => onHear(a)}>Hear it again</button>}
+                      <div className="meta-l"><span className="pill late">Interrupted</span></div>
+                    </>
+                  )}
                 </li>
               )
             }

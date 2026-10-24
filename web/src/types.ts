@@ -71,7 +71,7 @@ export interface Line {
 }
 
 // GET /stats and the `stats` SSE event (CONTRACT.md); percentiles are null until there is a line.
-// cost_per_line_usd and adapter are proposed in #29 and absent until core sends them.
+// cost_per_line_usd is null until a line has a cost; adapter.status is not_trained until one is recorded.
 export interface Stats {
   lines: number
   fixes: number
@@ -163,6 +163,7 @@ export interface Fix {
   created_at?: number | string
   reply_matched?: boolean
   recorded?: boolean // Mubit recorded it for training (#161)
+  mubit_request_id?: string | null // the correction call's request id (#239)
 }
 
 // POST /replays/{id}/ask's answer and the `answer` SSE event (#117). `line_id` so it is spoken like a line;

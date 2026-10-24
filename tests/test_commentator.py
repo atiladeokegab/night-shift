@@ -252,7 +252,7 @@ def test_messis_penalty_reaches_the_model_as_lionel_messi():
 
 
 def test_one_untemplated_prompt_asks_for_a_broadcast_call_on_big_moments():
-    # A-3.6 offline: the live check (a judge on real lines) is tests/acceptance/test_A_3_6.py.
+    # A-3.6, offline
     system = commentator.SYSTEM
     assert "$" not in system and "{" not in system  # fixed text, never templated per sport
     for sport in ("football", "cricket", "basketball", "formula"):
