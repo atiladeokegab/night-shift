@@ -76,9 +76,112 @@ def test_more_wrong_events_from_the_live_store(match_id, idx, text):
     assert insight.wrong_event(text, moment(match_id, idx))
 
 
-def test_other_sports_are_not_checked():
-    kobe = load_moments("0020500591")[22]
-    assert insight.wrong_event("Kobe makes it 120-102!", kobe) == []
+@pytest.mark.parametrize(
+    "text", ["Argentina score again!", "France scored! Two-one!", "Argentina have scored again!"]
+)
+@pytest.mark.parametrize("idx", [13, 30])  # a saved shot; an injury stoppage, the ball in play
+def test_a_team_said_to_score_when_none_did_is_a_goal_called(text, idx):
+    # build-130: the plural "Argentina score again" got past the singular "scores"
+    wrong = insight.wrong_event(text, moment(FINAL, idx))
+    assert any(w.startswith("a goal is called") for w in wrong), wrong
+
+
+@pytest.mark.parametrize(
+    ("idx", "text"),
+    [
+        (13, "Saved! Argentina's score stays at two."),
+        (13, "Argentina score is still two-nil, Lloris saves."),
+        (13, "Saved by Lloris! The score is two-nil."),
+        (9, "Argentina score again! Di María makes it two!"),
+    ],
+)
+def test_the_score_and_a_real_goal_pass(idx, text):
+    assert insight.wrong_event(text, moment(FINAL, idx)) == []
+
+
+JAZZ, KOBE, INDIA = "0049700088", "0020500591", "1298150"
+
+# (match, idx, a line heard on the live site, a near miss that must pass): the #190 audit's classes
+OTHER_SPORTS = [
+    # a two called a three; "from fifteen feet" and a real three "from downtown" are right
+    (
+        JAZZ,
+        24,
+        "Ron Harper from downtown, he ties it up! Seventy-nine all with three forty-four to play!",
+        "Ron Harper from fifteen feet! Seventy-nine all with three forty-four to play!",
+    ),
+    (KOBE, 24, "Matt Bonner from deep! Toronto cuts it to eighteen, Lakers 122!", None),
+    (KOBE, 4, None, "Kobe Bryant from downtown, assisted by Devean George!"),
+    # a tie called when India won by 4 wickets; "160 for six" is runs for wickets
+    (
+        INDIA,
+        56,
+        "Ashwin takes a run! India level the scores at 160, and they've forced a Super Over!",
+        "Ashwin takes the single! India 160 for six, they win by four wickets!",
+    ),
+    (INDIA, 56, "Ashwin takes a run off the final ball! They've matched Pakistan's total!", None),
+    # a six called on three byes and on a wide; "Pakistan six for one" is a score
+    (
+        INDIA,
+        53,
+        "Kohli with a six! India 158 for 5, needing just 2 runs from the last two balls!",
+        "Three byes off Nawaz! Kohli was the man who took Pakistan six for one, years ago.",
+    ),
+    (INDIA, 52, "Kohli! SIX! India have 155 for 5, need just 5 more from 3 balls!", None),
+    # a run out called a stumping; "bowled" names the bowler and "run out of" is no dismissal
+    (
+        INDIA,
+        32,
+        "Patel run out! Rizwan with the stumping, India 31 for 4, need 129 from 83 balls.",
+        "Patel run out! Rizwan with the direct hit, bowled by Shadab Khan.",
+    ),
+    (INDIA, 54, None, "KD Karthik is stumped! India can't afford to run out of batters now."),
+]
+
+
+@pytest.mark.parametrize(("match_id", "idx", "heard", "right"), OTHER_SPORTS)
+def test_basketball_and_cricket_wrong_events_are_rejected_and_near_misses_pass(
+    match_id, idx, heard, right
+):
+    m = moment(match_id, idx)
+    if heard:
+        assert insight.wrong_event(heard, m)
+    if right:
+        assert insight.wrong_event(right, m) == []
+
+
+@pytest.mark.parametrize(
+    ("idx", "heard", "right"),
+    [
+        # a wrong leader (Utah lead 86-85): wrong_numbers' _false_lead, not wrong_event
+        (
+            30,
+            "Michael Jordan with the layup! Chicago Bulls take the lead, 85-86, thirty-seven"
+            " seconds remaining!",
+            "Michael Jordan with the layup! Utah lead 86-85, thirty-seven seconds left!",
+        ),
+        (31, None, "STOLEN BY JORDAN! The Bulls take it away, 86-85!"),
+    ],
+)
+def test_a_wrong_leader_from_the_audit_is_still_caught(idx, heard, right):
+    m = moment(JAZZ, idx)
+    if heard:
+        assert insight.wrong_numbers(heard, m, match_header(JAZZ))
+    assert insight.wrong_numbers(right, m, match_header(JAZZ)) == []
+
+
+def test_the_model_talking_to_itself_from_the_audit_is_still_caught():
+    m = moment(INDIA, 52)
+    heard = "Wait—the recent play shows a six at 19.4, but the moment given is a wide at 19.4."
+    assert insight.wrong_numbers(heard, m, match_header(INDIA))
+    assert insight.talks_to_itself("Given that the Event parameter explicitly defines what")
+    assert not insight.talks_to_itself("Kohli has to wait for his free hit!")
+    assert not insight.talks_to_itself("The moment of the match! Kohli wins it for India!")
+
+
+def test_f1_is_not_checked():
+    m = load_moments("9636")[0]
+    assert insight.wrong_event("Lights out! A six-car pile-up into turn one!", m) == []
 
 
 def test_the_leads_reply_over_a_stat_recalls_a_goal_and_passes():

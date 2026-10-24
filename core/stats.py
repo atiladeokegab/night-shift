@@ -81,6 +81,16 @@ def _per_match(store, lines: list[dict], voice: list[dict]) -> dict:
     }
 
 
+def _autonomy(calls: list[dict]) -> dict:
+    """The lead's checked calls by how the number check left them (#204): passed first time, fixed
+    by the retry, or sent to a human (the retry failed too: the fallback was said, the try queued).
+    """
+    human = sum(bool(ln.get("fallback")) for ln in calls)
+    auto = sum(bool(ln.get("retried")) and not ln.get("fallback") for ln in calls)
+    n = len(calls)
+    return {"called": n, "first_time": n - auto - human, "auto_fixed": auto, "to_human": human}
+
+
 def stats(store) -> dict:
     lines = store.all("lines")
     fixes = store.all("fixes")
@@ -94,6 +104,11 @@ def stats(store) -> dict:
     total = [ln["latency_ms"] for ln in lines if ln.get("latency_ms") is not None]
     voice = store.all("voice")
     costs = [c for c in map(_cost, lines) if c is not None]
+    # the moment calls the check saw: a line from before `checked` was stored never counts as a pass
+    calls = [ln for ln in lead if ln.get("checked") and "reply" not in ln]
+    by_match: dict[str, list[dict]] = {}
+    for ln in calls:
+        by_match.setdefault(ln.get("match_id") or "", []).append(ln)
     return {
         "lines": len(lines),
         "fixes": len(fixes),
@@ -112,5 +127,7 @@ def stats(store) -> dict:
         "fixes_toward_next": sum(f.get("created_at", "") > since for f in recorded),
         "fixes_auto": len(store.all("auto_fixes")),  # the number check's own (#162), not a person's
         "voice_chars": sum(v.get("chars", 0) for v in voice),
+        "autonomy": _autonomy(calls),
+        "autonomy_by_match": {m: _autonomy(c) for m, c in by_match.items()},
         **_per_match(store, lines, voice),
     }
