@@ -10,11 +10,11 @@
 [![ElevenLabs](https://img.shields.io/badge/ElevenLabs-commentator%20voice-000000?logo=elevenlabs&logoColor=white)](https://elevenlabs.io)
 [![Cloud Run](https://img.shields.io/badge/Cloud%20Run-live-4285F4?logo=googlecloud&logoColor=white)](https://night-shift-5zvig7nbvq-ew.a.run.app)
 
-**A live AI commentator for every match nobody calls, trained through Mubit on its own calls and every producer fix.**
+**A live AI commentator for every match nobody calls, trained through Mubit on its own calls, with every producer fix kept as a correction.**
 
 [**Try it live**](https://night-shift-5zvig7nbvq-ew.a.run.app) · [**For judges**](#for-judges) · [**Real numbers**](#real-numbers) · [**Architecture**](docs/ARCHITECTURE.md) · [**Known limitations**](#known-limitations) · [**Run it**](#run-it) · [**Demo script**](docs/demo.md)
 
-<img src="docs/img/live.png" alt="The live page calling Kobe Bryant's 81-point game. Top left, the score bar reads LAK 65-75 RAP, 06:22, Q3, REPLAY, and an ON AIR pill names the voice, Sam. The large subtitle reads: Kobe Bryant from 26 feet, three! Lakers down ten, 65 to 75, but Bryant's got 41 already. Under it, a dock with Wall, the four sports, Voice and Next match. On the right, the Lines card with an Ask box, a Shot map chip for Kobe Bryant and each line with a Fix button and its model first-text-word time, and the Proof card with first text word p50 0.53 s and p95 0.74 s, $0.0018 a line, the lines count, 0 fixes, and the adapter as not trained yet (before its status was recorded as training)." width="100%">
+<img src="docs/img/live.png" alt="The live page calling Kobe Bryant's 81-point game. Top left, the score bar reads LAK 65-75 RAP, 06:22, Q3, REPLAY, and an ON AIR pill names the voice, Sam. The large subtitle reads: Kobe Bryant from 26 feet, three! Lakers down ten, 65 to 75, but Bryant's got 41 already. Under it, a dock with Wall, the four sports, Voice and Next match. On the right, the Lines card with an Ask box, a Shot map chip for Kobe Bryant and each line with a Fix button and its model first-text-word time, and the Proof card with first text word p50 0.53 s and p95 0.74 s, $0.0018 a line, the lines count, 0 fixes, and the adapter as not trained yet (captured before 13:04 UTC)." width="100%">
 
 <sub>The live site on 24 October 2026, captured in headless Chrome: Kobe Bryant's 81 against Toronto
 being called. YouTube won't play in a headless browser, so the video area is empty and the page says
@@ -122,8 +122,8 @@ and a profile card with their record coming in and tonight's line.
 <img src="docs/img/fix.png" alt="The Fix this line sheet over Kobe's 81. Touchline said: Kobe Bryant with the running jumper from ten feet, he's got thirty points, but Toronto still leads fifty-three to sixty-nine. The producer's corrected line: Running jumper, Kobe Bryant! That is 30 for him, but the Lakers still trail by sixteen, 53 to 69. Then chips for what was wrong, with Tone picked (Wrong fact, Wrong player, Wrong score, Tone, Other), chips for what was wrong (Wrong fact, Wrong player, Wrong score, Tone, Other), Send fix and Cancel, and the note: Your fix goes back through Mubit and is kept beside the original." width="100%">
 
 A producer corrects a wrong line on the page. The server stores the fix beside the original and sends
-it back through the same Mubit task and session, as a second turn: that is how a correction becomes
-training signal ([`core/app.py`](core/app.py) `fix_line`, [`tests/test_core_fix.py`](tests/test_core_fix.py)).
+it back through the same Mubit task and session, as a second turn: that is how a correction is built to become
+training signal. No fix has been made on the live site yet, so no fix has trained a model ([`core/app.py`](core/app.py) `fix_line`, [`tests/test_core_fix.py`](tests/test_core_fix.py)).
 
 #### Big model vs ours
 
@@ -149,7 +149,7 @@ the same numbers as `GET /stats` ([`web/src/components/ProofPanel.tsx`](web/src/
 
 Each criterion weighs the same; one line each, with where to check it.
 
-- **Use of Mubit (a correction becomes a model update):** every call goes through Mubit, one task for every sport, and a producer's [fix](#producer-fixes) goes back into that task as training signal; Mubit has trained [6 adapters](#real-numbers) from it so far.
+- **Use of Mubit (a correction becomes a model update):** every call goes through one Mubit task. Its recorded lines have trained [6 adapter versions](#real-numbers) so far (none passed yet), and a producer's [fix](#producer-fixes) is stored beside the line as a correction for the next one.
 - **Usefulness (a real recurring task):** most matches every weekend have no commentator; Touchline calls [six real matches in four sports](#the-six-matches) from their real event data.
 - **Technical execution:** a line in [0.53 s to its first word](#real-numbers) (p50), gated on the video's clock, an offline test suite (`make check`) and a live smoke test on every deploy; [architecture](docs/ARCHITECTURE.md) and [known limitations](#known-limitations).
 - **Demo:** two minutes on the live URL, scripted in [docs/demo.md](docs/demo.md); the [60-second path](#the-60-second-path) above is the short version.
@@ -186,7 +186,7 @@ Read from the live service's [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.
 "First word" is from the moment to the first word of the model's text reply, not the audio:
 speech synthesis and playback come after it.
 
-**The adapter, exactly as it stands.** Mubit has trained 6 adapters on our task. All 6 are "not
+**The adapter, exactly as it stands.** Mubit has trained 6 adapter versions on our task's recorded lines. All 6 are "not
 ready": none has passed Mubit's test yet, and the best scored 55.8% on Mubit's test. That is the record in [`data/side_by_side.json`](data/side_by_side.json), copied by hand from
 Mubit's console on 24 October 2026. We make no claim that the adapter matches the big model until a
 result shows it. `/stats` reports the adapter's status as `training` (at 13:04 UTC), recorded from
@@ -211,13 +211,13 @@ shown as a large subtitle.
 
 One agent calls every sport. It reads the match's real event feed, looks up the score, the player and
 recent play with tools, and never sees anything from later in the match than the moment it is
-calling. A producer corrects any line that's wrong, and the fix goes back through Mubit to train the
-commentator.
+calling. A producer corrects any line that's wrong, and the fix goes back through Mubit beside the
+line, as a correction for the commentator's next training.
 
 ## How it uses Mubit
 
-Every LLM call goes through Mubit, and Mubit trains a small commentator model on our traffic and on
-producer fixes. That smaller model is what would make a commentator for every match affordable.
+Every LLM call goes through Mubit, and Mubit trains a small commentator model on our recorded traffic;
+producer fixes go into the same task as corrections. That smaller model is what would make a commentator for every match affordable.
 
 1. **Every call goes through Mubit.** Each line is one call to Mubit's Anthropic endpoint
    (`claude-haiku-4-5`), or two when the agent uses its one permitted round of tools. There is one
@@ -233,8 +233,9 @@ producer fixes. That smaller model is what would make a commentator for every ma
    off (`MUBIT_RECORD=off` in [`scripts/deploy.sh`](scripts/deploy.sh)); training traffic comes from
    the replay script on the owner's key. If the lent key runs out, the commentator moves to the
    owner's key, which records. Ask answers and side-by-side runs are always unrecorded.
-5. **A producer's fix is training signal.** A fix is stored beside the original line and sent back
-   through the same Mubit task and session.
+5. **A producer's fix is built as training signal.** A fix is stored beside the original line and
+   sent back through the same Mubit task and session. No fix has been made on the live site yet
+   (`fixes` is 0 in `/stats`), so the adapters so far were trained on recorded commentary only.
 6. **Counted at Mubit.** Each line stores the Mubit request id of every call it made, and
    `GET /stats` counts calls from those ids.
 7. **The trained model is measured, not assumed.** 6 adapters so far, none ready, best 55.8% on Mubit's test
