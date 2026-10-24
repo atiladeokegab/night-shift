@@ -163,13 +163,16 @@ class Speaker:
         if os.environ.get("ELEVENLABS_API_KEY"):
             self._job(line, default_voice(line.get("sport")), deadline)
 
-    async def audio(self, line: dict, voice: dict) -> tuple[bytes, str] | None:
-        early = (line["line_id"], voice["id"]) in self.jobs  # made as the line arrived (prepare)
-        made = await asyncio.shield(self._job(line, voice, None))
+    async def audio(self, line: dict, voice: dict, retry=True) -> tuple[bytes, str] | None:
+        key = (line["line_id"], voice["id"])
+        early = retry and key in self.jobs  # made as the line arrived (prepare)
+        job = self._job(line, voice, None)
+        made = await asyncio.shield(job)
         if made is None:  # the next request tries again
-            self.jobs.pop((line["line_id"], voice["id"]), None)
+            if self.jobs.get(key) is job:  # another waiter may have started the retry already
+                del self.jobs[key]
             if early:  # its budget began when the line arrived, not when the page asked (/stage)
-                return await self.audio(line, voice)
+                return await self.audio(line, voice, retry=False)
         return made
 
     def _job(self, line: dict, voice: dict, deadline: float | None) -> asyncio.Task:
