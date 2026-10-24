@@ -104,6 +104,14 @@ TRUE_AT_105_41 = [
 ]
 
 
+# "for <team>" is nobody's claim, even with Messi's penalty in (review-b, Prometheus on #265)
+FOR_A_TEAM_AT_31_35 = [
+    "Messi scored from the spot, but no goal for France yet.",
+    "No goals for France while Messi has scored.",
+    "No goal for France but Messi has scored.",
+]
+
+
 def test_true_claims_about_goals_and_halves_are_not_flagged():
     past, _ = past_at_105_41()
     for text in TRUE_AT_105_41:
@@ -111,6 +119,8 @@ def test_true_claims_about_goals_and_halves_are_not_flagged():
     at_31_35 = [m for m in load_moments(FINAL) if m["idx"] <= 8]
     assert at_31_35[-1]["clock"] == "31:35"
     assert wrong_claims("France need to come out stronger in the second half.", at_31_35) == []
+    for text in FOR_A_TEAM_AT_31_35:
+        assert wrong_claims(text, at_31_35) == [], text
     assert wrong_claims("We're now in the second half.", at_31_35) == [
         "the match has not reached the second half"
     ]
