@@ -1,9 +1,48 @@
+import type { Caption } from './turns'
 import type { Match } from './types'
 import type { Clock, ReplayState } from './useReplay'
 
 // The YouTube player behind the stage, kept out of React so a test can hold its callbacks back.
 
 export type VideoState = 'loading' | 'ok' | 'unavailable'
+
+// The playback controls' hold on the player. Seeking only moves the picture: the replay reads the new
+// time from the player's clock, so nothing is shown or spoken before its moment plays (A-6.4).
+export interface Transport {
+  play: () => void
+  pause: () => void
+  seek: (t: number) => void
+}
+
+// Play or pause from the controls or a tap on the picture: the player holds (and with it the replay clock),
+// and App hears it, so the voice stops with the picture (#131's onPause / onPlay).
+export function setPlaying(play: boolean, transport: Transport | null, on: { onPause?: () => void; onPlay?: () => void }) {
+  if (play) {
+    transport?.play()
+    on.onPlay?.()
+  } else {
+    transport?.pause()
+    on.onPause?.()
+  }
+}
+
+// The caption card's text (#132; App's caption, #131): a question or an answer as given; a line only while it is
+// one the picture has reached (`reached`: those lines' texts, newest first), else the newest of them, so a
+// backward seek never leaves a later line on screen (A-6.4).
+export function shownCaption(caption: Caption | null | undefined, reached: string[]): Caption | null {
+  if (caption && (caption.kind !== 'line' || reached.includes(caption.text))) return caption
+  return reached.length ? { kind: 'line', text: reached[0] } : null
+}
+
+// The slice of the IFrame API the controls add to youtube.d.ts's.
+declare global {
+  namespace YT {
+    interface Player {
+      pauseVideo(): void
+      seekTo(seconds: number, allowSeekAhead: boolean): void
+    }
+  }
+}
 
 // The "highlights can't play here" caption shares its phone slot with the alert banners, so it waits
 // while one is up.
@@ -27,6 +66,7 @@ interface Hooks {
   onClock: (clock: Clock | null) => void
   onState: (state: VideoState) => void
   onPlaying?: () => void // the picture is actually moving (a wall tile shows its clip only then)
+  onTransport?: (transport: Transport | null) => void // the live page's controls, once the player is ready
 }
 
 // Creates the player in `target` at `start` seconds and returns its cleanup. Every callback checks
@@ -43,6 +83,7 @@ export function mountPlayer(api: typeof YT, target: HTMLElement, youtubeId: stri
     live = false
     clearTimeout(timer)
     hooks.onClock(null)
+    hooks.onTransport?.(null)
     player.destroy()
   }
   const fail = () => {
@@ -67,6 +108,7 @@ export function mountPlayer(api: typeof YT, target: HTMLElement, youtubeId: stri
           const playing = state === api.PlayerState.PLAYING || state === api.PlayerState.ENDED
           return { t: p.getCurrentTime(), playing, duration: p.getDuration() }
         })
+        hooks.onTransport?.({ play: () => p.playVideo(), pause: () => p.pauseVideo(), seek: (t) => p.seekTo(t, true) })
       },
       onStateChange: (e) => {
         if (!live || e.data !== api.PlayerState.PLAYING) return

@@ -4,7 +4,8 @@ import { Floor, loudness, voiceOf, type Speaker } from './turns'
 import type { Line, Voice } from './types'
 
 type Said = Pick<Line, 'line_id' | 'text'> & { speaker?: Speaker }
-type OnAir = { line: Said; voice: Voice | null; speaker: Speaker; answer?: boolean; big?: boolean }
+// `start` and `end` follow a viewer's answer on and off the air.
+type OnAir = { line: Said; voice: Voice | null; speaker: Speaker; answer?: boolean; big?: boolean; start?: () => void; end?: () => void }
 
 // Reads each line aloud (A-6.3@1): the server's ElevenLabs audio (GET /lines/{id}/audio?voice=<id>, #25)
 // first, the browser's own speech in that voice's language when the route answers 503 or fails, or
@@ -89,14 +90,15 @@ export function useSpeech() {
 
   // Says what holds the floor; when it ends, whatever waited for it (if still in time) goes next.
   const play = useCallback(
-    function play(item: OnAir, ended?: () => void) {
+    function play(item: OnAir) {
       stop()
+      item.start?.()
       const mine = turn.current
       const { line, voice } = item
       const lang = voice?.lang ?? 'en-GB'
       const sound = voiceOf(item.speaker, voice?.id)
       const done = () => {
-        ended?.()
+        item.end?.()
         const next = floor.current.ended(item, performance.now())
         if (next) play(next)
       }
@@ -137,21 +139,28 @@ export function useSpeech() {
     [on, play],
   )
 
-  // A viewer's answer, in the lead's voice: resolves when it has been said (or hushed). null when the
-  // voice is off or muted, so the caller shows the answer for a read time instead.
+  // A viewer's answer, in the analyst's voice at a natural gap (#139): it waits until the line on air
+  // ends with no big moment due (`bigDue`), checked again every 250 ms while the air is quiet. `started`
+  // runs as it goes on air; resolves when it has been said (or hushed). null when the voice is off or
+  // muted, so the caller shows the answer for a read time instead.
   const sayAnswer = useCallback(
-    (answer: Said, voice: Voice | null): Promise<void> | null => {
+    (answer: Said, voice: Voice | null, started: () => void, bigDue: () => boolean): Promise<void> | null => {
       if (!on || silent.current) return null
-      aired.current?.() // a newer answer takes the floor from the one still on air
-      const item: OnAir = { line: answer, voice, speaker: 'lead', answer: true }
-      floor.current.take(item, performance.now())
+      aired.current?.() // a newer answer replaces the one still waiting or on air
+      floor.current.bigDue = bigDue
       return new Promise<void>((resolve) => {
         const end = () => {
+          clearInterval(wait)
           if (aired.current === end) aired.current = null
           resolve()
         }
+        const item: OnAir = { line: answer, voice, speaker: 'analyst', answer: true, start: started, end }
+        const wait = setInterval(() => {
+          const next = floor.current.gap()
+          if (next) play(next)
+        }, 250)
         aired.current = end
-        play(item, end)
+        if (floor.current.take(item, performance.now())) play(item)
       })
     },
     [on, play],

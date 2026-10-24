@@ -1,0 +1,116 @@
+{
+  "recorded_on": "2026-10-24",
+  "big_model": "claude-haiku-4-5",
+  "adapter": {
+    "name": null,
+    "status": "not ready",
+    "adapters": 6,
+    "best_match_pct": 55.8,
+    "callable": false,
+    "why": "Mubit serves an adapter only in its Try models console, and only once a version passes its tests; the app can't call it by API"
+  },
+  "pairs": [
+    {
+      "sport": "football",
+      "match_id": "3857272",
+      "match": "England v United States, 2022",
+      "moment_idx": 0,
+      "clock": "09:11",
+      "moment": "Shot · Harry Kane · Blocked",
+      "big": {
+        "text": "Harry Kane with a chance in the opening moments, but it's blocked away!",
+        "model": "claude-haiku-4-5",
+        "first_word_ms": 944,
+        "latency_ms": 1165,
+        "cost_usd": 0.001601
+      },
+      "adapter": null,
+      "verdict": "not compared: no adapter line"
+    },
+    {
+      "sport": "football",
+      "match_id": "3857272",
+      "match": "England v United States, 2022",
+      "moment_idx": 10,
+      "clock": "44:16",
+      "moment": "Shot · Bukayo Saka · Off T",
+      "big": {
+        "text": "Saka with the left foot from open play, but it's off target and stays level at nil-nil.",
+        "model": "claude-haiku-4-5",
+        "first_word_ms": 573,
+        "latency_ms": 1023,
+        "cost_usd": 0.001716
+      },
+      "adapter": null,
+      "verdict": "not compared: no adapter line"
+    },
+    {
+      "sport": "football",
+      "match_id": "3857272",
+      "match": "England v United States, 2022",
+      "moment_idx": 20,
+      "clock": "71:17",
+      "moment": "Injury Stoppage · Jordan Pickford · Injury stoppage",
+      "big": {
+        "text": "Jordan Pickford down, the England goalkeeper receiving treatment on the pitch.",
+        "model": "claude-haiku-4-5",
+        "first_word_ms": 541,
+        "latency_ms": 787,
+        "cost_usd": 0.001666
+      },
+      "adapter": null,
+      "verdict": "not compared: no adapter line"
+    },
+    {
+      "sport": "cricket",
+      "match_id": "1554575",
+      "match": "Maldives v Malaysia, 2026",
+      "moment_idx": 0,
+      "clock": "0.4",
+      "moment": "Four · Mohamed Rishwan · 4 runs",
+      "big": {
+        "text": "Mohamed Rishwan gets four! Maldives five for nothing!",
+        "model": "claude-haiku-4-5",
+        "first_word_ms": 522,
+        "latency_ms": 790,
+        "cost_usd": 0.001627
+      },
+      "adapter": null,
+      "verdict": "not compared: no adapter line"
+    },
+    {
+      "sport": "cricket",
+      "match_id": "1554575",
+      "match": "Maldives v Malaysia, 2026",
+      "moment_idx": 5,
+      "clock": "3.6",
+      "moment": "Wicket · Mohamed Rishwan · caught",
+      "big": {
+        "text": "Caught! Mohamed Rishwan goes to S Muniandy. Maldives 32 for 1.",
+        "model": "claude-haiku-4-5",
+        "first_word_ms": 573,
+        "latency_ms": 889,
+        "cost_usd": 0.001841
+      },
+      "adapter": null,
+      "verdict": "not compared: no adapter line"
+    },
+    {
+      "sport": "cricket",
+      "match_id": "1554575",
+      "match": "Maldives v Malaysia, 2026",
+      "moment_idx": 24,
+      "clock": "0.4",
+      "moment": "Six · Nazmus Sakib · 6 runs",
+      "big": {
+        "text": "Nazmus Sakib with another boundary! A six this time, Malaysia 18 for nought!",
+        "model": "claude-haiku-4-5",
+        "first_word_ms": 616,
+        "latency_ms": 949,
+        "cost_usd": 0.001824
+      },
+      "adapter": null,
+      "verdict": "not compared: no adapter line"
+    }
+  ]
+}
