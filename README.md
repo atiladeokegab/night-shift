@@ -696,8 +696,8 @@ the player's other matches and teammates. If the graph fails, it reads the packs
 
 | What | Count | Runs |
 |---|---|---|
-| Python tests: the number check, replay timing, the store, Mubit and ElevenLabs calls against fakes, the deploy script | 972 | `make check`, offline; and in `make smoke` |
-| Web unit tests: the live page, the Proof card, Fix, Ask, captions | 117 | `npm test` in `web/` |
+| Python tests: the number check, replay timing, the store, Mubit and ElevenLabs calls against fakes, the deploy script | 1,000 | `make check`, offline; and in `make smoke` |
+| Web unit tests: the live page, the Proof card, Fix, Ask, captions | 119 | `npm test` in `web/` |
 | Offline smoke: every sample match replayed end to end through the real server with a fake model | 9 matches | `make smoke`; in CI on every PR into `integration` ([`.github/workflows/smoke.yml`](.github/workflows/smoke.yml)), which also builds the container and imports the app inside it |
 | Live smoke on the real URL: one replay streams moments and lines, and the service's store grows by the lines it streamed | 1 replay | after every deploy, in [`scripts/deploy.sh`](scripts/deploy.sh) (`BASE_URL=<url> uv run python -m core.smoke`) |
 | Browser tests: no serious axe violation on the home or live page, 44 px targets, a match started and a question asked by keyboard alone; the voice heard, the mic, watching | 4 specs | in CI on every PR into `integration` (the web job), or `npx playwright test` in `web/` |
