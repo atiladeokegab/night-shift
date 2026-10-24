@@ -419,6 +419,14 @@ producer fixes go into the same task as corrections. That smaller model is what 
 7. **The trained model is measured, not assumed.** 6 adapter versions trained, none has passed Mubit's
    test yet (best 55.8%), and the app does not call an adapter ([Real numbers](#real-numbers)). The
    aim is that one matches the big model at lower cost; we make no claim that any does.
+8. **Line check, a task with exact answers.** A second recorded task checks a stored line against
+   its moment's facts and answers one JSON object: score, leader, player total and event, each
+   `ok`, `wrong` or `not_said` ([`eval/linecheck.py`](eval/linecheck.py),
+   [`eval/seed_linecheck.py`](eval/seed_linecheck.py)). The answer key comes from code, never a
+   model, and a line code can't decide is left out. Some examples are **planted**: a right line with
+   one field changed so it is wrong, marked `planted: true`. They balance the labels; they are not
+   real errors the commentator made. Every line of the WSL match (3913122) and the F1 race (9636)
+   is held out and never sent to Mubit.
 
 ## Architecture
 
