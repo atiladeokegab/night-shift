@@ -129,6 +129,8 @@ def test_the_verdicts():
     # #332: true answers to the question asked, from the keyed run
     said = "Kylian Mbappé has just scored his second goal of the match!"
     assert verdict(said, keyed("What just happened?", 26)) == "correct"
+    said = "Mbappé has just scored again! The France striker fired in a volley from 18 yards!"
+    assert verdict(said, keyed("What just happened?", 26)) == "correct"  # #354
     said = "We'll find out who lifts the trophy when this match finishes."
     assert verdict(said, keyed("Who wins the World Cup?", 26)) == "correct"
     said = "The last goal in this match was an own goal!"
