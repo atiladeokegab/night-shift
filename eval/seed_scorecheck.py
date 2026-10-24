@@ -26,6 +26,8 @@ from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from itertools import zip_longest
+from threading import Lock
+from weakref import WeakKeyDictionary
 
 from agent.commentator import CORRECTION, FakeProvider, MubitProvider
 from agent.scorecheck import LABELS, SPORTS, build_request, dumps, parse
@@ -37,6 +39,8 @@ from eval.seed_linecheck import examples as line_examples
 
 SEED = 321
 HELD = "eval/scorecheck_heldout.jsonl"  # `--held-out` from the 24 Oct 20:00Z store, frozen
+_SEND_FIX_LOCKS = WeakKeyDictionary()
+_SEND_FIX_LOCKS_LOCK = Lock()
 
 
 def examples(lines: list[dict]) -> list[dict]:
@@ -125,15 +129,18 @@ def go(exs: list[dict], provider, store, source: str = "seed", workers: int = WO
 def send_fix(store, line: dict, corrected: str, teach) -> list[dict]:
     """A producer's fix as Score check examples: the line as said and the fixed text, each labelled
     from the data by `teach` (agent/scorecheck.py), each sent once ever; the rows written."""
-    rows = []
-    for said in (line, {**line, "tried": None, "text": corrected}):
-        sent = teach(said, {r["id"] for r in store.all("scorecheck_examples")})
-        if sent and sent["kind"] != "error":
-            at = datetime.now(UTC).isoformat(timespec="seconds")
-            row = {**sent, "line_id": line["line_id"], "source": "fix", "created_at": at}
-            store.append("scorecheck_examples", row)
-            rows.append(row)
-    return rows
+    with _SEND_FIX_LOCKS_LOCK:
+        lock = _SEND_FIX_LOCKS.setdefault(store, Lock())
+    with lock:
+        rows = []
+        for said in (line, {**line, "tried": None, "text": corrected}):
+            sent = teach(said, {r["id"] for r in store.all("scorecheck_examples")})
+            if sent and sent["kind"] != "error":
+                at = datetime.now(UTC).isoformat(timespec="seconds")
+                row = {**sent, "line_id": line["line_id"], "source": "fix", "created_at": at}
+                store.append("scorecheck_examples", row)
+                rows.append(row)
+        return rows
 
 
 def fixes(store, teach) -> Counter:
