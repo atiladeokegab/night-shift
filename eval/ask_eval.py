@@ -8,7 +8,9 @@ Each question is asked at a fixed moment through the route's own path (core/app.
 are we?" and "What's the score?" go to agent.status.status, anything else to
 insight.checked_answer over agent.commentator.answer. The expected answers were written from the
 moments (data/sample) before anything was run: `say` holds the regexes a right answer must all
-match, `never` the claims it must not make (a later result, a player who isn't playing).
+match, `never` the claims it must not make (a later result, a player who isn't playing). After
+the first run, three regexes (time left twice, Mbappé's goals) were narrowed: they took a bare
+score's "2" or "3" as the answer. The facts they expect are unchanged.
 
 An answer is correct when it says everything in `say` and nothing in `never`; refused when it says
 neither but declines (or is off air); wrong otherwise. `in message` is whether the request the
@@ -105,7 +107,7 @@ QUESTIONS = [
         "match": WC,
         "idx": 30,
         "q": "How long is left?",
-        "say": [n("87", "eighty-seven", "3", "three")],
+        "say": [n("87", "eighty-seven") + "|" + n("3 minutes", "three minutes")],
         "gold": "How long? 87 minutes played, about three minutes of normal time left at 2-2.",
     },
     {
@@ -121,7 +123,7 @@ QUESTIONS = [
         "match": WC,
         "idx": 58,
         "q": "How many goals has Mbappé scored?",
-        "say": [n("3", "three", "hat-?trick")],
+        "say": [n("hat-?trick", "3 goals", "three goals", "three of them", "scored three")],
         "gold": "Mbappé's goals? Three of them, a hat-trick, and it's 3-3 in extra time!",
     },
     {
@@ -171,7 +173,7 @@ QUESTIONS = [
         "match": CHE,
         "idx": 40,
         "q": "How much time is left?",
-        "say": [n("88", "eighty-eight", "2", "two")],
+        "say": [n("88", "eighty-eight") + "|" + n("2 minutes", "two minutes")],
         "gold": "Time left? 88 minutes played, about two minutes of normal time to go at 2-2.",
     },
     {
