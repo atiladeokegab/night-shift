@@ -127,8 +127,9 @@ def test_an_insight_request_has_the_analysts_prompt_and_a_lines_message(tmp_path
     _, fake = replay(CHELSEA, Store(tmp_path))
     stat = stat_calls(fake)[0]
     line = next(q for q in fake.requests if q not in stat_calls(fake))
-    for key in ("model", "max_tokens", "metadata"):
+    for key in ("max_tokens", "metadata"):
         assert stat[key] == line[key], key
+    assert (stat["model"], line["model"]) == (commentator.ANALYST_MODEL, commentator.MODEL)
     assert line["system"] == commentator.SYSTEM and line["tools"] == commentator.TOOLS
     # the analyst's own prompt and no tools, so the lines' frozen fingerprint stays one task
     assert (
@@ -191,7 +192,9 @@ def test_a_cricket_profile_is_the_part_for_the_players_role():
     bats = [d for d in facts if d.startswith(batter)]
     bowls = [d for d in facts if d.startswith(bowler)]
     assert bats and all(d.startswith(f"{batter} batting ") for d in bats)
-    assert bats[1].startswith(f"{batter} batting in the middle overs before tonight: ")
+    assert bats[1].startswith(
+        f"{batter} batting in the middle overs in T20 internationals this year before tonight: "
+    )
     assert bowls and all(d.startswith(f"{bowler} bowling ") for d in bowls)
 
 
@@ -199,7 +202,22 @@ def test_a_profile_is_one_short_fact_at_a_time():
     for sport, match_id in (("football", "3869685"), ("basketball", KOBE), ("f1", "9636")):
         moments = load_moments(match_id)
         facts = insight._profiles(load_pack(sport, match_id), moments[:8])
-        assert facts and all(d.count(".") <= 2 and len(d.split()) <= 16 for d in facts), sport
+        assert facts and all(d.count(".") <= 2 and len(d.split()) <= 20 for d in facts), sport
+
+
+def test_every_pre_match_fact_names_its_period():
+    for sport, match_id, period in (
+        ("football", "3869685", "at this World Cup before tonight"),
+        ("football", CHELSEA, "this season before tonight"),
+        ("basketball", KOBE, "this season before tonight"),
+        ("f1", "9636", "this season before tonight"),
+        ("cricket", "1298150", "in T20 internationals this year before tonight"),
+    ):
+        moments = load_moments(match_id)
+        facts = insight._profiles(load_pack(sport, match_id), moments[: len(moments) // 2])
+        tonight = [d for d in facts if "tonight" in d and "before tonight" not in d]
+        assert len(tonight) < len(facts), (sport, match_id)
+        assert all(period in d for d in facts if d not in tonight), (sport, match_id)
 
 
 def test_a_profile_never_reads_a_match_clock_as_an_over():
@@ -209,13 +227,18 @@ def test_a_profile_never_reads_a_match_clock_as_an_over():
         assert insight._profiles(load_pack(sport, match_id), past), sport
 
 
-def test_the_analyst_model_is_a_setting_and_the_lines_model_never_moves(tmp_path, monkeypatch):
-    monkeypatch.setenv("ANALYST_MODEL", "claude-sonnet-test")
+@pytest.mark.parametrize("env", [None, "claude-sonnet-test"])
+def test_the_analyst_model_is_a_setting_and_the_lines_model_never_moves(tmp_path, monkeypatch, env):
+    if env:
+        monkeypatch.setenv("ANALYST_MODEL", env)
+    else:
+        monkeypatch.delenv("ANALYST_MODEL", raising=False)
+    want = env or "claude-sonnet-5-5"
     lines, fake = replay(CHELSEA, Store(tmp_path))
     stats = stat_calls(fake)
-    assert stats and {q["model"] for q in stats} == {"claude-sonnet-test"}
-    assert {q["model"] for q in fake.requests if q not in stats} == {commentator.MODEL}
-    assert {ln["model"] for ln in lines if gap(ln)} == {"claude-sonnet-test"}
+    assert stats and {q["model"] for q in stats} == {want}
+    assert {q["model"] for q in fake.requests if q not in stats} == {"claude-haiku-4-5"}
+    assert {ln["model"] for ln in lines if gap(ln)} == {want}
 
 
 def test_analyst_and_reply_lines_never_go_through_the_recorded_provider(tmp_path, monkeypatch):

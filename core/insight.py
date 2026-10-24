@@ -35,7 +35,17 @@ def _n(count: int, what: str) -> str:
     return f"{count} {what}" + ("" if count == 1 else "s")
 
 
+def _before(pack) -> str:
+    """The span a pack covers, said with every pre-match fact so it never reads as a career."""
+    if pack["sport"] == "cricket":  # Cricsheet T20Is from 1 January to the day before
+        return "in T20 internationals this year before tonight"
+    if "competition 43 " in pack["source"]:  # StatsBomb's FIFA World Cup
+        return "at this World Cup before tonight"
+    return "this season before tonight"
+
+
 def _shot_facts(pack, name, tonight, part, over):
+    before = _before(pack)
     p, football = pack["players"][name], pack["sport"] == "football"
     mine = [t for t in tonight if t["player"] == name]
     if not (p["attempts"] or mine):  # a keeper's 0 from 0 says nothing
@@ -49,18 +59,18 @@ def _shot_facts(pack, name, tonight, part, over):
     small = " (a small sample)" if p["attempts"] < predict.SMALL else ""
     pct = f" ({round(100 * p['made'] / p['attempts'])}%)" if p["attempts"] and not football else ""
     out = [
-        f"{name} before tonight: {record(p['made'], p['attempts'])}{pct} "
-        f"in {p['games']} games{small}."
+        f"{name} {before}: {record(p['made'], p['attempts'])}{pct} in {p['games']} games{small}."
     ]
     if mine:
         out.append(f"{name} tonight: {record(sum(t['made'] for t in mine), len(mine))}.")
     for z, c in sorted(p["zones"].items(), key=lambda zc: -zc[1]["att"])[:3]:
         if c["att"]:
-            out.append(f"{name} before tonight, {z}: {record(c['made'], c['att'])}.")
+            out.append(f"{name} {before}, {z}: {record(c['made'], c['att'])}.")
     return out
 
 
 def _cricket_facts(pack, name, tonight, part, over):
+    before = _before(pack)
     p, bat, bowl = pack["players"][name], [], []
     mine = [t for t in tonight if t["batter"] == name]
     if mine:
@@ -71,8 +81,7 @@ def _cricket_facts(pack, name, tonight, part, over):
         b = p["batting"].get(ph) or {}
         if b.get("balls"):
             bat.append(
-                f"{name} batting in the {ph} overs before tonight: "
-                f"{b['runs']} off {b['balls']} balls."
+                f"{name} batting in the {ph} overs {before}: {b['runs']} off {b['balls']} balls."
             )
     mine = [t for t in tonight if t["bowler"] == name]
     if mine:
@@ -84,22 +93,23 @@ def _cricket_facts(pack, name, tonight, part, over):
     bw = p["bowling"]
     if bw["balls"]:
         bowl.append(
-            f"{name} bowling before tonight: {_n(bw['wickets'], 'wicket')} in {bw['balls']} balls."
+            f"{name} bowling {before}: {_n(bw['wickets'], 'wicket')} in {bw['balls']} balls."
         )
     if bw.get("economy") is not None:
-        bowl.append(f"{name} bowling before tonight: economy {bw['economy']} runs an over.")
+        bowl.append(f"{name} bowling {before}: economy {bw['economy']} runs an over.")
     return {"batting": bat, "bowling": bowl}.get(part, bat + bowl)
 
 
 def _f1_facts(pack, name, tonight, part, over):
+    before = _before(pack)
     p = pack["players"][name]
     if not p["finishes"]:
-        return [f"{name} before tonight: no finishes in {_n(p['games'], 'race')}."]
+        return [f"{name} {before}: no finishes in {_n(p['games'], 'race')}."]
     g = p["avg_gained"]
     return [
-        f"{name} before tonight: {_n(p['wins'], 'win')} in {_n(p['games'], 'race')}.",
-        f"{name} before tonight: average finish {p['avg_finish']}.",
-        f"{name} before tonight: {abs(g):.1f} places {'gained' if g >= 0 else 'lost'} a race "
+        f"{name} {before}: {_n(p['wins'], 'win')} in {_n(p['games'], 'race')}.",
+        f"{name} {before}: average finish {p['avg_finish']}.",
+        f"{name} {before}: {abs(g):.1f} places {'gained' if g >= 0 else 'lost'} a race "
         "on average from the grid.",
     ]
 
