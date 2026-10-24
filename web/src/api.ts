@@ -1,10 +1,11 @@
 // The only module that talks to the match server (docs/CONTRACT.md, 'HTTP'):
 // GET /matches, POST /replays {match_id, speed} -> {replay_id},
 // GET /replays/{id}/stream (SSE: moment, line, stats per moment; error; end last),
-// GET /stats, GET /voices, POST /lines/{id}/fix, POST /replays/{id}/ask, GET /replays/{id}/players/{name}/shots and GET /lines/{id}/audio?voice=<id>
+// GET /stats, GET /voices, POST /lines/{id}/fix, POST /replays/{id}/ask, GET /replays/{id}/players, .../players/{name}/shots and .../profile and GET /lines/{id}/audio?voice=<id>
 // (ElevenLabs; 503 when the voice isn't configured).
 import { demoMatches, demoStats, streamDemo } from './demo'
 import { offAir } from './ask'
+import { playersUrl, type Player, type Profile } from './follow'
 import type { Shots } from './shots'
 import type { Answer, Fix, Line, Match, Moment, Stats, StreamEvent, Voice } from './types'
 
@@ -127,6 +128,24 @@ export async function getShots(replayId: string, name: string, momentIdx: number
   const res = await fetch(`/replays/${encodeURIComponent(replayId)}/players/${encodeURIComponent(name)}/shots?moment_idx=${momentIdx}`)
   if (res.status === 404) return null
   if (!res.ok) throw new Error(`GET shots failed (${res.status})`)
+  return res.json()
+}
+
+// GET /replays/{id}/players (#140): everyone in the match so far; empty in the demo, which has no server.
+export async function getPlayers(replayId: string, at: number): Promise<Player[]> {
+  if (isDemo) return []
+  const res = await fetch(playersUrl(replayId, at))
+  if (res.status === 404) return []
+  if (!res.ok) throw new Error(`GET players failed (${res.status})`)
+  return res.json()
+}
+
+// GET /replays/{id}/players/{name}/profile (#140), up to the moment on screen. null: no such player.
+export async function getProfile(replayId: string, name: string, momentIdx: number): Promise<Profile | null> {
+  if (isDemo) return null
+  const res = await fetch(`/replays/${encodeURIComponent(replayId)}/players/${encodeURIComponent(name)}/profile?moment_idx=${momentIdx}`)
+  if (res.status === 404) return null
+  if (!res.ok) throw new Error(`GET profile failed (${res.status})`)
   return res.json()
 }
 
