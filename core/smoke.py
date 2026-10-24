@@ -45,7 +45,9 @@ def live(base_url: str, sport: str = "football") -> int:
     with httpx.Client(base_url=base_url, timeout=httpx.Timeout(30, read=300)) as client:
         assert client.get("/health").json() == {"status": "ok"}
         match = next(m for m in client.get("/matches").json() if m["sport"] == sport)
-        rid = client.post("/replays", json={"match_id": match["match_id"], "speed": 1e6})
+        rid = client.post(
+            "/replays", json={"match_id": match["match_id"], "speed": 1e6, "smoke": True}
+        )
         events = read_stream(client, rid.raise_for_status().json()["replay_id"])
         names = [n for n, _ in events]
         lines = names.count("line")

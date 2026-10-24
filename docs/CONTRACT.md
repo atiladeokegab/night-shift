@@ -46,8 +46,10 @@ and refuses to start without `STORE_URL=gs://bucket/prefix`.
   and latency summed over the whole tool loop; each id from `x-middleware-request-id`. A Line a
   replay stores carries its `replay_id` (#174; none before).
 - **Cost records** (core/, #174): `voice` `{line_id, replay_id, model, chars}` for each ElevenLabs call
-  that returned audio (`chars`: the text sent, tag included), and `replays` `{replay_id, match_id}` for
-  each replay played from its first moment to its last (not a jump, not abandoned or off air).
+  that returned audio (`chars`: the text sent, tag included), and `replays` `{replay_id, match_id,
+  line_ids}` for each replay played from its first moment to its last (not a jump, not the deploy's
+  smoke, not abandoned or off air). `line_ids`: every line it said, cached ones too, so its model cost
+  is what describing the match costs; a record without them (before this) is not counted.
 - **Speakers, insights and replies** (core/insight.py, #130): every streamed and stored Line has
   `speaker: "lead" | "analyst"`. Moment lines are `"lead"`. With a video map, the quiet stretch after
   each mapped moment is filled with lines due at the last line's words / 2.7 + 2 s, until 6 s before
@@ -88,7 +90,8 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
 - `GET /matches` → `[Match]` (core over data/)
 - `GET /matches/{id}/start?at=<idx>` → `{video_start}` (core, #188): the second the video starts at for
   a replay with `start_idx: idx`, as `peak_video_start` is for the peak; null without a video.
-- `POST /replays {match_id, speed>0, start_idx?}` → `{replay_id}` (core); `start_idx` (#163) starts the stream at
+- `POST /replays {match_id, speed>0, start_idx?, smoke?}` → `{replay_id}` (core); `smoke: true` (the
+  deploy's live smoke) is never counted as a full replay; `start_idx` (#163) starts the stream at
   that moment: earlier moments are never called. They are sent first, untimed (no `video_t`), so the score
   and clock are already there, each followed by the last line stored for it with `history: true`
   (shown, never spoken), then that line's latest `fixed` if it has one. 422 if no such moment.
@@ -165,7 +168,7 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   - `fixes_toward_next: int`: recorded fixes since the latest `adapter` record (all of them before one).
   - `voice_chars: int`: characters in every `voice` record.
   - `cost_per_match_usd: number | null`: the mean full replay's spend, `model_cost_per_match_usd`
-    (its lines' and answers' tokens × list price) plus `voice_cost_per_match_usd` (its `voice`
+    (the tokens of every line it said, cached or not, and of its answers × list price) plus `voice_cost_per_match_usd` (its `voice`
     characters × ElevenLabs' price per model); over `matches_measured` full replays. A part is null
     with no full replay, a model with no known price, or (voice) no `voice` record; the total then too.
   - `cost_per_line_usd: number | null`: mean cost of the stored lines, tokens × the model's list
