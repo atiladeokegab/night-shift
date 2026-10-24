@@ -108,7 +108,7 @@ def shot_points(pack: dict, moments: list, idx: int, name: str) -> dict:
             if t["player"] == name
         ],
         "zones": [
-            {"zone": z, "attempts": c["att"], "made": c["made"], "rate": round(c["made"] / c["att"], 3)}
+            dict(zone=z, attempts=c["att"], made=c["made"], rate=round(c["made"] / c["att"], 3))
             for z, c in zones
         ],
     }
@@ -129,16 +129,15 @@ def next_score_odds(pack: dict, moments: list, idx: int) -> dict[str, list[dict]
             shots = [t for t in mine if t["player"] == n]
             if not (p["attempts"] or shots):
                 continue
-            share = _blend(
-                len(shots), len(mine), p["attempts"] / totals["attempts"] if totals["attempts"] else 0
-            )
+            before = p["attempts"] / totals["attempts"] if totals["attempts"] else 0
+            share = _blend(len(shots), len(mine), before)
             rate = _rate(pack, p, shots)
             rows.append(
                 {
                     "player": n,
                     "p": share * rate,
                     "before": p["attempts"],
-                    "share_before": p["attempts"] / totals["attempts"] if totals["attempts"] else 0,
+                    "share_before": before,
                     "tonight": len(shots),
                     "tonight_team": len(mine),
                     "rate": rate,
@@ -196,7 +195,8 @@ def _shots_profile(pack: dict, so_far: list[dict], name: str) -> str:
         here = [t for t in mine if t["zone"] == z]
         made = sum(t["made"] for t in here)
         rate = _blend(made, len(here), _blend(c["made"], c["att"], before))
-        pre = f"{c['made']} of {c['att']}" + (f" ({_pct(c['made'] / c['att'])})" if c["att"] else "")
+        pre = f"{c['made']} of {c['att']}"
+        pre += f" ({_pct(c['made'] / c['att'])})" if c["att"] else ""
         now = f", {made} of {len(here)} tonight" if here else ""
         lines.append(f"- {z}: {pre} before tonight{now}; blended {_pct(rate)}")
     made = sum(t["made"] for t in mine)
@@ -210,7 +210,8 @@ def _shots_profile(pack: dict, so_far: list[dict], name: str) -> str:
 
 def _cricket_profile(pack: dict, so_far: list[dict], name: str) -> str:
     p, w = pack["players"][name], pack["window"]
-    lines = [f"{name} ({p['team']}), before tonight ({w['from']} to {w['to']}, {p['games']} games)."]
+    head = f"{name} ({p['team']}), before tonight ({w['from']} to {w['to']}, {p['games']} games)."
+    lines = [head]
     for ph in ("powerplay", "middle", "death"):
         b = p["batting"].get(ph) or {"balls": 0, "runs": 0, "outs": 0}
         # shortcut: tonight's runs are the ball's total (extras too) and a wide counts as faced;
