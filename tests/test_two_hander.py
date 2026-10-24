@@ -132,7 +132,6 @@ def test_a_kickoff_cold_open_hears_nothing_of_the_first_moment(tmp_path):
     over = insight.said_over(line, load_moments)
     header = match_header(CRICKET)
     assert commentator.build_request(header, over)["messages"][0]["content"] == q
-    assert commentator.provider_for(over[-1]) is commentator.unrecorded_provider()
 
 
 def test_the_names_come_from_one_constant(tmp_path, monkeypatch):

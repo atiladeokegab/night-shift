@@ -56,6 +56,7 @@ class Deps:
     look: Callable[[str, list[str]], dict] | None = None
     # a producer's fix as a Score check example (#321): (line, ids already sent) -> sent or None
     score_teach: Callable[[dict, set[str]], dict | None] | None = None
+    record: bool = False  # commentate takes `record=`: a checked line sent again, recorded (#399)
 
 
 def with_fixes(commentate, store):
@@ -112,6 +113,7 @@ def default_deps() -> Deps:
         teach,
         see,
         score_teach,
+        record=True,
     )
 
 
@@ -241,6 +243,13 @@ def create_app(
                 raise too_many(guard.until_tomorrow(), f"{OFF_TODAY}. Try again tomorrow.")
             if commentate is None:
                 raise too_many(60, "Lots of people are watching. Try again in a minute.")
+        record = None  # a checked line sent again, recorded: never a cached one, nor the smoke's
+        if d.record and not cached and not req.smoke:
+            fixed = commentate  # before the screen note: a line made from it is never recorded
+
+            def record(moment: dict, history: list[dict]) -> dict | None:
+                return fixed(moment, history, record=True)
+
         # a cached replay cost nothing: never a match for cost per full replay
         replay = Replay(req.match_id, req.speed, req.smoke or cached)
         replays[replay.id] = replay
@@ -262,6 +271,7 @@ def create_app(
                 jump or 0,
                 correct,
                 linecheck,
+                record,
             )
         )
         if cached:
