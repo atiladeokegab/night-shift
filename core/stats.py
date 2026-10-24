@@ -149,6 +149,7 @@ def stats(store) -> dict:
         # recorded since commentary's latest adapter record: the corrections toward the next one
         "fixes_toward_next": sum(f.get("created_at", "") > since for f in recorded),
         "fixes_auto": len(store.all("auto_fixes")),  # the number check's own (#162), not a person's
+        "spoken_from_fix": sum(1 for ln in lead if ln.get("fixed")),  # a producer's fix (#232)
         "voice_chars": sum(v.get("chars", 0) for v in voice),
         "autonomy": _autonomy(calls),
         "autonomy_by_match": {m: _autonomy(c) for m, c in by_match.items()},

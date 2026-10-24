@@ -48,6 +48,8 @@ export function ProofPanel({ live, matchId }: Props) {
             <dd>{next.note ?? 'Your fixes Mubit trains on'}</dd>
           </div>
           <Figure label="Fixes" value={String(stats.fixes_recorded ?? 0)} />
+          {/* a moment with a producer's fix is said in the fixed words on every later replay (#232) */}
+          {stats.spoken_from_fix !== undefined && <Figure label="Fixes heard" value={String(stats.spoken_from_fix)} />}
           {!!flagged && (
             <div className="wide">
               <dt className="label">To review</dt>
