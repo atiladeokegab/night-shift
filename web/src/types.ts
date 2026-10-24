@@ -283,3 +283,23 @@ export interface Voice {
   analyst_for?: Sport[] // the sports whose analyst lines this voice reads (core/voice.py analyst_voice)
   browser?: boolean
 }
+
+// GET /ledger: one correction sent to Mubit, with the session and request to find it in the console.
+export interface LedgerRow {
+  at: string | null
+  task: 'Score check' | 'Commentator'
+  source: string // "answer key", "human" or "auto-fixed"
+  match: string | null
+  idx: number | null
+  text: string | null
+  score: string | null // the data's score at the moment
+  wrong: string[] // what the number check finds wrong in the line
+  session: string | null
+  request_id: string | null
+  link: string | null // Mubit's console, once its URL is known
+}
+
+export interface Ledger {
+  sent: number // examples sent to Score check
+  rows: LedgerRow[]
+}

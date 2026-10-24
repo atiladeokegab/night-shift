@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { getReview, postFix, waitForExample } from '../api'
+import { getLedger, getReview, postFix, waitForExample } from '../api'
 import { submitFix, type Refused } from '../fix'
 import { exampleText, TEACHES } from '../proof'
-import type { Fix, LineCheckExample, ReviewItem } from '../types'
+import type { Fix, Ledger, LineCheckExample, ReviewItem } from '../types'
 import { FixSheet, type FixPhase } from './FixSheet'
 import { Nav, type Screen } from './Nav'
 
@@ -15,9 +15,13 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
   const [said, setSaid] = useState('')
   const [fixed, setFixed] = useState<Fix | null>(null) // the last fix sent: its Mubit request id (#239)
   const [example, setExample] = useState<LineCheckExample | null>(null) // the Line check example it sent (#305)
+  const [ledger, setLedger] = useState<Ledger | null>(null)
   const heading = useRef<HTMLHeadingElement>(null)
 
-  const load = () => getReview().then(setItems, () => setFailed(true))
+  const load = () => {
+    getLedger().then(setLedger, () => setLedger(null))
+    return getReview().then(setItems, () => setFailed(true))
+  }
   useEffect(() => void load(), [])
   const retry = () => {
     setFailed(false)
@@ -119,6 +123,7 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
         )}
         {example?.line_id === fixed?.line_id && example && <p className="hint" title={example.mubit_request_id ?? undefined}>{exampleText(example)}</p>}
         {body}
+        {ledger && <Corrections ledger={ledger} />}
       </main>
       {fixing && (
         <FixSheet key={fixing.item.line_id} line={fixing.item} phase={fixing.phase} refused={fixing.refused} onSend={send}
@@ -140,4 +145,50 @@ function when(item: ReviewItem): string {
   if (item.sport === 'cricket') return `Over ${item.clock}`
   if (item.sport === 'f1') return `Lap ${item.period ?? ''}`.trim()
   return item.clock ?? ''
+}
+
+// Every correction sent to Mubit, newest first, each with the session and request that find it in Mubit's
+// console. "Sent", never "kept": only the console says what Mubit kept.
+const SHOWN = 50
+
+function Corrections({ ledger }: { ledger: Ledger }) {
+  return (
+    <section className="ledger" aria-labelledby="ledger-h">
+      <h2 id="ledger-h">Corrections sent to Mubit</h2>
+      <p className="hint">
+        {ledger.sent} example{ledger.sent === 1 ? '' : 's'} sent to Score check · {ledger.rows.length} correction
+        {ledger.rows.length === 1 ? '' : 's'} in all{ledger.rows.length > SHOWN ? `, the newest ${SHOWN} shown` : ''}
+      </p>
+      {ledger.rows.length > 0 && (
+        <ul className="queue">
+          {ledger.rows.slice(0, SHOWN).map((r, i) => (
+            <li key={`${r.request_id}-${i}`} className="flag glass">
+              <p className="label">
+                {r.at?.slice(0, 16).replace('T', ' ')} · {r.source} · {r.task}
+                {r.match ? ` · ${r.match}, moment ${r.idx}` : ''}
+              </p>
+              {r.text && <div className="said">{r.text}</div>}
+              {r.score && <p className="moment"><span>Data: {r.score}.</span></p>}
+              {r.wrong.length > 0 && (
+                <ul className="wrong">
+                  {r.wrong.map((w) => (
+                    <li key={w}>{w[0].toUpperCase() + w.slice(1)}</li>
+                  ))}
+                </ul>
+              )}
+              <p className="hint">
+                Session <code>{r.session ?? 'unknown'}</code> · request <code>{r.request_id ?? 'none'}</code>
+                {r.link && (
+                  <>
+                    {' · '}
+                    <a href={r.link} target="_blank" rel="noreferrer">Open in Mubit</a>
+                  </>
+                )}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
 }
