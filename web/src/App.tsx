@@ -86,7 +86,14 @@ export default function App() {
     window.setTimeout(() => setToast((t) => (t === message ? '' : t)), TOAST_MS)
   }
 
-  const start = (match: Match, speed: number, switching = false) => {
+  // A-6.5: each screen is a browser history entry, so Back from a match returns to the wall.
+  // A match opened from another screen pushes one; a switch on the stage replaces it.
+  const start = (match: Match, speed: number, switching = false, fromHistory = false) => {
+    if (!fromHistory) {
+      const entry = { screen: 'live', match: match.match_id, speed }
+      if (screen === 'live') window.history.replaceState(entry, '')
+      else window.history.pushState(entry, '')
+    }
     session.current++
     speech.hush()
     setFixing(null)
@@ -114,7 +121,7 @@ export default function App() {
     start(m, m.youtube_id ? 1 : current.speed)
   }
 
-  const go = (to: Screen) => {
+  const go = (to: Screen, fromHistory = false) => {
     if (to === 'live') {
       if (current) setScreen('live')
       else if (matches?.[0]) start(matches[0], matches[0].youtube_id ? 1 : 4)
@@ -127,7 +134,22 @@ export default function App() {
     setFixing(null)
     setVoiceSheet(false)
     setScreen(to)
+    if (!fromHistory && to !== screen) window.history.pushState({ screen: to }, '')
   }
+
+  useEffect(() => window.history.replaceState({ screen: 'wall' }, ''), [])
+  // Re-bound every render so Back and Forward see the current matches and screen; leaving goes
+  // through go(), which stops the replay and hushes the voice.
+  useEffect(() => {
+    const onPop = (e: PopStateEvent) => {
+      const to = e.state as { screen?: Screen; match?: string; speed?: number } | null
+      const m = to?.screen === 'live' ? matches?.find((x) => x.match_id === to.match) : undefined
+      if (m) start(m, to?.speed ?? 1, false, true)
+      else go(to?.screen && to.screen !== 'live' ? to.screen : 'wall', true)
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  })
 
   const sendFix = async (text: string, reason: string) => {
     if (!fixing) return
