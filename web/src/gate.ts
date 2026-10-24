@@ -16,6 +16,11 @@ export interface Released<T> {
   waiting: T[] // still ahead of the picture
 }
 
+// Whether a newly presented line is voiced: never one released late, nor one a jump (#163) brought
+// from an earlier replay, which was never called this time.
+export const speaks = (line: { line_id: string; history?: boolean }, late: string[]) =>
+  !late.includes(line.line_id) && !line.history
+
 // Splits queued items by the player's current time `t`, keeping arrival order within each group.
 export function release<T extends Timed>(queue: T[], t: number): Released<T> {
   const out: Released<T> = { live: [], late: [], waiting: [] }

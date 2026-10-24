@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { getStats } from '../api'
-import type { Adapter, Stats } from '../types'
+import type { Adapter, SpeakerStats, Stats } from '../types'
 import { SideBySide } from './SideBySide'
 
 interface Props {
@@ -24,16 +24,24 @@ export function ProofPanel({ live }: Props) {
   else if (!stats) body = <p className="hint" role="status">Loading stats…</p>
   else {
     const empty = stats.lines === 0
-    const v = (x: string) => (empty ? '–' : x)
     const adapter = stats.adapter
+    // the lead's calls (Haiku) and the analyst's stat lines (Sonnet) apart, so neither skews the other
+    const groups: [string, SpeakerStats][] = stats.by_speaker
+      ? [['Lead', stats.by_speaker.lead], ['Analyst', stats.by_speaker.analyst]]
+      : [['All lines', { ...stats, model: '', cost_per_line_usd: stats.cost_per_line_usd ?? null }]]
     body = (
       <>
         <dl className="stats">
-          <Figure label="First word · median" value={v(seconds(stats.first_word_ms_p50))} />
-          <Figure label="First word · p95" value={v(seconds(stats.first_word_ms_p95))} />
-          <Figure label="Cost per line" value={v(dollars(stats.cost_per_line_usd))} />
-          <Figure label="Lines · all matches" value={v(stats.lines.toLocaleString())} />
-          <Figure label="Fixes" value={v(String(stats.fixes))} />
+          {groups.map(([name, s]) => <Speaker key={name} name={name} s={s} />)}
+          {/* own heading so the fix counts don't read as the analyst's */}
+          <div className="wide">
+            <dt className="label">Training</dt>
+            <dd>Your fixes Mubit trains on</dd>
+          </div>
+          <Figure label="Fixes" value={String(stats.fixes_recorded ?? 0)} />
+          {stats.fixes_toward_next !== undefined && (
+            <Figure label="Next adapter" value={`${stats.fixes_toward_next} of ${adapter?.needed ?? 25}`} />
+          )}
           <div className="wide">
             <dt className="label">Adapter</dt>
             <dd className={adapter?.status === 'ready' ? 'good' : undefined}>{adapterText(adapter)}</dd>
@@ -59,7 +67,24 @@ export function ProofPanel({ live }: Props) {
   )
 }
 
-function Figure({ label, value }: { label: string; value: string }) {
+function Speaker({ name, s }: { name: string; s: SpeakerStats }) {
+  const v = (x: string) => (s.lines === 0 ? '–' : x)
+  return (
+    <>
+      <div className="wide">
+        <dt className="label">{name}</dt>
+        <dd>{[s.model, `${s.lines.toLocaleString()} lines · all matches`].filter(Boolean).join(' · ')}</dd>
+      </div>
+      {/* one "First word" caption over both, so each label fits one line at 1280 px */}
+      <div className="cap" aria-hidden="true"><dt className="label">First word</dt></div>
+      <Figure label={<><span className="sr-only">First word </span>Median</>} value={v(seconds(s.first_word_ms_p50))} />
+      <Figure label={<><span className="sr-only">First word </span>P95</>} value={v(seconds(s.first_word_ms_p95))} />
+      <Figure label="Cost per line" value={v(dollars(s.cost_per_line_usd))} />
+    </>
+  )
+}
+
+function Figure({ label, value }: { label: ReactNode; value: string }) {
   return (
     <div>
       <dt className="label">{label}</dt>
