@@ -96,7 +96,7 @@ function Tile({ match, onOpen }: { match: Match; onOpen: (m: Match) => void }) {
 
   return (
     <div className="tile-wrap">
-    <button className="tile" onClick={() => onOpen(match)} aria-label={`Watch ${title} with commentary`}>
+    <button className="tile" onClick={() => onOpen(match)}>
       {match.youtube_id && (
         <img className="poster" alt="" loading="lazy" onError={(e) => { e.currentTarget.hidden = true }} src={posterUrl(match.youtube_id)} />
       )}
