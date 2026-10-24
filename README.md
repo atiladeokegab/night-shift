@@ -30,26 +30,30 @@ broadcast highlights, each line called at its moment, in four sports.
 
 ## On stage
 
-1. **The grader catches a wrong line before air.** Every lead line goes through a number check
-   first: the score, who leads, the margin, the players' counts. In Jordan's last game as a Bull the
-   model wrote "Chicago Bulls take the lead, 85-86!" when Utah led 86-85. The check's reason was
-   "Chicago Bulls do not lead". That line was never said: a line built from the data went out instead
-   ("Michael Jordan with the driving layup. Utah Jazz lead eighty-six, eighty-five.") and the wrong
-   one went to the producer's fix queue. A failed line gets one retry before the data line is used
-   ([`core/insight.py`](core/insight.py) `wrong_numbers`).
-2. **A producer's fix becomes Score check training data.** When a producer fixes a line for a wrong
-   score, player or fact, the line as first said goes to Mubit as one recorded example for Score check, a separate task whose
-   answer comes from code, never a model ([`agent/scorecheck.py`](agent/scorecheck.py) `teach`,
-   [`eval/linecheck.py`](eval/linecheck.py) `gold`). This is **training, not serving**: no
-   trained version answers anything on the site yet.
-3. **Close your eyes.** Press **E**: the picture goes black, only the line and the score stay, and
-   the commentary carries on. That is the match as a blind or low-vision fan follows it.
+1. **Live commentary that checks itself before air.** Every lead line goes through a number check
+   first: the score, who leads, the margin, the players' counts
+   ([`core/insight.py`](core/insight.py) `wrong_numbers`). In Jordan's last game as a Bull the model
+   wrote "Chicago Bulls take the lead, 85-86!" when Utah led 86-85; the check's reason was "Chicago
+   Bulls do not lead", so that line was never said. A failed line gets one retry, then a line built
+   from the data is said instead and the wrong one goes to the producer's fix queue. Press **E** to
+   **Close your eyes**: the picture goes black, only the line and the score stay, and the commentary
+   carries on. **Orlando v North Carolina** (NWSL, 2018) has no video at all: the whole match, every
+   key moment, called from the event data.
+2. **A producer's fix sent to Score check training.** On Cahill's goal at Chelsea v Spurs the line
+   said "level it at one-all, but Tottenham still lead two to one". A producer fixes it on the review
+   page, and the line as said goes to Mubit as a recorded Score check example, labelled by code, never
+   a model ([`agent/scorecheck.py`](agent/scorecheck.py) `teach`, [`eval/linecheck.py`](eval/linecheck.py)
+   `gold`). The **Sent to training** panel shows each example's Mubit request id and the count going
+   up. This is **training, not serving**: no trained version answers anything on the site.
+3. **Ask.** Type a question mid-match, such as "Where are we?" in the World Cup final. The answer
+   uses only what has happened up to the moment on screen, is checked the same way, and is spoken.
+   On a keyed run of 33 questions, 32 answers were right, 1 wrong and 0 refused.
 
 ## Who pays
 
-A club's or a league's media team, for described highlights of every match, every week. Nobody has
-agreed to pay yet and we have not set a price. What we know is our cost: **about $0.35 per
-key-moments replay, voice included** ($0.12 model, $0.23 voice, over 78 replays on the live
+Built for the streaming platforms that carry the WSL and NWSL. Nobody has agreed to pay yet and we
+have not set a price. What we know is our cost: **about 35 cents a replay, voice included** ($0.12
+model, $0.23 voice, $0.35 over 78 replays on the live
 [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats), 24 October 2026 at 21:34 UTC).
 That is a highlights replay, not a whole 90 minutes. Why it matters: [the problem](docs/evidence.md#the-problem).
 
@@ -88,9 +92,9 @@ Score check, the narrower task above, has 2,161 examples sent to training, 60 of
 fixes (46 the model already matched, 5 corrected, 9 not corrected), backfilled at 21:35 UTC; the big
 model agreed with the code's answer key on 74 of 74 held-out lines (`/stats` `scorecheck`).
 
-Ask is checked the same way: on a keyed run of 33 questions (`eval.ask_eval --provider mubit`,
-recording off), 32 answers were right, 1 wrong and 0 refused. The wrong one, "What just happened?"
-at Lakers 120-102, had an invented lead change; the check caught it and the safe answer was said.
+The Ask run (`eval.ask_eval --provider mubit`, recording off): the one wrong answer, "What just
+happened?" at Lakers 120-102, had an invented lead change; the check caught it and the safe answer
+was said.
 
 The console, the correction loop and a real fix step by step:
 [the evidence](docs/evidence.md).
