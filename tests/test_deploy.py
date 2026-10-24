@@ -36,7 +36,9 @@ def deploy(tmp_path, dotenv="", **env):
     base = {
         k: v
         for k, v in os.environ.items()
-        if not k.startswith(("VOICE_", "GIT_", "PRODUCER_", "CONVERSE_", "MUBIT_", "ELEVENLABS_"))
+        if not k.startswith(
+            ("VOICE_", "GIT_", "PRODUCER_", "CONVERSE_", "MUBIT_", "ELEVENLABS_", "DAILY_BUDGET_")
+        )
     }
     run_env = {**base, "PATH": f"{bin_}{os.pathsep}{os.environ['PATH']}", "CALLS": str(calls)}
     run_env |= {"PROJECT": "p", "DEPLOY_AS_SELF": "1", **env}
@@ -70,7 +72,9 @@ exit 0
     base = {
         k: v
         for k, v in os.environ.items()
-        if not k.startswith(("VOICE_", "GIT_", "PRODUCER_", "CONVERSE_", "MUBIT_", "ELEVENLABS_"))
+        if not k.startswith(
+            ("VOICE_", "GIT_", "PRODUCER_", "CONVERSE_", "MUBIT_", "ELEVENLABS_", "DAILY_BUDGET_")
+        )
     }
     run_env = {
         **base,
@@ -263,3 +267,11 @@ def test_the_backup_voice_version_can_be_overridden_or_turned_off(tmp_path):
 def test_a_bad_or_missing_backup_voice_version_stops_the_deploy(tmp_path, env):
     done, deployed = deploy(tmp_path, **env)
     assert done.returncode == 1 and "ELEVENLABS_FALLBACK_VERSION" in done.stderr and not deployed
+
+
+def test_a_daily_budget_rides_along_only_when_set(tmp_path):
+    done, deployed = deploy(tmp_path, DAILY_BUDGET_USD="80")
+    assert done.returncode == 0, done.stderr
+    assert "DAILY_BUDGET_USD=80" in env_vars(deployed)
+    done, deployed = deploy(tmp_path / "unset")
+    assert not [v for v in env_vars(deployed) if v.startswith("DAILY_BUDGET_USD")]
