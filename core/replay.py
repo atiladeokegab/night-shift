@@ -114,7 +114,7 @@ async def run_replay(
                 continue
             await replay.publish("moment", {**moment, **tag})
             # commentate sees only moments up to this one: later events never reach the model
-            line = await asyncio.to_thread(commentate, moment, list(history))
+            line = await asyncio.to_thread(insight.checked, commentate, moment, list(history))
             history.append(moment)
             if line is not None:  # None: the commentator had nothing usable to say
                 await say(store.append("lines", {**line, **tag, "speaker": "lead"}), moment)
