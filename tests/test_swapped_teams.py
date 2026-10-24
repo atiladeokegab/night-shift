@@ -89,3 +89,11 @@ def test_a_score_followed_by_a_team_without_to_is_no_claim():
     # the held-out true line: "... at 113-96, Toronto is running out of answers" (Lakers 113)
     m, _, h = at(KOBE, 16)
     assert insight._swapped_teams("At 96-113, Toronto is running out of answers.", m, h) == []
+
+
+def test_the_trailing_side_said_first_keeps_its_own_score_first():
+    # heard on production: Orlando 2, Courage 3
+    m, _, h = at("7457", 32)
+    line = "Rachel Hill on for Ubogagu, but Orlando still trails 2-3 to the Courage."
+    assert insight._swapped_teams(line, m, h) == []
+    assert insight._swapped_teams("Rachel Hill on for Ubogagu, at 3-2 to Orlando.", m, h)
