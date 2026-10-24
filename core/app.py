@@ -21,6 +21,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from core import insight, predict, review
 from core.guard import OFF_TODAY, Guard, SayOnly, cached_commentator, client_ip
+from core.look import Looks
 from core.predict import load_pack, shot_points
 from core.replay import OFF_AIR, Replay, run_replay
 from core.stats import stats
@@ -44,6 +45,9 @@ class Deps:
     ask: Callable[[str, list[dict], list[dict]], dict] | None = None
     status: Callable[[list[dict]], dict] | None = None
     fixes: bool = False  # commentate takes `fixes=`: the match's producer fixes go in each request
+    # a frame of the viewer's shared screen (base64 JPEG) and the match's names: one note, or None.
+    # Set, commentate takes `seen=` too (#291)
+    look: Callable[[str, list[str]], str | None] | None = None
 
 
 def with_fixes(commentate, store):
@@ -52,13 +56,24 @@ def with_fixes(commentate, store):
 
     known: dict = {}  # old fix rows' lines, read once
 
-    def call(moment: dict, history: list[dict]) -> dict:
+    def call(moment: dict, history: list[dict], **kw) -> dict:
         try:
             fixes = match_fixes(store, moment["match_id"], known)
         except Exception as exc:  # an unreadable store never takes the commentator off air
             log.warning("fixes not read for %s: %s", moment["match_id"], str(exc)[:300])
             fixes = []
-        return commentate(moment, history, fixes=fixes)
+        return commentate(moment, history, fixes=fixes, **kw)
+
+    return call
+
+
+def with_look(commentate, take: Callable[[], str | None]):
+    """`commentate` given the viewer's latest screen note (#291), when `take` has a fresh one."""
+
+    def call(moment: dict, history: list[dict], **kw) -> dict:
+        if seen := take():
+            kw["seen"] = seen
+        return commentate(moment, history, **kw)
 
     return call
 
@@ -68,11 +83,14 @@ def default_deps() -> Deps:
     routes say 503."""
     try:
         from agent.commentator import answer, commentate, correct
+        from agent.look import see
         from agent.status import status
         from data.matches import list_matches, load_moments, video_map
     except ImportError:
         return None
-    return Deps(list_matches, load_moments, commentate, video_map, correct, answer, status, True)
+    return Deps(
+        list_matches, load_moments, commentate, video_map, correct, answer, status, True, see
+    )
 
 
 class ReplayRequest(BaseModel):
@@ -86,6 +104,12 @@ class FixRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
     corrected_text: str = Field(min_length=1, max_length=200)
     reason: str = Field("", max_length=200)  # it goes in later prompts
+
+
+class LookRequest(BaseModel):
+    # one frame of the shared tab, about 512 px wide: base64 JPEG ("/9j/" is its first bytes)
+    image: str = Field(min_length=100, max_length=400_000, pattern=r"^/9j/[A-Za-z0-9+/]+={0,2}$")
+    t: float = Field(0.0, ge=0)  # the video time it was taken at
 
 
 class AskRequest(BaseModel):
@@ -118,7 +142,11 @@ def asked_so_far(replay: Replay, moments: list[dict], on_screen: int | None):
 
 
 def create_app(
-    store=None, deps: Deps | None = None, tts_transport=None, guard: Guard | None = None
+    store=None,
+    deps: Deps | None = None,
+    tts_transport=None,
+    guard: Guard | None = None,
+    looks: Looks | None = None,
 ) -> FastAPI:
     app = FastAPI(title="Touchline")
     store = store or open_store()
@@ -129,6 +157,7 @@ def create_app(
     running: dict[str, asyncio.Task] = {}  # replay id: its run_replay task, until it ends
     asking: set[str] = set()  # replay ids with a viewer's question in flight
     guard = guard or Guard()
+    looks = looks or Looks()  # #291: frames sent and the latest screen note, per replay
     live: set[str] = set()  # replay ids generating new lines, at most guard.max_live (#244)
     said_again: set[str] = set()  # replay ids playing stored lines: no voice is made for them
 
@@ -182,6 +211,8 @@ def create_app(
         # a cached replay cost nothing: never a match for cost per full replay
         replay = Replay(req.match_id, req.speed, req.smoke or cached)
         replays[replay.id] = replay
+        if d.look and not cached:  # a frame's note goes in the next line (#291)
+            commentate = with_look(commentate, lambda: looks.take(replay.id))
         # a jump starts the video just before its moment (#163), as GET /matches' peak_video_start
         video = d.video_map(req.match_id) if jump is None else d.video_map(req.match_id, jump)
         task = asyncio.create_task(
@@ -228,6 +259,7 @@ def create_app(
         else:
             replays.pop(replay.id, None)
             said_again.discard(replay.id)
+            looks.forget(replay.id)
 
     def viewed(replay_id: str) -> Replay:
         """The replay a viewer's request names, marked as still watched."""
@@ -330,6 +362,35 @@ def create_app(
                 await replay.publish("fixed", fix)
                 await replay.publish("stats", await asyncio.to_thread(stats, store))
         return fix
+
+    @app.post("/replays/{replay_id}/look")
+    async def look(replay_id: str, req: LookRequest):
+        """One frame of the viewer's shared tab (#291): its note goes in the replay's next line. The
+        frame is never stored or logged."""
+        d = need_deps()
+        replay = viewed(replay_id)
+        if d.look is None or replay_id not in live:  # stored lines said again, or the replay ended
+            raise HTTPException(410, "the commentators are not watching this replay")
+        if looks.over(replay_id):
+            raise HTTPException(410, "That's every frame for this replay.")
+        if wait := looks.hit(replay_id):
+            raise too_many(wait, "One frame every few seconds.")
+        if await asyncio.to_thread(guard.off_air, store):
+            raise too_many(guard.until_tomorrow(), f"{OFF_TODAY}. Try again tomorrow.")
+        moments = d.load_moments(replay.match_id)
+        names = [m.get("team") for m in moments] + [
+            n for m in moments for n in m["players"].values()
+        ]
+        # shortcut: a frame's model call is not in the daily spend (about $0.0003, at most
+        # LOOKS_PER_REPLAY a replay); count it there if frames ever cost more
+        try:
+            note = await asyncio.to_thread(d.look, req.image, names)
+        except Exception as exc:  # the type only: nothing of the frame reaches the log
+            log.warning("look %s: no note: %s", replay.match_id, type(exc).__name__)
+            note = None
+        if note:
+            looks.keep(replay_id, note)
+        return {"note": note}
 
     @app.post("/replays/{replay_id}/ask")
     async def ask(replay_id: str, req: AskRequest, request: Request):
