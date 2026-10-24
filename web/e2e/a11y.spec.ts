@@ -41,8 +41,16 @@ async function serious(page: Page) {
 const smallTargets = (page: Page) => page.evaluate(() => {
   const out: string[] = []
   for (const el of document.querySelectorAll<HTMLElement>('button, a[href], input, select, textarea, [role=tab]')) {
-    const r = el.getBoundingClientRect()
+    let r = el.getBoundingClientRect()
     if (!r.width || !r.height || el.closest('.sr-only, p, [aria-hidden=true]') || getComputedStyle(el).visibility === 'hidden') continue
+    // A control in a sideways scroller (the sport tabs) is tapped once scrolled to: measure it there.
+    for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) {
+      if (!/auto|scroll/.test(getComputedStyle(a).overflowX) || a.scrollWidth <= a.clientWidth) continue
+      const ar = a.getBoundingClientRect(), er = el.getBoundingClientRect()
+      a.scrollLeft += er.left < ar.left ? er.left - ar.left : Math.max(0, er.right - ar.right)
+      r = el.getBoundingClientRect()
+      break
+    }
     const mine = (hit: Element | null) => !!hit && (el === hit || el.contains(hit) || !!el.labels?.length && [...el.labels].some((l) => l.contains(hit)))
     const circleMiss = (cx: number, cy: number) => {
       for (let i = 0; i < 8; i++) {
@@ -66,8 +74,20 @@ const smallTargets = (page: Page) => page.evaluate(() => {
   return out
 })
 
+// Low-vision visitors swap fonts and enlarge text: with the fallback font (what a blocked web font gives, and
+// wider), then text at 200%, the bars may wrap, but no control's 44 px target may land on another's.
+// In the same page, so no replay starts beyond the test's own.
+async function heldUnderFallbackAndZoom(page: Page, screen: string) {
+  const fallback = await page.addStyleTag({ content: ':root { --display: ui-sans-serif, system-ui, sans-serif; --body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif }' })
+  expect(await smallTargets(page), `${screen}, fallback font`).toEqual([])
+  const zoom = await page.addStyleTag({ content: 'html { font-size: 200% }' })
+  expect(await smallTargets(page), `${screen}, fallback font, text at 200%`).toEqual([])
+  await zoom.evaluate((e) => e.remove())
+  await fallback.evaluate((e) => e.remove())
+}
+
 for (const width of WIDTHS) {
-  test(`axe and 44 px targets on the wall and the live screen at ${width}`, async ({ page }) => {
+  test(`axe and 44 px targets on the wall and the live screen at ${width}, also with the fallback font and text at 200%`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     const game = { date: '2006-01-10', opponent: 'Miami Heat', home: true, score: '104-99', result: 'W' }
     await page.route('**/teams/**', (r) => r.fulfill({ json: {
@@ -79,9 +99,11 @@ for (const width of WIDTHS) {
     await expect(page.getByRole('button', { name: KOBE })).toBeVisible()
     expect(await serious(page), 'wall').toEqual([])
     expect(await smallTargets(page), 'wall').toEqual([])
+    await heldUnderFallbackAndZoom(page, 'wall')
     await openLive(page)
     expect(await serious(page), 'live').toEqual([])
     expect(await smallTargets(page), 'live').toEqual([])
+    await heldUnderFallbackAndZoom(page, 'live')
     // #375: T opens the Teams panel and puts the focus on its heading
     await page.keyboard.press('t')
     await expect(page.getByRole('heading', { name: 'Teams', level: 2 })).toBeFocused()

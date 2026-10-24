@@ -105,7 +105,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 /* The card is as wide as the column allows while the nav, the bar, the card, its controls and a two-line
    caption fit the screen's height, so the column ends where the sidebar does; never under 480px on a desktop. */
 .live-main > * { width: min(100%, max(480px, calc((100svh - var(--nav-h) - 200px) * 16 / 9))); }
-.pickbar { display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 16px; flex-wrap: wrap; }
+.pickbar { display: flex; align-items: center; gap: 10px 6px; padding: 6px; border-radius: 16px; flex-wrap: wrap; }
 .pickbar .btn { height: 38px; border-color: transparent; background: none; font-size: .88rem; white-space: nowrap; }
 .pickbar .btn:hover:not(:disabled) { background: rgba(255, 255, 255, .07); border-color: transparent; }
 .pickbar .voice { min-width: 0; }
@@ -162,7 +162,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .seg { display: inline-flex; background: rgba(255, 255, 255, .05); border-radius: 12px; padding: 3px; }
 .seg button { height: 32px; padding: 0 16px; border: 0; background: none; border-radius: 9px; color: var(--muted); font: 500 .88rem/1 var(--body); transition: background .2s, color .2s; }
 .seg button[aria-pressed="true"] { background: rgba(255, 255, 255, .13); color: var(--fg); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1); }
-.controls { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-top: 1px solid var(--line); background: var(--glass); font: 500 .78rem/1 var(--body); color: var(--muted); }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 6px 10px; border-top: 1px solid var(--line); background: var(--glass); font: 500 .78rem/1 var(--body); color: var(--muted); }
 .ctl { flex: none; display: inline-grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 10px; background: none; color: var(--fg); }
 .ctl:hover:not(:disabled) { background: rgba(255, 255, 255, .08); }
 .ctl svg { width: 16px; height: 16px; }
@@ -346,9 +346,11 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 30; padding: 12px 18px; border-radius: 999px; font-weight: 500; font-size: .92rem; animation: lift .3s var(--ease); }
 
 /* Below 1200px the bar takes its own row under the wordmark and the links. */
+/* Large text or a wider fallback font wraps the bars rather than overlap them; 10 px between rows keeps
+   each 44 px target clear of the next row's. */
+.live .nav { flex-wrap: wrap; row-gap: 10px; }
 @media (max-width: 1199px) {
   .live { --nav-h: 140px; }
-  .live .nav { flex-wrap: wrap; row-gap: 10px; }
   .nav .pickbar { order: 3; flex: 1 1 100%; }
   .pickbar .voice { margin-left: auto; }
 }
@@ -400,7 +402,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
      voice sheet, so the bar has no voice button. The tabs scroll if a sport ever doesn't fit. */
   .pickbar { flex-wrap: nowrap; gap: 2px; }
   .seg { flex: 1 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; }
-  .seg button { padding: 0 8px; flex: none; font-size: .82rem; }
+  .seg button { padding: 0 8px; flex: none; min-width: 44px; font-size: .82rem; }
   .pickbar .voice { display: none; }
   .pickbar .next { flex: none; width: 44px; height: 44px; padding: 0; margin-left: auto; font-size: 1.1rem; }
   .pickbar .next span { display: none; }
@@ -455,8 +457,9 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   /* with Let them watch in the bar (desktop browsers only) the clock goes, or Fullscreen is clipped off the card */
   .controls:has(.watch-btn) .time { display: none; }
   /* the score never gives way to the voice pill: the pill's name is cut short instead */
+  .bug { flex-wrap: wrap; }
   .bug .scorebar { flex: none; }
-  .bug .onair { flex: 0 1 auto; min-width: 0; }
+  .bug .onair { flex: 0 1 auto; min-width: 44px; }
   .bug .onair .lbl ~ .who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
 .tile.ghost { background: linear-gradient(100deg, #0B0F1C 30%, #141a2c 50%, #0B0F1C 70%); background-size: 300% 100%; animation: shimmer 1.6s linear infinite; }
@@ -553,8 +556,8 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   .seg button { height: 44px; }
   .controls { padding-block: 0; }
   .ctl { width: 44px; height: 44px; }
-  /* On the live page the links wrap 10 px under the wordmark: its hit area reaches up, theirs down, so they don't overlap. */
-  .live .wordmark::after { inset: -14px min(0px, calc(50% - 22px)) auto; height: 44px; }
+  /* On the live page the links may wrap under the wordmark: its row is then a full 44 px, theirs reach down. */
+  .live .wordmark { min-height: 44px; }
   .live .links button::after { inset: 0 min(0px, calc(50% - 22px)) auto; height: 44px; }
 }
 /* Review (#171): one card per stored line the number check flags */
