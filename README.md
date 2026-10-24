@@ -35,6 +35,9 @@ margin, the players' counts and, in football, what kind of event it was ([`core/
 A line that fails is tried once more. If the retry passes, the failed try is sent to Mubit as a
 correction, with no person involved; if it fails too, a line built from the match data is spoken
 instead. A producer fixes the rest from the page, and each fix goes to Mubit the same way.
+The analyst's stat lines, the lead's replies to them and Ask answers get the same number check,
+against the stat and the match so far: a wrong number is tried once more, then the line is dropped
+and never said (an answer becomes the off-air line).
 
 Mubit's versions of our commentator, copied from Mubit's console into
 [`data/side_by_side.json`](data/side_by_side.json), and the corrections waiting for the next one, from the live [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats) on
@@ -416,6 +419,14 @@ producer fixes go into the same task as corrections. That smaller model is what 
 7. **The trained model is measured, not assumed.** 6 adapter versions trained, none has passed Mubit's
    test yet (best 55.8%), and the app does not call an adapter ([Real numbers](#real-numbers)). The
    aim is that one matches the big model at lower cost; we make no claim that any does.
+8. **Line check, a task with exact answers.** A second recorded task checks a stored line against
+   its moment's facts and answers one JSON object: score, leader, player total and event, each
+   `ok`, `wrong` or `not_said` ([`eval/linecheck.py`](eval/linecheck.py),
+   [`eval/seed_linecheck.py`](eval/seed_linecheck.py)). The answer key comes from code, never a
+   model, and a line code can't decide is left out. Some examples are **planted**: a right line with
+   one field changed so it is wrong, marked `planted: true`. They balance the labels; they are not
+   real errors the commentator made. Every line of the WSL match (3913122) and the F1 race (9636)
+   is held out and never sent to Mubit.
 
 ## Architecture
 
@@ -442,8 +453,9 @@ The commentator's tools and the shot map read per-match stats packs ([`data/pack
 - **The adapter isn't ready or callable.** 6 adapters, none ready, best 55.8% on Mubit's test. Mubit
   serves an adapter only in its console, so the app can't call one, and its cost per line isn't
   measurable.
-- **The analyst's stat lines aren't number-checked.** The check covers the moment lines; a stat
-  line between moments is spoken as written ([`core/insight.py`](core/insight.py) `checked`).
+- **The Proof card counts the moment lines only.** The analyst's lines and Ask answers are
+  number-checked too ([`core/insight.py`](core/insight.py) `Gaps.line`, `checked_answer`), but
+  aren't in `/stats`'s called, auto-fixed and sent-to-a-human counts.
 - **One instance.** The service runs with `--max-instances 1` ([`scripts/deploy.sh`](scripts/deploy.sh)):
   replays and voice clips live in that process's memory
   ([`core/replay.py`](core/replay.py), [`core/voice.py`](core/voice.py)).

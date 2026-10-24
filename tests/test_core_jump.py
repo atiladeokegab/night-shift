@@ -14,7 +14,14 @@ from data.matches import list_matches, load_moments, video_map
 
 KOBE = "0020500591"
 LONG = [  # a timed match: a minute between moments, so moment 50 is 50 minutes in at speed 1
-    {"sport": "football", "match_id": "long", "idx": i, "clock": f"{i:02d}:00", "type": "Shot"}
+    {
+        "sport": "football",
+        "match_id": "long",
+        "idx": i,
+        "clock": f"{i:02d}:00",
+        "type": "Shot",
+        "detail": {},  # an Ask answer is number-checked against it
+    }
     for i in range(60)
 ]
 
