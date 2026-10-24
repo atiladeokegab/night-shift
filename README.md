@@ -22,8 +22,9 @@ What you hear are **replays, as if live**: real matches' event data played back 
 
 <!-- DEMO GIF SLOT (build-140): the demo GIF, full width, with a one-line caption under it. -->
 
-<!-- CHECK NUMBERS SLOT (#219): "How well the check works": the number check measured on labelled
-lines (how many, how many wrong ones it caught, how many right ones it flagged), with the date read. -->
+**How well the check works:** on 300 lines the live site had said, labelled by a separate model
+before the check ran, it caught 8 of the 15 wrong lines (recall 53%) and flagged no right line for a
+wrong number (precision 100%, 8 of 8). A small sample; [what it misses](#how-well-the-check-works).
 
 [**Try it live**](https://night-shift-5zvig7nbvq-ew.a.run.app) · [**Correction loop**](#correction-loop-with-evidence) · [**For judges**](#for-judges) · [**Real numbers**](#real-numbers) · [**Architecture**](docs/ARCHITECTURE.md) · [**Known limitations**](#known-limitations) · [**Checks**](#checks) · [**Run it**](#run-it) · [**Demo script**](docs/demo.md)
 
