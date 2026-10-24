@@ -215,10 +215,17 @@ test('Close your eyes covers the picture and leaves the player playing under it 
   assert.match(shut, /class="bug"><div class="scorebar glass"/)
 })
 
-test('a match with no video has no Close your eyes button, and no cover (#277)', () => {
-  const html = render({ closed: true, match: { ...match, youtube_id: undefined } })
-  assert.ok(!html.includes('Close your eyes'))
-  assert.ok(!html.includes('class="eyes"'))
+test('with no video, Close your eyes still covers the page to its line and score (#338)', () => {
+  // a video that can't play here (a venue blocking YouTube) and a whole match with no video at all
+  for (const props of [{ video: 'unavailable' }, { match: { ...match, youtube_id: undefined } }]) {
+    const open = videoCard(render(props))
+    const shut = videoCard(render({ ...props, closed: true }))
+    assert.match(open, /aria-pressed="false"[^>]*aria-keyshortcuts="E"[^>]*>[\s\S]*?Close your eyes/)
+    assert.ok(!open.includes('class="eyes"'))
+    assert.match(shut, /aria-pressed="true"[^>]*>[\s\S]*?Close your eyes/)
+    assert.match(shut, new RegExp(`<div class="eyes" aria-hidden="true"><p>${EARLY}</p></div>`))
+    assert.match(shut, /class="bug"><div class="scorebar glass"/)
+  }
 })
 
 test('E toggles the cover, but not typed into Ask or with a modifier (#277)', () => {
