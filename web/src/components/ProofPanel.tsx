@@ -1,8 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { getStats } from '../api'
-import { nextAdapter } from '../proof'
 import type { Adapter, SpeakerStats, Stats } from '../types'
 import { SideBySide } from './SideBySide'
+import { nextAdapter } from '../proof'
 
 interface Props {
   live: Stats | null // the latest `stats` event from the replay, newer than the first GET /stats
@@ -26,7 +26,7 @@ export function ProofPanel({ live }: Props) {
   else {
     const empty = stats.lines === 0
     const adapter = stats.adapter
-    const next = stats.fixes_toward_next === undefined ? null : nextAdapter(stats.fixes_toward_next, adapter?.needed ?? 25)
+    const next = nextAdapter(stats.fixes_toward_next ?? 0, adapter?.needed ?? 25)
     // the lead's calls (Haiku) and the analyst's stat lines (Sonnet) apart, so neither skews the other
     const groups: [string, SpeakerStats][] = stats.by_speaker
       ? [['Lead', stats.by_speaker.lead], ['Analyst', stats.by_speaker.analyst]]
@@ -39,10 +39,12 @@ export function ProofPanel({ live }: Props) {
           {/* own heading so the fix counts don't read as the analyst's */}
           <div className="wide">
             <dt className="label">Training</dt>
-            <dd>{next?.note ?? 'Your fixes Mubit trains on'}</dd>
+            <dd>{next.note ?? 'Your fixes Mubit trains on'}</dd>
           </div>
           <Figure label="Fixes" value={String(stats.fixes_recorded ?? 0)} />
-          {next && <Figure label="Next adapter" value={next.value} />}
+          {stats.fixes_toward_next !== undefined && (
+            <Figure label="Next adapter" value={next.value} />
+          )}
           <div className="wide">
             <dt className="label">Adapter</dt>
             <dd className={adapter?.status === 'ready' ? 'good' : undefined}>{adapterText(adapter)}</dd>
@@ -78,9 +80,9 @@ function PerMatch({ stats }: { stats: Stats }) {
         <dt className="label">Cost per match</dt>
         <dd>{n ? `Model + Voice, mean of ${n} full ${n === 1 ? 'replay' : 'replays'}` : 'Shows once a match plays start to finish'}</dd>
       </div>
-      <Figure label="Total" value={cents(stats.cost_per_match_usd)} />
-      <Figure label="Model" value={cents(stats.model_cost_per_match_usd)} />
-      <Figure label="Voice" value={cents(stats.voice_cost_per_match_usd)} />
+      <Figure className="cost" label="Total" value={cents(stats.cost_per_match_usd)} />
+      <Figure className="cost" label="Model" value={cents(stats.model_cost_per_match_usd)} />
+      <Figure className="cost" label="Voice" value={cents(stats.voice_cost_per_match_usd)} />
     </>
   )
 }
@@ -102,9 +104,9 @@ function Speaker({ name, s }: { name: string; s: SpeakerStats }) {
   )
 }
 
-function Figure({ label, value }: { label: ReactNode; value: string }) {
+function Figure({ label, value, className }: { label: ReactNode; value: string; className?: string }) {
   return (
-    <div>
+    <div className={className}>
       <dt className="label">{label}</dt>
       <dd className="num">{value}</dd>
     </div>
