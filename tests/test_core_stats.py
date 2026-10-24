@@ -16,7 +16,7 @@ def line(i, model="claude-haiku-4-5", tokens_in=1000, tokens_out=20):
 def test_empty_store_has_no_cost_and_an_untrained_adapter(tmp_path):
     s = stats(Store(tmp_path))
     assert s["cost_per_line_usd"] is None
-    assert s["adapter"] == {
+    assert s["earlier_tasks"]["adapter"] == {
         "state": "collecting",
         "summary": "Collecting: no adapter version recorded yet.",
         "kept": None,
@@ -30,14 +30,14 @@ def test_empty_store_has_no_cost_and_an_untrained_adapter(tmp_path):
 def test_the_console_reading_is_dated_sourced_and_claims_no_adapter(tmp_path, monkeypatch):
     # a judge read "collecting, version null" as Mubit unused: /stats carries the console's own
     # counts, as read by hand on a stated day (#317)
-    c = stats(Store(tmp_path))["adapter"]["console"]
+    c = stats(Store(tmp_path))["earlier_tasks"]["adapter"]["console"]
     assert c["source"] == "Mubit console" and c["read_at"] == "2026-10-24T19:15:00Z"
     assert (c["tasks"], c["adapters"], c["serving"], c["target"]) == (8, 7, 0, 95)
     assert max(t["quality"] for t in c["listed"].values()) == 58.3 < c["target"]
     assert "[" not in json.dumps(c)  # it rides the `stats` event, which carries no brackets
     assert "pass" not in json.dumps(c).lower()
     monkeypatch.setattr(stats_mod, "CONSOLE", tmp_path / "none.json")
-    assert stats(Store(tmp_path))["adapter"]["console"] is None
+    assert stats(Store(tmp_path))["earlier_tasks"]["adapter"]["console"] is None
 
 
 def test_cost_per_line_is_tokens_times_list_price(tmp_path):
@@ -68,7 +68,7 @@ def test_stored_lines_are_not_reported_as_kept(tmp_path):
     store = Store(tmp_path)
     for i in range(30):
         store.append("lines", line(i))
-    assert stats(store)["adapter"]["kept"] is None
+    assert stats(store)["earlier_tasks"]["adapter"]["kept"] is None
 
 
 def test_adapter_reads_the_latest_recorded_result(tmp_path):
@@ -76,7 +76,7 @@ def test_adapter_reads_the_latest_recorded_result(tmp_path):
     store.append("lines", line(1))
     store.append("adapter", {"status": "training", "kept": 25})
     store.append("adapter", {"status": "ready", "kept": 31, "agree": 23, "total": 25})
-    assert stats(store)["adapter"] == {
+    assert stats(store)["earlier_tasks"]["adapter"] == {
         "state": "collecting",  # ready, but no version or verdict recorded: never a pass
         "summary": "Collecting: no adapter version recorded yet.",
         "kept": 31,
@@ -125,10 +125,19 @@ def test_the_adapter_says_only_what_its_record_says(tmp_path, record, state, sum
     store = Store(tmp_path)
     store.append("adapter", record)
     out = stats(store)
-    assert (out["adapter"]["state"], out["adapter"]["summary"]) == (state, summary)
-    assert out["adapters"]["commentary"]["state"] == state and "needed" not in out["adapter"]
+    assert (
+        out["earlier_tasks"]["adapter"]["state"],
+        out["earlier_tasks"]["adapter"]["summary"],
+    ) == (state, summary)
+    assert (
+        out["earlier_tasks"]["adapters"]["commentary"]["state"] == state
+        and "needed" not in out["earlier_tasks"]["adapter"]
+    )
     # the console's raw word ("training") never sits beside a state it contradicts
-    assert "status" not in out["adapter"] and "status" not in out["adapters"]["commentary"]
+    assert (
+        "status" not in out["earlier_tasks"]["adapter"]
+        and "status" not in out["earlier_tasks"]["adapters"]["commentary"]
+    )
 
 
 def test_lead_and_analyst_lines_are_reported_apart(tmp_path):
@@ -304,3 +313,56 @@ def test_a_full_replay_with_a_line_said_from_a_fix_still_has_a_cost(tmp_path):
     store.append("lines", {**line(3, model="claude-unknown"), "replay_id": "a"})
     store.append("replays", {"replay_id": "a", "match_id": "f1", "line_ids": ["l3"]})
     assert stats(store)["model_cost_per_match_usd"] is None  # an unknown model stays unpriced
+
+
+def test_score_check_leads_and_the_commentary_tasks_are_earlier(tmp_path):
+    """A judge read "Collecting: no adapter version recorded" as Mubit unused (#363): /stats leads
+    with Score check, the one task trained, and keeps the commentary tasks under earlier_tasks."""
+    store = Store(tmp_path)
+    for i, source in enumerate(["seed", "seed", "auto", "fix"]):
+        store.append("scorecheck_examples", {"id": str(i), "kind": "matched", "source": source})
+    claude = "Claude Sonnet 5.5 via Mubit, unrecorded"
+    store.append("scorecheck_evals", {"what": claude, "agree": 74, "scored": 74, "unparsed": 0})
+    store.append("adapter", {"status": "training"})  # commentary's, from before Score check
+    s = stats(store)
+    sc = s["scorecheck"]
+    assert sc["examples_sent"] == 4
+    assert sc["by_source"] == {"answer_key": 2, "auto_fixed": 1, "human": 1}
+    assert (sc["held_out"][claude]["agree"], sc["held_out"][claude]["scored"]) == (74, 74)
+    assert sc["next_training"] == "after 01:00 UK"
+    assert sc["recorded"] is None  # empty until a console version is recorded by hand
+    assert "adapter" not in s and "adapters" not in s
+    assert s["earlier_tasks"]["adapter"]["summary"].startswith("Collecting")
+    assert s["earlier_tasks"]["adapters"]["commentary"]["state"] == "collecting"
+    assert list(s).index("scorecheck") < list(s).index("earlier_tasks")
+
+
+def test_an_empty_ledger_counts_zero_from_each_source(tmp_path):
+    sc = stats(Store(tmp_path))["scorecheck"]
+    assert (sc["examples_sent"], sc["by_source"]) == (
+        0,
+        {"answer_key": 0, "auto_fixed": 0, "human": 0},
+    )
+
+
+def test_score_checks_console_version_is_its_own_and_not_an_earlier_task(tmp_path):
+    store = Store(tmp_path)
+    store.append(
+        "adapter",
+        {
+            "task": "score_check",
+            "status": "ready",
+            "version": 1,
+            "version_id": "ad_1",
+            "score": 88.5,
+            "target": 95,
+            "passed": False,
+            "source": "Mubit console",
+            "created_at": "2026-10-25T06:10:00+00:00",
+        },
+    )
+    s = stats(store)
+    rec = s["scorecheck"]["recorded"]
+    assert (rec["version"], rec["score"], rec["passed"]) == (1, 88.5, False)
+    assert (rec["recorded_at"], rec["source"]) == ("2026-10-25T06:10:00+00:00", "Mubit console")
+    assert "score_check" not in s["earlier_tasks"]["adapters"]
