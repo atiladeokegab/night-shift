@@ -133,6 +133,17 @@ def says_score(text: str, m: dict) -> bool:
     return {float(n) for n in need} <= have
 
 
+def leads_at_the_end(text: str, m: dict) -> bool:
+    """On the last moment, the line still has the winner leading ("Max Verstappen leads") though
+    the message says they won. A draw says "level" and is never caught."""
+    lead = _lead(m)
+    if m["type"] not in END or " won" not in lead:
+        return False
+    names = [w for w in re.findall(r"[\w'&-]+", lead.split(" won")[0]) if len(w) > 2]
+    near = rf"\b(?:{'|'.join(map(re.escape, names))})\b\W+(?:\w+\W+){{0,2}}?lead(?:s|ing)?\b"
+    return bool(names) and bool(re.search(near, text, re.I))
+
+
 def status(past: list[dict], header: dict | None = None, provider=None) -> dict:
     """The status at past[-1], the moment on screen: nothing later reaches the request. Checked like
     a moment's line (insight.wrong_numbers), and it must say the score: tried once more, then the
@@ -153,7 +164,7 @@ def status(past: list[dict], header: dict | None = None, provider=None) -> dict:
         wrong = insight.wrong_numbers(text, {**m, "detail": d}, header, past[:-1])
         # nor say how the last shot ended: "where are we" is the state, the event is optional
         wrong = [w for w in wrong if not w.startswith("the line never says how the shot ended")]
-        return bool(text) and says_score(text, m) and not wrong
+        return bool(text) and says_score(text, m) and not wrong and not leads_at_the_end(text, m)
 
     text = None
     try:
