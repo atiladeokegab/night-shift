@@ -14,7 +14,7 @@
 
 [**Try it live**](https://night-shift-5zvig7nbvq-ew.a.run.app) · [**For judges**](#for-judges) · [**Real numbers**](#real-numbers) · [**Architecture**](docs/ARCHITECTURE.md) · [**Known limitations**](#known-limitations) · [**Run it**](#run-it) · [**Demo script**](docs/demo.md)
 
-<img src="docs/img/live.png" alt="The live page calling Kobe Bryant's 81-point game. Top left, the score bar reads LAK 65-75 RAP, 06:22, Q3, REPLAY, and an ON AIR pill names the voice, Sam. The large subtitle reads: Kobe Bryant from 26 feet, three! Lakers down ten, 65 to 75, but Bryant's got 41 already. Under it, a dock with Wall, the four sports, Voice and Next match. On the right, the Lines card with an Ask box, a Shot map chip for Kobe Bryant and each line with a Fix button and its model first-text-word time, and the Proof card with first text word p50 0.53 s and p95 0.74 s, $0.0018 a line, the lines count, 0 fixes, and the adapter as not trained yet (captured before 13:04 UTC)." width="100%">
+<img src="docs/img/live.png" alt="The live page (old layout) calling Kobe Bryant's 81-point game. Top left, the score bar reads LAK 65-75 RAP, 06:22, Q3, REPLAY, and an ON AIR pill names the voice, Sam. The large subtitle reads: Kobe Bryant from 26 feet, three! Lakers down ten, 65 to 75, but Bryant's got 41 already. Under it, a dock with Wall, the four sports, Voice and Next match. On the right, the Lines card with an Ask box, a Shot map chip for Kobe Bryant and each line with a Fix button and its model first-text-word time, and the Proof card with first text word p50 0.53 s and p95 0.74 s, $0.0018 a line, the lines count, 0 fixes, and the adapter as not trained yet (captured before 13:04 UTC)." width="100%">
 
 <sub>The live site on 24 October 2026, captured in headless Chrome: Kobe Bryant's 81 against Toronto
 being called. YouTube won't play in a headless browser, so the video area is empty and the page says
@@ -41,7 +41,7 @@ Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026. Track: Own
 4. Tap **Fix** on any line: a producer corrects it, and the fix goes back through Mubit beside the
    original.
 5. Read the **Proof** card, then check it: `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/stats`.
-6. Tap **Cricket** in the dock: the same commentator, same prompt, calls India v Pakistan.
+6. Tap **Cricket** in the sport bar: the same commentator, same prompt, calls India v Pakistan.
 
 ### What each feature is
 
@@ -56,7 +56,7 @@ Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026. Track: Own
 | [Producer fixes](#producer-fixes) | Live | [`POST /lines/{id}/fix`](core/app.py), [`tests/test_core_fix.py`](tests/test_core_fix.py) |
 | [Big model vs ours](#big-model-vs-ours) | Recorded and merged (#144, #147); the panel isn't on any page until its hook-up lands after #146 | [`data/side_by_side.json`](data/side_by_side.json), [`eval/side_by_side.py`](eval/side_by_side.py) |
 | [The Proof panel](#the-proof-panel) | Live | [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats), [`core/stats.py`](core/stats.py) |
-| Live screen layout: the video in a card, Lines and Proof beside it, playback controls | In progress (#132) | |
+| Live screen layout: the video in a card, Lines and Proof beside it, playback controls | Live (#132) | [`web/src/components/Live.tsx`](web/src/components/Live.tsx) |
 
 #### The six matches
 
