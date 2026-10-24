@@ -57,8 +57,9 @@ broadcast highlights, each line called at its moment, in four sports.
    ([the run](https://github.com/atiladeokegab/night-shift/pull/501)).
 3. **Ask.** Type a question mid-match, such as "Where are we?" in the World Cup final. The answer
    uses only what has happened up to the moment on screen, is checked the same way, and is spoken.
-   On a keyed run of 33 questions (24 Oct, [`eval/ask_eval.py`](eval/ask_eval.py)), 32 answers were
-   right, 1 wrong and 0 refused.
+   On a keyed run of 33 questions ([`eval/ask_eval.py`](eval/ask_eval.py), 25 Oct), 32 of 33 answers
+   were right, 1 wrong and 0 refused; the output is saved as
+   [`eval/ask_eval_keyed_20261025.txt`](eval/ask_eval_keyed_20261025.txt).
 
 ## Who pays
 
@@ -114,9 +115,10 @@ fixes (46 the model already matched, 5 corrected, 9 not corrected); the big mode
 code's answer key on 74 of 74 held-out lines (live `/stats` `scorecheck`, saved on 24 October 2026 at
 23:08 UTC as [`eval/live_stats_2026-10-24.json`](eval/live_stats_2026-10-24.json)).
 
-The Ask run (`eval.ask_eval --provider mubit`, recording off): the one wrong answer, "What just
-happened?" at Lakers 120-102, had an invented lead change; the check caught it and the safe answer
-was said.
+The Ask run (`eval.ask_eval --provider mubit`, recording off): the one wrong answer is row 24,
+"What just happened?" at Lakers 120-102. The model named Vujacic's steal but said the Lakers "extend
+their lead" on a play that scored nothing; the check stopped that answer and the safe line from the
+data was said instead. That line doesn't name the steal, so the eval counts it wrong.
 
 ### Where Mubit is called
 
