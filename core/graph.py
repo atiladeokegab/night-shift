@@ -371,6 +371,10 @@ def player_season(sport: str, name: str, before: str) -> dict | None:
     }
 
 
+def _headline(n: float, stat: str, games: int) -> str:
+    return f"{n:g} {stat[:-1] if n == 1 else stat} in {games}"  # "1 goal", "2 goals"
+
+
 def squad(sport: str, team: str, before: str) -> list[dict]:
     """Who played for the team in its newest competition-season before `before`, best first."""
     apps = _games(sport, "team", team, before)
@@ -382,7 +386,7 @@ def squad(sport: str, team: str, before: str) -> list[dict]:
     lead = LEAD.get(sport, "points")
     ranked = sorted(by.items(), key=lambda kv: (-_sum(kv[1]).get(lead, 0), -len(kv[1]), kv[0]))
     return [
-        {"name": n, "matches": len(a), "headline": f"{_sum(a).get(lead, 0):g} {lead} in {len(a)}"}
+        {"name": n, "matches": len(a), "headline": _headline(_sum(a).get(lead, 0), lead, len(a))}
         for n, a in ranked
     ]
 

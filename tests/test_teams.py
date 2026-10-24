@@ -91,3 +91,11 @@ def test_every_football_and_basketball_demo_match_has_a_squad_for_each_side(clie
         ):  # Orlando's first game
             body = client.get(f"/teams/{m['sport']}/{m['match_id']}").json()
             assert all(t["squad"] for t in body["teams"]), m["match_id"]
+
+
+def test_one_of_a_stat_is_singular():
+    assert graph._headline(1, "goals", 4) == "1 goal in 4"
+    assert graph._headline(1, "points", 2) == "1 point in 2"
+    assert graph._headline(1, "runs", 1) == "1 run in 1"
+    assert graph._headline(0, "goals", 4) == "0 goals in 4"
+    assert graph._headline(3, "goals", 4) == "3 goals in 4"
