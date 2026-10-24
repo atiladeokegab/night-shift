@@ -68,6 +68,7 @@ export interface Line {
   fixed?: boolean // #232: said in a producer's fixed words, not called; `fix_id` is the line it fixed
   fix_id?: string
   served_by?: string | null // #250: the model Mubit's reply said answered; none before #250 or offline
+  fill?: boolean // #297: the extra pair in a long quiet, dropped if the next moment comes first
 }
 
 // GET /stats and the `stats` SSE event (CONTRACT.md); percentiles are null until there is a line.
@@ -116,6 +117,17 @@ export interface LineCheckStats {
   fixes_sent: number // producer fixes sent to Line check as examples
   examples_today?: number // #305: those sent today (UTC)
   examples_today_by_kind?: Record<string, number>
+  heldout?: HeldOut | null // #317: null until eval/linecheck_heldout.json is committed
+}
+
+// #317: eval/linecheck_eval.py --json on the held-out labels: each check's catches and false alarms
+export interface HeldOut {
+  labels: string
+  lines: number
+  wrong: number
+  rules: { caught: number; false_alarms: number }
+  line_check: { caught: number; false_alarms: number }
+  errors: number
 }
 
 // #305: GET /lines/{id} → `linecheck_example`, the Line check example a producer's fix sent
@@ -179,6 +191,18 @@ export interface Adapter {
   agree: number | null
   total: number | null
   cost_measurable: boolean
+  console?: ConsoleReading | null // #317: data/mubit_console.json, a dated hand reading, never live
+}
+
+// #317: Mubit's console overview as read by hand on `read_at`, and the tasks it listed
+export interface ConsoleReading {
+  source: string
+  read_at: string // ISO, UTC
+  tasks: number
+  adapters: number
+  serving: number
+  target: number
+  listed: Record<string, { status: string; examples: number; quality: number }> // by task name: no brackets in a `stats` event
 }
 
 // One Mubit task's latest adapter record (#209), as the lead read it off Mubit's console; null where it didn't say.

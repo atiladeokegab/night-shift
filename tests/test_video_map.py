@@ -144,17 +144,18 @@ def test_demo_replay_streams_each_mapped_moment_once(tmp_path, path):
     assert [(ln["line_id"], ln["video_t"]) for ln in lines] == expected
 
 
-def test_each_video_starts_25_s_before_its_first_mapped_moment():
-    # Kobe's first call is 490 s into the highlights: the page starts the video at 465 s, not 0.
-    # 10 s, not 5: the first line is ready ~2 s in, and v3 needs 2-3 s more (#57); 15 s more for
-    # the cold open (#221). A jump keeps 10 s (tests/test_core_jump.py).
+def test_each_video_starts_12_s_before_its_first_mapped_moment():
+    # Kobe's first call is 490 s into the highlights: the page starts the video at 478 s, not 0.
+    # 10 s, not 5: the first line is ready ~2 s in, and v3 needs 2-3 s more (#57); 2 s more so the
+    # two cold open lines fit (#221), and no longer, so no quiet is left after them (#297). A jump
+    # keeps 10 s (tests/test_core_jump.py).
     assert {m["match_id"]: m.get("video_start") for m in list_matches()} == {
         "3754092": 0,
         "1298150": 0,
-        "3869685": 56,
-        "3913122": 14,
-        "0049700088": 343,
-        "0020500591": 465,
+        "3869685": 69,
+        "3913122": 27,
+        "0049700088": 356,
+        "0020500591": 478,
         "9636": 0,
         "7457": None,
         "1515217": None,
@@ -165,6 +166,10 @@ def test_line_audio_is_due_from_the_video_start(tmp_path):
     due = {}
     replay = Replay("f1", speed=1.0)
     video = {**F1_VIDEO, "start": 7}
-    speak = lambda line, moment, at: due.setdefault(line["line_id"], at - replay.started)  # noqa: E731
+
+    def speak(line, moment, at):
+        if not any(k in line for k in ("open", "insight", "reply")):  # the moments' own lines
+            due.setdefault(line["line_id"], at - replay.started)
+
     asyncio.run(run_replay(replay, MOMENTS, commentate, Store(tmp_path), video, speak))
     assert due == {"f1-0": pytest.approx(5.5), "f1-2": pytest.approx(73.0)}
