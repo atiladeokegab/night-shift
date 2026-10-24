@@ -12,7 +12,6 @@ def test_empty_store_has_no_cost_and_an_untrained_adapter(tmp_path):
     s = stats(Store(tmp_path))
     assert s["cost_per_line_usd"] is None
     assert s["adapter"] == {
-        "status": "not_trained",
         "state": "collecting",
         "summary": "Collecting: no adapter version recorded yet.",
         "kept": None,
@@ -59,7 +58,6 @@ def test_adapter_reads_the_latest_recorded_result(tmp_path):
     store.append("adapter", {"status": "training", "kept": 25})
     store.append("adapter", {"status": "ready", "kept": 31, "agree": 23, "total": 25})
     assert stats(store)["adapter"] == {
-        "status": "ready",
         "state": "collecting",  # ready, but no version or verdict recorded: never a pass
         "summary": "Collecting: no adapter version recorded yet.",
         "kept": 31,
@@ -104,6 +102,8 @@ def test_the_adapter_says_only_what_its_record_says(tmp_path, record, state, sum
     out = stats(store)
     assert (out["adapter"]["state"], out["adapter"]["summary"]) == (state, summary)
     assert out["adapters"]["commentary"]["state"] == state and "needed" not in out["adapter"]
+    # the console's raw word ("training") never sits beside a state it contradicts
+    assert "status" not in out["adapter"] and "status" not in out["adapters"]["commentary"]
 
 
 def test_lead_and_analyst_lines_are_reported_apart(tmp_path):

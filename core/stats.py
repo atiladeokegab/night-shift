@@ -60,8 +60,8 @@ def _state(r: dict) -> tuple[str, str]:
 
 def _adapter(latest: dict) -> dict:
     state, summary = _state(latest)
+    # no raw `status`: the console's word ("training") beside "collecting" read as a contradiction
     return {
-        "status": latest.get("status", "not_trained"),
         "state": state,
         "summary": summary,
         # a stored line doesn't prove Mubit kept it: unknown until a console count is recorded
@@ -77,7 +77,6 @@ def _adapters(by_task: dict[str, dict]) -> dict:
     # only what a record says: a field the console reading left out stays None, never inferred
     return {
         task: {
-            "status": r.get("status", "not_trained"),
             "state": _state(r)[0],
             "version": r.get("version"),
             "score": r.get("score"),

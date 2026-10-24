@@ -71,7 +71,7 @@ export interface Line {
 }
 
 // GET /stats and the `stats` SSE event (CONTRACT.md); percentiles are null until there is a line.
-// cost_per_line_usd is null until a line has a cost; adapter.status is not_trained until one is recorded.
+// cost_per_line_usd is null until a line has a cost; adapter.state is collecting until a version is recorded.
 export interface Stats {
   lines: number
   fixes: number
@@ -136,10 +136,11 @@ export interface SpeakerStats {
   cost_per_line_usd: number | null
 }
 
+export type AdapterState = 'collecting' | 'testing' | 'passed' // what the record shows; passed only if Mubit's gate said so
+
 export interface Adapter {
-  status: 'not_trained' | 'training' | 'ready'
-  state?: 'collecting' | 'testing' | 'passed' // what the record shows; passed only if Mubit's gate said so
-  summary?: string // e.g. "Testing: no version passed; best 55.8% of a 95% target, as of 24 Oct 2026 13:04 UTC."
+  state: AdapterState
+  summary: string // e.g. "Testing: no version passed; best 55.8% of a 95% target, as of 24 Oct 2026 13:04 UTC."
   kept: number | null // null until the lead records it from Mubit's console (#46); never guessed
   agree: number | null
   total: number | null
@@ -148,7 +149,7 @@ export interface Adapter {
 
 // One Mubit task's latest adapter record (#209), as the lead read it off Mubit's console; null where it didn't say.
 export interface TaskAdapter {
-  status: 'not_trained' | 'training' | 'ready'
+  state: AdapterState
   version: number | null
   score: number | null // "matched N% of the provider model's answers", 0 to 100
   target: number | null // the console's target for score, e.g. 95
