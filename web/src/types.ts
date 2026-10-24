@@ -72,7 +72,15 @@ export interface Line {
 
 // GET /stats and the `stats` SSE event (CONTRACT.md); percentiles are null until there is a line.
 // cost_per_line_usd is null until a line has a cost; adapter.state is collecting until a version is recorded.
+// GET /stats `voice` (#306): who speaks the lines, and ElevenLabs' last failure while it is failing.
+export interface VoiceHealth {
+  provider: 'elevenlabs' | 'browser'
+  last_error: string | null // e.g. "quota_exceeded", "timeout", "429"
+  since: string | null // ISO time the failing began
+}
+
 export interface Stats {
+  voice?: VoiceHealth // GET /stats only: the `stats` event leaves it out
   lines: number
   fixes: number
   mubit_requests: number

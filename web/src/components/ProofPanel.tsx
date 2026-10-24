@@ -2,17 +2,18 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { getReview, getStats } from '../api'
 import type { Adapter, Autonomy, SpeakerStats, Stats } from '../types'
 import { SideBySide } from './SideBySide'
-import { adapterGood, adapterRows, autonomyRows, linecheckRow, TRAINING_LABEL } from '../proof'
+import { adapterGood, adapterRows, autonomyRows, linecheckRow, TRAINING_LABEL, voiceRow } from '../proof'
 
 interface Props {
   live: Stats | null // the latest `stats` event from the replay, newer than the first GET /stats
   matchId?: string // the match on screen: its own autonomy row first (#204)
+  fellBack?: boolean // the page is reading lines in browser speech (#306)
 }
 
 // The Proof card (docs/design.md): the model's first-text-word latency, cost per line, lines, fixes and
 // the adapter, all from GET /stats, then updated with every `stats` event. Nothing here is computed in
 // the browser. "First word" is the model's first text word; the footnote says what it measures (#37, #154).
-export function ProofPanel({ live, matchId }: Props) {
+export function ProofPanel({ live, matchId, fellBack = false }: Props) {
   const [fetched, setFetched] = useState<Stats | null>(null)
   const [failed, setFailed] = useState(false)
   const [flagged, setFlagged] = useState<number | null>(null) // stored lines the number check flags (#171)
@@ -21,6 +22,9 @@ export function ProofPanel({ live, matchId }: Props) {
     getStats().then(setFetched, () => setFailed(true))
     getReview().then((xs) => setFlagged(xs.length), () => {}) // no count is shown rather than a wrong one
   }, [])
+  useEffect(() => {
+    if (fellBack) getStats().then(setFetched, () => {}) // why it fell back: only GET /stats says
+  }, [fellBack])
 
   const stats = live ?? fetched
   let body
@@ -30,6 +34,7 @@ export function ProofPanel({ live, matchId }: Props) {
     const empty = stats.lines === 0
     const adapter = stats.adapter
     const tasks = adapterRows(stats.adapters)
+    const voice = voiceRow(live?.voice ?? fetched?.voice, fellBack)
     // the lead's calls (Haiku) and the analyst's stat lines (Sonnet) apart, so neither skews the other
     const groups: [string, SpeakerStats][] = stats.by_speaker
       ? [['Lead', stats.by_speaker.lead], ['Analyst', stats.by_speaker.analyst]]
@@ -37,6 +42,12 @@ export function ProofPanel({ live, matchId }: Props) {
     body = (
       <>
         <dl className="stats">
+          {voice && (
+            <div className="wide">
+              <dt className="label">Voice</dt>
+              <dd>{voice}</dd>
+            </div>
+          )}
           {/* first: how many calls the number check passed, the retry fixed, or a person must (#204) */}
           {autonomyRows(stats, matchId ?? null).map(([name, a]) => <Calls key={name} name={name} a={a} />)}
           {stats.matches_measured !== undefined && <PerMatch stats={stats} />}
