@@ -443,10 +443,9 @@ def test_a_fix_on_an_insight_or_reply_goes_back_with_its_own_request(tmp_path):
                 == 200
             )
             q = fake.requests[said]["messages"]
-            assert q[1:] == [
-                {"role": "assistant", "content": ln["text"]},
-                {"role": "user", "content": commentator.CORRECTION.format(text="Fixed.")},
-            ]
+            assert q[1] == {"role": "assistant", "content": ln["text"]} and len(q) == 3
+            assert q[2]["content"].startswith("Producer correction: ")  # #245: a correction turn
+            assert "\nThe producer's line: Fixed.\n" in q[2]["content"]
             first = int(ln["mubit_request_ids"][0].removeprefix("fake-")) - 1
             assert q[0] == fake.requests[first]["messages"][0]  # the message the line came from
             assert ("\nEvent: Stat, " in q[0]["content"]) == bool(gap(ln))

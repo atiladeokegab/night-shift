@@ -424,9 +424,10 @@ def _sse(text: str) -> bytes:
     return "".join(f"event: {e}\ndata: {json.dumps(d)}\n\n" for e, d in events).encode()
 
 
-def _mubit(monkeypatch, primary_status, fallback=True, record="off", primary_s=0.0):
+def _mubit(monkeypatch, primary_status, fallback=True, record="off", primary_s=0.0, bodies=None):
     """default_provider() on fake keys, its HTTP stubbed: the primary key answers
-    `primary_status`, the fallback always speaks. Returns the provider and the requests seen."""
+    `primary_status`, the fallback always speaks. Returns the provider and the requests seen;
+    `bodies`, when given, collects each request's JSON body as the SDK sent it."""
     import httpx2 as httpx  # the HTTP package the anthropic SDK uses
 
     seen = []
@@ -434,6 +435,8 @@ def _mubit(monkeypatch, primary_status, fallback=True, record="off", primary_s=0
     def handle(request):
         key = request.headers["authorization"].removeprefix("Bearer ")
         seen.append((key, request.headers.get("x-middleware-record")))
+        if bodies is not None:
+            bodies.append(json.loads(request.content))
         if key == "fake-lent" and primary_status != 200:
             time.sleep(primary_s)
             body = {"type": "error", "error": {"type": "billing_error", "message": "no credit"}}
@@ -489,6 +492,30 @@ def test_a_fix_records_on_the_owners_key_while_lines_stay_unrecorded(monkeypatch
     line = line_for(FOOT, moments, 0, provider)
     sent = commentator.correct(line, "Ann saves it!", FOOT, moments)
     assert seen == [("fake-lent", "off"), ("fake-owner", None)] and sent["recorded"] is True
+
+
+@pytest.mark.parametrize(("outcome", "passed"), [("Goal", True), ("Saved", False)])
+def test_a_fix_through_the_sdk_changes_only_the_messages_and_checks_the_reply(
+    monkeypatch, outcome, passed
+):
+    # #245: the correction goes through the real SDK call; its reply ("Goal from the fake-owner
+    # key.") counts only when it passes the number check
+    bodies = []
+    provider, _ = _mubit(monkeypatch, 200, record="off", bodies=bodies)
+    score = {"home": int(outcome == "Goal"), "away": 0}
+    moments = [moment(FOOT, 0, outcome=outcome, score=score)]
+    line = line_for(FOOT, moments, 0, provider)
+    sent = commentator.correct(line, "Ann scores!", FOOT, moments, reason="Wrong event")
+    said, fix = bodies
+    assert {k: v for k, v in fix.items() if k != "messages"} == {
+        k: v for k, v in said.items() if k != "messages"
+    }
+    assert fix["messages"] == said["messages"] + [
+        {"role": "assistant", "content": line["text"]},
+        {"role": "user", "content": sent["correction"]},
+    ]
+    assert sent["correction"].startswith("Producer correction: Wrong event\n")
+    assert sent["reply_passed"] is passed and sent["recorded"] is True
 
 
 def test_a_fix_to_an_analyst_line_goes_unrecorded_and_says_so(monkeypatch):
