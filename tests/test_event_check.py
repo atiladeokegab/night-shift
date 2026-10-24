@@ -87,7 +87,7 @@ OTHER_SPORTS = [
         "Ron Harper from downtown, he ties it up! Seventy-nine all with three forty-four to play!",
         "Ron Harper from fifteen feet! Seventy-nine all with three forty-four to play!",
     ),
-    (KOBE, 24, "Matt Bonner from deep! Toronto cuts it to eighteen, Lakers 122, Raptors 104!", None),
+    (KOBE, 24, "Matt Bonner from deep! Toronto cuts it to eighteen, Lakers 122!", None),
     (KOBE, 4, None, "Kobe Bryant from downtown, assisted by Devean George!"),
     # a tie called when India won by 4 wickets; "160 for six" is runs for wickets
     (
@@ -133,9 +133,9 @@ def test_basketball_and_cricket_wrong_events_are_rejected_and_near_misses_pass(
         # a wrong leader (Utah lead 86-85): wrong_numbers' _false_lead, not wrong_event
         (
             30,
-            "Michael Jordan with the layup! Chicago Bulls take the lead, 85-86, thirty-seven seconds"
-            " remaining!",
-            "Michael Jordan with the layup! Utah lead 86-85, thirty-seven seconds remaining!",
+            "Michael Jordan with the layup! Chicago Bulls take the lead, 85-86, thirty-seven"
+            " seconds remaining!",
+            "Michael Jordan with the layup! Utah lead 86-85, thirty-seven seconds left!",
         ),
         (31, None, "STOLEN BY JORDAN! The Bulls take it away, 86-85!"),
     ],
