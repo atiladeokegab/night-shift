@@ -244,6 +244,16 @@ then offers "Hear it again" ([`core/app.py`](core/app.py) `ask`, [`agent/ask.md`
 [`web/src/turns.ts`](web/src/turns.ts), [`tests/test_core_ask.py`](tests/test_core_ask.py)). Answers
 go through Mubit unrecorded: they have their own prompt.
 
+**Talk (#380):** the Talk button pauses the match and the speaking queue and opens a natural
+conversation with the commentator (an ElevenLabs agent: its own turn-taking and interruptions). The
+agent's custom LLM is [`core/converse.py`](core/converse.py) `POST /converse/v1/chat/completions`,
+which answers each turn through the same checked Ask path (Claude via Mubit, unrecorded), from the
+match cut at the moment the talk began. When the fan goes quiet for 12 s, or presses Resume or Escape,
+the match resumes where it paused. Where it can't start (no mic, no agent, off air) Ask is still there.
+Setup, keyed, once: `ELEVENLABS_API_KEY=... CONVERSE_LLM_SECRET=<random> uv run python
+scripts/converse_agent.py --url https://<service>/converse/v1`, then deploy with `CONVERSE_AGENT_ID`
+and `CONVERSE_LLM_SECRET` set ([`tests/test_converse.py`](tests/test_converse.py)).
+
 **By voice (#145):** hold the mic button, or the space bar, and
 speak; the browser's own speech recognition fills the box and sends it. The answer is held until the
 current line ends and no big moment is due, then spoken

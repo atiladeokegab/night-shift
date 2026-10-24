@@ -275,5 +275,8 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
     return id ? lookAt(id, image, t) : false
   }, [])
 
-  return { state, start, reconnect, leave, setClock, unGate, markFixed, ask, shots, players, profile, look }
+  // The id Talk (#380) names in its token request; null before a replay.
+  const currentId = useCallback(() => replayId.current, [])
+
+  return { state, start, reconnect, leave, setClock, unGate, markFixed, ask, shots, players, profile, look, currentId }
 }
