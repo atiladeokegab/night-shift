@@ -1,11 +1,13 @@
 # The demo
 
-**Touchline: the describer that checks itself. For the match nobody described.** The story opens on a
-Women's Super League match that had no described broadcast that we could find, shows the describer catching its own
-mistakes, sends one it couldn't fix to a producer, and ends on what it costs. About 2:45, on the live
-URL, with the sound on. Anything shown outside our product, such as Mubit's console, is said aloud
-as such. Every number spoken is read off the live [`/stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats)
-on the day; none is written here to be repeated.
+**Touchline: the describer that checks itself. For the match nobody described.** A film of **1:50,
+hard stop 1:58**, under the 2:00 limit. It is recorded on the live URL with the sound on and a narrator's voice laid over the
+screen; the cold open and the Ask shot carry the product's own voice. It opens on a club's weekly
+highlights with **Close your eyes**, shows a whole match nobody described, the describer fixing its
+own mistakes, a producer fixing one it couldn't, and ends on what it costs. Anything shown outside
+our product, such as Mubit's console, is said aloud as such. Every number spoken is read off the
+live [`/stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats) or the Proof card on the day;
+none is written here to be repeated. Time the finished cut before submitting.
 
 Videos embed where YouTube allows it; otherwise the tile says so and links to YouTube, and the
 commentary still plays on the match's own clock.
@@ -20,24 +22,31 @@ commentary still plays on the match's own clock.
 - Warm the voices: with the ElevenLabs key in the environment, `uv run python -m core.voice` speaks a
   short line in every voice and prints FAILED for any that fail. A cold library voice can fail its
   first line.
-- Open **Review** once: note a flagged line to fix in step 4.
-- Have Mubit's console open on the Adapters page, signed in.
+- Open **Review** once and find the line for shot 4: Jordan's last game as a Bull, the layup where
+  Utah lead 86–85 but the line says Chicago lead.
+- Have Mubit's console open, signed in. Its figures are only those in the README's
+  [correction loop](../README.md#correction-loop-with-evidence) section; read them again on the day.
+- Record at 1280 wide. Record the voice separately, then lay it over the screen. Do a dry take
+  first: the opening lines vary by run.
 
 ## The script
 
 | # | Time | On screen | Say |
 |---|---|---|---|
-| 1 | 0:00 | Black, then the wall. Tap **Brighton v Bristol City**, the tile marked "No described broadcast that we could find" | Nothing for ten seconds: let the room hear it. Then: "That match had no described broadcast. Touchline described it from the match data, in a replay, as if live." |
-| 2 | 0:20 | The **Proof** card: First time, Auto-fixed, To a human | "Before it speaks, it checks the score, the leader and the key numbers against the data. When a call is wrong, it tries again; this count is the calls it fixed itself, before anyone heard them." |
-| 3 | 0:40 | **Review**: a line the retry couldn't fix, with the check's reasons | "When the retry still fails, it doesn't guess. It says a line built from the data, and sends the call to a producer, with the reason." |
-| 4 | 1:00 | Press **Fix** on that line, type the right line, save | "A producer fixes it in one line. A wrong leader is the error that breaks a blind fan's trust." |
-| 5 | 1:25 | Mubit's console, Adapters | "Each fix that passes the number check is recorded in Mubit, as training data for a smaller describer of our own." Say the best version's score as it is; call it better only if Mubit marks it Passed. |
-| 6 | 1:55 | Kobe's 81 or the World Cup final; type "Where are we?" or "How did Messi score?" in **Ask** | "A fan can ask anything, any time, in the same voice." |
-| 7 | 2:15 | The **Proof** card: calls, fixed by itself, sent to a person; the cost per match | "Across seven matches: [calls], [fixed itself] fixed by itself, [to a human] sent to a person. About [cost] a match, voice included." Read each figure off the card. |
-| 8 | 2:35 | The wall | "Touchline. The describer that checks itself. For the match nobody described." |
+| 1 | 0:00–0:10 | **Brighton v Bristol City** playing with video, ON AIR. Press **E** (**Close your eyes**): the picture goes black, only the line and the score stay, the voice carries on | "Every week a club's media team cuts highlights. A fan who can't see them gets nothing from the pictures. Close your eyes." Then let one line play. |
+| 2 | 0:10–0:22 | Press **E** again. Cut to **Orlando v North Carolina** (NWSL, 2018), on its "Whole match, every key moment" label | "Touchline describes the highlights for them, every week, from the match data. And not only the reel: this whole match had no described broadcast that we could find, and Touchline called every key moment." |
+| 3 | 0:22–0:35 | The **Proof** card's auto-fixed count, then one line it fixed | "Before it speaks, it checks the score, the leader and the numbers against the data. This line had the wrong score. It fixed itself before anyone heard it." |
+| 4 | 0:35–0:55 | **Review**: the flagged line with the check's reason. Press **Fix** on Jordan's layup, type the right line, save | "When a retry still fails, it doesn't guess. A producer gets the line and the reason, and fixes it in one go. A wrong leader is the error that breaks a blind fan's trust." |
+| 5 | 0:55–1:20 | Mubit's console: the fix's request among the corrections, then the adapters | "Every fix goes to Mubit as a correction, recorded as training data." Then say the console's state as it is: no adapter has passed Mubit's test or serves, and the app doesn't call one. Call a version better only if the console marks it Passed. |
+| 6 | 1:20–1:35 | The **World Cup final** (`/?match=3869685&at=45`); type "Where are we?" in **Ask** | "A fan can ask anything, any time, in the same voice." |
+| 7 | 1:35–1:50 | The **Proof** card: lines called, fixed by itself, sent to a person; the cost per match | "[called] called, [auto-fixed] fixed by itself, [to a person] sent to a person. About [cost] a match, voice included." Read each figure off the card. |
+| 8 | 1:50–1:58 | Logo, tagline, the live URL | "Touchline. The describer that checks itself." |
 
 The cost per match is the mean over full replays of these highlights, not the price of a whole
 90 minutes: never say it as one.
+
+Brighton's ground has in-stadium description: say "no described broadcast that we could find",
+never "no description".
 
 ## Jump to the big moment
 
@@ -63,9 +72,11 @@ video maps (`data/video/`); check them with a stopwatch before going on.
 - **A tile says the video can't play here:** the commentary runs on the match's own clock without
   the picture. Carry on.
 - **The badge reads OFF AIR:** the model provider is out of credit, so no new lines come. Say so,
-  then show the Proof card's counts and go to step 5.
+  then show the Proof card's counts and go to shot 5.
 
 ## Do not say
 
-"checks every fact", "a million matches", "lower leagues get none", "the law requires it", or any
-cost per match other than the one on the Proof card.
+"checks every fact" (it checks the score, the leader, the key numbers and events), "learns live",
+"the model updated", or anything implying the app uses a trained version. Also: "a million matches",
+"lower leagues get none", "the law requires it", "$5 a match", "RNIB standard" or "RNIB approved",
+or any cost per match other than the one on the Proof card.
