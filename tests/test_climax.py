@@ -114,6 +114,32 @@ def test_a_score_said_in_hundreds_is_no_margin():  # build-143: the "one" of "on
     assert insight.wrong_numbers(line, spurs, match_header("3754092"), []) == []
 
 
+OFF_TARGET = "the line never says how the shot ended: Off T"
+
+
+@pytest.mark.parametrize(
+    ("match_id", "idx", "text", "wrong"),
+    [
+        # the judges' lines: the right leader at the wrong score, and a lead at nil-nil
+        ("3754092", 28, "Tottenham still lead one-nil.", ["one-nil is not the score (1-2)"]),
+        (
+            "7457",
+            1,
+            "North Carolina Courage have the lead, one nil!",
+            ["North Carolina Courage do not lead", "one nil is not the score (0-0)", OFF_TARGET],
+        ),
+        ("7457", 16, "North Carolina Courage have the lead, one nil!", [OFF_TARGET]),
+        ("3754092", 28, "Tottenham still lead two-one.", []),
+        ("3754092", 28, "It was one-nil at the break, and Tottenham lead two-one.", []),
+        ("3754092", 28, "A one-two, and Tottenham lead two-one.", []),
+        ("3754092", 28, "Is it one-nil?", []),
+    ],
+)
+def test_a_stated_football_score_is_the_score(match_id, idx, text, wrong):
+    m = moment(match_id, idx)
+    assert insight.wrong_numbers(text, m, match_header(match_id), before(match_id, idx)) == wrong
+
+
 @pytest.mark.parametrize(
     ("idx", "text", "wrong"),
     [

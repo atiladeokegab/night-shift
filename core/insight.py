@@ -1082,7 +1082,8 @@ def talks_to_itself(text: str) -> bool:
 
 LEADS = (  # a claim that a team is in front now; "led" and questions are no claim
     r"\s+(?:(?:are|is|now|still|back|again)\s+){0,2}"
-    r"(?:(?:take|takes|retake|retakes|regain|regains|reclaim|reclaims)\s+(?:the|a)\s+lead"
+    r"(?:(?:take|takes|retake|retakes|regain|regains|reclaim|reclaims|have|has|hold|holds)"
+    r"\s+(?:the|a)\s+lead"
     r"|leads?(?!\s+(?:has|had|is|was|became|of|over|to)\b)|go ahead|goes ahead|ahead"
     r"|in front(?!\s+of\b))\b"
 )
@@ -1145,6 +1146,29 @@ def _wrong_margin(text: str, m: dict, header: dict) -> list[str]:
     return wrong
 
 
+def _wrong_score(text: str, m: dict) -> list[str]:
+    """Each football score a line states now that is neither the score nor the shootout's:
+    "Tottenham still lead one-nil" at 1-2 (#297's judges). A score in the past or negated ("it
+    was one-nil at the break"), or another game's ("a 2-1 win"), is no claim about now."""
+    s, so = m["score"], (m.get("detail") or {}).get("shootout")
+    scores = [sorted((x["home"], x["away"])) for x in (s, so) if x]
+    wrong = []
+    for sentence in re.split(r"(?<=[.!?])\s+", text):
+        if sentence.rstrip().endswith("?"):
+            continue
+        for start, end, pair in _said_scores(sentence, m):
+            before = _clause_before(sentence, start)
+            if (
+                NOT_NOW.search(before)
+                # "a one-two", "the 2-1", a tally "by five to one", a change "from 1-0"
+                or re.search(r"\b(?:a|an|the|by|from)\s*$", before, re.I)
+                or sorted(pair) in scores
+            ):
+                continue
+            wrong.append(f"{sentence[start:end]} is not the score ({s['home']}-{s['away']})")
+    return wrong
+
+
 LAST_BALL = re.compile(r"\blast ball\b", re.I)
 
 
@@ -1173,6 +1197,8 @@ def wrong_numbers(
     )
     if "home" in s and header:
         wrong += _false_lead(text, m, header) + _wrong_margin(text, m, header)
+        if m.get("sport") == "football":
+            wrong += _wrong_score(text, m)
     if "milestone" in d and not set(numbers(d["milestone"])) & set(numbers(text)):
         wrong.append(f"the milestone is unsaid: {d['milestone']}")
     if m.get("sport") == "cricket":
