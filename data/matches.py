@@ -12,6 +12,15 @@ from pathlib import Path
 SAMPLE = Path(__file__).resolve().parent / "sample"
 VIDEO = Path(__file__).resolve().parent / "video"
 VIDEO_LEAD_S = 10  # the video starts this long before its first mapped moment: time for v3
+# The demo's "Jump to the big moment" (#163): the moment each match's jump starts at, a beat before its peak.
+PEAKS = {
+    "0020500591": 22,  # Kobe: free throws for 80 and 81
+    "0049700088": 31,  # Jordan's steal, then the shot
+    "1298150": 48,  # the last over
+    "3869685": 59,  # the World Cup final shoot-out
+    "3754092": 37,  # Hazard's equaliser
+    "9636": 12,  # Verstappen into P1
+}
 
 
 def _path(match_id: str) -> Path:
@@ -32,9 +41,14 @@ def list_matches() -> list[dict]:
         sides = f"{h['home']} v {h['away']}, " if "home" in h else ""  # a race has no sides
         title = f"{sides}{h['competition']} {h['stage']}".strip()
         match = {"match_id": h["match_id"], "sport": h["sport"], "title": title, "sample": True}
+        peak = PEAKS.get(h["match_id"])
+        if peak is not None:
+            match["peak_idx"] = peak
         if vmap := video_map(h["match_id"]):
             match["youtube_id"] = vmap["youtube_id"]
             match["video_start"] = vmap["start"]
+            if peak is not None:
+                match["peak_video_start"] = video_map(h["match_id"], peak)["start"]
             if vmap.get("embed") is False:  # owner blocks embedding: a poster and a link instead
                 match["embed"] = False
         out.append(match)
@@ -45,16 +59,17 @@ def load_moments(match_id: str) -> list[dict]:
     return _read(match_id)["moments"]
 
 
-def video_map(match_id: str) -> dict | None:
+def video_map(match_id: str, start_idx: int | None = None) -> dict | None:
     """data/video/<sport>-<match_id>.json: {youtube_id, embed?, source, moments: [{idx, video_t}]},
     plus `start`: the whole second the page starts the video at, just before its first mapped
-    moment."""
+    moment (from `start_idx` on, for a replay that jumps to a moment)."""
     match_id = str(match_id)
     found = sorted(VIDEO.glob(f"*-{match_id}.json")) if match_id.isalnum() else []
     if not found:
         return None
     vmap = json.loads(found[0].read_text(encoding="utf-8"))
-    return {**vmap, "start": max(0, int(vmap["moments"][0]["video_t"]) - VIDEO_LEAD_S)}
+    first = next((m for m in vmap["moments"] if m["idx"] >= (start_idx or 0)), vmap["moments"][-1])
+    return {**vmap, "start": max(0, int(first["video_t"]) - VIDEO_LEAD_S)}
 
 
 def match_header(match_id: str) -> dict:

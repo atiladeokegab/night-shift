@@ -79,6 +79,7 @@ async def run_replay(
     store,
     video: dict | None = None,
     speak: Callable[[dict, dict, float | None], None] | None = None,
+    start_idx: int = 0,
 ) -> None:
     # A video map: only mapped moments are called, each tagged with its video time and sent as
     # soon as it is ready; the page holds each line until the player reaches that time.
@@ -102,6 +103,9 @@ async def run_replay(
         recent: list[str] = []
         for moment in moments:
             tag = {}
+            if moment["idx"] < start_idx:  # a jump (#163): earlier play is history, never called
+                history.append(moment)
+                continue
             if video_t is None:
                 at = moment_seconds(moment)
                 if last is not None and at > last:
