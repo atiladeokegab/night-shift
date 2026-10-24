@@ -37,7 +37,7 @@ export interface Turn {
 
 // The floor: one voice at a time. A line by the same speaker cuts off the one before it, so the voice
 // never falls behind the match; a line never cuts off the other speaker unless it is a big moment; and
-// only a decisive moment cuts off an answer (`onCut` hears which). A line that may not cut in waits (the newest only) for the turn on air
+// only a decisive moment cuts off an answer (`onCut` hears which); the lead's next call cuts off the analyst. A line that may not cut in waits (the newest only) for the turn on air
 // to end. A viewer's answer waits for a gap (#139): the commentary goes on until the line on air ends
 // with no big moment due (`bigDue`), then the answer takes the floor. While the viewer talks and their
 // answer waits, no fill line starts (#297): it is dropped, so the booth answers next. Times are in ms on one clock.
@@ -57,7 +57,9 @@ export class Floor<T extends Turn> {
     }
     if (item.fill && (this.asked || now < this.quietUntil)) return false
     const on = this.on
-    const waits = !!on && (on.answer ? !item.decisive : on.speaker !== item.speaker && !item.big && !(on.fill && !item.fill))
+    // The analyst's line is about the last moment: when the lead calls the next one, the analyst is dropped.
+    const stale = !!on && on.speaker === 'analyst' && !on.answer && item.speaker === 'lead' && !item.fill
+    const waits = !!on && !stale && (on.answer ? !item.decisive : on.speaker !== item.speaker && !item.big && !(on.fill && !item.fill))
     if (waits) {
       this.held = { item, due: now }
       return false
