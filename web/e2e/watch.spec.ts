@@ -16,12 +16,11 @@ test('Let them watch shares the tab, sends a 512 px JPEG every 4 s, and Stop end
   await page.route('**/replays/*/look', async (r) => {
     const frame = { ...r.request().postDataJSON(), at: Date.now() }
     frames.push(frame)
-    // the first frame goes to the server; offline, the replay calls all its lines within seconds and
-    // then takes no more frames (410), so the later ones are answered here as a running replay would
-    if (frames.length > 1) return r.fulfill({ json: { note: null } })
-    const res = await r.fetch()
-    frame.status = res.status()
-    await r.fulfill({ response: res })
+    // the first frame goes to the server too, which checks its body before anything else. Offline, the
+    // replay calls all its lines within seconds and may take no more frames (410), so the page is
+    // answered here as a running replay would
+    if (frames.length === 1) frame.status = (await r.fetch()).status()
+    await r.fulfill({ json: { note: null } })
   })
   await page.addInitScript(() => {
     navigator.mediaDevices.getDisplayMedia = async (options) => {
@@ -56,7 +55,7 @@ test('Let them watch shares the tab, sends a 512 px JPEG every 4 s, and Stop end
   expect(size[1]).toBe(288) // the shared picture's own shape, scaled
   expect(typeof first.t).toBe('number')
   expect(second.at - first.at).toBeGreaterThan(3500)
-  expect(first.status).toBe(200)
+  expect([200, 410]).toContain(first.status) // a valid frame: never 413 or 422
 
   await page.getByRole('button', { name: 'Stop: they stop watching' }).click()
   await expect(page.getByRole('button', { name: 'Let them watch' })).toBeVisible()
