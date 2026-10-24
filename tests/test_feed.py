@@ -413,3 +413,16 @@ def test_openf1_rejects_a_session_key_that_is_not_a_number():
     for bad in ("latest", "9558&x=1", "../etc"):
         with pytest.raises(KeyError):
             feed.openf1("laps", bad)
+
+
+def test_womens_sides_go_by_the_country_name():
+    meta = {
+        "match_id": 3906390,
+        "home_team": {"home_team_name": "Spain Women's"},
+        "away_team": {"away_team_name": "England Women's"},
+    }
+    header = feed.football_header(meta)
+    assert (header["home"], header["away"]) == ("Spain", "England")
+    goal = ev("Shot", team="Spain Women's", shot={"outcome": {"name": "Goal"}})
+    [m] = feed.football_moments(header, [goal])
+    assert m["team"] == "Spain" and m["score"] == {"home": 1, "away": 0}
