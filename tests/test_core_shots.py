@@ -99,3 +99,15 @@ def test_no_map_without_a_pack_a_player_or_a_moment(tmp_path):
         rid = rid["replay_id"]
         read_stream(client, rid)
         assert client.get(f"/replays/{rid}/players/Nobody/shots").status_code == 404
+
+
+def test_messis_misses_show_once_the_screen_reaches_them(tmp_path):
+    with client_for(tmp_path) as client:
+        rid = client.post("/replays", json={"match_id": "3869685", "speed": 1e6}).json()
+        rid = rid["replay_id"]
+        read_stream(client, rid)
+        url = f"/replays/{rid}/players/Lionel Messi/shots"
+        at_penalty = client.get(url, params={"moment_idx": 5}).json()["tonight"]
+        later = client.get(url, params={"moment_idx": 34}).json()["tonight"]
+    assert [t["made"] for t in at_penalty] == [True]  # his penalty is his only shot so far
+    assert [t["made"] for t in later] == [True, False, False]  # then off target, then saved
