@@ -14,7 +14,7 @@ from core.replay import Replay, run_replay
 from core.store import Store
 from core.voice import NAMES
 from data.matches import load_moments, match_header, video_map
-from tests.test_insight import KOBE, Fake, stat_calls
+from tests.test_insight import CHELSEA, KOBE, Fake, stat_calls
 
 WSL = "3913122"
 CRICKET = "1298150"  # its first mapped moment is its first: a wicket at 1.1, 1 for 1
@@ -24,13 +24,25 @@ OPEN_EVENT = f"\nEvent: Stat, {insight.OPEN}: "
 def replay(match_id, store, start=None):
     fake = Fake()
     vmap = video_map(match_id)
-    if start is not None:  # a longer run-in than the bundled maps give, so both lines fit
+    if start is not None:  # a different run-in than the bundled maps give
         vmap = {**vmap, "start": start}
     r = Replay(match_id, 1e9)
     calls = functools.partial(commentator.commentate, provider=fake)
     asyncio.run(run_replay(r, load_moments(match_id), calls, store, vmap))
     assert not [e for e in r.events if e["event"] == "error"]
     return [e["data"] for e in r.events if e["event"] == "line"], fake, vmap
+
+
+def before_first(lines, store):
+    """The lines said before the first call, each with its video time from the store: the
+    welcome goes out untimed (#297)."""
+    stored = {ln["line_id"]: ln for ln in store.all("lines")}
+    out = []
+    for ln in lines:
+        if not (ln.get("open") or ln.get("insight") or ln.get("reply")):
+            break
+        out.append({**ln, "video_t": ln.get("video_t", stored[ln["line_id"]]["video_t"])})
+    return out
 
 
 def opens(fake):
@@ -55,31 +67,57 @@ def test_the_cold_open_is_said_once_before_the_first_call_then_cached(tmp_path):
     lines, fake, vmap = replay(KOBE, store)  # the bundled map: 25 s before the first call
     first_t, start = min(m["video_t"] for m in vmap["moments"]), vmap["start"]
     opened = [ln for ln in lines if "open" in ln]
-    assert lines[: len(opened)] == opened  # before the first call
-    assert [(ln["speaker"], ln["open"]["n"]) for ln in opened] == [("lead", 0), ("analyst", 1)]
-    assert len(opens(fake)) == 2
-    ends = [insight.due_after(ln["video_t"], ln["text"]) for ln in opened]
-    assert opened[0]["video_t"] == start and ends[0] == opened[1]["video_t"]
-    assert ends[-1] <= first_t  # a breath before the call
-    assert sum(len(ln["text"].split()) / insight.WORDS_PER_S for ln in opened) <= insight.OPEN_S
+    # the lead's welcome, untimed so it plays at once (#297), then a stretch over the moments
+    # before the first call: the analyst's fact, and on, voice after voice
+    assert [(ln["speaker"], ln["open"]["n"]) for ln in opened] == [("lead", 0)]
+    assert lines[0] == opened[0] and "video_t" not in opened[0]
+    said = before_first(lines, store)
+    assert said[0]["video_t"] == start and len(said) >= 4
+    assert [ln["speaker"] for ln in said] == (["lead", "analyst"] * len(said))[: len(said)]
+    fact = said[1]["insight"]
+    assert fact["kind"] in insight.ANGLES and fact["heard"] == said[0]["text"]
+    for prev, ln in zip(said, said[1:], strict=False):
+        assert ln["video_t"] == insight.due_after(prev["video_t"], prev["text"], insight.TURN_S)
+    assert insight.due_after(said[-1]["video_t"], said[-1]["text"], 0) <= first_t - insight.TURN_S
+    assert len(opens(fake)) == 1
     # the analyst hears the lead's welcome, by name
-    q = opens(fake)[1]["messages"][0]["content"]
-    assert f"{NAMES['lead']} just said: {opened[0]['text']}" in q
-    # once per replay: a second viewing reuses both lines and makes no new call
+    q = next(
+        q for q in stat_calls(fake) if f"Stat, {fact['kind']}: " in q["messages"][0]["content"]
+    )
+    assert f"{NAMES['lead']} just said: {opened[0]['text']}" in q["messages"][0]["content"]
+    # once per replay: a second viewing reuses the open's lines and asks for none of them again
     again, fake, _ = replay(KOBE, store)
     assert opens(fake) == []
-    assert [ln["line_id"] for ln in again if "open" in ln] == [ln["line_id"] for ln in opened]
-    assert sum("open" in ln for ln in store.all("lines")) == 2
+    assert not [
+        q for q in stat_calls(fake) if any(ln["text"] in q["messages"][0]["content"] for ln in said)
+    ]
+    assert [ln["line_id"] for ln in before_first(again, store)] == [ln["line_id"] for ln in said]
+    assert sum("open" in ln for ln in store.all("lines")) == 1
+
+
+def test_the_cold_open_fits_a_welcome_before_a_first_call_at_six_seconds(tmp_path):
+    # 3754092's first call is 6.3 s in: a breath counted into the welcome's own length dropped
+    # it, and the page said nothing for the first 22.7 s (#297)
+    store = Store(tmp_path)
+    lines, fake, vmap = replay(CHELSEA, store)
+    first_t = min(m["video_t"] for m in vmap["moments"])
+    said = before_first(lines, store)
+    assert said and said[0]["speaker"] == "lead" and "open" in said[0]
+    assert all(
+        insight.due_after(ln["video_t"], ln["text"], 0) <= first_t - insight.TURN_S for ln in said
+    )
 
 
 def test_the_cold_open_never_runs_into_the_first_call(tmp_path):
-    # a 10 s run-in, as a video that starts near its first call: the welcome fits, the analyst's
-    # line would run into the call
-    lines, fake, vmap = replay(KOBE, Store(tmp_path), start=480)
+    # a 10 s run-in, as a video that starts near its first call
+    store = Store(tmp_path)
+    lines, fake, vmap = replay(KOBE, store, start=480)
     first_t = min(m["video_t"] for m in vmap["moments"])
-    opened = [ln for ln in lines if "open" in ln]
-    assert [ln["speaker"] for ln in opened] == ["lead"]
-    assert all(insight.due_after(ln["video_t"], ln["text"]) <= first_t for ln in opened)
+    said = before_first(lines, store)
+    assert said and said[0]["speaker"] == "lead"
+    assert all(
+        insight.due_after(ln["video_t"], ln["text"], 0) <= first_t - insight.TURN_S for ln in said
+    )
 
 
 def test_a_kickoff_cold_open_hears_nothing_of_the_first_moment(tmp_path):
@@ -125,24 +163,53 @@ def twelve_words(moment, history):
     return {"line_id": uuid.uuid4().hex, "moment_idx": moment["idx"], "text": "word " * 12}
 
 
-def test_which_videos_have_room_for_both_cold_open_lines(tmp_path):
-    said = {}
+def test_which_videos_open_on_both_cold_open_lines(tmp_path):
+    said, asked = {}, {}
+
+    def counted(moment, history):
+        asked[match_id] += moment["outcome"].startswith(insight.OPEN)
+        return twelve_words(moment, history)
+
     for match_id in ("0020500591", "0049700088", "1298150", "9636", "3754092", "3869685", WSL):
-        r = Replay(match_id, 1e9)
+        r, asked[match_id] = Replay(match_id, 1e9), 0
         store = Store(tmp_path / match_id)
-        asyncio.run(run_replay(r, load_moments(match_id), twelve_words, store, video_map(match_id)))
+        asyncio.run(run_replay(r, load_moments(match_id), counted, store, video_map(match_id)))
         said[match_id] = [e["data"]["speaker"] for e in r.events if e["event"] == "line"]
-    both, jim = ["lead", "analyst"], ["lead"]
-    # 25 s before the first call where the video has it; a video that opens on play has less
-    assert said == {
-        "0020500591": both,
-        "0049700088": both,
-        "3869685": both,
-        WSL: both,  # the film's opening shot
-        "1298150": jim,  # 9.0 s in
-        "9636": jim,  # 9.9 s in
-        "3754092": [],  # 6.3 s in: a 12-word welcome would run into the first call
+    # a line with no room for 8 words is never asked for; 1298150's analyst has room for 8, not 12
+    assert asked == {
+        match_id: len(speakers) + (match_id == CRICKET) for match_id, speakers in said.items()
     }
+    both, jim = ["lead", "analyst"], ["lead"]
+    # with moments before the first call, the analyst's reply is a stretch's fact (#297), which
+    # this commentator never says; from kick-off, the light line, where it fits
+    assert said == {
+        "0020500591": jim,
+        "0049700088": jim,
+        "3869685": both,  # from kick-off, 25 s
+        WSL: jim,
+        "1298150": jim,  # from kick-off, 9.0 s in
+        "9636": both,  # from the start, 9.9 s in
+        "3754092": jim,  # 6.3 s in: the welcome alone
+    }
+
+
+def test_an_open_leftover_too_short_for_a_line_is_never_asked_for(tmp_path):
+    # the welcome said, a turn, then 1 s before the first call's turn: too short to ask Julian
+    asked = []
+
+    def counted(moment, history):
+        asked.append(moment["outcome"].startswith(insight.OPEN))
+        return twelve_words(moment, history)
+
+    vmap = video_map(CRICKET)
+    first_t = min(m["video_t"] for m in vmap["moments"])
+    start = first_t - (12 / insight.WORDS_PER_S + 2 * insight.TURN_S + 1)
+    r = Replay(CRICKET, 1e9)
+    asyncio.run(
+        run_replay(r, load_moments(CRICKET), counted, Store(tmp_path), {**vmap, "start": start})
+    )
+    said = [e["data"]["speaker"] for e in r.events if e["event"] == "line"]
+    assert said == ["lead"] and sum(asked) == 1
 
 
 def test_the_ball_line_opening_a_stretch_hears_the_call_by_name(tmp_path):
@@ -211,9 +278,7 @@ def test_an_open_line_with_a_number_the_match_doesnt_give_is_asked_once_more_the
     assert asked == ["lead", "lead"]  # the welcome twice, then no open at all
     asked.clear()
     good = run(counting("Welcome to the Women's Super League."), store)
-    assert [ln["speaker"] for ln in good] == ["lead", "analyst"] and all(
-        ln["checked"] for ln in good
-    )
+    assert [ln["speaker"] for ln in good] == ["lead"] and all(ln["checked"] for ln in good)
     # a stored open line the check now fails is made again, never said
     stale = Store(tmp_path / "stale")
     for ln in store.all("lines"):
@@ -222,7 +287,7 @@ def test_an_open_line_with_a_number_the_match_doesnt_give_is_asked_once_more_the
         )
     asked.clear()
     again = run(counting("Welcome to the Women's Super League."), stale)
-    assert asked == ["lead", "analyst"] and "40000" not in " ".join(ln["text"] for ln in again)
+    assert asked == ["lead"] and "40000" not in " ".join(ln["text"] for ln in again)
 
 
 KEYED = {  # the open of the keyed WSL run at 7f28aaa, where Julian's line was cut for time
@@ -232,21 +297,22 @@ KEYED = {  # the open of the keyed WSL run at 7f28aaa, where Julian's line was c
 }
 
 
-def test_wsl_hears_both_open_lines_at_a_real_lines_length(tmp_path):
-    # 17 and 13 words: the welcome alone took 8.3 s with its breath, so a 15 s cap that counted
-    # breaths cut Julian; the speech is 11.1 s, said in full a breath before the goal at 39 s
+def test_a_kickoff_open_hears_both_lines_at_a_real_lines_length(tmp_path):
+    # 17 and 13 words, as the keyed WSL run's: the speech is 11.1 s, said in full a turn before
+    # the first call; a 15 s cap that counted breaths once cut Julian
     def keyed(moment, history):
         if not moment["outcome"].startswith(insight.OPEN):
             return None
         text = KEYED[moment["detail"]["speaker"]]
         return {"line_id": uuid.uuid4().hex, "moment_idx": moment["idx"], "text": text}
 
-    r = Replay(WSL, 1e9)
-    asyncio.run(run_replay(r, load_moments(WSL), keyed, Store(tmp_path), video_map(WSL)))
-    said = [e["data"] for e in r.events if e["event"] == "line"]
+    final, store = "3869685", Store(tmp_path)  # its first mapped moment is its first, 25 s in
+    r = Replay(final, 1e9)
+    asyncio.run(run_replay(r, load_moments(final), keyed, store, video_map(final)))
+    said = before_first([e["data"] for e in r.events if e["event"] == "line"], store)
     assert [(ln["speaker"], ln["text"]) for ln in said] == list(KEYED.items())
-    first_t = min(m["video_t"] for m in video_map(WSL)["moments"])
-    assert insight.due_after(said[1]["video_t"], said[1]["text"]) <= first_t
+    first_t = min(m["video_t"] for m in video_map(final)["moments"])
+    assert insight.due_after(said[1]["video_t"], said[1]["text"], 0) <= first_t - insight.TURN_S
 
 
 class SameBridge(Fake):
