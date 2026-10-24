@@ -57,6 +57,8 @@ def football_match(m: dict) -> tuple[dict, list[dict]]:
     } | feed.NAME_OVERRIDES
     end = max((e.get("minute", 0) for e in events if e.get("period", 1) < 5), default=90)
     home, away = (feed._side(m[k][f"{k}_name"]) for k in ("home_team", "away_team"))
+    # shortcut: StatsBomb's kick_off is the venue's local clock, stored as if UTC; a match within
+    # hours of midnight could sit a day off. Upgrade with a venue timezone if that ever matters.
     start = f"{m['match_date']}T{(m.get('kick_off') or '00:00:00')[:8]}"
     fixture = {
         "sport": "football",

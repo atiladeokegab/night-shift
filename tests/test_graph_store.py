@@ -189,3 +189,19 @@ def test_shipped_store_kobes_81_game_sees_only_earlier_games(monkeypatch):
         after["totals"]["points"] - kobe["totals"]["points"] == 81
     )  # can go red: it is in the store
     assert graph.teams("cricket") and graph.teams("football") and graph.teams("basketball")
+
+
+def test_cutoff_is_compared_in_utc_not_as_text(tmp_path, monkeypatch):
+    # Chelsea v Spurs (4) kicks off 20:00 UTC on 2016-05-02. A kickoff of 2016-05-03 00:30+02:00 is
+    # 22:30 UTC on the 2nd: the 20:00 match is earlier, but a text compare of 00:30 on the 3rd would
+    # also pass anything up to then. Put a later match at 23:00 UTC on the 2nd to catch it.
+    late = [*FIXTURES, fx("5", "2016-05-02T23:00:00", "Chelsea", "Arsenal", 9, 0)]
+    build_graph.write({"football": (late, APPS)}, tmp_path / "db")
+    monkeypatch.setattr(graph, "_kv", None)
+    graph._open_store(tmp_path / "db")
+    got = graph.team_form("football", "Chelsea", "2016-05-03T00:30:00+02:00")
+    assert [g["date"] for g in got][0] == "2016-05-02" and got[0]["score"] == "2-2"  # not the 9-0
+    # the other way: 23:30-02:00 is 01:30 UTC on the 3rd, so the 23:00 match is before it
+    got = graph.team_form("football", "Chelsea", "2016-05-02T23:30:00-02:00")
+    assert got[0]["score"] == "9-0"
+    assert graph.team_form("football", "Chelsea", "not a time") == []
