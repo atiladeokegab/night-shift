@@ -199,6 +199,7 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
       const token = ++run.current
       stop.current?.()
       stop.current = null
+      replayId.current = null
       clock.current = null
       origin.current = from
       at.current = 0
@@ -236,6 +237,8 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
   useEffect(() => {
     const on = (e: Event) => {
       if ((e as CustomEvent<string>).detail !== replayId.current) return
+      replayId.current = null
+      run.current++
       stop.current?.()
       stop.current = null
       dispatch({ type: 'failed', refused: ENDED })
