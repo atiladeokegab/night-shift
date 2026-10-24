@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { getReview, postFix } from '../api'
+import { getReview, postFix, waitForExample } from '../api'
 import { submitFix, type Refused } from '../fix'
-import type { Fix, ReviewItem } from '../types'
+import { exampleText, TEACHES } from '../proof'
+import type { Fix, LineCheckExample, ReviewItem } from '../types'
 import { FixSheet, type FixPhase } from './FixSheet'
 import { Nav, type Screen } from './Nav'
 
@@ -13,6 +14,7 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
   const [fixing, setFixing] = useState<{ item: ReviewItem; phase: FixPhase; refused?: Refused } | null>(null)
   const [said, setSaid] = useState('')
   const [fixed, setFixed] = useState<Fix | null>(null) // the last fix sent: its Mubit request id (#239)
+  const [example, setExample] = useState<LineCheckExample | null>(null) // the Line check example it sent (#305)
   const heading = useRef<HTMLHeadingElement>(null)
 
   const load = () => getReview().then(setItems, () => setFailed(true))
@@ -34,6 +36,9 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
         setFixing(null)
         setSaid(fix.recorded ? 'Fix sent. Mubit records it for training.' : 'Fix sent. Kept beside the original.')
         setFixed(fix)
+        setExample(null)
+        if (TEACHES.includes(reason))
+          waitForExample(fix).then((ex) => ex && setExample(ex), () => {})
         heading.current?.focus() // its card is gone: focus goes back to the top of the queue
       },
       // A 503 stores nothing (CONTRACT.md): the sheet stays open with the text to send again.
@@ -112,6 +117,7 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
             {fixed.recorded ? 'Recorded in Mubit' : 'Sent to Mubit, not recorded'}: <code>{fixed.mubit_request_id}</code>
           </p>
         )}
+        {example?.line_id === fixed?.line_id && example && <p className="hint" title={example.mubit_request_id ?? undefined}>{exampleText(example)}</p>}
         {body}
       </main>
       {fixing && (

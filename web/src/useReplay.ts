@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react'
 import { Refused } from './ask'
-import { askCommentator, createReplay, followReplay, getPlayers, getProfile, getShots, lookAt, type StreamStatus } from './api'
+import { askCommentator, createReplay, followReplay, getPlayers, getProfile, getShots, lookAt, waitForExample, type StreamStatus } from './api'
 import { release, replayClock, speaks } from './gate'
-import type { Answer, Fix, Line, LineCheck, Moment, Stats } from './types'
+import { TEACHES } from './proof'
+import type { Answer, Fix, Line, LineCheck, LineCheckExample, Moment, Stats } from './types'
 
 export interface ReplayState {
   phase: 'idle' | 'starting' | 'live' | 'failed'
@@ -21,6 +22,7 @@ export interface ReplayState {
   stats: Stats | null // the latest `stats` event; store-wide, so it outlives a single replay
   fixes: Record<string, Fix> // by line_id: from the `fixed` event or the fix request's answer
   checks: Record<string, LineCheck> // by line_id: Line check's second opinion (#298)
+  examples: Record<string, LineCheckExample> // by line_id: the Line check example its fix sent (#305)
   answers: Answer[] // viewers' questions and the commentator's answers, newest first (#117)
 }
 
@@ -34,6 +36,7 @@ type Action =
   | { type: 'stats'; stats: Stats }
   | { type: 'fixed'; fix: Fix }
   | { type: 'linecheck'; check: LineCheck }
+  | { type: 'example'; example: LineCheckExample }
   | { type: 'answer'; answer: Answer }
   | { type: 'stream'; status: StreamStatus }
   | { type: 'error'; detail: string }
@@ -41,7 +44,7 @@ type Action =
 
 const initial: ReplayState = {
   phase: 'idle', stream: 'ok', gated: false, now: 0, duration: 0, moments: [], lines: [], late: [], queuedMoments: [], queuedLines: [],
-  ended: false, error: null, refused: null, stats: null, fixes: {}, checks: {}, answers: [],
+  ended: false, error: null, refused: null, stats: null, fixes: {}, checks: {}, examples: {}, answers: [],
 }
 
 const waits = (s: ReplayState, item: { video_t?: number }) => s.gated && item.video_t !== undefined
@@ -88,6 +91,7 @@ function reduce(s: ReplayState, a: Action): ReplayState {
     }
     case 'fixed': return { ...s, fixes: { ...s.fixes, [a.fix.line_id]: a.fix } }
     case 'linecheck': return { ...s, checks: { ...s.checks, [a.check.line_id]: a.check } }
+    case 'example': return { ...s, examples: { ...s.examples, [a.example.line_id]: a.example } }
     case 'answer':
       return s.answers.some((x) => x.line_id === a.answer.line_id) ? s : { ...s, answers: [a.answer, ...s.answers] }
     case 'stream': return { ...s, stream: a.status }
@@ -229,7 +233,13 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
   useEffect(() => () => stop.current?.(), [])
 
   // A fix's answer marks the line at once; the `fixed` event that follows on the stream is the same Fix.
-  const markFixed = useCallback((fix: Fix) => dispatch({ type: 'fixed', fix }), [])
+  // A fix with a Wrong reason also sends Line check an example (#305), shown on its line once core has it.
+  const markFixed = useCallback((fix: Fix) => {
+    dispatch({ type: 'fixed', fix })
+    if (!TEACHES.includes(fix.reason)) return
+    const token = run.current
+    waitForExample(fix).then((example) => example && run.current === token && dispatch({ type: 'example', example }), () => {})
+  }, [])
 
   // A viewer's question about the moment on screen; the answer shows at once (the `answer` event that
   // follows is the same one) and is returned for the caller to speak, unless the replay was replaced.
