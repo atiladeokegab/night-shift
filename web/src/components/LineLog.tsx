@@ -16,9 +16,8 @@ interface Props {
   onShots: (name: string) => void
 }
 
-// The Lines card (docs/design.md): every line so far, newest first, with its clock, the model's
-// first-text-word time ("first word" in the mockup: the #37 review asked for the measured thing's name)
-// and "Fix". A fixed line shows the correction over the struck-through original. Viewers' questions and
+// The Lines card (docs/design.md): every line so far, newest first, with its clock, its speaker, the model's
+// first-text-word time (the number; its name in the title, #153) and "Fix". A fixed line shows the correction over the struck-through original. Viewers' questions and
 // the commentator's answers (#117) sit among the lines at the moment they were asked.
 export function LineLog({ lines, late, fixes, moments, onFix, answers, onAsk, shooter, onShots }: Props) {
   return (
@@ -51,6 +50,7 @@ export function LineLog({ lines, late, fixes, moments, onFix, answers, onAsk, sh
             const isLate = late.includes(l.line_id)
             const firstWord = l.first_word_ms != null // undefined or null: only the whole reply was timed
             const ms = l.first_word_ms ?? l.latency_ms
+            const took = `${(ms / 1000).toFixed(2)} s`
             return (
               <li key={l.line_id} className={fix ? 'fixed' : isLate ? 'late' : undefined}>
                 <span className="when num">{m ? clockText(m, true) : ''}</span>
@@ -62,7 +62,8 @@ export function LineLog({ lines, late, fixes, moments, onFix, answers, onAsk, sh
                   Fix
                 </button>
                 <div className="meta-l">
-                  <span className="num">{firstWord ? 'model first text word' : 'model reply'} {(ms / 1000).toFixed(2)} s</span>
+                  <span className={`chip ${l.speaker ?? 'lead'}`}>{l.speaker === 'analyst' ? 'Analyst' : 'Lead'}</span>
+                  <span className="num" title={`${firstWord ? 'model first text word' : 'model reply'} ${took}`}>{took}</span>
                   {fix && <span className="pill fixed">Fixed</span>}
                   {isLate && !fix && <span className="pill late" title="The video had moved past it, so it was not shown or spoken">Late</span>}
                 </div>

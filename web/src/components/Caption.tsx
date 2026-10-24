@@ -6,12 +6,15 @@ interface Props {
   tag?: string // the moment tag of the line or answer
   fixed?: boolean // a producer's fix replaced the line
   asked?: string // an answer's question
+  offAir?: boolean // the answer came back off air: a calm state, never a headline (#153)
+  pending?: string // a viewer's question waiting for its answer, one line in the header (#153)
+  title?: string // the match, at the header's end while no question waits
   children?: ReactNode // a state in place of the caption: waiting, off air
 }
 
 // The caption card docked under the video (#132): the current caption with a speaker chip and the moment
-// tag; for Ask, App's "A viewer asks: ..." and then the answer under its question. Long text wraps inside the card, never clipped.
-export function Caption({ caption, tag, fixed, asked, children }: Props) {
+// tag, then the line; an answer shows under its question. Long text wraps inside the card, never clipped.
+export function Caption({ caption, tag, fixed, asked, offAir, pending, title, children }: Props) {
   const speaker = caption?.kind === 'question' ? 'Viewer' : caption?.speaker === 'analyst' ? 'Analyst' : 'Lead'
   return (
     <section className={`caption glass${fixed ? ' fixed' : ''}`} aria-label="Caption" aria-live="polite">
@@ -20,9 +23,15 @@ export function Caption({ caption, tag, fixed, asked, children }: Props) {
           <div className="cap-h">
             <span className={`chip ${speaker.toLowerCase()}`}>{speaker}</span>
             {tag && <span className={`tag${fixed ? ' fixed' : ''}`}>{fixed ? 'Fixed · ' : ''}{tag}</span>}
+            {pending ? (
+              <span className="cap-side"><span className="chip viewer">Viewer</span><span className="cap-q">{pending}</span></span>
+            ) : title && <span className="cap-side cap-title">{title}</span>}
           </div>
-          {caption.kind === 'question' ? (
-            <p className="cap-asks">{caption.text}</p>
+          {offAir ? (
+            <p className="cap-state">Couldn't answer that one. Try again.</p>
+          ) : caption.kind === 'question' ? (
+            // The Viewer chip already says who asks.
+            <p className="cap-asks">{caption.text.replace(/^A viewer asks:\s*/, '')}</p>
           ) : (
             <>
               {asked && <p className="cap-asks">A viewer asks: {asked}</p>}
