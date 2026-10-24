@@ -1,95 +1,112 @@
 # The demo
 
-**The promise: every match gets a commentator.** The peak is a goal called aloud over the broadcast
-picture. The script runs two minutes.
+**The promise: every match gets a commentator.** The peak is Kobe Bryant's 81st point called aloud
+over the NBA's own broadcast picture. The script runs two minutes.
 
 Everything runs from main's deployed URL, with the sound on. Anything shown outside our product, such
 as Mubit's console, is said aloud as such.
+
+**Three matches are commentary only.** Spain v England, Messi v Mbappé and Hamilton at Silverstone
+are videos whose owners block embedding: their tiles and pages show a still and a "highlights on
+YouTube" link, and the commentary runs on its own clock. The demo uses the three that embed: Kobe's
+81, Jordan's last shot and India v Pakistan.
 
 ## Before going on
 
 Open three tabs:
 
-1. **Wall**, <https://night-shift-5zvig7nbvq-ew.a.run.app>: the home page, every match playing muted.
-2. **Stage**, <https://night-shift-5zvig7nbvq-ew.a.run.app/stage>, cued on the goal. The wall's
-   full-screen video can't be dragged and reaches the goal about 3 minutes 40 seconds after a tap, so
-   the goal is cued here, where the YouTube player has its own controls. In this order:
-   1. Tap Football. Wait until the bar under the video reads "15 held" (about 20 seconds): every line
-      is written and waiting for its moment.
-   2. Pause the video with its own controls. While it is paused, the commentary waits.
-   3. Drag the video to 5:05. The bar now reads "next line 5:15". If it shows an earlier time, the
-      lines weren't all held yet: wait for "15 held" and drag again.
+1. **Wall**, <https://night-shift-5zvig7nbvq-ew.a.run.app>: the home page, one tile per match.
+2. **Stage**, <https://night-shift-5zvig7nbvq-ew.a.run.app/stage>, cued on Kobe's 81st point. The
+   wall's full-screen video can't be dragged and reaches the 81st point 16 minutes after a tap, so the
+   peak is cued here, where the YouTube player has its own controls. In this order:
+   1. Tap Kobe. The video loads at 8:00, and the first line is due at 8:10.
+   2. Pause the video at once with its own controls, before 8:10. While it is paused, the commentary
+      waits.
+   3. Wait until the bar under the video reads "20 held": every line is written and waiting for its
+      moment.
+   4. Drag the video to 23:45. The bar now reads "next line 23:53". If it shows an earlier time, the
+      lines weren't all held yet: wait for "20 held" and drag again.
 3. **Mubit's console**, signed in, showing the requests for our task.
 
 Check `/health` says ok.
 
-**Warm both voices.** A library voice that hasn't spoken for a while can fail its first line: in the
-headless check, the first cricket audio returned 503 and then 200 on retry.
+**Warm both voices.** A library voice that hasn't spoken for a while can fail its first line: in an
+earlier headless check, the first cricket audio returned 503 and then 200 on retry.
 
 1. From a terminal, with the ElevenLabs key in the environment, run `uv run python -m core.voice`. It
    speaks a short line in every voice, the sport picks included, and prints FAILED for any that fail.
 2. Still do the taps, which prove the voices play in the browser. On the wall tab, tap India v
    Pakistan and wait until Raju speaks one line, then tap ← Wall.
-3. Tap Spain v England and wait until the first line is spoken, then tap ← Wall. Skip this if the
-   Stage tab's cue already played a line aloud.
+3. Tap Jordan's last shot and wait until Sam, the basketball voice, speaks one line, then tap ← Wall.
+   Jordan, not Kobe, so the Kobe tap in the script is still fresh.
 
 While the wall is open, read the proof panel's numbers and the adapter's state once, so the spoken
 ones match the screen.
 
 **If the highlights can't play** (a tile says "Highlights unavailable here", or /stage says "Video
-unavailable"): /stage shows lines as they arrive, without waiting for a moment, so skip step 3. The
-wall's full screen still keeps the commentary on the replay clock without the picture, so steps 2
-and 4 work as written.
+unavailable"): the commentary runs on its own clock, a line every few seconds, so skip the Stage
+cue. The wall's full screen still keeps the commentary on the replay clock without the picture, so
+steps 2 and 4 work as written.
+
+**If the commentator is off air** (the badge reads OFF AIR, and the subtitle "Commentator is off air
+for a moment"): the model provider has no credit left, so no new lines will come. Say so, and show
+what it already did:
+
+*Point at OFF AIR.* "Our commentator is off air right now: its model credit has run out. Here's what
+it has already called." *Point at the proof panel's line count, then switch to the Mubit console
+tab.* "This is Mubit's console, not our product: every line Touchline has called is stored here, one
+request each, and it's the data our own commentator trains on." Then go to step 6, the proof. There
+is no page in our product that lists the stored lines' text, so show them in Mubit's console.
 
 ## The script
 
 The section times are targets for a two-minute run, estimated rather than timed: no person has
-rehearsed it against a clock yet. The waits inside them (the first call 6 seconds after a tap, the goal
-10 seconds after play, Raju in 6 to 20 seconds) were measured on the deployed page (see the headless
-check below).
+rehearsed this script against a clock yet. The video times (8:10, 23:53, 24:03) come from the match's
+video map and its play-by-play; they were not seen live (see the check below).
 *Italics* are what's on screen; the quoted text is spoken.
 
 ### 1. The promise (0:00–0:15)
 
-*Wall tab: six matches, all playing, none of them called.*
+*Wall tab: six matches, none of them called. Kobe, Jordan and India v Pakistan play muted; the other
+three show their still, marked "Commentary only".*
 
 "Tonight thousands of matches will be played that nobody calls. Fans get a ticker, or silence.
 Touchline gives every match a commentator."
 
 ### 2. Tap into a match (0:15–0:30)
 
-*Tap Spain v England, the 2023 Women's World Cup final. It goes full screen, and Lauren Hemp's early
-chance is called about 6 seconds later (measured).*
+*Tap Kobe's 81 v Toronto, 22 January 2006. It goes full screen at 8:00, and Kobe's jumper for his
+30th point is called at 8:10 (unverified live).*
 
-"Tap a match, and the commentator takes it. It reads the real match data and calls each moment as it
-reaches the picture."
+"Tap a match, and the commentator takes it. It reads the real play-by-play and calls each moment as
+it reaches the picture."
 
-### 3. The goal, the peak (0:30–0:55)
+### 3. Eighty-one, the peak (0:30–0:55)
 
-*Stage tab, paused at 5:05 on the same final. Press play. Olga Carmona's goal is called at 5:15,
-10 seconds later (measured).*
+*Stage tab, paused at 23:45 on the same game, Lakers 120, Raptors 102. Press play. Kobe's free throw
+for 80 is called at 23:53, 8 seconds later, and the free throw for 81 at 24:03, 18 seconds later.*
 
-"Here's the goal."
+"Forty-three seconds left. Kobe's on the line."
 
-*Stop talking. Let the goal be called aloud, with the subtitle.*
+*Stop talking. Let both free throws be called aloud, with the subtitle.*
 
-"That line was written from the real match data and held until the goal reached the picture."
+"Those lines were written from the real play-by-play and held until each shot reached the picture."
 
 ### 4. Another sport, same commentator (0:55–1:20)
 
 *Wall tab. Tap ← Wall, then India v Pakistan, the 2022 T20 World Cup. Babar Azam's wicket is called
-by Raju, in 6 to 20 seconds (measured).*
+by Raju, in 6 to 20 seconds (measured at 00:15 UTC, before the commentator went off air).*
 
 "Same commentator, same prompt, different sport, and a cricket voice."
 
 ### 5. The fix (1:20–1:35)
 
 *In the Lines card, pick a line and tap Fix. Lines are written afresh on every replay, so the line to
-fix can't be chosen in advance. If a line has a factual slip (for example 'hosts' for Spain), fix that.
-Otherwise, fix any line's wording, for example American spelling ('defense' to 'defence') or a vaguer
-line to name the player. Keep the correction to a word or two, typed in a few seconds. The sheet shows
-what Touchline said, with the line ready to correct. Type the correction and send. The line shows
-Fixed and the proof panel's fix count goes up by one.*
+fix can't be chosen in advance. If a line has a factual slip, fix that. Otherwise, fix any line's
+wording, for example American spelling ('defense' to 'defence') or a vaguer line to name the player.
+Keep the correction to a word or two, typed in a few seconds. The sheet shows what Touchline said,
+with the line ready to correct. Type the correction and send. The line shows Fixed and the proof
+panel's fix count goes up by one.*
 
 "Say a line is wrong. A producer corrects it right here. The fix is kept beside the original, and it
 goes back through Mubit to train our own commentator."
@@ -119,14 +136,32 @@ Then one of these, matching the adapter's state on the panel:
 
 ## Rehearsal
 
-Rehearse once on the deployed URL before recording, then note here the date, the commit deployed on
-main and the total time. Check in particular:
+Rehearse once on the deployed URL before recording, with the commentator on air, then note here the
+date, the commit deployed on main and the total time. Check in particular:
 
-- the Stage tab, paused at 5:05, calls the goal at 5:15 once played;
+- the Stage tab reads "20 held", then "next line 23:53" after the drag to 23:45, and once played calls
+  the free throws for 80 and 81 at 23:53 and 24:03, over the right shots;
+- the wall's Kobe tap calls the 30-point jumper at 8:10;
 - the voice changes when the sport changes;
 - a fix shows as Fixed and the proof panel's fix count goes up by one.
 
-### Headless check, 2026-10-24 about 00:15 UTC
+### Kobe cue check, 2026-10-24 about 07:25 UTC
+
+On the deployed URL (the /stage page byte for byte as on integration at 7634e23), in headless Chrome
+on our build server, with the commentator off air:
+
+- **Seen live:** /stage has a Kobe tab; tapping it loads the video at 8:00, and the bar read "Ⅱ 8:00 ·
+  commentary waits" before YouTube refused to play headless (error 150). The stream's error turned the
+  badge to OFF AIR with the subtitle "Commentator is off air for a moment". On the wall, Kobe, Jordan
+  and India v Pakistan read "Tap to hear it called"; Messi v Mbappé, Spain v England and Hamilton read
+  "Commentary only".
+- **From the data, not seen live:** Kobe's replay has 20 moments, each with a video time, hence "20
+  held". The video map puts the 30-point jumper at 8:10 (490.5 s), the free throws for 80 and 81 at
+  23:53 and 24:03 (1433 and 1443 s), Bonner's jumper at 24:23 and the final buzzer at 25:02. These come
+  from the checked-in video map; nobody has yet watched the video to confirm each shot is on screen at
+  its time.
+
+### Earlier headless check, 2026-10-24 about 00:15 UTC (the football script before #104)
 
 Each step was checked on the deployed URL (main at 42f73cc, the wall live) in headless Chrome on our
 build server. This is not the timed rehearsal, which still needs a person.
