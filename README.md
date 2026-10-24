@@ -47,7 +47,10 @@ automatic correction attempt, with no person involved; if it fails too, a line b
 data is spoken instead. A producer fixes the rest from the page, and each fix goes to Mubit the same
 way. Only a fix whose corrected reply passes the number check is recorded as training data; one that
 fails is stored but not recorded (`recorded: false`), and a fix to an analyst's stat line is never
-recorded.
+recorded. A fix that passes that first, unrecorded check is then sent again, the same request, on
+the recording key; that recorded second reply is checked again and can still fail. It stays
+recorded in Mubit (`recorded: true`, `reply_passed: false`), but it doesn't count toward the next
+version (`fixes_toward_next`).
 A correction is the next turn of the line's own call, so only the messages change, never the
 prompt, tools or model. It says what was wrong and gives the facts, and the commentator writes
 the fixed line itself. A correction is recorded only after an unrecorded try passes the number
@@ -303,7 +306,7 @@ The totals count both, each priced at its own model's rate, and `by_speaker` spl
 | Full line, p50 / p95 | 904 ms / 1,795 ms | not measured |
 | Cost per line | $0.0019 | not reported by Mubit |
 | Tokens per line, in / out | about 1,600 / 31 (11,215,402 / 218,395 over 6,988 lines) | not measured |
-| Corrections | 67 recorded for training, all 67 counted toward the next adapter version: the team's, from the number-check fix list; and 27 automatic correction attempts by the number check (`fixes_auto_sent`), not recorded corrections | |
+| Corrections | 67 recorded for training, all 67 counted toward the next adapter version: the team's, from the number-check fix list; and 27 automatic correction attempts by the number check (`fixes_auto`), not recorded corrections | |
 
 Split by speaker (`by_speaker`, same read):
 
