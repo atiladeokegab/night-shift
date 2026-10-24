@@ -10,7 +10,9 @@ insight.checked_answer over agent.commentator.answer. The expected answers were 
 moments (data/sample) before anything was run: `say` holds the regexes a right answer must all
 match, `never` the claims it must not make (a later result, a player who isn't playing). After
 the first run, three regexes (time left twice, Mbappé's goals) were narrowed: they took a bare
-score's "2" or "3" as the answer. The facts they expect are unchanged.
+score's "2" or "3" as the answer. The facts they expect are unchanged. After the first keyed run
+(#332), three were widened to take a true answer to the question asked: Mbappé's "second goal" for
+what just happened, "we'll find out" for who wins, and "an own goal" alone for who scored last.
 
 An answer is correct when it says everything in `say` and nothing in `never`; refused when it says
 neither but declines (or is off air); wrong otherwise. `in message` is whether the request the
@@ -84,7 +86,7 @@ QUESTIONS = [
         "match": WC,
         "idx": 26,
         "q": "What just happened?",
-        "say": ["Mbapp", r"2-2|level|equali[sz]|two[- ]all|two each"],
+        "say": ["Mbapp", r"2-2|level|equali[sz]|two[- ]all|two each|second"],
         "gold": "What just happened? Kylian Mbappé scores again, and France are level at 2-2!",
     },
     {
@@ -99,7 +101,7 @@ QUESTIONS = [
         "idx": 26,
         "q": "Who wins the World Cup?",
         "trap": True,
-        "say": [r"2-2|level|two[- ]all|two each|" + NO],
+        "say": [r"2-2|level|two[- ]all|two each|find out|" + NO],
         "never": [r"\b(?:Argentina|France) (?:wins|won|go on to win)\b"],
         "gold": "Who lifts the trophy? Nobody knows yet: it's level at 2-2 with 80 minutes played.",
     },
@@ -295,7 +297,7 @@ QUESTIONS = [
         "match": ORL,
         "idx": 42,
         "q": "Who scored the last goal?",
-        "say": ["own goal|Poliana", n("4", "four")],
+        "say": ["own goal|Poliana"],
         "gold": "The last goal? An own goal by Orlando's Poliana, and the Courage lead 4-3.",
     },
     {

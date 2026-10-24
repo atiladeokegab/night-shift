@@ -91,6 +91,19 @@ def test_the_verdicts():
     assert verdict("I can't say, but it's 2-2.", q) == "refused"
     assert verdict("Commentator is off air for a moment", q) == "refused"
 
+    def keyed(question: str, idx: int) -> dict:
+        return next(q for q in QUESTIONS if (q["q"], q["idx"]) == (question, idx))
+
+    # #332: true answers to the question asked, from the keyed run
+    said = "Kylian Mbappé has just scored his second goal of the match!"
+    assert verdict(said, keyed("What just happened?", 26)) == "correct"
+    said = "We'll find out who lifts the trophy when this match finishes."
+    assert verdict(said, keyed("Who wins the World Cup?", 26)) == "correct"
+    said = "The last goal in this match was an own goal!"
+    assert verdict(said, keyed("Who scored the last goal?", 42)) == "correct"
+    said = "How much time remains in this final?"  # the echo stays wrong
+    assert verdict(said, keyed("How long is left?", 30)) == "wrong"
+
 
 def test_a_name_not_in_the_match_is_named_in_the_message():
     # #332: the keyed run dodged Neymar and LeBron James; it is told they are not in the match
