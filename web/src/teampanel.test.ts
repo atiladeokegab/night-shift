@@ -48,6 +48,15 @@ test('the panel reads top to bottom: headings, then short lists', () => {
     'Won 2-1 at home against Everton, 20 April 2016']) assert.ok(html.includes(s), s)
 })
 
+test('a first match on record reads as such, with no squad box', () => {
+  const html = renderToStaticMarkup(createElement(TeamFacts, { data: {
+    teams: [{ team: 'Orlando Pride', form: [], squad: [], note: "This is Orlando Pride's first match on record" }, { team: 'Courage', form: [game], squad: [] }],
+    head_to_head: [],
+  } }))
+  assert.ok(html.includes('first match on record') && !html.includes('no recent games'))
+  assert.ok(!html.includes('<h4>Squad</h4>'))
+})
+
 test('Teams starts at h2 under the Live h1 and nests its headings without skips', () => {
   const panel = renderToStaticMarkup(createElement(TeamPanel, { sport: 'football', matchId: '1' }))
   const facts = renderToStaticMarkup(createElement(TeamFacts, { data: {
