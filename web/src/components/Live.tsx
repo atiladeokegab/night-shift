@@ -1,4 +1,5 @@
 import { momentTag } from '../moment'
+import { showNoVideoCaption } from '../player'
 import { commentatorName } from '../teams'
 import { SPORT_NAMES, type Line, type Match, type Sport } from '../types'
 import { onScreen, type Clock, type ReplayState } from '../useReplay'
@@ -79,7 +80,7 @@ export function Live(props: Props) {
           <ScoreBar match={match} moment={moment} moments={shown.moments} />
           <OnAir voice={voice} label={voiceLabel} />
         </div>
-        {replay.phase === 'live' && video === 'unavailable' && <p className="novideo">Highlights can't play here. Commentary carries on, timed to the replay.</p>}
+        {showNoVideoCaption(replay, video) && <p className="novideo">Highlights can't play here. Commentary carries on, timed to the replay.</p>}
         {replay.stream === 'reconnecting' && (
           <div className="banner"><div className="glass warn" role="alert"><b />Reconnecting to the replay…</div></div>
         )}
