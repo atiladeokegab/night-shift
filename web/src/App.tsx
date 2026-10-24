@@ -4,7 +4,7 @@ import { listMatches, listVoices, postFix, videoStartAt } from './api'
 import { About } from './components/About'
 import type { FixPhase } from './components/FixSheet'
 import { FixSheet } from './components/FixSheet'
-import { submitFix } from './fix'
+import { submitFix, type Refused } from './fix'
 import { embeds } from './player'
 import { Live, type VoiceStatus } from './components/Live'
 import type { Screen } from './components/Nav'
@@ -14,9 +14,10 @@ import type { VideoState } from './components/VideoStage'
 import { VoiceSheet } from './components/VoiceSheet'
 import { Wall } from './components/Wall'
 import { chipName, defaultVoice, wallOrder } from './teams'
-import { SPORTS, type Line, type Match, type Moment, type Sport, type Voice } from './types'
+import { SPORTS, type Answer, type Line, type Match, type Moment, type Sport, type Voice } from './types'
 import { QuietSpell, WHERE } from './quiet'
-import { airAnswer, bigSoon, isBig, type Caption } from './turns'
+import { askKey, isRepeat } from './ask'
+import { airAnswer, bigSoon, isBig, isDecisive, type Caption } from './turns'
 import { onScreen, useReplay } from './useReplay'
 import { useSpeech } from './useSpeech'
 import { viewOf } from './view'
@@ -32,12 +33,14 @@ export default function App() {
   // A-6.3@1: a voice picked for a sport sticks to that sport; otherwise its default_for voice.
   const [picked, setPicked] = useState<Partial<Record<Sport, string>>>({})
   const [video, setVideo] = useState<VideoState>('loading')
-  const [fixing, setFixing] = useState<{ line: Line; phase: FixPhase } | null>(null)
+  const [fixing, setFixing] = useState<{ line: Line; phase: FixPhase; refused?: Refused } | null>(null)
   const [voiceSheet, setVoiceSheet] = useState(false)
   const [toast, setToast] = useState('')
   // #131: a viewer's question, then its answer, takes the caption from the lines while it is on
   const [asking, setAsking] = useState<Caption | null>(null)
   const asked = useRef(0) // only the newest question may change the caption
+  const inFlight = useRef<string | null>(null) // the question being asked, by askKey
+  const [interrupted, setInterrupted] = useState<string[]>([]) // answers a decisive moment cut off
   const [paused, setPaused] = useState(false)
   const [describeQuiet, setDescribeQuiet] = useState(true) // #186: on by default
   const speech = useSpeech()
@@ -59,7 +62,10 @@ export default function App() {
   // as the line; a layout effect runs before useReplay's speaking effect, so `presented` already has it.
   const presented = useRef<Moment[]>([])
   const sayLine = useCallback(
-    (line: Line) => speech.say(line, voiceNow.current, isBig(presented.current.find((m) => m.idx === line.moment_idx))),
+    (line: Line) => {
+      const m = presented.current.find((x) => x.idx === line.moment_idx)
+      speech.say(line, voiceNow.current, isBig(m), isDecisive(m))
+    },
     [speech],
   )
   const replay = useReplay(sayLine, speech.hush)
@@ -215,26 +221,44 @@ export default function App() {
         setFixing((f) => (mine(f) ? null : f))
         say('Fix sent. Kept beside the original.')
       },
-      // A 503 stores nothing (CONTRACT.md), so the sheet stays open with the text to send again.
-      () => setFixing((f) => (mine(f) ? { line, phase: 'error' } : f)),
+      // A 503 or 422 stores nothing (CONTRACT.md), so the sheet stays open with the text to send again.
+      (refused) => setFixing((f) => (mine(f) ? { line, phase: 'error', refused } : f)),
     )
   }
 
   // #117: an off-air answer is shown, never spoken. #131: the stage shows the question, then the answer
   // while it is spoken. #139: the analyst answers at a gap, never with a big moment due in the next 3 s.
-  const askCommentator = async (question: string, momentIdx: number, viewer = true) => {
+  // A decisive moment may cut an answer off: the Lines card marks it, with "Hear it again".
+  // A new ask (no `again`) is sent once: the quiet-spell ask and a press at the same moment are one row.
+  const askCommentator = async (question: string, momentIdx: number, viewer = true, again?: () => Promise<Answer>) => {
+    if (!again && isRepeat(replay.state.answers, inFlight.current, question, momentIdx)) return
+    const key = again ? null : (inFlight.current = askKey(question, momentIdx))
     const sent = session.current
     const mine = ++asked.current
-    await airAnswer(
-      question,
-      () => replay.ask(question, momentIdx),
-      (answer, started) =>
-        answer.off_air ? null : speech.sayAnswer(answer, voiceNow.current, started, () => bigSoon(ahead.current.queuedMoments, ahead.current.now)),
-      setAsking,
-      () => session.current === sent && asked.current === mine,
-      undefined,
-      viewer ? undefined : '',
-    )
+    try {
+      await airAnswer(
+        question,
+        again ?? (() => replay.ask(question, momentIdx)),
+        (answer, started) =>
+          answer.off_air
+            ? null
+            : (speech
+                .sayAnswer(answer, voiceNow.current, started, () => bigSoon(ahead.current.queuedMoments, ahead.current.now))
+                ?.then((cut) => {
+                  if (cut && session.current === sent) setInterrupted((ids) => [...ids, answer.line_id])
+                }) ?? null),
+        setAsking,
+        () => session.current === sent && asked.current === mine,
+        undefined,
+        viewer ? undefined : '',
+      )
+    } finally {
+      if (key && inFlight.current === key) inFlight.current = null
+    }
+  }
+  const hearAgain = (answer: Answer) => {
+    setInterrupted((ids) => ids.filter((id) => id !== answer.line_id))
+    void askCommentator(answer.question, answer.moment_idx, true, async () => answer)
   }
 
   // The stage's caption (#132's contract): the question or answer while one is on, else the line on
@@ -300,6 +324,8 @@ export default function App() {
           onVoiceSheet={() => setVoiceSheet(true)}
           onFix={(line) => setFixing({ line, phase: 'edit' })}
           onAsk={askCommentator}
+          interrupted={interrupted}
+          onHear={hearAgain}
           onShots={replay.shots}
           onPlayers={replay.players}
           onProfile={replay.profile}
@@ -340,7 +366,7 @@ export default function App() {
         />
       )}
       {fixing && (
-        <FixSheet key={fixing.line.line_id} line={fixing.line} phase={fixing.phase} onSend={sendFix}
+        <FixSheet key={fixing.line.line_id} line={fixing.line} phase={fixing.phase} refused={fixing.refused} onSend={sendFix}
           onCancel={() => setFixing(null)} />
       )}
       {voiceSheet && (

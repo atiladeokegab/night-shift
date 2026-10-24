@@ -87,6 +87,42 @@ def test_lead_and_analyst_lines_are_reported_apart(tmp_path):
     }
 
 
+def test_moment_to_audio_counts_only_lines_with_audio(tmp_path, monkeypatch):
+    # #233: a voice that takes 50 ms; a second line it never voices is left out, not counted as 0
+    import asyncio
+
+    import httpx
+
+    from core.replay import Replay, run_replay
+    from core.voice import Speaker
+
+    async def slow_voice(request):
+        await asyncio.sleep(0.05)
+        silent = b"no audio" in request.content
+        return httpx.Response(500 if silent else 200, content=b"mp3")
+
+    def commentate(moment, history):
+        text = "Shot!" if moment["idx"] == 0 else "no audio"
+        return {"line_id": f"f1-{moment['idx']}", "text": text, "model": "claude-haiku-4-5"}
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "fake-eleven")
+    moments = [
+        {"sport": "football", "match_id": "f1", "idx": i, "clock": c, "type": "Shot"}
+        for i, c in enumerate(["03:10", "03:11"])
+    ]
+    store = Store(tmp_path)
+    speaker = Speaker(httpx.MockTransport(slow_voice), store)
+
+    async def run():
+        await run_replay(Replay("f1", speed=1e6), moments, commentate, store, None, speaker.prepare)
+        await asyncio.gather(*speaker.jobs.values())
+
+    asyncio.run(run())
+    lead = stats(store)["by_speaker"]["lead"]
+    assert lead["lines"] == 2 and lead["audio_lines"] == 1
+    assert lead["audio_first_ms_p50"] >= 50 and lead["audio_first_ms_p95"] >= 50
+
+
 def fix(line_id, at, recorded=True):
     return {"line_id": line_id, "created_at": f"2026-10-24T{at}:00:00+00:00", "recorded": recorded}
 
@@ -98,6 +134,12 @@ def test_fixes_toward_the_next_adapter_count_since_its_latest_record(tmp_path):
     store.append("adapter", {"status": "training", "created_at": "2026-10-24T13:00:00+00:00"})
     store.append("fixes", fix("b", "14"))
     assert stats(store)["fixes_recorded"] == 2 and stats(store)["fixes_toward_next"] == 1
+    # another task's adapter record isn't commentary's: the count toward the next one runs on
+    store.append(
+        "adapter",
+        {"task": "line_check", "status": "ready", "created_at": "2026-10-24T15:00:00+00:00"},
+    )
+    assert stats(store)["fixes_toward_next"] == 1
 
 
 def test_only_recorded_fixes_count_as_recorded(tmp_path):

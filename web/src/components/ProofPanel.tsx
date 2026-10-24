@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { getReview, getStats } from '../api'
 import type { Adapter, Autonomy, SpeakerStats, Stats } from '../types'
 import { SideBySide } from './SideBySide'
-import { autonomyRows, nextAdapter } from '../proof'
+import { adapterGood, adapterRows, autonomyRows, nextAdapter } from '../proof'
 
 interface Props {
   live: Stats | null // the latest `stats` event from the replay, newer than the first GET /stats
@@ -29,6 +29,7 @@ export function ProofPanel({ live, matchId }: Props) {
   else {
     const empty = stats.lines === 0
     const adapter = stats.adapter
+    const tasks = adapterRows(stats.adapters)
     const next = nextAdapter(stats.fixes_toward_next ?? 0, adapter?.needed ?? 25)
     // the lead's calls (Haiku) and the analyst's stat lines (Sonnet) apart, so neither skews the other
     const groups: [string, SpeakerStats][] = stats.by_speaker
@@ -47,6 +48,8 @@ export function ProofPanel({ live, matchId }: Props) {
             <dd>{next.note ?? 'Your fixes Mubit trains on'}</dd>
           </div>
           <Figure label="Fixes" value={String(stats.fixes_recorded ?? 0)} />
+          {/* a moment with a producer's fix is said in the fixed words on every later replay (#232) */}
+          {stats.spoken_from_fix !== undefined && <Figure label="Fixes heard" value={String(stats.spoken_from_fix)} />}
           {!!flagged && (
             <div className="wide">
               <dt className="label">To review</dt>
@@ -58,8 +61,15 @@ export function ProofPanel({ live, matchId }: Props) {
           )}
           <div className="wide">
             <dt className="label">Adapter</dt>
-            <dd className={adapter?.status === 'ready' ? 'good' : undefined}>{adapterText(adapter)}</dd>
+            <dd className={adapterGood(stats) ? 'good' : undefined}>{adapterText(adapter)}</dd>
           </div>
+          {/* each Mubit task's latest version, as recorded from Mubit's console (#209) */}
+          {!!tasks.length && (
+            <div className="wide">
+              <dt className="label">Mubit tasks</dt>
+              {tasks.map((row) => <dd key={row}>{row}</dd>)}
+            </div>
+          )}
         </dl>
         {empty && <p className="small">No lines yet.</p>}
       </>
@@ -125,7 +135,7 @@ function Speaker({ name, s }: { name: string; s: SpeakerStats }) {
       </div>
       {/* one "First word" caption over both, so each label fits one line at 1280 px; "Cost" over its own */}
       <div className="cap" aria-hidden="true"><dt className="label">First word</dt></div>
-      <div className="cap side" aria-hidden="true"><dt className="label">Cost</dt></div>
+      <div className="cap cost" aria-hidden="true"><dt className="label">Cost</dt></div>
       <Figure className="third" label={<><span className="sr-only">First word </span>Median</>} value={v(seconds(s.first_word_ms_p50))} />
       <Figure className="third" label={<><span className="sr-only">First word </span>P95</>} value={v(seconds(s.first_word_ms_p95))} />
       <Figure className="third" label={<><span className="sr-only">Cost </span>Per line</>} value={v(dollars(s.cost_per_line_usd))} />

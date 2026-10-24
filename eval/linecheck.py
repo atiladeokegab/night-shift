@@ -153,6 +153,7 @@ def _margins(text: str, header: dict) -> list[float]:
 
 TRAILS = r"\s+(?:(?:are|is|now|still)\s+){0,2}(?:trail|trails|trailing|behind|down)\b(?!\s+(?:the|to|in|on|at)\b)"  # noqa: E501
 WINS = r"\s+(?:(?:have|has|will)\s+)?(?:win|wins|won|take it|takes it|beat|beats)\b(?!\s+away)(?!\s+(?:the|a|in|on)\s+(?:ball|toss|header|free|corner|penalty))"  # noqa: E501
+TRAILS_TEAM = r"\s+(?:(?:are|is|now|still)\s+){0,2}(?:trail|trails|trailing)\s+(?:the\s+)?"
 _NUMBER = "|".join([*insight.UNITS[1:], *insight.TENS, r"\d+", "nil"])
 LEVEL = re.compile(
     rf"\b(?:level|all square|tied|apiece|equali[sz]e[sd]?|ties it|tie it|(?:{_NUMBER})[ -]all)\b"
@@ -181,6 +182,16 @@ def lead_claims(text: str, header: dict, team: str | None = None) -> list[str | 
             continue
         named = rf"\b({names})(?:{insight.LEADS}|{EXTENDS})"
         out += [side[c.lower()] for c in re.findall(named, sentence, re.I)]
+        # "Lakers trail the Raptors": TRAILS alone skips "trail the", which is mostly not a team
+        out += [
+            other[side[c.lower()]]
+            for c in re.findall(rf"\b({names}){TRAILS_TEAM}(?:{names})\b", sentence, re.I)
+        ]
+        # "two-one to Argentina": the team in front, or level when the numbers are equal
+        for a, b, c in re.findall(
+            rf"\b({_NUMBER})[\s-]+({_NUMBER})\s+to\s+(?:the\s+)?({names})\b", sentence, re.I
+        ):
+            out.append(None if a.lower() == b.lower() else side[c.lower()])
         for _ in ACTOR_LEADS.finditer(re.sub(named, "", sentence, flags=re.I)):
             if (team or "").lower() not in side:
                 return None
@@ -478,6 +489,8 @@ def gold(header: dict, m: dict, past: list[dict], text: str) -> dict | None:
         margins = _margins(text, header)
         diff = {abs(tl["home"] - tl["away"]) for tl in tallies}
         right += [n in diff for n in margins]
+        if sport == "football" and re.search(r"\b(?:goalless|scoreless)\b", text, re.I):
+            right.append(want["home"] == want["away"] == 0)  # "still goalless" is 0-0
         for _, idx in pairs:
             used |= set(idx)
         used |= {i for i in heard if t[i] in margins}

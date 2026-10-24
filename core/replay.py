@@ -11,10 +11,10 @@ import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime
 
-from core import insight
+from core import insight, review
 from core.stats import stats
 
-log = logging.getLogger("night_shift.replay")
+log = logging.getLogger("touchline.replay")
 # never the provider's text: it can carry its console URL and request id onto the screen
 OFF_AIR = "Commentator is off air for a moment"
 
@@ -52,9 +52,12 @@ class Replay:
         # last one, so it is not forgotten while the video still plays (core/app.py)
         self.ends_at: float | None = None
         self.seen = self.started  # a viewer's last request (time.monotonic), for FORGET_S
+        self.moment_at = self.started  # the latest moment's publish: moment-to-audio's start (#233)
         self._changed = asyncio.Condition()
 
     async def publish(self, event: str, data: dict) -> None:
+        if event == "moment":
+            self.moment_at = time.monotonic()
         async with self._changed:
             self.events.append({"event": event, "data": data})
             self._changed.notify_all()
@@ -128,7 +131,7 @@ async def run_replay(
         if speak:
             due = replay.started + line["video_t"] - video.get("start", 0) if video else None
             # this replay's id, so a cached line spoken again is charged to the replay that spoke it
-            speak({**line, "replay_id": replay.id}, moment, due)
+            speak({**line, "replay_id": replay.id, "moment_at": replay.moment_at}, moment, due)
         spoke.append(line["line_id"])
         await replay.publish("line", line)
         await replay.publish("stats", await asyncio.to_thread(stats, store))
@@ -141,18 +144,42 @@ async def run_replay(
         # the texts said so far: a stat line that nearly repeats one of the last few is dropped;
         # a moment's own line is news, so it is always said
         recent: list[str] = []
+        own = [  # this match's moment lines, not the lead's later replies to the analyst at an idx
+            ln
+            for ln in await asyncio.to_thread(store.all, "lines")
+            if ln.get("match_id") == replay.match_id
+            and ln.get("speaker", "lead") == "lead"
+            and "reply" not in ln
+            and "open" not in ln  # the cold open's lines (#221): said before any moment
+        ]
+        fixed = {f["line_id"]: f for f in await asyncio.to_thread(store.all, "fixes")}
+        # a producer's fix is heard on the next replay (#232): the newest one for each moment
+        idx_of = {ln["line_id"]: ln.get("moment_idx") for ln in own}
+        heard = {idx_of[f["line_id"]]: f for f in fixed.values() if f["line_id"] in idx_of}
+        try:
+            from data.matches import match_header
+
+            header = match_header(replay.match_id)
+        except KeyError:  # not a bundled match: its fixes are checked against the moment alone
+            header = None
+        if gaps and not start_idx:  # the cold open (#221): once, before the first mapped moment
+            first = min(video_t, key=video_t.get)
+            opened = await asyncio.to_thread(
+                gaps.cold_open,
+                [m for m in moments if m["idx"] < first],
+                next(m for m in moments if m["idx"] == first),
+                video.get("start", 0),
+                video_t[first],
+                commentate,
+            )
+            for stat, said_line in opened:  # its score is the one before the first mapped moment
+                await replay.publish("moment", {**stat, "video_t": said_line["video_t"]})
+                await say(said_line, stat)
+                recent.append(said_line["text"])
         # a jump (#163): earlier play is on screen from the start, its score and clock and the lines
         # already said for it, untimed so nothing waits for the picture; it is never called again
         if start_idx:
-            said = {
-                ln["moment_idx"]: ln
-                for ln in await asyncio.to_thread(store.all, "lines")
-                # the moment's own line, not the lead's later reply to the analyst at its idx
-                if ln.get("match_id") == replay.match_id
-                and ln.get("speaker", "lead") == "lead"
-                and "reply" not in ln
-            }
-            fixed = {f["line_id"]: f for f in await asyncio.to_thread(store.all, "fixes")}
+            said = {ln["moment_idx"]: ln for ln in own}
             for moment in moments:
                 if moment["idx"] < start_idx:
                     await replay.publish("moment", moment)
@@ -179,8 +206,24 @@ async def run_replay(
                 history.append(moment)
                 continue
             await replay.publish("moment", {**moment, **tag})
-            # commentate sees only moments up to this one: later events never reach the model
-            line = await asyncio.to_thread(insight.checked, commentate, moment, list(history))
+            fix = heard.get(moment["idx"])
+            if fix and not [  # the check today, as /review's: a milestone left out is no error
+                w
+                for w in insight.wrong_numbers(fix["corrected_text"], moment, header, history)
+                if review.UNSAID not in w
+            ]:
+                line = {
+                    "line_id": uuid.uuid4().hex,
+                    "match_id": replay.match_id,
+                    "moment_idx": moment["idx"],
+                    "sport": moment.get("sport"),
+                    "text": fix["corrected_text"],
+                    "fixed": True,
+                    "fix_id": fix["line_id"],  # a fix is keyed by the line it fixed
+                    "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
+                }
+            else:  # commentate sees only moments up to this one: later events never reach the model
+                line = await asyncio.to_thread(insight.checked, commentate, moment, list(history))
             history.append(moment)
             if line is not None:  # None: the commentator had nothing usable to say
                 rejected = line.pop("rejected", None)

@@ -12,7 +12,7 @@ check:
 
 # The merge gate: offline even when .env holds a real key. Replays each sample with FakeProvider.
 smoke: check
-	MUBIT_API_KEY= ANTHROPIC_API_KEY= uv run python -m core.smoke
+	MUBIT_API_KEY= MUBIT_FALLBACK_KEY= ANTHROPIC_API_KEY= ELEVENLABS_API_KEY= uv run python -m core.smoke
 
 # One-time GCP setup: secrets from MUBIT_API_KEY and ELEVENLABS_API_KEY, the state bucket, IAM.
 bootstrap:

@@ -1,6 +1,6 @@
 # Contract
 
-Written by the lead's agent from the day spec (`~/hub/projects/night-shift/day-spec.md`). Every area
+Written by the lead from the day's spec. Every area
 builds against it; only the lead changes it (anything else is a change-request, AGENTS.md §6).
 
 ## Assignment
@@ -8,7 +8,7 @@ builds against it; only the lead changes it (anything else is a change-request, 
 "Build a product that routes its LLM calls through Mubit and turns your corrections into model
 updates for a recurring task." Track: Own your intelligence layer.
 
-Demo: Kobe Bryant's 81 against Toronto (2006) replays and Night Shift calls it aloud, the first word of text in
+Demo: Kobe Bryant's 81 against Toronto (2006) replays and Touchline calls it aloud, the first word of text in
 about 0.5 s (median), the producer fixes one wrong line, the big model's recorded lines are shown
 where our trained commentator's will go (6 versions trained, none has passed Mubit's test yet, best
 55.8%, and the app does not call an adapter), then one tap switches to India v Pakistan 2022 and the same commentator calls cricket.
@@ -55,17 +55,25 @@ and refuses to start without `STORE_URL=gs://bucket/prefix`.
   each mapped moment is filled with lines due at the last line's words / 2.7 + 2 s, until 6 s before
   the next mapped moment. Each one is a Line with `video_t`, said over a synthetic Moment
   `{...that moment, type: "Stat", outcome: "<kind>: <detail>", players: {}, detail: {speaker,
-  "Partner just said": <last line>}}` with the same `idx` (a reply's outcome is "the lead answers the
+  "you are": <name>, partner: "<name>, the <role>", "call partner by name": "yes" | "no",
+  "<name> just said": <last line>}}` with the same `idx` (names from `NAMES` in core/voice.py: Jim
+  the lead, Julian the analyst; the name before "just said" is whoever said the last line) (a reply's outcome is "the lead answers the
   analyst, who just said: <last line>"). Its request is a line's message with the analyst's own
   system prompt (agent/analyst.md), no tools, never recorded, on `ANALYST_MODEL` (default
   claude-sonnet-5-5 with `thinking: {"type": "between_tools"}`, priced in core/stats.py; a
-  model outside its prices is left out of the cost). An **insight** (`speaker: "analyst"`) carries `insight: {match_id, after_idx, n, kind, detail, heard}`, where `kind` is
+  model outside its prices is left out of the cost). An **insight** (`speaker: "analyst"`) carries `insight: {match_id, after_idx, n, kind, detail, heard, by, named}` (plus `never open with`
+  when its first try opened like an earlier analyst line: no opener's first 3 words repeat in a replay), where `kind` is
   `"player profile"`, `"next to score"`, `"tally"`, `"score story"`, `"momentum"` or `"positions"`
   and `detail` is one short fact (a profile, odds or positions give one fact per insight; a
   pre-match fact names its period, such as "this season before tonight"), built only from moments up to `after_idx` and the pre-match pack. Every
   4th line in a stretch is a **reply** (`speaker: "lead"`, `reply: {..., kind: "reply"}`, no stat).
-  Both are cached per (match_id, after_idx, n, v: 2) and reused by later replays; a replay makes at
-  most 160 new insight and reply calls. A fix on either goes back, unrecorded, with that line's own
+  A replay from the start opens with a **cold open** (#221) before the first mapped moment, from
+  `video_start`: the lead's welcome naming the match, then the analyst's light line (`open: {...,
+  kind: "cold open", n: 0 | 1, kickoff}`), each kept only if it ends 2 s before the first call and
+  the open's speech stays within 15 s; said over the last moment before the first mapped one, else (`kickoff`) over the
+  first with its counts zeroed and no history.
+  All three are cached per (match_id, after_idx, n, v: 4) and reused by later replays; a replay
+  makes at most 160 new calls for them. A fix on any goes back, unrecorded, with that line's own
   Stat request.
 - **Fix** (core/): `{line_id, corrected_text, reason, created_at, mubit_request_id,
   reply_matched: bool, recorded: bool}`; `recorded` is true only when Mubit recorded the correction
@@ -75,7 +83,7 @@ and refuses to start without `STORE_URL=gs://bucket/prefix`.
   marks `data/sample/`; `youtube_id` and `video_start` are there when the match has a video map.
   `embed: false` (absent otherwise) means the video's owner blocks embedding: pages show its poster and
   a link to it on YouTube, never the player, and the commentary runs on the replay's own clock.
-  `video_start` is the whole second the page starts the video at, 10 s before its first mapped moment (or 0).
+  `video_start` is the whole second the page starts the video at, 25 s before its first mapped moment (or 0): room for the cold open (#221).
   `peak_idx` (#163) is the moment "Jump to the big moment" starts at; `peak_video_start` is the video's start
   for that jump, 10 s before the first mapped moment from `peak_idx` on.
 - **Video map** (data/video/): `{youtube_id, embed?, source, moments: [{idx, video_t}]}`; `idx` is a Moment's
@@ -106,12 +114,19 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   ended, playing or paused; 404 once forgotten. A finished replay is forgotten after FORGET_S (60 s)
   with no stream open and no request naming it (stream, seen, ask, players, shots, profile, fix).
 - `GET /lines/{line_id}` → the stored Line, 404 if none (core): the live smoke checks each line it
-  streamed was stored.
-- `POST /lines/{line_id}/fix {corrected_text, reason?}` → Fix (core): stores the Fix in `fixes`
+  streamed was stored. A fixed line also carries `fix`: its latest Fix, with the correction call's
+  `mubit_request_id` (#239); an unfixed line has no `fix` key.
+- `POST /lines/{line_id}/fix {corrected_text, reason?}` → Fix (core). With env `PRODUCER_TOKEN` set,
+  it needs header `X-Producer-Token` equal to it (constant-time compare), else 401 and nothing is
+  stored or sent to Mubit; unset (local, tests) the check is off (#232). It stores the Fix in `fixes`
   beside the line, sends the correction turn (Agent below) and publishes `fixed` (the Fix), then
   `stats`, on the replay stream that carried the line; a late subscriber gets them too. 404 unknown
-  line, 422 blank `corrected_text` (trimmed), 503 no commentator or the Mubit call failed (nothing
-  stored, so the page can send it again).
+  line, 422 blank `corrected_text` (trimmed) or over 200 characters, 422 `{detail: {wrong: [...]}}`
+  when the number check finds the fix contradicts the line's moment (the review queue's check, a
+  milestone left out allowed; nothing stored or sent to Mubit) (#232), 503 no commentator or the
+  Mubit call failed (nothing stored, so the page can send it again). Every later replay of that
+  moment says the newest fix's text, rechecked against the moment, instead of calling the model: a
+  Line with `fixed: true` and `fix_id` (the fixed line's id), stored in `lines` (#232).
 - `POST /replays/{id}/ask {question, moment_idx?}` → Answer `{line_id, moment_idx, question, text,
   ...}` (core): a viewer's question (1-200 characters, trimmed) answered in 1-2 sentences from the
   match up to `moment_idx`, the last moment on the viewer's screen (default: the latest sent), never
@@ -155,17 +170,27 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   404 for an unknown line or voice; 503 with no `ELEVENLABS_API_KEY` or every attempt failed,
   and the page then uses browser speech. The key never reaches the browser; each call logs
   `voice line=<id> first_byte_ms=<n> model=<model>`. (core)
+- `GET /review` → `[{line_id, match_id, match, sport, moment_idx, clock, period, score, play, text,
+  wrong, later_check, lines, others}]`, newest first: the producer's fix queue, one entry per
+  mistake among the stored lead lines the number check flags, unfixed (`wrong` is the check's
+  reasons). Grouping and `later_check` are under `GET /stats` → `autonomy` below. (core,
+  `core/review.py`)
 - `GET /stats` → `{lines, fixes, mubit_requests, first_word_ms_p50, first_word_ms_p95,
   latency_ms_p50, latency_ms_p95, tokens_in, tokens_out, cost_per_line_usd, adapter, by_speaker,
   fixes_recorded, fixes_toward_next, voice_chars, matches_measured, cost_per_match_usd,
-  model_cost_per_match_usd, voice_cost_per_match_usd, fixes_auto, autonomy, autonomy_by_match}` (core). The `stats` SSE event carries the same object.
+  model_cost_per_match_usd, voice_cost_per_match_usd, fixes_auto, spoken_from_fix, autonomy, autonomy_by_match}` (core). The `stats` SSE event carries the same object.
   - `by_speaker: {lead, analyst}`, each `{model, lines, first_word_ms_p50, first_word_ms_p95,
     cost_per_line_usd}`: the lead's calls and the analyst's stat lines apart (a line with no
-    `speaker` is the lead's).
+    `speaker` is the lead's). The lead's also has `audio_first_ms_p50`, `audio_first_ms_p95` and
+    `audio_lines` (#233): ms from its moment's publish to its audio ready on the server, over the
+    `audio_lines` lead lines voiced when the replay stored them; both percentiles are null when
+    `audio_lines` is 0.
   - `fixes_recorded: int`: fixes with `recorded: true`; `fixes` counts every stored fix.
   - `fixes_auto: int`: the `auto_fixes` records, fixes the number check sent itself (reason
     `auto: number check`): a lead line's rejected first try, corrected to its accepted retry (#162).
     Stored apart from `fixes`, so never in `fixes`, `fixes_recorded` or the review queue's fixed lines.
+  - `spoken_from_fix: int`: stored lead lines a replay said in a producer's fixed words (`fixed:
+    true`, #232). Never a model call, so never in `autonomy`.
   - `autonomy: {called, first_time, auto_fixed, to_human}` (#204): the lead's moment calls the
     number check saw (stored `checked: true`; not the analyst's lines, the lead's replies to them, or
     any line stored before the flag) by how the check left them: passed first
@@ -192,7 +217,14 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
     come from the latest `adapter` record in the store, which `python -m eval.record_adapter` appends
     from Mubit's console; before one exists, `not_trained` and nulls. `kept` is never inferred from
     stored lines, since a stored line doesn't prove Mubit kept it. `cost_measurable` is false while
-    the app can't call the adapter.
+    the app can't call the adapter. These are the commentary task's: a record with no `task` is
+    commentary's, and another task's record leaves this key and `fixes_toward_next` alone.
+  - `adapters: {[task]: {status, version: int|null, score: number|null, target: number|null,
+    passed: bool|null, kept: int|null, recorded_at}}`: each Mubit task's latest `adapter` record
+    (#209), keyed `commentary`, `where_are_we` or `line_check`; a task with no record is absent.
+    `score` is the console's "matched N% of the provider model's answers", `target` its target (e.g.
+    95) and `passed` its gate; `kept` is the console's kept examples, never requests. Each field is only what
+    `python -m eval.record_adapter --task ...` recorded from the console; null where it didn't say.
 
 ## Agent
 
@@ -225,5 +257,5 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
 ## Check
 
 `make check` (ruff, ruff format, pytest) and `make smoke` (check, then an offline replay of each
-sample match through the app with `FakeProvider`). Contract tests: `tests/acceptance/test_A_2_*.py`,
+sample match through the app with `FakeProvider`). Contract tests:
 `tests/test_core_spine.py`.

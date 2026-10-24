@@ -11,7 +11,7 @@ set -euo pipefail
 REGION="${REGION:-europe-west1}"
 SERVICE="${SERVICE:-night-shift}"
 STATE_BUCKET="${STATE_BUCKET:-$PROJECT-state}"
-MIN_INSTANCES="${MIN_INSTANCES:-0}"  # the event playbook sets 1 on demo day: no cold start
+MIN_INSTANCES="${MIN_INSTANCES:-0}"  # set 1 for a demo: no cold start
 # The one list of secrets: each mounts as its upper-cased name (mubit-api-key is
 # MUBIT_API_KEY), and scripts/bootstrap.sh creates and grants exactly these.
 SECRETS="mubit-api-key elevenlabs-api-key"
@@ -37,7 +37,7 @@ else
 fi
 MOUNTS="$(for s in $SECRETS; do printf '%s=%s:latest,' "$(tr 'a-z-' 'A-Z_' <<<"$s")" "$s"; done)"
 # The owner's key, a pinned version of the same secret (no new secret, so no new IAM grant): the
-# commentator moves to it if the lent key above runs out of credit (402).
+# commentator moves to it if the demo key above runs out of credit (402).
 MUBIT_FALLBACK_VERSION="${MUBIT_FALLBACK_VERSION:-3}"
 [[ "$MUBIT_FALLBACK_VERSION" =~ ^[0-9]+$ ]] || { echo "deploy: MUBIT_FALLBACK_VERSION must be a version number" >&2; exit 1; }
 MOUNTS+="MUBIT_FALLBACK_KEY=mubit-api-key:$MUBIT_FALLBACK_VERSION,"
@@ -47,8 +47,8 @@ MOUNTS+="MUBIT_FALLBACK_KEY=mubit-api-key:$MUBIT_FALLBACK_VERSION,"
 # sourced: only VOICE_* lines are read from it, so no key can ride along. Vars are split on "@"
 # (gcloud's ^@^ escape), which no value may hold, so a label can have commas.
 VOICE_ENV=""
-# The live key is a teammate's, lent for the demo: its app must not train on our lines. The lead's
-# own key trains, from scripts/replay_matches.py. MUBIT_RECORD=on make deploy records live lines again.
+# The live site runs on a separate demo key whose app must not train on these lines. The owner's
+# key trains, from scripts/replay_matches.py. MUBIT_RECORD=on make deploy records live lines again.
 MUBIT_RECORD="${MUBIT_RECORD:-off}"
 [[ "$MUBIT_RECORD" =~ ^(on|off)$ ]] || { echo "deploy: MUBIT_RECORD must be on or off" >&2; exit 1; }
 for name in $( (compgen -e; [[ -f .env ]] && sed -n 's/^\(VOICE_[A-Z0-9_]*\)=.*/\1/p' .env) \
@@ -90,7 +90,7 @@ gcloud run deploy "$SERVICE" --source . --region "$REGION" --project "$PROJECT" 
 RELEASE="$(gcloud run services describe "$SERVICE" --region "$REGION" --project "$PROJECT" \
   --format 'value(status.url,status.latestReadyRevisionName)')"
 URL="${RELEASE%%$'\t'*}"
-# The release record, one line: what is live, by commit, revision and URL. hub live forwards it.
+# The release record, one line: what is live, by commit, revision and URL.
 echo "release: commit=$COMMIT revision=${RELEASE#*$'\t'} url=$URL"
 curl -fsS --max-time 30 "$URL/health"
 echo
