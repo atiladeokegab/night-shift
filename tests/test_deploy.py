@@ -1,6 +1,7 @@
 """scripts/deploy.sh with stub gcloud, curl and uv: which env vars it would deploy, no network."""
 
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -257,7 +258,9 @@ def test_the_backup_voice_version_can_be_overridden_or_turned_off(tmp_path):
     done, deployed = deploy(tmp_path / "b", ELEVENLABS_FALLBACK_VERSION="none")
     assert done.returncode == 0, done.stderr
     assert not any(s.startswith("ELEVENLABS_API_KEY_FALLBACKS") for s in secrets(deployed))
-    assert "secrets versions" not in (tmp_path / "b" / "calls").read_text()
+    calls = (tmp_path / "b" / "calls").read_text()
+    assert "versions describe latest --secret elevenlabs-api-key" in calls  # still mounted
+    assert not re.search(r"versions describe \d+ --secret elevenlabs-api-key", calls)
 
 
 @pytest.mark.parametrize(
@@ -301,3 +304,22 @@ def test_empty_daily_budget_uses_guard_default_and_zero_disables_it():
     assert Guard(env={}).budget == 50
     guard = Guard(env={"DAILY_BUDGET_USD": "0"})
     assert guard.budget == 0 and not guard.off_air(store)
+
+
+@pytest.mark.parametrize(
+    ("secret", "env"),
+    [
+        ("converse-llm-secret", {"CONVERSE_AGENT_ID": "agent_1"}),
+        ("elevenlabs-api-key", {}),
+        ("mubit-api-key", {}),
+    ],
+)
+def test_a_missing_secret_stops_the_deploy_before_the_build(tmp_path, secret, env):
+    done, deployed = deploy(tmp_path, FAIL_ON=f"--secret {secret}", **env)
+    assert done.returncode == 1 and not deployed
+    assert secret in done.stderr
+
+
+def test_the_converse_secret_is_checked_only_when_it_will_mount(tmp_path):
+    done, deployed = deploy(tmp_path, FAIL_ON="--secret converse-llm-secret")
+    assert done.returncode == 0 and deployed
