@@ -136,22 +136,52 @@ def test_a_fix_sends_the_line_and_the_fixed_text_as_score_check_examples(tmp_pat
         store.append("lines", {"line_id": "w", "match_id": KOBE, "moment_idx": 6, "text": WRONG})
         # the review page's reason, never a Wrong one: every fix reached no example before
         fix = {"corrected_text": RIGHT, "reason": "fix list: wrong number"}
-        for _ in range(2):  # the same line fixed twice is still two examples
-            assert client.post("/lines/w/fix", json=fix).status_code == 200
-            for _ in range(100):
-                if len(store.all("scorecheck_examples")) == 2:
+        ids = []
+        for n in (1, 2):  # the same line fixed twice is still two examples
+            got = client.post("/lines/w/fix", json=fix)
+            assert got.status_code == 200
+            ids.append(got.json()["fix_uid"])
+            for _ in range(200):  # the receipt is written last, once the send ends
+                if len(store.all("scorecheck_receipts")) == n:
                     break
                 time.sleep(0.02)
-            time.sleep(0.1)
         line = client.get("/lines/w").json()
     rows = store.all("scorecheck_examples")
     assert [(r["source"], r["kind"], r["gold"], r["line_id"], r["text"]) for r in rows] == [
         ("fix", "corrected", "wrong", "w", WRONG),
         ("fix", "matched", "ok", "w", RIGHT),
     ]
-    # the review page's training panel (#400): the line's own examples, request ids as stored
+    # the review page's training panel (#400): each example names the fix that sent it, and each
+    # fix's receipt says how many went: the second sent none (each example goes once ever)
+    assert ids[0] != ids[1] and [r["fix_uid"] for r in rows] == [ids[0], ids[0]]
     assert line["scorecheck_examples"] == rows
-    assert all("mubit_request_id" in r for r in line["scorecheck_examples"])
+    assert [(r["fix_uid"], r["sent"], r["failed"]) for r in line["scorecheck_receipts"]] == [
+        (ids[0], 2, False),
+        (ids[1], 0, False),
+    ]
+
+
+def test_a_failed_score_check_send_gets_a_failed_receipt(tmp_path):
+    def boom(line, sent):
+        raise RuntimeError("mubit down")
+
+    store = Store(tmp_path)
+    deps = Deps(
+        list_matches,
+        load_moments,
+        lambda m, history: None,
+        correct=lambda line, text, reason="": {"mubit_request_id": "fix-1", "reply_passed": True},
+        score_teach=boom,
+    )
+    with TestClient(create_app(store=store, deps=deps)) as client:
+        store.append("lines", {"line_id": "w", "match_id": KOBE, "moment_idx": 6, "text": WRONG})
+        fix = client.post("/lines/w/fix", json={"corrected_text": RIGHT}).json()
+        for _ in range(200):
+            if store.all("scorecheck_receipts"):
+                break
+            time.sleep(0.02)
+    [receipt] = store.all("scorecheck_receipts")
+    assert (receipt["fix_uid"], receipt["sent"], receipt["failed"]) == (fix["fix_uid"], 0, True)
 
 
 def test_fixes_made_before_now_are_sent_once_and_counted(tmp_path):

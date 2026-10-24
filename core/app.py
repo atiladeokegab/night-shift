@@ -316,14 +316,32 @@ def create_app(
             row = {"line_id": line["line_id"], **sent, "created_at": at}
             await asyncio.to_thread(store.append, "linecheck_fixes", row)
 
-    async def score_teach(line: dict, corrected: str) -> None:
-        """A fix as Score check examples (#321): the line as said and the producer's text."""
+    async def score_teach(line: dict, corrected: str, fix_uid: str) -> None:
+        """A fix as Score check examples (#321): the line as said and the producer's text. Its
+        receipt, written when the send ends, says how many went and whether a call failed (#400)."""
         from eval.seed_scorecheck import send_fix
 
+        tried: list[dict | None] = []
+
+        def teach(said, sent):
+            tried.append(got := need_deps().score_teach(said, sent))
+            return got
+
+        rows, failed = [], False
         try:
-            await asyncio.to_thread(send_fix, store, line, corrected, need_deps().score_teach)
+            rows = await asyncio.to_thread(send_fix, store, line, corrected, teach, fix_uid)
         except Exception as exc:
             log.warning("score check example for %s not sent: %s", line["line_id"], str(exc)[:300])
+            failed = True
+        failed = failed or any(t and t["kind"] == "error" for t in tried)
+        at = datetime.now(UTC).isoformat(timespec="seconds")
+        receipt = {
+            "fix_uid": fix_uid,
+            "line_id": line["line_id"],
+            "sent": len(rows),
+            "failed": failed,
+        }
+        await asyncio.to_thread(store.append, "scorecheck_receipts", {**receipt, "created_at": at})
 
     def stop_later(replay: Replay) -> None:
         if replay.stopping:
@@ -408,6 +426,9 @@ def create_app(
             **({"fix": fix} if fix else {}),
             **({"linecheck_example": sent[-1]} if sent else {}),
             "scorecheck_examples": scored,
+            "scorecheck_receipts": [
+                x for x in store.all("scorecheck_receipts") if x.get("line_id") == line_id
+            ],
         }
 
     @app.post("/lines/{line_id}/fix")
@@ -444,6 +465,7 @@ def create_app(
             "fixes",
             {
                 "line_id": line_id,
+                "fix_uid": uuid.uuid4().hex,  # its Score check examples and receipt name it (#400)
                 "corrected_text": req.corrected_text,
                 "reason": req.reason,
                 **fix_context(line),  # what later lines' requests carry, without reading "lines"
@@ -465,7 +487,7 @@ def create_app(
             tasks.add(task)
             task.add_done_callback(tasks.discard)
         if d.score_teach:  # any reason: its label is the data's, and the fix passed the check
-            task = asyncio.create_task(score_teach(line, req.corrected_text))
+            task = asyncio.create_task(score_teach(line, req.corrected_text, fix["fix_uid"]))
             tasks.add(task)
             task.add_done_callback(tasks.discard)
         return fix
