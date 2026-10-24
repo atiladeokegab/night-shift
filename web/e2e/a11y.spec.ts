@@ -41,8 +41,16 @@ async function serious(page: Page) {
 const smallTargets = (page: Page) => page.evaluate(() => {
   const out: string[] = []
   for (const el of document.querySelectorAll<HTMLElement>('button, a[href], input, select, textarea, [role=tab]')) {
-    const r = el.getBoundingClientRect()
+    let r = el.getBoundingClientRect()
     if (!r.width || !r.height || el.closest('.sr-only, p, [aria-hidden=true]') || getComputedStyle(el).visibility === 'hidden') continue
+    // A control in a sideways scroller (the sport tabs) is tapped once scrolled to: measure it there.
+    for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) {
+      if (!/auto|scroll/.test(getComputedStyle(a).overflowX) || a.scrollWidth <= a.clientWidth) continue
+      const ar = a.getBoundingClientRect(), er = el.getBoundingClientRect()
+      a.scrollLeft += er.left < ar.left ? er.left - ar.left : Math.max(0, er.right - ar.right)
+      r = el.getBoundingClientRect()
+      break
+    }
     const mine = (hit: Element | null) => !!hit && (el === hit || el.contains(hit) || !!el.labels?.length && [...el.labels].some((l) => l.contains(hit)))
     const circleMiss = (cx: number, cy: number) => {
       for (let i = 0; i < 8; i++) {
@@ -77,6 +85,23 @@ for (const width of WIDTHS) {
     expect(await serious(page), 'live').toEqual([])
     expect(await smallTargets(page), 'live').toEqual([])
   })
+}
+
+// Low-vision visitors swap fonts and enlarge text: with the web fonts blocked (the fallback is wider), and again
+// with text at 200%, the bars may wrap, but no control's 44 px target may land on another's.
+for (const width of WIDTHS) {
+  for (const zoom of [100, 200]) {
+    test(`44 px targets hold with the web fonts blocked, text at ${zoom}%, at ${width}`, async ({ page }) => {
+      await page.route(/\.woff2?(\?|$)/, (r) => r.abort())
+      if (zoom !== 100) await page.addInitScript((z) => addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = `${z}%` }), zoom)
+      await page.setViewportSize({ width, height: 900 })
+      await page.goto('/')
+      await expect(page.getByRole('button', { name: KOBE })).toBeVisible()
+      expect(await smallTargets(page), 'wall').toEqual([])
+      await openLive(page)
+      expect(await smallTargets(page), 'live').toEqual([])
+    })
+  }
 }
 
 test('axe on the review queue: each Fix button says its visible words first', async ({ page }) => {
