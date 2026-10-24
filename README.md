@@ -12,6 +12,8 @@
 
 **Automated audio description for live sport, for the matches no human describer covers.** A big model calls each key moment through Mubit, which is training a smaller commentator on those calls (6 adapter versions so far, none passed yet), with every producer fix kept as a correction.
 
+Sky Sports now describes [about 109 Premier League games a season](#the-problem) aloud, and none below the top flight. Touchline is for every other match with a data feed.
+
 [**Try it live**](https://night-shift-5zvig7nbvq-ew.a.run.app) · [**For judges**](#for-judges) · [**Real numbers**](#real-numbers) · [**Architecture**](docs/ARCHITECTURE.md) · [**Known limitations**](#known-limitations) · [**Run it**](#run-it) · [**Demo script**](docs/demo.md)
 
 <img src="docs/img/live.png" alt="The live page calling the 1998 NBA Finals Game 6, Michael Jordan's last shot as a Bull. Above the video card, the sport bar with Wall, the four sports, Voice: Sam and Next match. On the video card, the score bug JAZ 70-70 BUL, 08:05, Q4, an ON AIR pill naming Sam, and playback controls along the bottom. Under the card, the docked caption, marked ANALYST and 08:05 3 POINTS: Level at 70, and the numbers say there's a 44% chance Michael Jordan scores Chicago's next basket. That's the best single option on the floor. On the right, the Lines card, newest first, all at 08:05: at the top the analyst's prediction line, the same as the caption; below it the analyst's stat line, Kukoc came in shooting 46 percent this season, 481 of 1044 over 94 games. Chicago needed that, with the game all square.; and below that the lead's call, Kukoc from deep! Toni Kukoc with the three from twenty-five feet, and it's tied at seventy! Each line has a Fix button and its model first-text-word time. Below, the Proof card." width="100%">
@@ -161,7 +163,7 @@ the same numbers as `GET /stats` ([`web/src/components/ProofPanel.tsx`](web/src/
 Each criterion weighs the same; one line each, with where to check it.
 
 - **Use of Mubit (a correction becomes a model update):** every call goes through one Mubit task; its recorded lines have trained [6 adapter versions](#real-numbers) so far (none passed yet), and a producer's [fix](#producer-fixes) is stored beside the line as the correction for the next version.
-- **Usefulness (a real recurring task):** live audio description of sport is [voluntary and patchy](#the-problem), and the one big broadcaster's service covers the top flight only; Touchline speaks the key moments of [six real matches in four sports](#the-six-matches) from their real event data.
+- **Usefulness (a real recurring task):** a major broadcaster now describes [the Premier League only](#the-problem), and below it live audio description is voluntary and patchy; Touchline speaks the key moments of [six real matches in four sports](#the-six-matches) from their real event data.
 - **Technical execution:** a line in [0.53 s to its first word](#real-numbers) (p50), gated on the video's clock, an offline test suite (`make check`) and a live smoke test on every deploy; [architecture](docs/ARCHITECTURE.md) and [known limitations](#known-limitations).
 - **Demo:** two minutes on the live URL, scripted in [docs/demo.md](docs/demo.md); the [60-second path](#the-60-second-path) above is the short version.
 
@@ -211,6 +213,12 @@ because no version has passed.
 
 ## The problem
 
+On 10 October 2026 Sky Sports launched live descriptive audio commentary for the Premier League:
+one match a day each game week, about 109 of the league's 380 games a season
+([ISPreview](https://www.ispreview.co.uk/index.php/2026/10/sky-sports-to-introduce-live-subtitles-and-live-descriptive-audio-commentary.html)).
+A major broadcaster now ships audio description for live football, but only for the top flight, and
+none below it. Touchline is for every other match with a data feed.
+
 At least 2.2 billion people have a near or distance vision impairment
 ([WHO](https://www.who.int/news-room/fact-sheets/detail/blindness-and-visual-impairment)). For a fan
 who can't see the screen, a match that nobody describes is a match they can't follow.
@@ -218,13 +226,10 @@ who can't see the screen, a match that nobody describes is a match they can't fo
 <!-- QUOTE PLACEHOLDER: a blind or low-vision fan on following a match that nobody describes.
 The lead supplies the quote and who said it; set it here as a blockquote. -->
 
-Live audio description of sport is voluntary and patchy. In UK football some top clubs, such as
-Manchester City, and some smaller ones, such as Wrexham, Bolton, Cardiff and Altrincham, run
+Outside Sky's matches, live audio description is voluntary and patchy. In UK football some top clubs,
+such as Manchester City, and some smaller ones, such as Wrexham, Bolton, Cardiff and Altrincham, run
 audio-descriptive commentary, and a Level Playing Field survey found few clubs offering it live
 ([Disability News Service](https://www.disabilitynewsservice.com/premier-league-should-be-ashamed-of-treatment-of-blind-fans/)).
-Sky Sports launched live descriptive audio commentary for the Premier League on 10 October 2026: one
-match a day each game week, about 109 of the league's 380 games a season, and none below the top
-flight ([ISPreview](https://www.ispreview.co.uk/index.php/2026/10/sky-sports-to-introduce-live-subtitles-and-live-descriptive-audio-commentary.html)).
 Rules don't close the gap: in the US the FCC requires the top networks to describe 87.5 hours a
 quarter, and live sport is effectively outside it
 ([Federal Register](https://www.govinfo.gov/content/pkg/FR-2024-03-12/html/2024-05186.htm)). Where a
