@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Line } from '../types'
+import { useSheetFocus } from '../focus'
 
 const REASONS = ['Wrong fact', 'Wrong player', 'Wrong score', 'Tone', 'Other']
 
@@ -19,6 +20,8 @@ export function FixSheet({ line, phase, onSend, onCancel }: Props) {
   const unchanged = !text.trim() || text.trim() === line.text.trim() // nothing to send yet
   const [reason, setReason] = useState(REASONS[0])
   const box = useRef<HTMLTextAreaElement>(null)
+  const sheet = useRef<HTMLDivElement>(null)
+  useSheetFocus(sheet) // then the effect below puts it in the text box
   const sending = phase === 'sending'
 
   useEffect(() => {
@@ -30,7 +33,7 @@ export function FixSheet({ line, phase, onSend, onCancel }: Props) {
 
   return (
     <div className="scrim" onClick={(e) => e.target === e.currentTarget && !sending && onCancel()}>
-      <div className="sheet glass" role="dialog" aria-modal="true" aria-labelledby="fix-h">
+      <div className="sheet glass" ref={sheet} role="dialog" aria-modal="true" aria-labelledby="fix-h">
         <h2 id="fix-h">Fix this line</h2>
         <div className="field">
           <span className="label">Touchline said</span>

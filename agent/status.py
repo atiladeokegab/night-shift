@@ -5,6 +5,7 @@ lines' frozen prompt, template and tools stay one task."""
 from __future__ import annotations
 
 import logging
+import re
 import time
 import uuid
 from datetime import UTC, datetime
@@ -32,6 +33,7 @@ MESSAGE = Template(
 )
 QUARTERS = ("First", "Second", "Third", "Fourth")
 HALVES = {1: "First half", 2: "Second half", 5: "Penalty shootout"}
+END = {"Finish", "Full time", "End of game"}  # a match's last moment: whoever leads has won
 log = logging.getLogger(__name__)
 
 
@@ -65,9 +67,18 @@ def _people(m: dict) -> str:
 
 
 def _lead(m: dict) -> str:
-    """Who leads (#185), or a chase's state; F1's order is in its score."""
-    d = m["detail"]
-    return d.get("lead") or d.get("chase") or "see the score"
+    """Who leads (#185), a chase's state, F1's P1, or nobody yet in a first innings; at the end,
+    who won ("Argentina won the shootout 4-2")."""
+    d, s = m["detail"], m["score"]
+    if d.get("lead") or d.get("chase"):
+        lead = d.get("lead") or d["chase"]
+    elif s.get("top"):
+        lead = f"{min(s['top'], key=lambda c: c['pos'])['driver']} leads"
+    elif m["sport"] == "cricket":
+        return f"no one yet, {m['team']} batting first"
+    else:
+        return "see the score"
+    return re.sub(r"\bleads?\b", "won", lead, count=1) if m["type"] in END else lead
 
 
 def build_request(header: dict, m: dict) -> dict:
@@ -94,7 +105,14 @@ def build_request(header: dict, m: dict) -> dict:
 def fallback_text(header: dict, m: dict) -> str:
     """The status from the moment's data alone: said when the model's line stays wrong, or it is
     off air, so "Where are we?" always gets an answer. The score once: who leads says it."""
-    state = m["detail"].get("lead") or _score(header, m)
+    d, s = m["detail"], m["score"]
+    if s.get("top"):  # F1: its score line gives the lap
+        return f"{_score(header, m)}. {_lead(m)}."
+    state = _lead(m) if d.get("lead") else _score(header, m)
+    if "shootout" in d:  # the shootout's lead alone hides the match score
+        return (
+            f"{_when(m)}, {s['home']}-{s['away']} after extra time. {state[0].upper()}{state[1:]}."
+        )
     return f"{_when(m)}. {state[0].upper()}{state[1:]}."
 
 
@@ -133,6 +151,8 @@ def status(past: list[dict], header: dict | None = None, provider=None) -> dict:
         # the status needn't repeat a points milestone; its numbers stay given by player_points
         d = {k: v for k, v in m["detail"].items() if k != "milestone"}
         wrong = insight.wrong_numbers(text, {**m, "detail": d}, header, past[:-1])
+        # nor say how the last shot ended: "where are we" is the state, the event is optional
+        wrong = [w for w in wrong if not w.startswith("the line never says how the shot ended")]
         return bool(text) and says_score(text, m) and not wrong
 
     text = None
