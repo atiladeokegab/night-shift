@@ -264,8 +264,9 @@ class Gaps:
     """One replay's insights: rotates the kinds, never repeats a detail, reuses stored lines and
     caps new calls."""
 
-    def __init__(self, match_id: str, store):
+    def __init__(self, match_id: str, store, replay_id: str | None = None):
         self.match_id = match_id
+        self.replay_id = replay_id  # stored on its new lines: what this replay spent
         self.store = store
         self.cached = {
             (i["after_idx"], i["n"]): ln
@@ -347,7 +348,14 @@ class Gaps:
                 said_as = {**said_as, "kind": picked[0], "detail": picked[1]}
             key = {"match_id": self.match_id, "after_idx": m["idx"], "n": n}
             ln = self.store.append(
-                "lines", {**said, "video_t": video_t, "speaker": speaker, role: {**key, **said_as}}
+                "lines",
+                {
+                    **said,
+                    "video_t": video_t,
+                    "speaker": speaker,
+                    "replay_id": self.replay_id,
+                    role: {**key, **said_as},
+                },
             )
         if not reply:
             self.used.add(said_as["detail"])
