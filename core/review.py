@@ -20,14 +20,32 @@ def _key(line: dict) -> tuple:
     return line.get("match_id"), line.get("moment_idx"), (line.get("tried") or line["text"]).strip()
 
 
+def _group(entry: dict) -> tuple:
+    return entry["match_id"], entry["moment_idx"], tuple(entry["wrong"])
+
+
 def queue(store, deps) -> list[dict]:
-    """One entry per distinct (match, moment, text), newest first; a line whose text, at that
-    moment, has been fixed under any of its line_ids is left out."""
+    """One card per mistake, newest first (#227): the distinct (match, moment, text) lines whose
+    check gives the same reasons at the same moment are one entry, the newest line's, with `lines`
+    (how many) and `others` (the older wordings, newest first). A fix on any line of a mistake
+    clears the lines of it stored up to the fix; one said again after the fix is a new card."""
     lines = store.all("lines")
-    fixed_ids = {f["line_id"] for f in store.all("fixes")}
-    fixed = {_key(ln) for ln in lines if ln["line_id"] in fixed_ids}
+    fixes = {f["line_id"]: f.get("created_at") or "" for f in store.all("fixes")}
+    fixed = {_key(ln) for ln in lines if ln["line_id"] in fixes}
     matches: dict = {}  # filled only when a line is new to the cache
-    seen, out = set(), []
+
+    def check(line):
+        record = json.dumps(line, sort_keys=True)
+        if record not in _checked:
+            _checked[record] = _entry(line, matches, deps)
+        return _checked[record]
+
+    cleared: dict[tuple, str] = {}  # each fixed mistake: when it was last fixed
+    for line in lines:
+        if line["line_id"] in fixes and line.get("speaker") != "analyst" and line.get("text"):
+            if e := check(line):
+                cleared[_group(e)] = max(cleared.get(_group(e), ""), fixes[line["line_id"]])
+    seen, groups = set(), {}
     for line in reversed(lines):  # appended in order: newest first
         if line.get("speaker") == "analyst" or not line.get("text"):
             continue
@@ -35,12 +53,17 @@ def queue(store, deps) -> list[dict]:
         if k in seen or k in fixed:
             continue
         seen.add(k)
-        record = json.dumps(line, sort_keys=True)
-        if record not in _checked:
-            _checked[record] = _entry(line, matches, deps)
-        if _checked[record]:
-            out.append(_checked[record])
-    return out
+        if not (e := check(line)):
+            continue
+        g = _group(e)
+        if g in cleared and (line.get("created_at") or "") <= cleared[g]:
+            continue
+        if g in groups:
+            groups[g]["lines"] += 1
+            groups[g]["others"].append(e["text"])
+        else:
+            groups[g] = {**e, "lines": 1, "others": []}  # a copy: the cached entry stays as it is
+    return list(groups.values())
 
 
 def _entry(line: dict, matches: dict, deps) -> dict | None:
