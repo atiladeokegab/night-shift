@@ -301,5 +301,5 @@ export interface LedgerRow {
 
 export interface Ledger {
   sent: number // examples sent to Score check
-  rows: LedgerRow[]
+  rows: LedgerRow[] // the newest 50 corrections
 }

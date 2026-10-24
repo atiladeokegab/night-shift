@@ -149,19 +149,17 @@ function when(item: ReviewItem): string {
 
 // Every correction sent to Mubit, newest first, each with the session and request that find it in Mubit's
 // console. "Sent", never "kept": only the console says what Mubit kept.
-const SHOWN = 50
-
 function Corrections({ ledger }: { ledger: Ledger }) {
   return (
     <section className="ledger" aria-labelledby="ledger-h">
       <h2 id="ledger-h">Corrections sent to Mubit</h2>
       <p className="hint">
-        {ledger.sent} example{ledger.sent === 1 ? '' : 's'} sent to Score check · {ledger.rows.length} correction
-        {ledger.rows.length === 1 ? '' : 's'} in all{ledger.rows.length > SHOWN ? `, the newest ${SHOWN} shown` : ''}
+        {ledger.sent} example{ledger.sent === 1 ? '' : 's'} sent to Score check · the newest {ledger.rows.length}{' '}
+        correction{ledger.rows.length === 1 ? '' : 's'} below
       </p>
       {ledger.rows.length > 0 && (
         <ul className="queue">
-          {ledger.rows.slice(0, SHOWN).map((r, i) => (
+          {ledger.rows.map((r, i) => (
             <li key={`${r.request_id}-${i}`} className="flag glass">
               <p className="label">
                 {r.at?.slice(0, 16).replace('T', ' ')} · {r.source} · {r.task}

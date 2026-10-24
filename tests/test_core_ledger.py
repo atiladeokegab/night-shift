@@ -22,7 +22,8 @@ def line(line_id, text, **more):
 
 
 @pytest.fixture
-def client(tmp_path):
+def client(tmp_path, monkeypatch):
+    monkeypatch.setattr(ledger, "_cache", {})  # a store's id can be reused by the next test's
     store = Store(tmp_path)
     for ln in (line("w", WRONG, speaker="lead"), line("r", RIGHT, speaker="lead", retried=True)):
         store.append("lines", ln)
@@ -73,6 +74,7 @@ def client(tmp_path):
     )
     deps = Deps(list_matches, load_moments, lambda m, h: None)
     with TestClient(create_app(store=store, deps=deps)) as c:
+        c.store = store
         yield c
 
 
@@ -112,3 +114,23 @@ def test_a_sent_example_names_its_line_so_the_ledger_needs_no_lookup():
     ex = {"id": "e", "match_id": KOBE, "idx": 4, "text": WRONG, "gold": "wrong"}
     sent = send(ex, Fake())
     assert (sent["match_id"], sent["idx"], sent["text"]) == (KOBE, 4, WRONG)
+
+
+def test_a_second_call_within_the_window_does_not_rebuild(client, monkeypatch):
+    now = [1000.0]
+    monkeypatch.setattr(ledger.time, "monotonic", lambda: now[0])
+    built = []
+    build = ledger.ledger
+    monkeypatch.setattr(ledger, "ledger", lambda *a: built.append(1) or build(*a))
+    assert client.get("/ledger").json()["sent"] == 3
+    client.store.append("scorecheck_examples", {"id": "new", "kind": "matched", "source": "seed"})
+    now[0] += ledger.TTL_S - 1
+    assert client.get("/ledger").json()["sent"] == 3 and len(built) == 1  # served from the cache
+    now[0] += 1
+    assert client.get("/ledger").json()["sent"] == 4 and len(built) == 2  # the window is over
+
+
+def test_only_the_newest_rows_are_returned_with_every_example_counted(client, monkeypatch):
+    monkeypatch.setattr(ledger, "SHOWN", 2)
+    got = client.get("/ledger").json()
+    assert got["sent"] == 3 and [r["request_id"] for r in got["rows"]] == ["sc-2", "cm-1"]

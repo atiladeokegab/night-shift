@@ -617,8 +617,8 @@ def create_app(
 
     @app.get("/ledger")
     def get_ledger():
-        """Every Score check example sent and every auto-fix, with its Mubit session and request."""
-        return ledger.ledger(store, need_deps())
+        """The newest corrections sent to Mubit, with their session and request: cached 30 s."""
+        return ledger.cached(store, need_deps())
 
     @app.get("/stats")
     def get_stats():
