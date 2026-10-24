@@ -9,7 +9,7 @@
   --body: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --ease: cubic-bezier(.2, .7, .2, 1);
   --mic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='5' y='1' width='6' height='9' rx='3'/%3E%3Cpath d='M3 7.5a5 5 0 0 0 10 0M8 12.5V15' fill='none' stroke='black' stroke-width='1.5'/%3E%3C/svg%3E");
-  --side-w: 384px; --gut: 32px;
+  --side-w: 384px; --gut: 32px; --nav-h: 76px;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -96,9 +96,9 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .live { min-height: 100svh; }
 .live-body { display: grid; grid-template-columns: minmax(0, 1fr) var(--side-w); gap: 24px; align-items: start; padding: 0 var(--gut) 24px; }
 .live-main { display: grid; gap: 12px; justify-items: center; min-width: 0; }
-/* The card is as wide as the column allows while the bar, the card, its controls and a two-line caption fit
-   the screen's height; it never shrinks below a readable 480px on a desktop. */
-.live-main > * { width: min(100%, max(480px, calc((100svh - 330px) * 16 / 9))); }
+/* The card is as wide as the column allows while the nav, the bar, the card, its controls and a two-line
+   caption fit the screen's height, so the column ends where the sidebar does; never under 480px on a desktop. */
+.live-main > * { width: min(100%, max(480px, calc((100svh - var(--nav-h) - 300px) * 16 / 9))); }
 .pickbar { display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 16px; flex-wrap: wrap; }
 .pickbar .btn { height: 38px; border-color: transparent; background: none; font-size: .88rem; white-space: nowrap; }
 .pickbar .btn:hover:not(:disabled) { background: rgba(255, 255, 255, .07); border-color: transparent; }
@@ -202,10 +202,13 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .cap-state { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 12px; color: var(--muted); font: 500 1.05rem/1.4 var(--body); }
 
 /* The sidebar scrolls on its own beside the video; the tab bar shows only in one column. */
-.side { position: sticky; top: 16px; max-height: calc(100svh - 32px); overflow-y: auto; scrollbar-width: thin; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.side { position: sticky; top: 16px; max-height: calc(100svh - var(--nav-h) - 24px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .side .pane { display: flex; flex-direction: column; min-height: 0; }
-.side .lines-pane { flex: 0 1 auto; }
+.side .lines-pane { flex: 0 1 auto; min-height: 260px; } /* the log scrolls inside it; past that the sidebar scrolls */
 .tabs { display: none; }
+.live .label, .controls { color: var(--muted); } /* the small labels and the clock pass AA on the panels */
+/* Ask reads as off until there is a question, then as the amber primary. */
+.ask .btn.primary:disabled { opacity: 1; background: rgba(255, 255, 255, .06); color: var(--muted); border-color: var(--line-hi); box-shadow: none; }
 .shots-card { display: grid; gap: 12px; justify-items: start; }
 .panel { padding: 20px; }
 .panel.lines { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
@@ -220,14 +223,14 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .log li:first-child .text > span:first-child { animation: rise .38s var(--ease); }
 .log .when { font: 600 .8rem/1.55 var(--display); color: var(--amber); }
 .log .text { min-width: 0; font-size: .92rem; line-height: 1.45; }
-.log .orig { color: var(--faint); text-decoration: line-through; font-size: .82rem; margin-top: 4px; }
+.log .orig { color: var(--muted); text-decoration: line-through; font-size: .82rem; margin-top: 4px; }
 .log .meta-l { grid-column: 2; display: flex; gap: 8px; align-items: center; font-size: .72rem; color: var(--muted); }
 .log .fixed .text > span:first-child { color: var(--fix); }
-.log .late .text > span:first-child { color: var(--faint); text-decoration: line-through; }
+.log .late .text > span:first-child { color: var(--muted); text-decoration: line-through; }
 .log .btn.sm { grid-column: 3; grid-row: 1; }
 .pill { font: 600 .62rem/1 var(--body); letter-spacing: .14em; text-transform: uppercase; border-radius: 5px; padding: 4px 6px; }
 .pill.fixed { color: #06202d; background: var(--fix); }
-.pill.late { color: var(--faint); border: 1px solid var(--line-hi); }
+.pill.late { color: var(--muted); border: 1px solid var(--line-hi); }
 /* Ask the commentator (#117): the form under the Lines heading; a question and its answer sit in the log on a
    tint of their own, apart from the play-by-play. 16px text so a phone doesn't zoom into the field. */
 .ask { display: flex; gap: 8px; margin-bottom: 12px; }
