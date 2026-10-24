@@ -1079,7 +1079,7 @@ def wrong_answer(answer: dict, question: str, past: list[dict], lines: list[dict
 NOT_SCORED = re.compile(
     r"\b(?:hasn't|has not|hadn't|had not|yet to|still to|not|never|no)\s+"
     r"(?:(?!only\b)\w+\s+){0,2}?(?:scor\w*|goals?|netted|found the net)\b"
-    r"(?!\s+(?:again|from open play|(?:for\s+\w+(?:\s+\w+)?\s+)?(?:yet\s+)?(?:since"
+    r"(?!\s+(?:again|from open play|(?:yet\s+)?(?:for\s+\w+(?:\s+\w+){0,2}\s+)?(?:yet\s+)?(?:since"
     r"|in\s+(?:the\s+)?(?:extra[- ]time|(?:first|second) half|(?:penalty )?shootout)))\b)",
     re.I,
 )
@@ -1129,11 +1129,11 @@ def wrong_claims(text: str, past: list[dict]) -> list[str]:
         )
 
         for hit in NOT_SCORED.finditer(clause):
-            # "No goal for Messi yet": with no one named before it, the player it is "for"
-            after = re.match(r"\s+for\s+", clause[hit.end() :])
-            at = hit.end() + after.end() if after else -1
-            for_whom = next((name for start, name in named if start == at), None)
-            if (name := _named_before(named, hit.start()) or for_whom) and goals[name]:
+            # "no goal (yet) for Lionel Messi" is Messi's, even after "Lautaro is searching, but"
+            after = re.match(r"\s+(?:yet\s+)?for\s+((?:\w+\s+){0,2}\w+)", clause[hit.end() :])
+            run = range(hit.end() + after.start(1), hit.end() + after.end(1)) if after else ()
+            for_whom = next((name for start, name in named if start in run), None)
+            if (name := for_whom or _named_before(named, hit.start())) and goals[name]:
                 wrong.append(f"{name} has scored {goals[name]} so far")
         for hit in NTH.finditer(clause):
             n = NTH_GOAL.get(next(g for g in hit.groups() if g).lower(), 3)

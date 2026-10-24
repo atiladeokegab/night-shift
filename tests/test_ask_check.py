@@ -68,6 +68,25 @@ def test_messi_has_not_scored_in_this_final_is_caught():
         assert wrong_claims(text, past) == ["Lionel Messi has scored 1 so far"], text
 
 
+# "no goal for <player>" after #254 (Prometheus, review-b): the player it is for, by full name too,
+# over anyone named earlier
+MESSI = "Lionel Messi has scored 1 so far"
+WRONG_FOR_AT_105_41 = [
+    ("No goal for Lionel Messi yet.", MESSI),
+    ("No goals for Kylian Mbappé yet.", "Kylian Mbappé has scored 2 so far"),
+    ("No goal for Ángel Di María yet.", "Ángel Di María has scored 1 so far"),
+    ("Lautaro Martínez is searching, but no goal for Messi yet.", MESSI),
+    ("No goal yet for Messi.", MESSI),
+    ("Mbappé has two, but no goal for Messi yet.", MESSI),
+]
+
+
+def test_no_goal_for_a_player_is_that_players_claim():
+    past, _ = past_at_105_41()
+    for text, reason in WRONG_FOR_AT_105_41:
+        assert wrong_claims(text, past) == [reason], text
+
+
 # true answers review-b found flagged (#247): each must pass
 TRUE_AT_105_41 = [
     "Mbappé is one away from a hat-trick.",
@@ -80,6 +99,8 @@ TRUE_AT_105_41 = [
     "Messi hasn't scored from open play.",
     "Mbappé has two; no goal for Messi in extra time.",
     "No goals for France in extra time, but Mbappé has two.",
+    "No goal yet for Messi in extra time.",
+    "No goal for Ángel Di María in extra time.",
 ]
 
 
