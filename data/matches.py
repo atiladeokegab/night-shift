@@ -69,7 +69,7 @@ def _stated(header: dict, moments: list[dict]) -> list[dict]:
     for m in moments:
         s, d = m["score"], m["detail"]
         if m["sport"] == "football" and "x" in m and "y" in m:
-            d["where"] = _where(m)
+            d["where"] = _where(header, m)
         if m["sport"] == "cricket" and "target" in s and "balls_left" in d:
             d["chase"] = _chase(header, m)
         pts, who = d.get("player_points"), (m["players"] or {}).get("shooter")
@@ -81,9 +81,10 @@ def _stated(header: dict, moments: list[dict]) -> list[dict]:
     return moments
 
 
-def _where(m: dict) -> str:
+def _where(header: dict, m: dict) -> str:
     """Where a football moment happened, in spoken words (#172). StatsBomb's pitch is 120 x 80 yd,
-    and the event's own team attacks towards x = 120, so y < 40 is that team's left."""
+    and the event's own team attacks towards x = 120, so y < 40 is that team's left. A zone names
+    whose box or half it is: for a foul, the moment's team is the offender's."""
     x, y = m["x"], m["y"]
     left, wide, central = y < 40, y < 18 or y > 62, abs(y - 40) < 4
     if m["type"] == "Shot":
@@ -94,17 +95,18 @@ def _where(m: dict) -> str:
             else ("central" if central else f"{'left' if left else 'right'} of centre")
         )
         return f"from {yards} yard{'s' * (yards != 1)}, {side}"
+    own, other = m["team"], header["away"] if m["team"] == header["home"] else header["home"]
     if x >= 114 and 30 <= y <= 50:
-        return "inside the six-yard box"
+        return f"inside {other}'s six-yard box"
     if x > 104 and not wide:
-        return "inside the box"
+        return f"inside {other}'s box"
     if x >= 99 and not wide:
-        return "on the edge of the box"
+        return f"on the edge of {other}'s box"
     if x <= 18 and not wide:
-        return "inside their own box"
+        return f"inside {own}'s own box"
     if x < 60:
-        return "in their own half"
-    return f"on the {'left' if left else 'right'} wing" if wide else "in the opponent's half"
+        return f"in {own}'s own half"
+    return f"on the {'left' if left else 'right'} wing" if wide else f"in {other}'s half"
 
 
 def _chase(header: dict, m: dict) -> str:
