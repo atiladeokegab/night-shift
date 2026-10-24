@@ -110,6 +110,27 @@ async def auto_fix(store, correct, rejected: dict, kept: dict) -> None:
     )
 
 
+async def second_opinion(replay: Replay, store, linecheck, line: dict, moment, history) -> None:
+    """Line check on a published line (#298), off its path: a field it calls wrong marks the line
+    and queues it for the producer (core/review.py), never unsays it.
+    None from `linecheck`: no call was made (over the cap)."""
+    try:
+        got = await asyncio.to_thread(linecheck, line, moment, history)
+    except Exception as exc:  # the line is already said; only its second opinion is lost
+        log.warning("line check for %s not run: %s", line["line_id"], str(exc)[:300])
+        return
+    if got is None:
+        return
+    row = {
+        "line_id": line["line_id"],
+        "match_id": line["match_id"],
+        "moment_idx": line["moment_idx"],
+        **got,
+        "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
+    }
+    await replay.publish("linecheck", await asyncio.to_thread(store.append, "linechecks", row))
+
+
 async def run_replay(
     replay: Replay,
     moments: list[dict],
@@ -119,6 +140,7 @@ async def run_replay(
     speak: Callable[[dict, dict, float | None], None] | None = None,
     start_idx: int = 0,
     correct: Callable[[dict, str], dict] | None = None,
+    linecheck: Callable[[dict, dict, list[dict]], dict | None] | None = None,
 ) -> None:
     # A video map: only mapped moments are called, each tagged with its video time and sent as
     # soon as it is ready; the page holds each line until the player reaches that time.
@@ -255,8 +277,12 @@ async def run_replay(
             if line is not None:  # None: the commentator had nothing usable to say
                 rejected = line.pop("rejected", None)
                 said_line = {**line, **tag, "speaker": "lead", "replay_id": replay.id}
-                await say(await asyncio.to_thread(store.append, "lines", said_line), moment)
+                said_line = await asyncio.to_thread(store.append, "lines", said_line)
+                await say(said_line, moment)
                 recent.append(line.get("text") or "")
+                if linecheck and line.get("checked") and not line.get("fallback"):
+                    args = (replay, store, linecheck, said_line, moment, history[:-1])
+                    fixes.append(asyncio.create_task(second_opinion(*args)))
                 if rejected and correct:  # after the kept line is out: never on its path
                     fixes.append(asyncio.create_task(auto_fix(store, correct, rejected, line)))
             if not tag:
