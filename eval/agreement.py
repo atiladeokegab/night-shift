@@ -9,8 +9,9 @@ MUBIT_API_KEY is set. Otherwise this prints "not tested: <reason>" and calls not
 run with recording off, so held-out moments never become training examples.
 
 Per moment the two lines agree only when their facts provably match: both exist, neither is late,
-and they state the same numbers in the same order, name the same players in the same order and
-carry the same outcome terms (goal, saved, out, not out, six, overtake, pit, ...). Anything
+and they state the same numbers in the same order (score words too), name the same players in the
+same order, name no team or person the big model doesn't (bar the moment's own team), and carry the
+same outcome terms (goal, saved, out, not out, six, overtake, pit, ...). Anything
 uncertain, and an empty, skipped or late line on either side, is a disagreement.
 """
 
@@ -98,8 +99,45 @@ def _outcomes(text: str) -> set[str]:
     return found
 
 
+# Score words, so "one nil" and "two nil" differ. Three, four and six are left to the outcome terms.
+_NUMBER_WORDS = {
+    w: i
+    for i, w in enumerate(
+        "zero one two _ _ five _ seven eight nine ten eleven twelve thirteen fourteen fifteen "
+        "sixteen seventeen eighteen nineteen twenty".split()
+    )
+    if w != "_"
+} | {"nil": 0, "nought": 0}
+_NUMBER = re.compile(r"\d+(?:\.\d+)?|\b(?:" + "|".join(_NUMBER_WORDS) + r")\b")
+
+
 def _numbers(text: str) -> list[str]:
-    return re.findall(r"\d+(?:\.\d+)?", text)
+    return [str(_NUMBER_WORDS.get(n, n)) for n in _NUMBER.findall(_fold(text))]
+
+
+# Capitalised words that start a sentence without naming anyone or anything.
+_COMMON = set(
+    "a an and but he her his i in is it it's its just look no not now oh on over she so that "
+    "that's the their there they this what what's wow yes".split()
+)
+
+
+def _others(text: str, cast: set[str]) -> list[str]:
+    """The other names the line uses (teams, places, anyone outside the cast), folded, in order of
+    first mention: its capitalised words, less the cast's names, common sentence starts, outcome
+    terms and score words."""
+    plain = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
+    for name in sorted(cast, key=len, reverse=True):
+        plain = re.sub(rf"\b{re.escape(_fold(name))}\b", " ", plain, flags=re.I)
+    for name in cast:
+        plain = re.sub(rf"\b{re.escape(_fold(name).split()[-1])}\b", " ", plain, flags=re.I)
+    order: list[str] = []
+    for word in re.findall(r"[A-Za-z][\w']*", plain):
+        low = word.lower()
+        if word[0].isupper() and low not in order and low not in _COMMON | set(_NUMBER_WORDS):
+            if not _OUTCOME.fullmatch(low):
+                order.append(low)
+    return order
 
 
 def _names(text: str, cast: set[str]) -> list[str] | None:
@@ -153,6 +191,14 @@ def disagreement(
         return "a surname that could be more than one player"
     if names != wanted:
         return f"names {names}, big model {wanted}"
+    # Any other name the adapter adds must be the big model's or the moment's own team, and the
+    # names both use must come in the same order ("Argentina lead France", not "France lead ...").
+    others, wanted = _others(said, cast), _others(want, cast)
+    team = _fold(moment.get("team") or "").split()
+    if unknown := [w for w in others if w not in wanted and w not in team]:
+        return f"names {unknown} the big model doesn't use"
+    if [w for w in others if w in wanted] != [w for w in wanted if w in others]:
+        return f"names in the order {others}, big model {wanted}"
     if not _outcomes(want):
         return "no outcome to compare"
     if _outcomes(said) != _outcomes(want):

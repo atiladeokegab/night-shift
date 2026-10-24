@@ -13,6 +13,7 @@ GOAL = {
     "idx": 5,
     "clock": "22:24",
     "players": {"shooter": "Lionel Messi"},
+    "team": "Argentina",
     "score": {"home": 1, "away": 0},
 }
 
@@ -70,6 +71,7 @@ CAST = {
         ),
         ("Lewis Hamilton wins at Silverstone by 1.5 seconds!", "Hamilton wins by 1.5 seconds!"),
         ("Rizwan is not out!", "Not out! Mohammad Rizwan survives!"),
+        ("Messi scores! Argentina lead one-nil!", "Messi scores, Argentina lead 1-0!"),
         ("Jordan doesn't score, 86-87!", "Michael Jordan can't... no, he doesn't score! 86-87!"),
     ],
 )
@@ -100,6 +102,12 @@ CONTRADICTIONS = [
     ("Chris Smith takes the wicket!", "Alex Smith takes the wicket!"),
     ("Smith takes the wicket!", "Smith takes the wicket!"),
     ("Hamilton pits!", "Hamilton wins!"),
+    # Prometheus's three left over at 80c50ea: score words, team roles, an invented scorer.
+    ("Messi! Argentina lead one nil!", "Messi! Argentina lead two nil!"),
+    ("Messi! Argentina lead France 1-0!", "Messi! France lead Argentina 1-0!"),
+    ("What a goal! 1-0!", "John Doe scores! 1-0!"),
+    ("Lionel scores!", "Kylian scores!"),
+    ("Messi scores, 1-0!", "Messi scores, 1-0 to France!"),
 ]
 
 
