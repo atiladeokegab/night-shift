@@ -20,7 +20,7 @@ ENV = {
 }
 
 
-def app_for(tmp_path, monkeypatch, *, asks_per_hour=20, daily_budget=50.0):
+def app_for(tmp_path, monkeypatch, *, asks_per_hour=20, daily_budget=50.0, usage=True):
     for key, value in ENV.items():
         monkeypatch.setenv(key, value)
 
@@ -32,7 +32,7 @@ def app_for(tmp_path, monkeypatch, *, asks_per_hour=20, daily_budget=50.0):
     monkeypatch.setattr(commentator, "unrecorded_provider", lambda: provider)
 
     def ask(question, past, lines, provider=None, **kwargs):
-        return answer(
+        result = answer(
             question,
             past,
             lines,
@@ -40,6 +40,9 @@ def app_for(tmp_path, monkeypatch, *, asks_per_hour=20, daily_budget=50.0):
             provider=provider or commentator.unrecorded_provider(),
             **kwargs,
         )
+        if not usage:
+            result.pop("tokens_in")
+        return result
 
     store = Store(tmp_path)
     guard = Guard(
@@ -153,3 +156,14 @@ def test_streaming_tap_keeps_the_mubit_request_id():
         "usage": {"input_tokens": 11, "output_tokens": 4},
         "request_id": "mubit-123",
     }
+
+
+def test_missing_provider_usage_is_not_fabricated(tmp_path, monkeypatch):
+    client, provider, store, _ = app_for(tmp_path, monkeypatch, usage=False)
+    with client:
+        ctx = mint(client, start_replay(client))
+        response = turn(client, ctx)
+
+    assert response.status_code == 200 and "So far," in spoken(response)
+    assert len(provider.requests) == 1
+    assert store.all("answers") == []
