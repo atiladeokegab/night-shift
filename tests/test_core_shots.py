@@ -88,7 +88,7 @@ def test_the_page_cannot_ask_past_the_last_moment_sent(tmp_path):
     assert got and max(t["idx"] for t in got) <= cut
 
 
-def test_no_map_without_a_pack_a_player_or_a_moment(tmp_path):
+def test_no_map_without_a_replay_a_pack_or_a_player(tmp_path):
     with client_for(tmp_path) as client:
         assert client.get("/replays/nope/players/Kobe Bryant/shots").status_code == 404
         rid = client.post("/replays", json={"match_id": "1298150", "speed": 1e6}).json()
