@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Conversation } from '@elevenlabs/client'
 import { converseDoor, SILENT_MS, TalkPause } from '../converse'
 
@@ -18,6 +18,7 @@ interface Props {
 // presses Resume or Escape, the match carries on. Where it can't start, Ask above is still there.
 export function Converse({ sport, matchId, momentIdx, paused, getReplayId, onPause, onPlay, onHint }: Props) {
   const [phase, setPhase] = useState<'idle' | 'starting' | 'talking'>('idle')
+  const identity = JSON.stringify([sport, matchId, getReplayId()])
   const session = useRef<Conversation | null>(null)
   const pause = useRef(new TalkPause())
   const quiet = useRef<number | undefined>(undefined)
@@ -82,7 +83,7 @@ export function Converse({ sport, matchId, momentIdx, paused, getReplayId, onPau
     window.addEventListener('keydown', esc)
     return () => window.removeEventListener('keydown', esc)
   }, [phase])
-  useEffect(() => over, [])
+  useLayoutEffect(() => () => over(), [identity])
 
   return (
     <button type="button" className={`btn sm${phase === 'idle' ? '' : ' primary'}`} aria-pressed={phase !== 'idle'}

@@ -1,0 +1,196 @@
+{
+ "date": "2006-01-22",
+ "match_id": "0020500591",
+ "sport": "basketball",
+ "teams": {
+  "teams": [
+   {
+    "team": "Los Angeles Lakers",
+    "form": [
+     {
+      "date": "2006-01-20",
+      "opponent": "Phoenix Suns",
+      "home": false,
+      "score": "93-106",
+      "result": "L"
+     },
+     {
+      "date": "2006-01-19",
+      "opponent": "Sacramento Kings",
+      "home": false,
+      "score": "109-118",
+      "result": "L"
+     },
+     {
+      "date": "2006-01-16",
+      "opponent": "Miami Heat",
+      "home": true,
+      "score": "100-92",
+      "result": "W"
+     },
+     {
+      "date": "2006-01-14",
+      "opponent": "Golden State Warriors",
+      "home": false,
+      "score": "110-104",
+      "result": "W"
+     },
+     {
+      "date": "2006-01-12",
+      "opponent": "Cleveland Cavaliers",
+      "home": true,
+      "score": "99-98",
+      "result": "W"
+     }
+    ],
+    "squad": [
+     {
+      "name": "Kobe Bryant",
+      "matches": 38,
+      "headline": "1321 points in 38"
+     },
+     {
+      "name": "Lamar Odom",
+      "matches": 40,
+      "headline": "585 points in 40"
+     },
+     {
+      "name": "Smush Parker",
+      "matches": 40,
+      "headline": "458 points in 40"
+     },
+     {
+      "name": "Chris Mihm",
+      "matches": 40,
+      "headline": "410 points in 40"
+     },
+     {
+      "name": "Brian Cook",
+      "matches": 39,
+      "headline": "262 points in 39"
+     },
+     {
+      "name": "Devean George",
+      "matches": 35,
+      "headline": "229 points in 35"
+     },
+     {
+      "name": "Kwame Brown",
+      "matches": 30,
+      "headline": "184 points in 30"
+     },
+     {
+      "name": "Sasha Vujacic",
+      "matches": 40,
+      "headline": "158 points in 40"
+     }
+    ]
+   },
+   {
+    "team": "Toronto Raptors",
+    "form": [
+     {
+      "date": "2006-01-20",
+      "opponent": "Seattle SuperSonics",
+      "home": false,
+      "score": "121-113",
+      "result": "W"
+     },
+     {
+      "date": "2006-01-18",
+      "opponent": "Portland Trail Blazers",
+      "home": false,
+      "score": "94-96",
+      "result": "L"
+     },
+     {
+      "date": "2006-01-17",
+      "opponent": "Utah Jazz",
+      "home": false,
+      "score": "98-111",
+      "result": "L"
+     },
+     {
+      "date": "2006-01-15",
+      "opponent": "New York Knicks",
+      "home": true,
+      "score": "129-103",
+      "result": "W"
+     },
+     {
+      "date": "2006-01-11",
+      "opponent": "Charlotte Bobcats",
+      "home": true,
+      "score": "95-86",
+      "result": "W"
+     }
+    ],
+    "squad": [
+     {
+      "name": "Chris Bosh",
+      "matches": 40,
+      "headline": "908 points in 40"
+     },
+     {
+      "name": "Mike James",
+      "matches": 38,
+      "headline": "635 points in 38"
+     },
+     {
+      "name": "Morris Peterson",
+      "matches": 40,
+      "headline": "576 points in 40"
+     },
+     {
+      "name": "Jalen Rose",
+      "matches": 40,
+      "headline": "465 points in 40"
+     },
+     {
+      "name": "Charlie Villanueva",
+      "matches": 39,
+      "headline": "460 points in 39"
+     },
+     {
+      "name": "Matt Bonner",
+      "matches": 40,
+      "headline": "275 points in 40"
+     },
+     {
+      "name": "Joey Graham",
+      "matches": 40,
+      "headline": "258 points in 40"
+     },
+     {
+      "name": "Jose Calderon",
+      "matches": 35,
+      "headline": "220 points in 35"
+     }
+    ]
+   }
+  ],
+  "head_to_head": [
+   {
+    "date": "2005-12-07",
+    "opponent": "Toronto Raptors",
+    "home": false,
+    "score": "102-91",
+    "result": "W"
+   },
+   {
+    "date": "1998-03-31",
+    "opponent": "Toronto Raptors",
+    "home": false,
+    "score": "114-105",
+    "result": "W"
+   },
+   {
+    "date": "1997-11-30",
+    "opponent": "Toronto Raptors",
+    "home": true,
+    "score": "105-99",
+    "result": "W"
+   }
+  ]
+ }
+}

@@ -18,6 +18,7 @@ import shutil
 import tempfile
 import threading
 import time
+from datetime import UTC, datetime
 from pathlib import Path
 
 from core.predict import PACKS
@@ -248,6 +249,19 @@ def _rows(sql: str, params: dict) -> list[dict] | None:
         return None
 
 
+def _utc(before: str) -> str | None:
+    """`before` as a UTC wall clock in the store's own form. Stored starts are UTC; a time with an
+    offset is converted, a bare time or date is taken as UTC (a date alone is that day's midnight,
+    so nothing on the day is "before"). Unreadable: None, and the caller answers empty."""
+    try:
+        t = datetime.fromisoformat(before)
+    except (TypeError, ValueError):
+        log.warning("graph cut-off unreadable, reading the packs")
+        return None
+    t = t.replace(tzinfo=UTC) if t.tzinfo is None else t.astimezone(UTC)
+    return t.strftime("%Y-%m-%dT%H:%M:%S")
+
+
 def _result(f: dict, team: str) -> dict:
     home = f["home"] == team
     mine, theirs = (f["hg"], f["ag"]) if home else (f["ag"], f["hg"])
@@ -262,25 +276,64 @@ def _result(f: dict, team: str) -> dict:
 
 FIXTURES = """SELECT * FROM fixture WHERE sport = $s AND start < $b
   AND (home = $t OR away = $t) {more} ORDER BY start DESC LIMIT $n"""
+GENDERED = " AND gender = $g"  # Cricsheet files men's and women's sides under one team name
+
+
+def _gender(sport: str, team: str, cut: str) -> str | None:
+    """The gender of the team's latest match before the cut (None where a sport has none): a team
+    name alone cannot say which side is meant, and the match on screen is its next one."""
+    # shortcut: the latest match stands for the side on screen; wrong if a team's men's and women's
+    # games alternate within days. Upgrade by passing the match's gender in from the caller.
+    last = _rows(FIXTURES.format(more=""), {"s": sport, "t": team, "b": cut, "n": 1})
+    return last[0].get("gender") if last else None
 
 
 def team_form(sport: str, team: str, before: str, n: int = 5) -> list[dict]:
     """The team's last `n` matches before `before`, newest first, score as the team's own."""
-    found = _rows(FIXTURES.format(more=""), {"s": sport, "t": team, "b": before, "n": n})
+    if (cut := _utc(before)) is None:
+        return []
+    g = _gender(sport, team, cut)
+    more, extra = (GENDERED, {"g": g}) if g else ("", {})
+    found = _rows(FIXTURES.format(more=more), {"s": sport, "t": team, "b": cut, "n": n, **extra})
     return [_result(f, team) for f in found or []]
 
 
 def head_to_head(sport: str, a: str, b: str, before: str, n: int = 5) -> list[dict]:
     """The last `n` meetings of a and b before `before`, newest first, seen from a."""
-    sql = FIXTURES.format(more="AND (home = $o OR away = $o)")
-    found = _rows(sql, {"s": sport, "t": a, "o": b, "b": before, "n": n})
+    if (cut := _utc(before)) is None:
+        return []
+    g = _gender(sport, a, cut)
+    sql = FIXTURES.format(more="AND (home = $o OR away = $o)" + (GENDERED if g else ""))
+    found = _rows(sql, {"s": sport, "t": a, "o": b, "b": cut, "n": n, **({"g": g} if g else {})})
     return [_result(f, a) for f in found or []]
 
 
-APPEARANCES = (
-    "SELECT * FROM appearance WHERE sport = $s AND {who} = $w AND start < $b ORDER BY start"
-)
+APPEARANCES = "SELECT * FROM appearance WHERE sport = $s AND {who} = $w"
 LEAD = {"football": "goals", "basketball": "points", "cricket": "runs", "f1": "points"}
+
+
+def _games(sport: str, who: str, w: str, before: str) -> list[dict] | None:
+    """The player's (or team's) appearances before `before`, oldest first, one dict per game."""
+    found = _rows(APPEARANCES.format(who=who), {"s": sport, "w": w})
+    if found is None or (cut := _utc(before)) is None:
+        return None
+    return sorted(
+        (
+            {
+                **{k: r[k] for k in ("player", "team", "competition", "season")},
+                "gender": r.get("gender"),
+                # shortcut: the shipped graph lacks IDs; rebuild it to recover transfers.
+                # Legacy rows are team-scoped meanwhile.
+                "identity": r.get("identity") or f"team:{r['team']}:{r['player']}",
+                "start": g[0],
+                "totals": dict(zip(r["keys"], g[2:], strict=True)),
+            }  # fmt: skip
+            for r in found
+            for g in r["games"]
+            if g[0] < cut
+        ),
+        key=lambda a: a["start"],
+    )
 
 
 def _sum(apps: list[dict]) -> dict:
@@ -294,15 +347,16 @@ def _sum(apps: list[dict]) -> dict:
 def _latest(apps: list[dict]) -> list[dict]:
     """The appearances in the newest competition-season of the list (oldest first)."""
     last = apps[-1]
-    return [
-        a for a in apps if (a["competition"], a["season"]) == (last["competition"], last["season"])
-    ]
+    key = ("competition", "season", "gender")
+    return [a for a in apps if [a[k] for k in key] == [last[k] for k in key]]
 
 
 def player_season(sport: str, name: str, before: str) -> dict | None:
-    """The player's newest competition-season before `before`: team, matches and summed totals."""
-    apps = _rows(APPEARANCES.format(who="player"), {"s": sport, "w": name, "b": before})
+    """An unambiguous player's newest competition-season before `before`."""
+    apps = _games(sport, "player", name, before)
     if not apps:
+        return None
+    if len({a["identity"] for a in apps}) != 1:
         return None
     mine = _latest(apps)
     return {
@@ -316,7 +370,7 @@ def player_season(sport: str, name: str, before: str) -> dict | None:
 
 def squad(sport: str, team: str, before: str) -> list[dict]:
     """Who played for the team in its newest competition-season before `before`, best first."""
-    apps = _rows(APPEARANCES.format(who="team"), {"s": sport, "w": team, "b": before})
+    apps = _games(sport, "team", team, before)
     if not apps:
         return []
     by: dict[str, list[dict]] = {}

@@ -4,6 +4,7 @@ ElevenLabs calls for each turn, answered by the Ask path and cut at the moment o
 import asyncio
 import json
 import time
+from datetime import UTC, datetime
 from functools import partial
 from types import SimpleNamespace
 
@@ -11,7 +12,9 @@ from fastapi.testclient import TestClient
 
 from agent.commentator import FakeProvider, answer
 from core import converse, insight
+from core import guard as guard_module
 from core.app import Deps, create_app
+from core.guard import OFF_TODAY, Guard
 from core.smoke import read_stream
 from core.store import Store
 from tests.test_core_ask import HEADER, MOMENTS, line
@@ -23,7 +26,7 @@ ENV = {
 }
 
 
-def talk(tmp_path, monkeypatch, env=ENV):
+def talk(tmp_path, monkeypatch, env=ENV, guard=None):
     for k in ENV:
         monkeypatch.delenv(k, raising=False)
     for k, v in env.items():
@@ -39,7 +42,7 @@ def talk(tmp_path, monkeypatch, env=ENV):
     deps = Deps(lambda: [], lambda mid: MOMENTS, line, ask=ask)
     monkeypatch.setattr(converse, "signed_url", signed)
     monkeypatch.setattr(converse.commentator, "unrecorded_provider", lambda: provider)
-    client = TestClient(create_app(store=Store(tmp_path), deps=deps))
+    client = TestClient(create_app(store=Store(tmp_path), deps=deps, guard=guard))
     return client, provider, asked
 
 
@@ -67,6 +70,10 @@ def chunks(resp):
     data = [ln[6:] for ln in resp.text.splitlines() if ln.startswith("data: ")]
     assert data[-1] == "[DONE]"
     return [json.loads(d) for d in data[:-1]]
+
+
+def said(resp):
+    return "".join(c["choices"][0]["delta"].get("content", "") for c in chunks(resp))
 
 
 def test_the_token_route_never_returns_the_api_key(tmp_path, monkeypatch):
@@ -243,7 +250,8 @@ def test_the_question_said_back_is_not_spoken():
 def test_a_stream_with_no_text_event_we_know_still_answers(monkeypatch):
     monkeypatch.setattr(converse.commentator, "unrecorded_provider", FakeProvider)
     inner = SimpleNamespace(client=SlowClient([(0, "Player1 scored.")], kind="something_new"))
-    assert asyncio.run(sentences(inner)) == ["So far, Reds 1, Blues 0."]
+    # the call's own checked answer is said whole, with no second model call
+    assert asyncio.run(sentences(inner)) == ["Player1 scored."]
 
 
 def test_a_provider_that_cannot_stream_still_answers(monkeypatch):
@@ -251,3 +259,102 @@ def test_a_provider_that_cannot_stream_still_answers(monkeypatch):
     inner = SimpleNamespace(client=object(), call=fake.call)
     monkeypatch.setattr(converse.commentator, "unrecorded_provider", lambda: fake)
     assert asyncio.run(sentences(inner)) == ["So far, Reds 1, Blues 0."]
+
+
+class Broken:
+    def call(self, request):
+        raise RuntimeError("sk-secret-key and the prompt")
+
+
+def test_every_error_is_logged_without_the_key_and_the_fan_gets_the_status_line(
+    monkeypatch, caplog
+):
+    from data import matches
+
+    monkeypatch.setattr(matches, "match_header", lambda mid: HEADER)
+    monkeypatch.setattr(converse.commentator, "unrecorded_provider", Broken)
+    with caplog.at_level("WARNING", logger="touchline.converse"):
+        said = asyncio.run(sentences(SimpleNamespace(client=None, call=Broken().call)))
+    assert said == ["First half, 1 minutes played. Reds 1, Blues 0."]
+    assert any("model call: RuntimeError" in r.message for r in caplog.records)
+    assert any("answer: RuntimeError" in r.message for r in caplog.records)
+    assert "sk-secret" not in caplog.text and "prompt" not in caplog.text
+
+
+def test_each_turn_counts_against_the_ask_limit(tmp_path, monkeypatch):
+    client, provider, _ = talk(tmp_path, monkeypatch, guard=Guard({"ASKS_PER_HOUR": "3"}))
+    with client:
+        ctx = mint(client, started(client)).json()["ctx"]  # the mint is the first
+        for _ in range(2):
+            turn(client, ctx, "Who scored?")
+        calls = len(provider.requests)
+        over = turn(client, ctx, "Who scored?")
+    assert "lot of questions" in said(over) and len(provider.requests) == calls
+
+
+def test_a_turns_model_cost_counts_in_spent_today(tmp_path, monkeypatch):
+    guard = Guard({})
+    client, _, _ = talk(tmp_path, monkeypatch, guard=guard)
+    with client:
+        ctx = mint(client, started(client)).json()["ctx"]
+        assert guard.spent_today(Store(tmp_path)) == 0
+        turn(client, ctx, "Who scored?")
+    store = Store(tmp_path)
+    kept = store.all("answers")
+    assert kept and kept[-1]["tokens_in"] > 0 and kept[-1]["replay_id"]
+    assert Guard({}).spent_today(store) > 0
+
+
+def test_off_air_a_turn_makes_no_model_call(tmp_path, monkeypatch):
+    client, provider, _ = talk(tmp_path, monkeypatch, guard=Guard({"DAILY_BUDGET_USD": "50"}))
+    with client:
+        rid = started(client)
+        ctx = mint(client, rid).json()["ctx"]  # on air: the day's spend is still nothing
+        Store(tmp_path).append(
+            "answers",
+            {
+                "line_id": "x",
+                "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
+                "model": "claude-sonnet-5-5",
+                "tokens_in": 100_000_000,
+                "tokens_out": 100_000_000,
+            },
+        )
+        monkeypatch.setattr(guard_module, "SPEND_TTL_S", 0)
+        over = turn(client, ctx, "Who scored?")
+    assert OFF_TODAY in said(over) and provider.requests == []
+
+
+class ToolClient(SlowClient):
+    """A first call that asks for a tool, a second that answers: two model calls, counted."""
+
+    def __init__(self):
+        super().__init__([(0, "Player1 scored for the Reds.")])
+        self.calls = 0
+
+    def stream(self, **request):
+        self.calls += 1
+        self.tool = self.calls == 1
+        return self
+
+    def __iter__(self):
+        if self.tool:
+            yield SimpleNamespace(
+                type="content_block_start", content_block=SimpleNamespace(type="tool_use")
+            )
+        else:
+            yield from super().__iter__()
+
+    def get_final_message(self):
+        if not self.tool:
+            return super().get_final_message()
+        use = SimpleNamespace(type="tool_use", id="t1", name="get_score", input={})
+        return SimpleNamespace(
+            content=[use], usage=SimpleNamespace(input_tokens=1, output_tokens=1)
+        )
+
+
+def test_an_answer_that_used_a_tool_costs_two_model_calls_not_three():
+    client = ToolClient()
+    said = asyncio.run(sentences(SimpleNamespace(client=client, call=None)))
+    assert said == ["Player1 scored for the Reds."] and client.calls == 2

@@ -1,20 +1,28 @@
 #!/usr/bin/env bash
 # Deploy the committed HEAD to Cloud Run and prove it answers.
 #   PROJECT=<gcp-project-id> [REGION=europe-west1] [SERVICE=night-shift] \
-#     [STATE_BUCKET=<PROJECT>-state] [MIN_INSTANCES=0] [DEPLOY_AS_SELF=1] [PRODUCER_TOKEN=...] [CONVERSE_AGENT_ID=... CONVERSE_LLM_SECRET=...] scripts/deploy.sh
+#     [STATE_BUCKET=<PROJECT>-state] [MIN_INSTANCES=0] [DEPLOY_AS_SELF=1] [PRODUCER_TOKEN=...] [CONVERSE_AGENT_ID=...] [DAILY_BUDGET_USD=50] scripts/deploy.sh
 # A rehearsal deploys SERVICE=night-shift-staging, whose store sits under its own prefix.
 # One-time GCP setup: scripts/bootstrap.sh. Rollback: route traffic to the previous revision
 # (gcloud run services update-traffic SERVICE --to-revisions REV=100).
 set -euo pipefail
 
 : "${PROJECT:?set PROJECT to the GCP project id}"
+DAILY_BUDGET_USD="${DAILY_BUDGET_USD:-}"
+if [[ -n "$DAILY_BUDGET_USD" ]] &&
+  ! python3 -c 'import math,sys; value=float(sys.argv[1]); sys.exit(0 if math.isfinite(value) and value >= 0 else 1)' \
+    "$DAILY_BUDGET_USD" 2>/dev/null; then
+  echo "deploy: DAILY_BUDGET_USD must be a finite nonnegative number" >&2
+  exit 1
+fi
 REGION="${REGION:-europe-west1}"
 SERVICE="${SERVICE:-night-shift}"
 STATE_BUCKET="${STATE_BUCKET:-$PROJECT-state}"
 MIN_INSTANCES="${MIN_INSTANCES:-0}"  # set 1 for a demo: no cold start
-# The one list of secrets: each mounts as its upper-cased name (mubit-api-key is
-# MUBIT_API_KEY), and scripts/bootstrap.sh creates and grants exactly these.
+# Required secrets: each mounts as its upper-cased name (mubit-api-key is MUBIT_API_KEY),
+# and scripts/bootstrap.sh creates and grants exactly these.
 SECRETS="mubit-api-key elevenlabs-api-key"
+OPTIONAL_SECRETS="converse-llm-secret"
 
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "deploy: the working tree is dirty; commit first so the commit label names what ships" >&2
@@ -58,6 +66,9 @@ MOUNTS+="MUBIT_FALLBACK_KEY=mubit-api-key:$MUBIT_FALLBACK_VERSION,"
 if [[ "$ELEVENLABS_FALLBACK_VERSION" != none ]]; then
   MOUNTS+="ELEVENLABS_API_KEY_FALLBACKS=elevenlabs-api-key:$ELEVENLABS_FALLBACK_VERSION,"
 fi
+if [[ -n "${CONVERSE_AGENT_ID:-}" ]]; then
+  MOUNTS+="CONVERSE_LLM_SECRET=converse-llm-secret:latest,"
+fi
 
 # The voice picks (docs/voice.md): VOICE_<SPORT>, VOICE_MODEL_<SPORT> and VOICE_LABEL_<SPORT>, from the environment or
 # .env, go to Cloud Run only when set, so an unset one keeps the code default. .env is never
@@ -72,13 +83,12 @@ MUBIT_RECORD="${MUBIT_RECORD:-off}"
 # set on the service by hand would go at the next deploy: it comes from the deploy's environment
 # (never .env), and unset leaves fixes open. No "@", which would split the list.
 PRODUCER_TOKEN="${PRODUCER_TOKEN:-}"
-# Talk to the commentator (#380), from the deploy's environment (never .env); both unset leaves the
-# Talk button off and the page on Ask. CONVERSE_LLM_SECRET is the bearer scripts/converse_agent.py
-# gave the agent's custom LLM. No "@", which would split the list.
+# Talk to the commentator (#380). The bearer is provisioned through Secret Manager by
+# scripts/bootstrap.sh; only its agent id is an ordinary environment variable. With no agent id,
+# the secret isn't mounted and the Talk button stays off.
 CONVERSE_AGENT_ID="${CONVERSE_AGENT_ID:-}"
-CONVERSE_LLM_SECRET="${CONVERSE_LLM_SECRET:-}"
-if [[ ! "$CONVERSE_AGENT_ID$CONVERSE_LLM_SECRET" =~ ^[A-Za-z0-9_.~+/=-]*$ ]]; then
-  echo "deploy: CONVERSE_AGENT_ID and CONVERSE_LLM_SECRET may hold only letters, digits and _.~+/=-" >&2
+if [[ ! "$CONVERSE_AGENT_ID" =~ ^[A-Za-z0-9_.~+/=-]*$ ]]; then
+  echo "deploy: CONVERSE_AGENT_ID may hold only letters, digits and _.~+/=-" >&2
   exit 1
 fi
 if [[ -n "$PRODUCER_TOKEN" && ! "$PRODUCER_TOKEN" =~ ^[A-Za-z0-9_.~+/=-]+$ ]]; then
@@ -112,7 +122,7 @@ done
 gcloud run deploy "$SERVICE" --source . --region "$REGION" --project "$PROJECT" \
   --allow-unauthenticated \
   --set-secrets "${MOUNTS%,}" \
-  --set-env-vars "^@^MODE=cloud@STORE_URL=gs://$STATE_BUCKET/$SERVICE@MUBIT_RECORD=$MUBIT_RECORD$VOICE_ENV${PRODUCER_TOKEN:+@PRODUCER_TOKEN=$PRODUCER_TOKEN}${CONVERSE_AGENT_ID:+@CONVERSE_AGENT_ID=$CONVERSE_AGENT_ID}${CONVERSE_LLM_SECRET:+@CONVERSE_LLM_SECRET=$CONVERSE_LLM_SECRET}" \
+  --set-env-vars "^@^MODE=cloud@STORE_URL=gs://$STATE_BUCKET/$SERVICE@MUBIT_RECORD=$MUBIT_RECORD$VOICE_ENV${PRODUCER_TOKEN:+@PRODUCER_TOKEN=$PRODUCER_TOKEN}${CONVERSE_AGENT_ID:+@CONVERSE_AGENT_ID=$CONVERSE_AGENT_ID}${DAILY_BUDGET_USD:+@DAILY_BUDGET_USD=$DAILY_BUDGET_USD}" \
   --labels "commit=$COMMIT" \
   --min-instances "$MIN_INSTANCES" \
   --max-instances 1 \

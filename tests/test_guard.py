@@ -97,19 +97,14 @@ def test_a_cache_only_replay_publishes_stored_lines_and_stores_nothing(tmp_path)
     assert stats(store) == before  # the Proof card does not move
 
 
-def test_a_stored_line_said_again_gets_one_line_check_ever(tmp_path):
-    """Judges watch stored lines: each checked one with no record is checked once, off its path."""
+def test_cached_replay_reuses_linechecks_without_new_provider_calls(tmp_path):
+    """Stored commentary replays without making paid second-opinion calls."""
     store = Store(tmp_path)
     stored(store, checked=True)
     store.append("linechecks", {"line_id": "old0", "wrong": [], "created_at": "earlier"})
-    checks, failed = [], []
 
-    def linecheck(line, m, past):
-        if line["line_id"] == "old2" and not failed:  # its first check fails: the next tries again
-            failed.append(line["line_id"])
-            raise TimeoutError
-        checks.append((line["line_id"], m["idx"], [p["idx"] for p in past]))
-        return {"labels": None, "wrong": [], "mubit_request_id": "lc"}
+    def linecheck(line, moment, history):
+        raise AssertionError("cached replay must not call linecheck")
 
     deps = Deps(lambda: [], lambda mid: MOMENTS, lambda m, h: None, linecheck=linecheck)
     guard = Guard({}, lambda: NOON)
@@ -120,26 +115,66 @@ def test_a_stored_line_said_again_gets_one_line_check_ever(tmp_path):
         second = read_stream(client, start(client).json()["replay_id"])
         third = read_stream(client, start(client).json()["replay_id"])
     assert [d["text"] for n, d in first if n == "line"] == ["Stored 0", "Stored 1", "Stored 2"]
-    assert checks == [("old1", 1, [0]), ("old2", 2, [0, 1])] and failed == ["old2"]
-    assert [d["line_id"] for n, d in first + second + third if n == "linecheck"] == ["old1", "old2"]
-    rows = store.all("linechecks")[1:]
-    assert [(r["line_id"], r["match_id"], r["moment_idx"]) for r in rows] == [
-        ("old1", "7", 1),
-        ("old2", "7", 2),
-    ]
-    assert all(r["mubit_request_id"] == "lc" and r["created_at"] for r in rows)
+    assert store.all("linechecks") == [{"line_id": "old0", "wrong": [], "created_at": "earlier"}]
+    assert [d["line_id"] for n, d in first + second + third if n == "linecheck"] == []
     assert len(store.all("lines")) == 3  # the stored lines, never stored again
 
 
-def test_two_viewings_at_once_check_a_stored_line_once(tmp_path):
-    store, entered, go, checks = Store(tmp_path), threading.Event(), threading.Event(), []
+def test_hourly_capped_cached_replays_do_not_retry_a_failed_linecheck(tmp_path):
+    store = Store(tmp_path)
+    stored(store, checked=True)
+    calls = []
+
+    def linecheck(line, moment, history):
+        calls.append(line["line_id"])
+        raise TimeoutError("provider unavailable")
+
+    deps = Deps(lambda: [], lambda mid: MOMENTS, lambda m, h: None, linecheck=linecheck)
+    guard = Guard({"REPLAYS_PER_HOUR": "1"}, lambda: NOON)
+    guard.replays.hit("1.1.1.1")  # the next starts are free cached playback
+    client = TestClient(create_app(store=store, deps=deps, guard=guard))
+    with client:
+        first = start(client)
+        second = start(client)
+        first_lines = texts(client, first.json()["replay_id"])
+        second_lines = texts(client, second.json()["replay_id"])
+    assert first.status_code == second.status_code == 200
+    assert first_lines == second_lines == ["Stored 0", "Stored 1", "Stored 2"]
+    assert calls == []
+    assert len(store.all("lines")) == 3 and store.all("linechecks") == []
+
+
+def test_fresh_replay_still_runs_a_linecheck_for_a_checked_line(tmp_path):
+    checked = []
+
+    def commentate(m, history):
+        return {
+            "line_id": f"new{m['idx']}",
+            "match_id": "7",
+            "moment_idx": m["idx"],
+            "text": "New",
+            "checked": True,
+            "model": "fake",
+        }
+
+    def linecheck(line, moment, history):
+        checked.append(line["line_id"])
+        return {"labels": [], "wrong": [], "mubit_request_id": "lc"}
+
+    deps = Deps(lambda: [], lambda mid: MOMENTS, commentate, linecheck=linecheck)
+    client = TestClient(create_app(store=Store(tmp_path), deps=deps, guard=Guard({}, lambda: NOON)))
+    with client:
+        rid = start(client).json()["replay_id"]
+        read_stream(client, rid)
+    assert sorted(checked) == ["new0", "new1", "new2"]
+
+
+def test_two_cached_viewings_do_not_start_linechecks(tmp_path):
+    store, checks = Store(tmp_path), []
     stored(store, checked=True)
 
     def linecheck(line, m, past):
         checks.append(line["line_id"])
-        if len(checks) == len(MOMENTS):
-            entered.set()
-        assert go.wait(5)  # the first viewing's checks are still in flight
         return {"labels": None, "wrong": []}
 
     deps = Deps(lambda: [], lambda mid: MOMENTS, lambda m, h: None, linecheck=linecheck)
@@ -148,20 +183,19 @@ def test_two_viewings_at_once_check_a_stored_line_once(tmp_path):
     client = TestClient(create_app(store=store, deps=deps, guard=guard))
     with client:
         first = start(client).json()["replay_id"]
-        assert entered.wait(5)
         second = start(client).json()["replay_id"]
         read_stream(client, second)
-        go.set()
         read_stream(client, first)
-    assert sorted(checks) == ["old0", "old1", "old2"]
-    assert sorted(r["line_id"] for r in store.all("linechecks")) == ["old0", "old1", "old2"]
+    assert checks == []
+    assert store.all("linechecks") == []
 
 
 def test_a_client_gets_its_hourly_starts_then_429_with_retry_after(tmp_path):
     client, _ = app(Store(tmp_path), {"REPLAYS_PER_HOUR": "2"})
     with client:
         ok = [start(client, ip="1.1.1.1, 10.0.0.1").status_code for _ in range(2)]
-        over = start(client, ip="1.1.1.1, 10.0.0.2")  # the first hop is the client
+        # the first hop is the client; match 8 has no stored lines to play instead
+        over = start(client, match_id="8", ip="1.1.1.1, 10.0.0.2")
         other = start(client, ip="2.2.2.2")
     assert ok == [200, 200]
     assert over.status_code == 429 and 0 < int(over.headers["retry-after"]) <= 3600
@@ -329,3 +363,46 @@ def test_after_midnight_a_read_error_does_not_carry_yesterdays_spend(tmp_path):
     assert guard.off_air(store)  # yesterday, over the cap
     store.down, now[0] = True, NOON
     assert not guard.off_air(store)
+
+
+def test_over_its_hourly_starts_a_client_hears_the_stored_lines(tmp_path):
+    client, calls = app(Store(tmp_path), {"REPLAYS_PER_HOUR": "1"})
+    with client:
+        fresh = start(client).json()["replay_id"]
+        read_stream(client, fresh)
+        over = start(client)  # a judge clicking through: the stored lines, not a refusal
+        assert over.status_code == 200
+        said = texts(client, over.json()["replay_id"])
+        unknown = start(client, match_id="8")  # nothing stored for it: still refused
+    assert calls == [0, 1, 2] and said == ["New", "New", "New"]  # the first replay's lines
+    assert unknown.status_code == 429 and "started a lot" in unknown.json()["detail"]
+
+
+def test_a_replay_of_stored_lines_never_counts_against_the_hourly_starts(tmp_path):
+    store, gate, calls = Store(tmp_path), threading.Event(), []
+    stored(store)
+
+    def slow(m, history):  # the first replay holds the one live slot until the gate opens
+        calls.append(m["idx"])
+        gate.wait(5)
+        return {"line_id": f"new{m['idx']}", "match_id": "7", "moment_idx": m["idx"], "text": "New"}
+
+    client, _ = app(store, {"MAX_LIVE_REPLAYS": "1", "REPLAYS_PER_HOUR": "2"}, commentate=slow)
+    with client:
+        first = start(client).json()["replay_id"]
+        busy = [start(client) for _ in range(3)]  # the live slot is taken: stored lines, uncounted
+        for r in busy:
+            read_stream(client, r.json()["replay_id"])
+        gate.set()
+        read_stream(client, first)
+        second = start(client)  # the client's second fresh start of two
+        read_stream(client, second.json()["replay_id"])
+    assert [r.status_code for r in busy] == [200, 200, 200] and second.status_code == 200
+    assert calls == [
+        0,
+        1,
+        2,
+        0,
+        1,
+        2,
+    ]  # both fresh replays called the model; the stored ones didn't
