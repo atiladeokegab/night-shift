@@ -1,29 +1,42 @@
 """#130: the analyst's stat lines, and now and then the lead's reply, fill each quiet stretch of a
-video replay, from data up to the moment they follow only, through the same commentator request as
-every line, and cached per match."""
+video replay, from data up to the moment they follow only, through the analyst's own request
+(a line's message, agent/analyst.md, never recorded), and cached per match."""
 
 import asyncio
 import functools
+import json
 import uuid
+from collections import Counter
 
 import pytest
 from fastapi.testclient import TestClient
 
 from agent import commentator
 from agent.commentator import FakeProvider
-from core import insight, predict
+from core import insight, predict, smoke
 from core.app import Deps, create_app
 from core.predict import load_pack
 from core.replay import Replay, run_replay
 from core.smoke import read_stream
 from core.store import Store
-from data.matches import list_matches, load_moments, video_map
+from data.matches import list_matches, load_moments, match_header, video_map
 
 KOBE, CHELSEA = "0020500591", "3754092"
 
 
+class Fake(FakeProvider):
+    """FakeProvider, its read-back cut to 7 words: an insight's Event is the whole stat."""
+
+    def call(self, request):
+        reply = super().call(request)
+        for b in reply["content"]:
+            if b["type"] == "text":
+                b["text"] = " ".join(b["text"].split()[:7])
+        return reply
+
+
 def replay(match_id, store, moments=None, video=True, calls=None):
-    fake = FakeProvider()
+    fake = Fake()
     r = Replay(match_id, 1e9)
     calls = calls or functools.partial(commentator.commentate, provider=fake)
     moments = moments or load_moments(match_id)
@@ -86,15 +99,16 @@ def test_kobe_one_viewing_fills_every_quiet_stretch_at_the_spacing_without_repea
 def test_a_later_event_never_reaches_the_insights_before_it(tmp_path, monkeypatch):
     monkeypatch.setattr(insight, "MAX_CALLS", 1000)
     moments = load_moments(KOBE)
-    k = next(i for i, m in enumerate(moments) if m["idx"] == 10)  # unmapped, between 9 and 11
-    moments[k] = {
-        **moments[k],
-        "team": "Toronto Raptors",
-        "players": {"shooter": "Planted Shooter"},
-        "outcome": "3 points",
-        "score": {"home": 990, "away": 991},
-        "detail": {"player_points": 977},
-    }
+    for i, m in enumerate(moments):
+        if m["idx"] in (10, 21):  # unmapped, 10 between 9 and 11; two make a tally
+            moments[i] = {
+                **m,
+                "team": "Toronto Raptors",
+                "players": {"shooter": "Planted Shooter"},
+                "outcome": "3 points",
+                "score": {"home": 990, "away": 991},
+                "detail": {"player_points": 977},
+            }
     lines, fake = replay(KOBE, Store(tmp_path), moments)
     planted = ("Planted", "990", "991", "977")
     before = [ln for ln in lines if gap(ln).get("after_idx", 99) <= 9]
@@ -105,18 +119,23 @@ def test_a_later_event_never_reaches_the_insights_before_it(tmp_path, monkeypatc
     assert not any(p in q for q in early for p in planted)
     # the probe can go red: once the planted event is past, the insights do use it
     later = [
-        ln["insight"]["detail"] for ln in lines if ln.get("insight", {}).get("after_idx") == 11
+        ln["insight"]["detail"] for ln in lines if ln.get("insight", {}).get("after_idx", 0) > 9
     ]
-    assert any("Planted Shooter" in d for d in later)
+    assert any(p in d for d in later for p in planted)
 
 
-def test_an_insight_request_is_a_normal_line_request(tmp_path):
+def test_an_insight_request_has_the_analysts_prompt_and_a_lines_message(tmp_path):
     _, fake = replay(CHELSEA, Store(tmp_path))
     stat = stat_calls(fake)[0]
     line = next(q for q in fake.requests if q not in stat_calls(fake))
-    for key in ("model", "max_tokens", "system", "tools", "tool_choice", "metadata"):
+    for key in ("max_tokens", "metadata"):
         assert stat[key] == line[key], key
-    assert stat["system"] == commentator.SYSTEM and stat["tools"] == commentator.TOOLS
+    assert (stat["model"], line["model"]) == (commentator.ANALYST_MODEL, commentator.MODEL)
+    assert line["system"] == commentator.SYSTEM and line["tools"] == commentator.TOOLS
+    # the analyst's own prompt and no tools, so the lines' frozen fingerprint stays one task
+    assert (
+        stat["system"] == commentator.ANALYST and "tools" not in stat and "tool_choice" not in stat
+    )
     labels = [row.split(":")[0] for row in commentator.MESSAGE.splitlines()]
     for q in (stat, line):
         assert [row.split(":")[0] for row in q["messages"][0]["content"].splitlines()][:9] == (
@@ -132,7 +151,11 @@ def test_each_insight_hears_the_line_before_it_and_the_lead_replies(tmp_path):
     for q, (prev, ln) in zip(asked, pairs, strict=True):
         details = next(row for row in q.splitlines() if row.startswith("Details: "))
         assert f"speaker: {ln['speaker']}, Partner just said: {prev['text']}" in details
-        assert ("stat: " in details) == ("insight" in ln)  # a reply brings no new number
+        event = next(row for row in q.splitlines() if row.startswith("Event: "))
+        if "insight" in ln:  # the stat is the Event; a reply's Event is what it heard
+            assert event == f"Event: Stat, {ln['insight']['kind']}: {ln['insight']['detail']}"
+        else:
+            assert event.endswith(f"who just said: {prev['text']}")
     replies = [(prev, ln) for prev, ln in pairs if "reply" in ln]
     assert replies and all(prev["speaker"] == "analyst" for prev, _ in replies)
     assert {ln["speaker"] for ln in lines if "insight" in ln} == {"analyst"}
@@ -153,6 +176,130 @@ def test_a_pack_match_cites_the_pack_and_one_without_uses_tonight_only(tmp_path,
     assert not any("before tonight" in i["detail"] for i in said)
 
 
+def test_a_pack_stretch_opens_on_the_pack_and_one_moment_is_no_tally(tmp_path):
+    lines, _ = replay(KOBE, Store(tmp_path))
+    first = [ln["insight"]["kind"] for ln in lines if ln.get("insight", {}).get("n") == 0]
+    assert first and set(first) <= {"player profile", "next to score"}
+    one = load_moments(CHELSEA)[:1]
+    assert insight._tallies(None, one) == [] and insight._tallies(None, one * 2)
+
+
+def test_a_cricket_profile_is_the_part_for_the_players_role():
+    moments = load_moments("1298150")
+    k = next(i for i, m in enumerate(moments) if m["idx"] == 10)  # Iftikhar Ahmed bats, over 11
+    pack = load_pack("cricket", "1298150")
+    facts = insight._profiles(pack, moments[: k + 1])
+    batter, bowler = (moments[k]["players"][r] for r in ("batter", "bowler"))
+    bats = [d for d in facts if d.startswith(batter)]
+    bowls = [d for d in facts if d.startswith(bowler)]
+    assert bats and all(d.startswith(f"{batter} batting ") for d in bats)
+    assert bats[1].startswith(
+        f"{batter} batting in the middle overs in T20 internationals this year before tonight: "
+    )
+    assert bowls and all(d.startswith(f"{bowler} bowling ") for d in bowls)
+
+
+def test_a_profile_is_one_short_fact_at_a_time():
+    for sport, match_id in (("football", "3869685"), ("basketball", KOBE), ("f1", "9636")):
+        moments = load_moments(match_id)
+        facts = insight._profiles(load_pack(sport, match_id), moments[:8])
+        assert facts and all(d.count(".") <= 2 and len(d.split()) <= 20 for d in facts), sport
+
+
+def test_every_pre_match_fact_names_its_period():
+    for sport, match_id, period in (
+        ("football", "3869685", "at this World Cup before tonight"),
+        ("football", CHELSEA, "this season before tonight"),
+        ("basketball", KOBE, "this season before tonight"),
+        ("f1", "9636", "this season before tonight"),
+        ("cricket", "1298150", "in T20 internationals this year before tonight"),
+    ):
+        moments = load_moments(match_id)
+        facts = insight._profiles(load_pack(sport, match_id), moments[: len(moments) // 2])
+        tonight = [d for d in facts if "tonight" in d and "before tonight" not in d]
+        assert len(tonight) < len(facts), (sport, match_id)
+        assert all(period in d for d in facts if d not in tonight), (sport, match_id)
+
+
+def test_a_profile_never_reads_a_match_clock_as_an_over():
+    for sport, match_id in (("football", "3869685"), ("basketball", KOBE), ("cricket", "1298150")):
+        moments = load_moments(match_id)[:5]
+        past = moments[:-1] + [{**moments[-1], "clock": "16:15"}]
+        assert insight._profiles(load_pack(sport, match_id), past), sport
+
+
+@pytest.mark.parametrize("env", [None, "claude-sonnet-test"])
+def test_the_analyst_model_is_a_setting_and_the_lines_model_never_moves(tmp_path, monkeypatch, env):
+    if env:
+        monkeypatch.setenv("ANALYST_MODEL", env)
+    else:
+        monkeypatch.delenv("ANALYST_MODEL", raising=False)
+    want = env or "claude-sonnet-5-5"
+    lines, fake = replay(CHELSEA, Store(tmp_path))
+    stats = stat_calls(fake)
+    assert stats and {q["model"] for q in stats} == {want}
+    assert {q["model"] for q in fake.requests if q not in stats} == {"claude-haiku-4-5"}
+    assert {ln["model"] for ln in lines if gap(ln)} == {want}
+
+
+@pytest.mark.parametrize("model", ["claude-sonnet-5-5", "claude-haiku-4-5"])
+def test_only_a_sonnet_stat_request_turns_thinking_down(tmp_path, monkeypatch, model):
+    monkeypatch.setenv("ANALYST_MODEL", model)
+    _, fake = replay(CHELSEA, Store(tmp_path))
+    stats = stat_calls(fake)
+    want = [{"type": "between_tools"}] if model == "claude-sonnet-5-5" else [None]
+    assert stats and [q.get("thinking") for q in stats] == want * len(stats)
+    frozen = {
+        "model": commentator.MODEL,
+        "max_tokens": commentator.MAX_TOKENS,
+        "system": commentator.SYSTEM,
+        "tools": commentator.TOOLS,
+        "tool_choice": commentator.TOOL_CHOICE,
+    }
+    moments = [q for q in fake.requests if q not in stats]
+    assert moments  # each one is exactly a line's request: the frozen parts, byte for byte
+    for q in moments:
+        assert set(q) == {*frozen, "metadata", "messages"}
+        assert json.dumps({k: q[k] for k in frozen}) == json.dumps(frozen)
+
+
+def test_analyst_and_reply_lines_never_go_through_the_recorded_provider(tmp_path, monkeypatch):
+    recorded, unrecorded = Fake(), Fake()
+    monkeypatch.setattr(commentator, "default_provider", lambda: recorded)
+    monkeypatch.setattr(commentator, "unrecorded_provider", lambda: unrecorded)
+    lines, _ = replay(CHELSEA, Store(tmp_path), calls=commentator.commentate)
+    said = next(ln for ln in lines if "insight" in ln)
+    commentator.correct(said, "Fixed.", moments=insight.said_over(said, load_moments))
+
+    def stats(fake):
+        return {"\nEvent: Stat, " in q["messages"][0]["content"] for q in fake.requests}
+
+    assert any("reply" in ln for ln in lines)
+    assert stats(recorded) == {False} and stats(unrecorded) == {True}
+    assert unrecorded.requests[-1]["messages"][-1]["content"].startswith("Producer correction")
+
+
+def test_a_dropped_analyst_line_hands_its_slot_to_the_next_kind_once(tmp_path):
+    fake, asked = Fake(), []
+
+    def calls(moment, history, drop="player profile"):
+        asked.append((moment["idx"], moment["outcome"])) if moment["type"] == "Stat" else None
+        if moment["outcome"].startswith(drop):
+            return None  # the line filter dropped it
+        return commentator.commentate(moment, history, provider=fake)
+
+    lines, _ = replay(KOBE, Store(tmp_path / "some"), calls=calls)
+    first = [ln["insight"]["kind"] for ln in lines if ln.get("insight", {}).get("n") == 0]
+    assert first and "player profile" not in first
+    assert any(o.startswith("player profile") for _, o in asked)
+    # every line dropped: each stretch spends at most two calls, then falls quiet
+    asked.clear()
+    lines, _ = replay(KOBE, Store(tmp_path / "all"), calls=functools.partial(calls, drop=""))
+    assert not any(gap(ln) for ln in lines)
+    per_stretch = Counter(idx for idx, _ in asked)
+    assert per_stretch and set(per_stretch.values()) == {2}
+
+
 def test_a_second_replay_makes_no_new_insight_calls(tmp_path):
     store = Store(tmp_path)
     first, fake = replay(CHELSEA, store)
@@ -162,6 +309,31 @@ def test_a_second_replay_makes_no_new_insight_calls(tmp_path):
     ids = [ln["line_id"] for ln in first if gap(ln)]
     assert [ln["line_id"] for ln in again if gap(ln)] == ids
     assert len(store.all("lines")) == len(first) + len(again) - len(ids)  # nothing stored twice
+
+
+def test_insights_stored_before_v2_are_never_replayed(tmp_path, monkeypatch):
+    store = Store(tmp_path)
+    monkeypatch.setattr(insight, "VERSION", 1)  # v1 re-called the play
+    replay(CHELSEA, store)
+    monkeypatch.setattr(insight, "VERSION", 2)
+    _, fake = replay(CHELSEA, store)
+    assert stat_calls(fake)
+
+
+def test_the_stat_is_the_event_and_the_moments_shooter_stays_out():
+    moments = load_moments(CHELSEA)
+    k = next(i for i, m in enumerate(moments) if m["players"].get("shooter"))
+    m, header = moments[k], match_header(CHELSEA)
+    shooter = m["players"]["shooter"]
+    said_as = {"kind": "tally", "detail": "Chelsea tonight: Shot (Off T) x3", "heard": "Close!"}
+    for reply, event in ((False, "tally: Chelsea tonight: Shot (Off T) x3"), (True, None)):
+        stat = insight.stat_moment(m, said_as, reply)
+        assert stat["type"] == "Stat" and stat["players"] == {}
+        assert stat["outcome"] == (event or "the lead answers the analyst, who just said: Close!")
+        q = commentator.build_request(header, [*moments[: k + 1], stat])["messages"][0]["content"]
+        rows = dict(row.split(": ", 1) for row in q.splitlines() if ": " in row)
+        assert rows["Event"] == f"Stat, {stat['outcome']}"
+        assert shooter not in rows["Event"] + rows["Players"] + rows["Details"]
 
 
 def test_new_insight_calls_stop_at_the_cap(tmp_path):
@@ -179,7 +351,7 @@ def test_no_video_no_insights(tmp_path):
 
 
 def test_a_fix_on_an_insight_or_reply_goes_back_with_its_own_request(tmp_path):
-    fake = FakeProvider()
+    fake = Fake()
     calls = functools.partial(commentator.commentate, provider=fake)
     fix = functools.partial(commentator.correct, provider=fake)
     deps = Deps(list_matches, load_moments, calls, video_map, fix)
@@ -210,3 +382,29 @@ def test_a_fix_on_an_insight_or_reply_goes_back_with_its_own_request(tmp_path):
             assert ("\nEvent: Stat, " in q[0]["content"]) == bool(gap(ln))
             if gap(ln):
                 assert f"Partner just said: {gap(ln)['heard']}" in q[0]["content"]
+
+
+def test_the_live_smoke_passes_on_a_replay_that_reuses_stored_insight_lines(tmp_path, monkeypatch):
+    # #149: the deployed smoke match already has stored insight lines; a replay streams them again
+    # without storing them twice, so the store grows by fewer lines than were streamed
+    monkeypatch.delenv("ELEVENLABS_API_KEY", raising=False)
+    calls = functools.partial(commentator.commentate, provider=FakeProvider())
+    app = create_app(store=Store(tmp_path), deps=Deps(list_matches, load_moments, calls, video_map))
+    monkeypatch.setattr(smoke.httpx, "Client", lambda **_: TestClient(app))
+    assert smoke.live("http://testserver") == 0
+    assert smoke.live("http://testserver") == 0  # its insight lines come from the store
+
+
+def test_the_live_smoke_fails_when_a_streamed_line_never_reached_the_store(tmp_path, monkeypatch):
+    class Lossy(Store):  # every line append is lost
+        def _write(self, kind, text):
+            if kind != "lines":
+                super()._write(kind, text)
+
+    monkeypatch.delenv("ELEVENLABS_API_KEY", raising=False)
+    calls = functools.partial(commentator.commentate, provider=FakeProvider())
+    app = create_app(store=Lossy(tmp_path), deps=Deps(list_matches, load_moments, calls, video_map))
+    monkeypatch.setattr(smoke.httpx, "Client", lambda **_: TestClient(app))
+    with pytest.raises(AssertionError, match="not in store"):
+        smoke.live("http://testserver")
+    assert TestClient(app).get("/lines/nope").status_code == 404
