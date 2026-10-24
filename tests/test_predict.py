@@ -101,7 +101,8 @@ def test_answers_cite_the_counts():
     assert f"made {kobe['made']} of {kobe['attempts']}" in said
     assert f"Tonight so far: {sum(t['made'] for t in mine)} of {len(mine)} attempts" in said
     mid = kobe["zones"]["Mid-Range"]
-    assert f"Mid-Range: {mid['made']} of {mid['att']}" in said
+    assert f"Mid-Range: {round(100 * mid['made'] / mid['att'])}% before tonight" in said
+    assert f"({mid['made']} of {mid['att']})" in said
     assert "Kobe Bryant " in predict.odds_text(pack, moments, idx)
 
 

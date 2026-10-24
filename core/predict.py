@@ -195,15 +195,21 @@ def _shots_profile(pack: dict, so_far: list[dict], name: str) -> str:
         here = [t for t in mine if t["zone"] == z]
         made = sum(t["made"] for t in here)
         rate = _blend(made, len(here), _blend(c["made"], c["att"], before))
-        pre = f"{c['made']} of {c['att']}"
-        pre += f" ({_pct(c['made'] / c['att'])})" if c["att"] else ""
-        now = f", {made} of {len(here)} tonight" if here else ""
-        lines.append(f"- {z}: {pre} before tonight{now}; blended {_pct(rate)}")
+        pre = f"{_pct(c['made'] / c['att'])} " if c["att"] else ""
+        now = f"; {made} of {len(here)} tonight" if here else ""
+        lines.append(
+            f"- {z}: {pre}before tonight ({c['made']} of {c['att']}){now}; "
+            f"chance now, both combined: {_pct(rate)}"
+        )
     made = sum(t["made"] for t in mine)
     tonight = f"Tonight so far: {made} of {len(mine)} {what}"
     if football:
         tonight += f", {sum(t['xg'] for t in mine):.2f} xG"
-    chance = "Chance a shot goes in (xG-based)" if football else "Blended make rate"
+    chance = (
+        "Chance a shot goes in (xG-based)"
+        if football
+        else "Chance now, before tonight and tonight combined"
+    )
     lines.append(f"{tonight}. {chance}: {_pct(_rate(pack, p, mine))}.")
     return "\n".join(lines)
 
