@@ -622,3 +622,33 @@ def test_two_waiters_on_a_failing_job_share_one_retry(monkeypatch):
 
     assert asyncio.run(run()) == [None, None]
     assert len(calls) == 6  # the prepared job (v3, v3, flash), then one shared retry
+
+
+def test_a_request_waiting_on_a_dropped_job_starts_a_fresh_one(monkeypatch):
+    # an abandoned replay's jobs are dropped; a page still asking gets audio, not a crash
+    import asyncio
+
+    from core.voice import VOICES, Speaker
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    calls = []
+
+    async def run():
+        gate = asyncio.Event()
+
+        async def handle(request: httpx.Request) -> httpx.Response:
+            calls.append(json.loads(request.content)["model_id"])
+            if len(calls) == 1:
+                await gate.wait()  # the dropped job's call never returns
+            return httpx.Response(200, content=AUDIO)
+
+        speaker = Speaker(httpx.MockTransport(handle))
+        line = {"line_id": "x", "sport": "football", "text": "Goal!"}
+        speaker.prepare(line, {"type": "Shot"})
+        asked = asyncio.create_task(speaker.audio(line, VOICES[1]))
+        await asyncio.sleep(0.05)
+        speaker.drop({"x"})
+        return await asked
+
+    assert asyncio.run(run()) == (AUDIO, "eleven_v3")
+    assert len(calls) == 2

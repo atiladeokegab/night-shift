@@ -3,11 +3,14 @@ moments ahead of time), asks the commentator for a Line per moment, stores each 
 moment, line and stats events for the SSE stream."""
 
 import asyncio
+import logging
 import time
 import uuid
 from collections.abc import Callable
 
 from core.stats import stats
+
+log = logging.getLogger("night_shift.replay")
 
 
 def moment_seconds(moment: dict) -> float:
@@ -36,6 +39,8 @@ class Replay:
         self.started = time.monotonic()
         self.events: list[dict] = []
         self.done = False
+        self.listeners = 0  # open streams; none for REJOIN_S stops the replay (core/app.py)
+        self.stopping: asyncio.TimerHandle | None = None  # that stop, until a stream opens
         self._changed = asyncio.Condition()
 
     async def publish(self, event: str, data: dict) -> None:
@@ -104,6 +109,9 @@ async def run_replay(
             await replay.publish("line", line)
             await replay.publish("stats", stats(store))
     except Exception as exc:  # the stream says why it stopped instead of hanging open
+        # the provider's status and error type, e.g. Mubit's 402 when its credit runs out
+        name = type(exc).__name__
+        log.warning("replay %s stopped: %s: %s", replay.match_id, name, str(exc)[:300])
         await replay.publish("error", {"detail": str(exc)})
     finally:
         await replay.finish()

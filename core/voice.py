@@ -168,13 +168,25 @@ class Speaker:
         key = (line["line_id"], voice["id"])
         early = retry and key in self.jobs  # made as the line arrived (prepare)
         job = self._job(line, voice, None)
-        made = await asyncio.shield(job)
+        try:
+            made = await asyncio.shield(job)
+        except asyncio.CancelledError:
+            if not job.cancelled():  # this request was cancelled, not the job (drop)
+                raise
+            made = None
         if made is None:  # the next request tries again
             if self.jobs.get(key) is job:  # another waiter may have started the retry already
                 del self.jobs[key]
             if early:  # its budget began when the line arrived, not when the page asked (/stage)
                 return await self.audio(line, voice, retry=False)
         return made
+
+    def drop(self, line_ids: set[str]) -> None:
+        """Cancel these lines' unfinished jobs: an abandoned replay's audio nobody will hear."""
+        for key, job in list(self.jobs.items()):
+            if key[0] in line_ids and not job.done():
+                job.cancel()
+                del self.jobs[key]
 
     def _job(self, line: dict, voice: dict, deadline: float | None) -> asyncio.Task:
         key = (line["line_id"], voice["id"])
