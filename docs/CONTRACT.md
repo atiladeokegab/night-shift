@@ -17,7 +17,7 @@ tap switches to India v Pakistan 2022 and the same commentator calls cricket.
 | Piece | Where | Use it for |
 |---|---|---|
 | App factory | `core/app.py`, `create_app(store=None, deps=None)` | every route |
-| Store | `core/store.py`: `all(kind)`, `append(kind, record)`; kinds `lines`, `fixes`, `adapter` | all state |
+| Store | `core/store.py`: `all(kind)`, `append(kind, record)`; kinds `lines`, `fixes`, `adapter`, `answers` | all state |
 | Replayer | `core/replay.py`: `run_replay` publishes `moment`, `line`, `stats` | the live stream |
 | Stats | `core/stats.py`: `stats(store)` | proof panel numbers, from the store only |
 | Seam to #13 | `data.matches.list_matches()`, `data.matches.load_moments(match_id)`, `agent.commentator.commentate(moment, history)` | wired by `core.app.default_deps()` |
@@ -56,7 +56,7 @@ and refuses to start without `STORE_URL=gs://bucket/prefix`.
 
 ## HTTP
 
-Errors: 404 not found, 422 bad input, 503 commentator not configured.
+Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not configured.
 
 - `GET /health` → `{status: "ok"}` (core)
 - `GET /matches` → `[Match]` (core over data/)
@@ -73,6 +73,14 @@ Errors: 404 not found, 422 bad input, 503 commentator not configured.
   `stats`, on the replay stream that carried the line; a late subscriber gets them too. 404 unknown
   line, 422 blank `corrected_text` (trimmed), 503 no commentator or the Mubit call failed (nothing
   stored, so the page can send it again).
+- `POST /replays/{id}/ask {question, moment_idx?}` → Answer `{line_id, moment_idx, question, text,
+  ...}` (core): a viewer's question (1-200 characters, trimmed) answered in 1-2 sentences from the
+  match up to `moment_idx`, the last moment on the viewer's screen (default: the latest sent), never
+  past the last moment the replay has sent, so the answer cannot spoil what is still to come. Stored
+  in `answers` and spoken by `GET /lines/{line_id}/audio`, like a line; published as `answer` on the
+  replay stream. Off air (the commentator call failed) it answers 200 with `{off_air: true, text:
+  "Commentator is off air for a moment"}`, stores nothing and is still published. 404 unknown
+  replay, 409 a question already in flight on this replay or no moment sent yet, 422 bad question.
 - `GET /stage` → the backup live page (`core/stage.html`, static HTML over the routes here) (core)
 - `GET /voices` → `[{id, label, default_for: "cricket"|"football"|"basketball"|"f1"|null, lang: "en-IN"|"en-GB"|"en-US"}]`, the page's voice
   setting: an Indian English commentator for cricket, a British one for football, an American
@@ -80,7 +88,7 @@ Errors: 404 not found, 422 bad input, 503 commentator not configured.
   the BCP 47 tag the browser-speech fallback uses. `VOICE_<SPORT>` picks a sport's default: an id
   here, or a raw ElevenLabs voice id, listed as `<sport>-pick` (docs/voice.md). A pick that is the same
   ElevenLabs voice as an earlier entry carries `same_as: <that entry's id>`, so the page lists the voice once. (core)
-- `GET /lines/{line_id}/audio[?voice=<id>]` → `audio/mpeg` of the stored line read by ElevenLabs
+- `GET /lines/{line_id}/audio[?voice=<id>]` → `audio/mpeg` of the stored line (or answer) read by ElevenLabs
   in the chosen voice, or by default the voice for the line's sport. `eleven_v3` with an audio tag
   for the moment's kind (in the TTS text only, never the stored line); one retry, then
   `eleven_flash_v2_5` without the tag; `VOICE_MODEL_<SPORT>` overrides the model. The audio is
@@ -114,6 +122,9 @@ Errors: 404 not found, 422 bad input, 503 commentator not configured.
   and "Producer correction. Reply with exactly this line: <text>"; `reply_matched` records whether
   the reply was exactly that line. Mubit has no feedback API, so this turn is the training signal.
 - The commentator sees only moments up to the current one; a later event never reaches the model.
+- Answer (`agent.commentator.answer`): the request for the moment on screen with the system prompt
+  `agent/ask.md`, the last five lines said and the viewer's question appended to the user message;
+  same model, tools and session; at most 30 words.
 
 ## Check
 
