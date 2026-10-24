@@ -106,8 +106,6 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
               radial-gradient(120% 90% at 40% 50%, transparent 55%, rgba(0, 0, 0, .5)); }
 .live .nav { position: absolute; top: 0; left: 0; right: 0; z-index: 3; }
 .lane { position: absolute; left: var(--gut); right: calc(var(--side-w) + var(--gut) + 16px); z-index: 2; }
-/* Denser glass over the video, so the score bar, ON AIR pill and panels hold over a white frame. */
-.live .glass { --glass: rgba(10, 13, 24, .8); }
 .hud { top: 84px; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
 .scorebar { display: flex; align-items: center; gap: 14px; padding: 10px 16px; border-radius: 14px; font: 600 1.05rem/1 var(--display); flex-wrap: wrap; }
 .team { display: inline-flex; align-items: center; gap: 8px; letter-spacing: .02em; }
@@ -273,6 +271,11 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   /* The score bar keeps two rows (teams and score; clock and period or chase): no REPLAY tag or rule. */
   .scorebar .replay, .scorebar .sep { display: none; }
   .subtitle { bottom: 170px; gap: 12px; }
+  /* The scrim sized to the phone's subtitle lane (two lines and the tag above the two-row dock), so
+     the players above it stay in the clear (docs/design.md "never sits on the players"). */
+  .shade { background: linear-gradient(180deg, rgba(6, 8, 15, .78) 0%, rgba(6, 8, 15, 0) 24%),
+                       linear-gradient(0deg, rgba(6, 8, 15, .92) 0, rgba(6, 8, 15, .85) 270px, rgba(6, 8, 15, 0) 340px),
+                       radial-gradient(120% 90% at 40% 50%, transparent 55%, rgba(0, 0, 0, .5)); }
   .subtitle p { font-size: 1.45rem; }
   .dock { bottom: 56px; }
   .dock .btn { padding: 0 10px; }
