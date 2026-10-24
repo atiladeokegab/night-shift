@@ -125,12 +125,12 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .eyes p { margin: 0; max-width: 30ch; text-align: center; color: #fff; font: 600 clamp(1.25rem, 3.2vw, 2.4rem)/1.3 var(--display); text-wrap: balance; }
 .frame[data-eyes] .onair, .frame[data-eyes] .bug::before { visibility: hidden; }
 /* The score bug and ON AIR pill: small, inside the card's top edge, and the only things on the picture. */
-.bug { position: absolute; top: 10px; left: 10px; right: 10px; z-index: 2; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; pointer-events: none; }
-/* A shade behind the bug, so the video's own title never shows through it (#153). */
-.bug::before { content: ""; position: absolute; z-index: -1; inset: -10px -10px auto; height: 88px; background: linear-gradient(180deg, rgba(3, 5, 10, .82), rgba(3, 5, 10, 0)); }
+.bug { position: absolute; bottom: 10px; left: 10px; right: 10px; z-index: 2; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; pointer-events: none; }
+/* The bug sits at the picture's foot, so the video's own title (top) stays readable; a shade keeps it legible over the picture (#153). */
+.bug::before { content: ""; position: absolute; z-index: -1; inset: auto -10px -10px; height: 88px; background: linear-gradient(0deg, rgba(3, 5, 10, .82), rgba(3, 5, 10, 0)); }
 .bug button.onair { position: relative; pointer-events: auto; color: var(--fg); cursor: pointer; }
 /* The pill is under 44px tall; an invisible hit area, growing down into the picture so the frame never clips it, makes the target 44px. */
-.bug button.onair::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: max(100%, 44px); }
+.bug button.onair::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: max(100%, 44px); }
 .onair .st { display: contents; }
 .bug .scorebar { padding: 7px 12px; gap: 6px 10px; font-size: .9rem; border-radius: 12px; min-width: 0; }
 .bug .score { font-size: 1.1rem; }
@@ -390,10 +390,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   .card h2 { font-size: 1.8rem; }
   .meta { margin-top: 4px; padding-top: 8px; }
   /* The score bug keeps to the picture's top edge: no period, no voice name or bars. */
-  /* At the bottom, so the video's own title (top of the picture) stays readable. */
-  .bug { top: auto; bottom: 6px; left: 6px; right: 6px; }
-  .bug button.onair::after { top: auto; bottom: 0; } /* the hit area grows up into the picture, not onto the controls */
-  .bug::before { inset: auto -6px -6px; background: linear-gradient(0deg, rgba(3, 5, 10, .82), rgba(3, 5, 10, 0)); }
+  .bug { left: 6px; right: 6px; bottom: 6px; }
   .bug .scorebar { padding: 5px 9px; font-size: .78rem; gap: 4px 8px; }
   .bug .score { font-size: .95rem; }
   .bug .clock { font-size: .82rem; }
