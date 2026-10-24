@@ -219,7 +219,9 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
         line = next((ln for ln in store.all("lines") if ln.get("line_id") == line_id), None)
         if line is None:
             raise HTTPException(404, f"no line {line_id!r}")
-        return line
+        # its latest fix, Mubit request id included: one correction traced end to end (#239)
+        fix = next((f for f in reversed(store.all("fixes")) if f.get("line_id") == line_id), None)
+        return {**line, "fix": fix} if fix else line
 
     @app.post("/lines/{line_id}/fix")
     async def fix_line(line_id: str, req: FixRequest, x_producer_token: str = Header(default="")):
@@ -253,7 +255,7 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
                 "corrected_text": req.corrected_text,
                 "reason": req.reason,
                 "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
-                "mubit_request_id": sent["mubit_request_id"],
+                "mubit_request_id": sent.get("mubit_request_id"),  # the correction call's (#239)
                 "reply_matched": sent["reply_matched"],
                 "recorded": sent.get("recorded", False),  # sent to Mubit for training (#161)
             },
