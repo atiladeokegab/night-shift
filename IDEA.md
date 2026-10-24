@@ -40,8 +40,8 @@ has passed, and the app calls none.
   kept with the original.
 - Real traffic: replay many matches tonight so the task passes 25 kept examples with varied, real calls.
 - Proof panel: per-line latency and cost, how many lines were fixed, and the adapter's test result.
-- Side by side: the big model and our trained commentator calling the same moment (Mubit's Try
-  models, unless Mubit lets the app call the adapter).
+- Side by side (planned, not built): the big model and our trained commentator calling the same
+  moment, in Mubit's Try models, once a version passes Mubit's test; the app can't call an adapter.
 
 - Iconic extra screens, after the core works: Messi v Mbappé (2022 World Cup final), the Battle of the Bridge (Chelsea 2-2 Tottenham, 2016), Kobe Bryant's 81 points (2006), Michael Jordan's last shot (1998 NBA Finals), Max Verstappen from 17th to win at São Paulo 2024. Same commentator, same prompt.
 

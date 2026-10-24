@@ -115,7 +115,7 @@ rank 7 · state proposed · needs R-2, R-4 · touches `web/`, `core/`
 Why: The track asks for quality, cost and latency side by side
 - A-7.1@1 Scenario: GET /stats and the proof panel show p50/p95 latency, cost per line, line count, fix count and the adapter's result, matching the store (check: `tests/test_core_stats.py`, `web/src/proof.test.ts`)
 
-### R-8 [P2 · Eval] Our trained model agrees with the big one
+### R-8 [P2 · Eval] Measure whether our trained model agrees with the big one
 rank 8 · state proposed · needs R-1 · touches `eval/`
 Why: Technical execution: evidence the adapter matches, not a claim
 - A-8.1@1 Scenario: eval/agreement.py on held-out matches reports adapter-vs-provider agreement, counting empty, skipped or late lines as disagreements, or says 'not tested' with the reason; seeded with one known-bad line it reports a disagreement (check: `tests/test_eval_agreement.py::test_seeded_with_one_known_bad_line_it_reports_one_disagreement`, `::test_a_wrong_empty_skipped_or_late_adapter_line_disagrees`, `::test_an_untrained_adapter_is_not_tested_and_nothing_is_called`)

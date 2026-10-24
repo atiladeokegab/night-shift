@@ -177,8 +177,8 @@ flowchart LR
 | Card meta | "Highlights 3:08", "4 key moments", "British commentator" (cricket: "Highlights 4:48", "5 key moments", "Indian commentator") |
 | Card button | "Start replay →" |
 | Picker footer | "Match data: StatsBomb open data and Cricsheet. Highlights: broadcast highlights on YouTube (the TV coverage for Chelsea v Tottenham, the TV feed for India v Pakistan), embedded, muted. Commentary is AI-generated." |
-| About heading | "Every match deserves a commentator." |
-| About text | "Most matches are played with nobody describing them. Touchline watches a match's event feed and describes each key moment in one emotional spoken line, with the model's first word in about half a second (median, GET /stats), over the broadcast highlights." / "One commentator, four sports. The same agent calls football, cricket, basketball and F1; switch sport and it follows." / "It learns from its producer. A wrong line is fixed in one tap. Every call and every fix goes through Mubit, which trains a smaller commentator on the recorded ones; the aim is one that matches the big one at lower cost, and none of its versions has passed Mubit's test yet." |
+| About heading | "The describer that checks itself." |
+| About text | "Most matches are played with nobody describing them. Touchline watches a match's event feed and describes each key moment in one emotional spoken line, with the model's first word in about half a second (median, GET /stats), over the broadcast highlights." / "It checks every number in the lead's calls." (score, leader, margin, counts; one retry, then a line built from the data; the analyst's stat lines not yet) / "One describer, four sports." / "Every fix trains the platform's own describer." (no version has passed Mubit's test yet). Shipped text: `web/src/components/About.tsx`. |
 | Score bar tag | "REPLAY" |
 | Football clock | "82:39" with "1st half" or "2nd half" |
 | Cricket clock | "Over 19.4" with "need 6 off 3", and "PAK 159/8" |
