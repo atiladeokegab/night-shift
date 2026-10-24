@@ -254,6 +254,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 @media (max-width: 1100px) {
   :root { --stage-h: 74svh; }
   .lane, .novideo, .banner { right: var(--gut); }
+  .subtitle::before { inset: -64px 0 -40px; } /* on a full-width lane the -18% glow made the page scroll sideways */
   .side { position: static; width: auto; display: grid; grid-template-columns: 1fr 1fr; padding: 16px var(--gut) 32px; align-items: start; }
   .panel.lines .log { max-height: 420px; }
 }
@@ -282,7 +283,6 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   /* The score bar keeps two rows (teams and score; clock and period or chase): no REPLAY tag or rule. */
   .scorebar .replay, .scorebar .sep { display: none; }
   .subtitle { bottom: 170px; gap: 12px; }
-  .subtitle::before { inset: -64px 0 -40px; } /* the -18% glow made the page scroll sideways */
   /* Under the score bar, clear of the moment tag; an alert banner takes the spot while it shows. */
   .novideo { top: 148px; transform: none; font-size: .85rem; }
   /* The scrim sized to the phone's subtitle lane (two lines and the tag above the two-row dock), so
@@ -310,6 +310,25 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   .voices { grid-template-columns: 1fr; }
   .sheet { --pad: 20px; max-height: calc(100svh - 16px); }
   .scrim { place-items: end center; padding: 8px; }
+  /* With no video the stage only needs the height that fits the caption, a two-line subtitle and the dock,
+     so a tall phone shows no empty band (375x667 is already at that height). */
+  :root:has(.novideo) { --stage-h: min(76svh, 510px); }
+}
+/* A phone on its side: the stage takes the whole screen and the dock one row, so the score bar, the
+   no-video caption, the subtitle and the dock stack without touching. */
+@media (orientation: landscape) and (max-height: 500px) {
+  :root, :root:has(.novideo) { --stage-h: 100svh; }
+  .live .nav { padding-top: 12px; padding-bottom: 12px; }
+  .hud { top: 56px; flex-wrap: nowrap; }
+  .novideo { top: 106px; transform: none; font-size: .85rem; }
+  .subtitle { bottom: 124px; gap: 8px; }
+  .subtitle p { font-size: 1.2rem; max-width: 52ch; }
+  .dock { bottom: 60px; }
+  .dock .back { display: none; }
+  .seg { flex: 0 0 auto; }
+  .dock .voice { flex: 1 1 0; min-width: 0; }
+  .dock .voice span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .timeline { bottom: 18px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 
