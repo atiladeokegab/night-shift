@@ -291,7 +291,11 @@ Split by speaker (`by_speaker`, same read):
 The overall p95 (1,413 ms) is above the lead's (919 ms) because the analyst's lines are slower.
 
 "First word" is the time from the moment to the first word of the model's text reply, not the audio:
-speech synthesis and playback come after it.
+speech synthesis and playback come after it. "Audio first" (`audio_first_ms_p50` / `p95` over
+`audio_lines`, per speaker, since #233) is what a listener waits for: from the moment to its line's
+audio being ready on the server, the number check, its retry and the voice's retry or fallback
+included. It leaves out the browser's own playback start, and lines with no audio. Not yet read
+from the live service.
 
 **One match, voice included: $0.37 on average.** `/stats` measures every full replay on the live
 site (one played from kick-off): the model cost of every line it said and every answer, plus its
