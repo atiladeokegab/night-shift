@@ -85,17 +85,16 @@ say which: no version trained on corrections has been tested.
 **Anatomy of a fix.** One real correction from the review queue to Mubit. The fix stores the
 correction call's Mubit request id, and `GET /lines/{line_id}` returns it under `fix`.
 
-<!-- ANATOMY OF A FIX PLACEHOLDER (#239): fill every TBD from one real fix after deploy, from
-GET /lines/{line_id} and the next replay of the same moment. State the date read. -->
+Read 24 Oct 2026 from one real fix (Bulls v Jazz 1998, the Jordan layup).
 
 | Step | Value |
 |---|---|
-| The wrong line | TBD |
-| The checker's reason | TBD |
-| The producer's fix | TBD |
-| Mubit request id | TBD |
-| Recorded for training | TBD |
-| What the next replay said | TBD |
+| The wrong line | The model said "Jordan with the driving layup! Chicago Bulls take the lead, 85-86!" Utah led 86-85. The number check caught it before air: a safe line built from the data was spoken instead ("Michael Jordan with the driving layup. Utah Jazz lead eighty-six, eighty-five."), and the line went to the fix queue |
+| The checker's reason | "Chicago Bulls do not lead" |
+| The producer's fix | "Michael Jordan with the driving layup, forty-three for him! Utah still lead, eighty-six to eighty-five." (reason: Wrong score) |
+| Mubit request id | `mreq_01a16eb90c9076f0b88abe5089b47e1e` |
+| Recorded for training | Yes: `recorded: true`, and the model's reply matched the fix |
+| What the next replay said | At 16:23:09 UTC, five seconds after the fix, the producer's line, marked fixed, with no model call (line `3ccce616bff14206bd6b3c8126343b88`) |
 
 ---
 
@@ -292,9 +291,9 @@ The overall p95 (1,413 ms) is above the lead's (919 ms) because the analyst's li
 
 "First word" is the time from the moment to the first word of the model's text reply, not the audio:
 speech synthesis and playback come after it. "Audio first" (`audio_first_ms_p50` / `p95` over
-`audio_lines`, in the lead's block only, since #233) is what a listener waits for: from the moment
-to its line's audio being ready on the server, the number check, its retry and the voice's retry or
-fallback included. It leaves out the browser's own playback start, lines with no audio, and lead
+`audio_lines`, in the lead's block only, since #233) runs from the moment until its line's full
+audio clip is ready on the server, not until the listener hears it, with the number check, its retry
+and the voice's retry or fallback included. It leaves out the browser's own playback start, lines with no audio, and lead
 lines voiced only when the page asked again after the audio made ahead failed (that retry starts
 from the stored line, which carries no moment time). The analyst has no such figure: its stat line
 is called and checked before its moment is published, and its audio is made ahead of its slot, so
@@ -560,7 +559,7 @@ The commentator's tools and the shot map read per-match stats packs ([`data/pack
 
 | What | Count | Runs |
 |---|---|---|
-| Python tests: the number check, replay timing, the store, Mubit and ElevenLabs calls against fakes, the deploy script | 754 | `make check`, offline; and in `make smoke` |
+| Python tests: the number check, replay timing, the store, Mubit and ElevenLabs calls against fakes, the deploy script | 773 | `make check`, offline; and in `make smoke` |
 | Web unit tests: the live page, the Proof card, Fix, Ask, captions | 89 | `npm test` in `web/` |
 | Offline smoke: every sample match replayed end to end through the real server with a fake model | 7 matches | `make smoke`; in CI on every PR into `integration` ([`.github/workflows/smoke.yml`](.github/workflows/smoke.yml)), which also builds the container and imports the app inside it |
 | Live smoke on the real URL: one replay streams moments and lines, and the service's store grows by the lines it streamed | 1 replay | after every deploy, in [`scripts/deploy.sh`](scripts/deploy.sh) (`BASE_URL=<url> python -m core.smoke`) |

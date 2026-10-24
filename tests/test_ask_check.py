@@ -53,6 +53,21 @@ def test_messi_has_not_scored_is_caught_and_the_half_too():
     ]
 
 
+# false at 105:41, caught by 553c47c and let through by 211f2ef's wide exemption: each is caught
+WRONG_AT_105_41 = [
+    "Messi hasn't scored in this final.",
+    "Messi has yet to score in this match.",
+    "Messi hasn't scored yet in the final.",
+    "No goal for Messi yet.",
+]
+
+
+def test_messi_has_not_scored_in_this_final_is_caught():
+    past, _ = past_at_105_41()
+    for text in WRONG_AT_105_41:
+        assert wrong_claims(text, past) == ["Lionel Messi has scored 1 so far"], text
+
+
 # true answers review-b found flagged (#247): each must pass
 TRUE_AT_105_41 = [
     "Mbappé is one away from a hat-trick.",
@@ -60,6 +75,11 @@ TRUE_AT_105_41 = [
     "Messi hasn't scored in extra time yet.",
     "Messi's penalty was not the only goal.",
     "Messi scored, but Di María has not scored since the first half.",
+    "Messi hasn't scored again since his penalty.",
+    "Messi hasn't scored again.",
+    "Messi hasn't scored from open play.",
+    "Mbappé has two; no goal for Messi in extra time.",
+    "No goals for France in extra time, but Mbappé has two.",
 ]
 
 

@@ -20,10 +20,11 @@ def deploy(tmp_path, dotenv="", **env):
     (repo / "scripts").mkdir(parents=True)
     bin_.mkdir()
     shutil.copy(SCRIPT, repo / "scripts" / "deploy.sh")
-    (repo / ".gitignore").write_text(".env\n")
-    (repo / ".env").write_text(dotenv)
+    # newline="\n": bash reads a CRLF stub's shebang as `bash\r` on Windows
+    (repo / ".gitignore").write_text(".env\n", newline="\n")
+    (repo / ".env").write_text(dotenv, newline="\n")
     for tool in ("gcloud", "curl", "uv"):
-        (bin_ / tool).write_text(STUB)
+        (bin_ / tool).write_text(STUB, newline="\n")
         (bin_ / tool).chmod(0o755)
     git = ["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t"]
     subprocess.run([*git, "init", "-q"], check=True)
@@ -33,7 +34,7 @@ def deploy(tmp_path, dotenv="", **env):
     base = {
         k: v for k, v in os.environ.items() if not k.startswith(("VOICE_", "GIT_", "PRODUCER_"))
     }
-    run_env = {**base, "PATH": f"{bin_}:{os.environ['PATH']}", "CALLS": str(calls)}
+    run_env = {**base, "PATH": f"{bin_}{os.pathsep}{os.environ['PATH']}", "CALLS": str(calls)}
     run_env |= {"PROJECT": "p", "DEPLOY_AS_SELF": "1", **env}
     done = subprocess.run(
         ["bash", "scripts/deploy.sh"], cwd=repo, env=run_env, capture_output=True, text=True

@@ -1,2 +1,4 @@
 # Windows and macOS teammates in one repo: store LF, check out native, no whole-file diffs.
 * text=auto
+# bash reads a CRLF script as broken, on every OS
+*.sh text eol=lf
