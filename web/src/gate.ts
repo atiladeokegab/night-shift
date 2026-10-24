@@ -21,6 +21,13 @@ export interface Released<T> {
 export const speaks = (line: { line_id: string; history?: boolean }, late: string[]) =>
   !late.includes(line.line_id) && !line.history
 
+// The lines presented since `before`, oldest first. Both lists are newest first, as the replay keeps them; a
+// new replay starts from none, so its lines are new even when a cached line comes back with the same id.
+export function presentedSince<T extends { line_id: string }>(lines: T[], before: T[]): T[] {
+  const had = new Set(before.map((l) => l.line_id))
+  return lines.filter((l) => !had.has(l.line_id)).reverse()
+}
+
 // Splits queued items by the player's current time `t`, keeping arrival order within each group.
 export function release<T extends Timed>(queue: T[], t: number): Released<T> {
   const out: Released<T> = { live: [], late: [], waiting: [] }

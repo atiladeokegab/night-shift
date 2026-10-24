@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react'
 import { Refused } from './ask'
 import { askCommentator, createReplay, followReplay, getPlayers, getProfile, getShots, lookAt, waitForExample, type StreamStatus } from './api'
-import { release, replayClock, speaks } from './gate'
+import { presentedSince, release, replayClock, speaks } from './gate'
 import { ENDED, gone } from './ended'
 import { TEACHES } from './proof'
 import type { Answer, Fix, Line, LineCheck, LineCheckExample, Moment, Stats } from './types'
@@ -131,18 +131,19 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
     rewound.current = onRewind
   }, [onLine, onRewind])
 
-  // Speak each newly presented line once, unless it was released late or said before a jump (#163).
-  const spoken = useRef<string | null>(null)
+  // Speak each newly presented line once, oldest first, unless it was released late or said before a jump
+  // (#163): two presented in one render are both handed on, and the Floor decides which is heard.
+  const before = useRef<Line[]>([])
   const spokenAt = useRef<number | null>(null) // video time of the line being spoken
-  const newest = state.lines[0]
   useEffect(() => {
-    if (!newest || newest.line_id === spoken.current) return
-    spoken.current = newest.line_id
-    if (speaks(newest, state.late)) {
-      spokenAt.current = newest.video_t ?? null
-      said.current(newest)
+    const fresh = presentedSince(state.lines, before.current)
+    before.current = state.lines
+    for (const line of fresh) {
+      if (!speaks(line, state.late)) continue
+      spokenAt.current = line.video_t ?? null
+      said.current(line)
     }
-  }, [newest, state.late])
+  }, [state.lines, state.late])
 
   // Seeking back before the line being spoken stops the voice: it would describe the future.
   const at = useRef(0) // where the picture was at the last tick
