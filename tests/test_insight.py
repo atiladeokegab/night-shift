@@ -855,3 +855,26 @@ def test_the_name_note_and_length_reminder_reach_the_user_message_only(tmp_path)
 )
 def test_a_long_line_is_cut_at_its_last_full_sentence_that_fits(text, said):
     assert insight.cut(text) == said
+
+
+def test_a_quiet_stretch_talks_about_one_player_then_the_next_stretch_another(tmp_path):
+    # #378: the pair take turns on one player, one fact each; the next stretch picks someone new
+    moments = load_moments("3869685")
+    gaps = insight.Gaps("3869685", Store(tmp_path))
+    pack = gaps.pack(moments[0])
+    names = sorted(pack["players"], key=len, reverse=True)  # "Ab Cd" before "Ab"
+
+    def who(detail):
+        return next(n for n in names if detail.startswith(n + " "))
+
+    def stretch(turns=2):
+        got = []
+        for i in range(turns):
+            kind, detail = gaps.next_stat(moments[:5], first=i == 0)
+            gaps.used.add(detail)
+            got.append((kind, who(detail)))
+        return got
+
+    one = stretch()
+    assert {k for k, _ in one} == {"player profile"} and len({n for _, n in one}) == 1
+    assert stretch()[0][1] != one[0][1]

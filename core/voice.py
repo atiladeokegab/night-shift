@@ -106,7 +106,7 @@ TAGS = {
 }
 
 ANSWER_TAG = "[excited]"
-ANALYST_TAG = "[thoughtful]"  # the analyst's stat lines between moments (#130) are calmer
+ANALYST_TAG = "[warmly]"  # the analyst's stat lines between moments (#130): the lead's register
 # What the two commentators call each other (#221): only the analyst's and reply requests carry
 # them, never the lead's recorded moment prompt
 NAMES = {"lead": "Jim", "analyst": "Julian"}
@@ -141,19 +141,16 @@ def intensity(moment: dict) -> str:
     return {"[shouting]": "high", "[excited]": "medium"}.get(_call_tag(moment), "calm")
 
 
-# What each voice of the pair sounds like at each intensity; the analyst is warmer than the lead.
-PAIR_TAGS = {
-    "analyst": {"high": "[excited]", "medium": "[warmly]", "calm": ANALYST_TAG},
-    "lead": {"high": "[excited]", "medium": None, "calm": None},
-}
+# How the pair sounds at each intensity: one tag for both voices, so they share a pitch and tone
+# like two people in one booth (#378); a big moment lifts them together.
+PAIR_TAG = {"high": "[excited]", "medium": "[warmly]", "calm": ANALYST_TAG}
 # eleven_v3 takes stability at 0 (creative), 0.5 (natural) or 1 (robust) only
 STABILITY = {"high": 0.0, "medium": 0.5, "calm": 0.5}
 
 
 def tag_for(moment: dict) -> str | None:
     if moment.get("type") == "Stat":  # a stat line or comeback: its moment's intensity, by speaker
-        who = (moment.get("detail") or {}).get("speaker", "analyst")
-        return PAIR_TAGS[who][intensity(moment)]
+        return PAIR_TAG[intensity(moment)]
     return _call_tag(moment)
 
 

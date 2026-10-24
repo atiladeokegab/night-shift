@@ -881,7 +881,7 @@ def test_an_analyst_line_is_made_ahead_in_the_analyst_voice_with_a_calmer_tag(mo
         return await speaker.audio(stat, analyst)  # the page asks for the same job
 
     assert asyncio.run(run()) == (AUDIO, "eleven_v3")
-    assert seen == [(analyst["eleven_id"], "eleven_v3", "[thoughtful] 40 tonight.")]
+    assert seen == [(analyst["eleven_id"], "eleven_v3", "[warmly] 40 tonight.")]
 
 
 def test_the_page_gets_an_analyst_line_in_the_analyst_voice(tmp_path, monkeypatch):
@@ -1236,5 +1236,5 @@ def test_a_goal_is_more_intense_than_a_pass_and_the_pair_is_voiced_to_match(monk
     asyncio.run(run(routine, "b"))
     assert seen == [
         ("[excited] Two.", {"stability": 0.0}),
-        ("[thoughtful] Two.", {"stability": 0.5}),
+        ("[warmly] Two.", {"stability": 0.5}),
     ]
