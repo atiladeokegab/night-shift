@@ -214,26 +214,45 @@ class Speaker:
         return resp.content
 
 
-def warm(key: str, transport: httpx.BaseTransport | None = None) -> dict[str, int | None]:
-    """Speak one short line in every voice on both models; ms per voice, None if one failed."""
-    took = {}
+def warm(
+    key: str, transport: httpx.BaseTransport | None = None, env=os.environ
+) -> dict[str, int | None]:
+    """Speak one short line in every voice, the sport picks included, on both models and its
+    sport's VOICE_MODEL_<SPORT>; ms per voice, None if one failed. A shared voice is spoken once."""
+    took, warmed = {}, {}
     with httpx.Client(transport=transport, timeout=30) as client:
-        for v in all_voices():
+        for v in all_voices(env):
             started = time.perf_counter()
             ok = True
-            for model in (MODEL, FALLBACK_MODEL):
-                try:
-                    resp = client.post(
-                        TTS_URL.format(voice=v["eleven_id"]),
-                        params={"output_format": "mp3_44100_128"},
-                        headers={"xi-api-key": key, "accept": "audio/mpeg"},
-                        json={"text": "And we're live.", "model_id": model},
-                    )
-                    ok = ok and resp.status_code == 200 and bool(resp.content)
-                except httpx.HTTPError:
-                    ok = False
+            for model in dict.fromkeys((MODEL, model_for(v["default_for"], env), FALLBACK_MODEL)):
+                if (v["eleven_id"], model) not in warmed:
+                    try:
+                        resp = client.post(
+                            TTS_URL.format(voice=v["eleven_id"]),
+                            params={"output_format": "mp3_44100_128"},
+                            headers={"xi-api-key": key, "accept": "audio/mpeg"},
+                            json={"text": "And we're live.", "model_id": model},
+                        )
+                        warmed[v["eleven_id"], model] = resp.status_code == 200 and bool(
+                            resp.content
+                        )
+                    except httpx.HTTPError:
+                        warmed[v["eleven_id"], model] = False
+                ok = ok and warmed[v["eleven_id"], model]
             took[v["id"]] = round((time.perf_counter() - started) * 1000) if ok else None
     return took
+
+
+def env_with_dotenv(path=".env", env=os.environ) -> dict:
+    """The environment, plus VOICE_* settings from .env that it leaves unset, as deploy.sh reads
+    them: the picks in .env are the ones to warm. Nothing else is read from .env."""
+    out = dict(env)
+    lines = open(path, encoding="utf-8").read().splitlines() if os.path.exists(path) else []
+    for line in lines:
+        name, _, value = line.partition("=")
+        if name.startswith("VOICE_") and not out.get(name):
+            out[name] = value.strip().strip("\"'")
+    return out
 
 
 def voice_router(store, speaker: Speaker) -> APIRouter:
@@ -278,7 +297,7 @@ if __name__ == "__main__":
     key = os.environ.get("ELEVENLABS_API_KEY")
     if not key:
         sys.exit("ELEVENLABS_API_KEY is not set")
-    took = warm(key)
+    took = warm(key, env=env_with_dotenv())
     for vid, ms in took.items():
         print(f"warm {vid}: {'FAILED' if ms is None else f'{ms} ms'}")
     sys.exit(1 if None in took.values() else 0)

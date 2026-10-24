@@ -136,6 +136,37 @@ def test_warm_speaks_once_in_every_voice():
     assert all(r.headers["xi-api-key"] == KEY for r in seen)
 
 
+def test_warm_covers_the_sport_picks_once_per_elevenlabs_voice(caplog, capsys):
+    from core.voice import FALLBACK_MODEL, MODEL, VOICES, warm
+
+    env = {
+        "VOICE_FOOTBALL": "gU0LNdkMOQCOrPrwtbee",  # the announcer's voice, also f1's default
+        "VOICE_CRICKET": "IX4AgWzTnD6q0cNvHqvK",  # Raju: a raw library id
+        "VOICE_MODEL_CRICKET": "eleven_turbo_v2_5",
+    }
+    seen = []
+    caplog.set_level(logging.DEBUG)
+    took = warm(KEY, transport=upstream(seen=seen), env=env)
+    assert {"football-pick", "cricket-pick"} <= set(took) and None not in took.values()
+    calls = [(r.url.path.split("/")[3], json.loads(r.content)["model_id"]) for r in seen]
+    assert len(calls) == len(set(calls))  # the announcer's voice is not spoken twice
+    assert set(calls) == {(v["eleven_id"], m) for v in VOICES for m in (MODEL, FALLBACK_MODEL)} | {
+        (eleven_id, model)
+        for eleven_id in ("IX4AgWzTnD6q0cNvHqvK", "PdJQAOWyIMAQwD7gQcSc")  # Raju, and Viraj
+        for model in (MODEL, "eleven_turbo_v2_5", FALLBACK_MODEL)  # the cricket model too
+    }
+    assert KEY not in caplog.text + capsys.readouterr().out
+
+
+def test_warm_reads_only_voice_settings_from_dotenv(tmp_path):
+    from core.voice import env_with_dotenv
+
+    dotenv = tmp_path / ".env"
+    dotenv.write_text("ELEVENLABS_API_KEY=sk-LEAK\nVOICE_CRICKET='IX4AgWzTnD6q0cNvHqvK'\n")
+    env = env_with_dotenv(dotenv, env={"VOICE_FOOTBALL": "george"})
+    assert env == {"VOICE_FOOTBALL": "george", "VOICE_CRICKET": "IX4AgWzTnD6q0cNvHqvK"}
+
+
 def test_warm_reports_a_voice_that_fails():
     from core.voice import warm
 
