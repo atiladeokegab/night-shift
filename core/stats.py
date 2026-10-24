@@ -1,7 +1,9 @@
 """Proof-panel numbers, computed from the store only."""
 
+import json
 from collections import Counter
 from datetime import UTC, datetime
+from pathlib import Path
 
 # USD per 1M tokens (input, output), list price
 PRICES = {"claude-haiku-4-5": (1.00, 5.00), "claude-sonnet-5-5": (2.00, 10.00)}
@@ -14,6 +16,8 @@ VOICE_PRICES = {
 }
 # eval/agreement.py's floor of kept examples; nothing here enforces it, so /stats doesn't report it
 ADAPTER_NEEDED = 25
+# Line check beside the rules on held-out labelled lines (#317): eval/linecheck_eval.py --json
+HELDOUT = Path(__file__).parent.parent / "eval" / "linecheck_heldout.json"
 
 
 def _pct(values: list[float], p: float) -> float | None:
@@ -175,6 +179,7 @@ def _linecheck(store) -> dict:
         "fixes_sent": len(sent),
         "examples_today": len(today),  # UTC day
         "examples_today_by_kind": dict(Counter(x["kind"] for x in today)),
+        "heldout": json.loads(HELDOUT.read_text()) if HELDOUT.exists() else None,
     }
 
 
