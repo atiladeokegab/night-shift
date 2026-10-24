@@ -95,7 +95,9 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
    Lines and Proof in a scrollable sidebar. Only the score bug and the ON AIR pill sit on the picture. */
 .live { min-height: 100svh; }
 .live-body { display: grid; grid-template-columns: minmax(0, 1fr) var(--side-w); gap: 24px; align-items: start; padding: 0 var(--gut) 24px; }
-.live-main { display: grid; gap: 12px; justify-items: center; min-width: 0; }
+/* The column is as tall as the sidebar beside it; the caption card takes the slack so both end together. */
+.live-main { display: flex; flex-direction: column; gap: 12px; align-items: center; min-width: 0; min-height: calc(100svh - var(--nav-h) - 24px); }
+.live-main > .caption { flex: 1 0 auto; }
 /* The card is as wide as the column allows while the nav, the bar, the card, its controls and a two-line
    caption fit the screen's height, so the column ends where the sidebar does; never under 480px on a desktop. */
 .live-main > * { width: min(100%, max(480px, calc((100svh - var(--nav-h) - 300px) * 16 / 9))); }
@@ -306,6 +308,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
    keeps its picture and controls inside the screen's height, so a phone on its side still sees all of it. */
 @media (max-width: 899px) {
   .live-body { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .live-main { min-height: 0; }
   .live-main > * { width: min(100%, max(320px, calc((100svh - 120px) * 16 / 9))); }
   .side { position: static; max-height: none; overflow: visible; width: min(100%, 720px); justify-self: center; }
   .tabs { display: flex; gap: 4px; padding: 4px; border-radius: 14px; background: rgba(255, 255, 255, .05); border: 1px solid var(--line); }
