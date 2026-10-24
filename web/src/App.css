@@ -368,7 +368,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
      voice sheet, so the bar has no voice button. The tabs scroll if a sport ever doesn't fit. */
   .pickbar { flex-wrap: nowrap; gap: 2px; }
   .seg { flex: 1 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; }
-  .seg button { padding: 0 9px; flex: none; }
+  .seg button { padding: 0 8px; flex: none; font-size: .82rem; }
   .pickbar .voice { display: none; }
   .pickbar .next { flex: none; width: 44px; height: 44px; padding: 0; margin-left: auto; font-size: 1.1rem; }
   .pickbar .next span { display: none; }
