@@ -83,9 +83,15 @@ Every model call goes through Mubit, which records the traffic as training data.
 read by hand on 24 October 2026 at about 19:15 UTC ([`data/mubit_console.json`](data/mubit_console.json)),
 shows 8 tasks, 7 adapters and 0 serving: the best commentary task scores 58.3% against a 95% target.
 No adapter has passed, the app cannot call one, and we make no claim that any matches the big model.
-Score check, the narrower task above, has 2,101 recorded examples, all from the code's answer key and
-none from a producer's fix yet; the big model agreed with that key on 74 of 74 held-out lines
-(`/stats` `scorecheck`, 21:34 UTC). The console, the correction loop and a real fix step by step:
+Score check, the narrower task above, has 2,161 examples sent to training, 60 of them from producer
+fixes (46 the model already matched, 5 corrected, 9 not corrected), backfilled at 21:35 UTC; the big
+model agreed with the code's answer key on 74 of 74 held-out lines (`/stats` `scorecheck`).
+
+Ask is checked the same way: on a keyed run of 33 questions (`eval.ask_eval --provider mubit`,
+recording off), 32 answers were right, 1 wrong and 0 refused. The wrong one, "What just happened?"
+at Lakers 120-102, had an invented lead change; the check caught it and the safe answer was said.
+
+The console, the correction loop and a real fix step by step:
 [the evidence](docs/evidence.md).
 
 ## How well the check works
