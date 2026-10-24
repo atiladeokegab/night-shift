@@ -18,7 +18,7 @@ where our trained commentator's will go (6 versions trained, none has passed Mub
 | Piece | Where | Use it for |
 |---|---|---|
 | App factory | `core/app.py`, `create_app(store=None, deps=None)` | every route |
-| Store | `core/store.py`: `all(kind)`, `append(kind, record)`; kinds `lines`, `fixes`, `adapter`, `answers`, `voice`, `replays` | all state |
+| Store | `core/store.py`: `all(kind)`, `append(kind, record)`; kinds `lines`, `fixes`, `auto_fixes`, `adapter`, `answers`, `voice`, `replays` | all state |
 | Replayer | `core/replay.py`: `run_replay` publishes `moment`, `line`, `stats` | the live stream |
 | Stats | `core/stats.py`: `stats(store)` | proof panel numbers, from the store only |
 | Seam to #13 | `data.matches.list_matches()`, `data.matches.load_moments(match_id)`, `agent.commentator.commentate(moment, history)` | wired by `core.app.default_deps()` |
@@ -86,6 +86,8 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
 
 - `GET /health` → `{status: "ok"}` (core)
 - `GET /matches` → `[Match]` (core over data/)
+- `GET /matches/{id}/start?at=<idx>` → `{video_start}` (core, #188): the second the video starts at for
+  a replay with `start_idx: idx`, as `peak_video_start` is for the peak; null without a video.
 - `POST /replays {match_id, speed>0, start_idx?}` → `{replay_id}` (core); `start_idx` (#163) starts the stream at
   that moment: earlier moments are never called. They are sent first, untimed (no `video_t`), so the score
   and clock are already there, each followed by the last line stored for it with `history: true`
@@ -152,11 +154,14 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
 - `GET /stats` → `{lines, fixes, mubit_requests, first_word_ms_p50, first_word_ms_p95,
   latency_ms_p50, latency_ms_p95, tokens_in, tokens_out, cost_per_line_usd, adapter, by_speaker,
   fixes_recorded, fixes_toward_next, voice_chars, matches_measured, cost_per_match_usd,
-  model_cost_per_match_usd, voice_cost_per_match_usd}` (core). The `stats` SSE event carries the same object.
+  model_cost_per_match_usd, voice_cost_per_match_usd, fixes_auto}` (core). The `stats` SSE event carries the same object.
   - `by_speaker: {lead, analyst}`, each `{model, lines, first_word_ms_p50, first_word_ms_p95,
     cost_per_line_usd}`: the lead's calls and the analyst's stat lines apart (a line with no
     `speaker` is the lead's).
   - `fixes_recorded: int`: fixes with `recorded: true`; `fixes` counts every stored fix.
+  - `fixes_auto: int`: the `auto_fixes` records, fixes the number check sent itself (reason
+    `auto: number check`): a lead line's rejected first try, corrected to its accepted retry (#162).
+    Stored apart from `fixes`, so never in `fixes`, `fixes_recorded` or the review queue's fixed lines.
   - `fixes_toward_next: int`: recorded fixes since the latest `adapter` record (all of them before one).
   - `voice_chars: int`: characters in every `voice` record.
   - `cost_per_match_usd: number | null`: the mean full replay's spend, `model_cost_per_match_usd`

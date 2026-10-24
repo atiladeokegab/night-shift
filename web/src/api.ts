@@ -1,5 +1,5 @@
 // The only module that talks to the match server (docs/CONTRACT.md, 'HTTP'):
-// GET /matches, POST /replays {match_id, speed} -> {replay_id},
+// GET /matches, GET /matches/{id}/start?at=, POST /replays {match_id, speed} -> {replay_id},
 // GET /replays/{id}/stream (SSE: moment, line, stats per moment; error; end last),
 // GET /stats, GET /voices, POST /lines/{id}/fix, POST /replays/{id}/ask, POST /replays/{id}/seen, GET /replays/{id}/players, .../players/{name}/shots and .../profile and GET /lines/{id}/audio?voice=<id>
 // (ElevenLabs; 503 when the voice isn't configured).
@@ -7,7 +7,7 @@ import { demoMatches, demoStats, streamDemo } from './demo'
 import { offAir } from './ask'
 import { playersUrl, type Player, type Profile } from './follow'
 import type { Shots } from './shots'
-import type { Answer, Fix, Line, Match, Moment, Stats, StreamEvent, Voice } from './types'
+import type { Answer, Fix, Line, Match, Moment, ReviewItem, Stats, StreamEvent, Voice } from './types'
 
 export const isDemo = new URLSearchParams(window.location.search).has('demo')
 
@@ -39,6 +39,13 @@ export async function createReplay(matchId: string, speed: number, startIdx?: nu
   })
   if (!res.ok) throw new Error(`POST /replays failed (${res.status})`)
   return ((await res.json()) as { replay_id: string }).replay_id
+}
+
+// The video's start for a replay that jumps to moment `at` (#188); null without a video.
+export async function videoStartAt(matchId: string, at: number): Promise<number | null> {
+  if (isDemo) return null
+  const res = await fetch(`/matches/${encodeURIComponent(matchId)}/start?at=${at}`)
+  return res.ok ? ((await res.json()) as { video_start: number | null }).video_start : null
 }
 
 // Follows a replay's stream from the start; a late or reconnected subscriber gets every event again,
@@ -101,6 +108,14 @@ export class FixError extends Error {
     super(`POST /lines/{id}/fix failed (${status})`)
     this.status = status
   }
+}
+
+// GET /review (#171): stored lines the number check flags. The demo has no store, so nothing.
+export async function getReview(): Promise<ReviewItem[]> {
+  if (isDemo) return []
+  const res = await fetch('/review')
+  if (!res.ok) throw new Error(`GET /review failed (${res.status})`)
+  return res.json()
 }
 
 export async function postFix(lineId: string, correctedText: string, reason: string): Promise<Fix> {

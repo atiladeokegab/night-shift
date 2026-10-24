@@ -563,6 +563,63 @@ def talks_to_itself(text: str) -> bool:
     return bool(SELF_TALK.search(text))
 
 
+LEADS = (  # a claim that a team is in front now; "led" and questions are no claim
+    r"\s+(?:(?:are|is|now|still|back|again)\s+){0,2}"
+    r"(?:(?:take|takes|retake|retakes|regain|regains|reclaim|reclaims)\s+(?:the|a)\s+lead"
+    r"|leads?|go ahead|goes ahead|ahead|in front)\b"
+)
+
+
+def _sides(header: dict) -> tuple[dict[str, str], str]:
+    """Each way a line names a team ("Chicago Bulls", "Bulls", "Chicago") to its side, and the
+    regex alternation of those names, longest first."""
+    side = {}
+    for s in ("home", "away"):
+        name = header[s].split()
+        for n in (header[s], name[-1], " ".join(name[:-1])):
+            if n:
+                side[n.lower()] = s
+    return side, "|".join(re.escape(n) for n in sorted(side, key=len, reverse=True))
+
+
+def _false_lead(text: str, m: dict, header: dict) -> list[str]:
+    """Each team a line says leads, when it doesn't: "Chicago Bulls take the lead" at 85-86."""
+    from data.matches import leader
+
+    side, names = _sides(header)
+    claims = {
+        side[c.lower()]
+        for sentence in re.split(r"(?<=[.!?])\s+", text)
+        if not sentence.rstrip().endswith("?")
+        for c in re.findall(rf"\b({names}){LEADS}", sentence, re.I)
+    }
+    return [f"{header[s]} do not lead" for s in sorted(claims) if s != leader(m)]
+
+
+MARGIN = (  # "Bulls down three", "Utah up by five", "the Jazz lead by two"; not "lead 86-85"
+    r"\s+(?:(?:are|is|now|still)\s+)*(?:down|up|leads?|trails?|ahead|behind)\s+(?:by\s+)?"
+    r"(\d+|[a-z]+(?:-[a-z]+)?)\b(?!\s*[-–]\s*\w|\s+(?:to|seconds?|minutes?|left)\b)"
+)
+
+
+def _wrong_margin(text: str, m: dict, header: dict) -> list[str]:
+    """Each margin a line gives a team that is not the score difference (or, once a shootout's
+    goals are level, the shootout's)."""
+    s, so = m["score"], m["detail"].get("shootout")
+    margins = {float(abs(s["home"] - s["away"]))}
+    if so:
+        margins.add(float(abs(so["home"] - so["away"])))
+    _, names = _sides(header)
+    wrong = []
+    for hit in re.finditer(rf"\b(?:{names}){MARGIN}", text, re.I):
+        n = [1.0] if hit[1].lower() == "one" else said(hit[1])
+        after = said(text[hit.end() : hit.end() + 24])  # a score follows: "trail 69, 53"
+        if len(n) == 1 and isinstance(n[0], float) and not (after and isinstance(after[0], float)):
+            if n[0] not in margins:
+                wrong.append(f"{n[0]:g} is not the margin ({min(margins):g})")
+    return wrong
+
+
 def wrong_numbers(
     text: str, m: dict, header: dict | None = None, past: list[dict] = ()
 ) -> list[str]:
@@ -579,6 +636,8 @@ def wrong_numbers(
     wrong = [f"{n:g} is not in the moment" for n in heard if n not in given]
     if talks_to_itself(text):
         wrong.append("the line talks to itself")
+    if "home" in s and header:
+        wrong += _false_lead(text, m, header) + _wrong_margin(text, m, header)
     if "milestone" in d and not set(numbers(d["milestone"])) & set(numbers(text)):
         wrong.append(f"the milestone is unsaid: {d['milestone']}")
     if m.get("sport") == "cricket":
@@ -600,6 +659,50 @@ def wrong_numbers(
             and re.search(r"\b(level|tied|all square)\b", text, re.I)
         ):
             wrong.append("the scores are not level")
+    return wrong + wrong_event(text, m)  # so checked() regenerates a wrong event too
+
+
+# A football line that calls the wrong kind of event, worse than a wrong number: a miss called as a
+# goal, a booking as a penalty, a shot wide as saved (the live final's idx 18, 28, 59 and 63).
+# "levels it" is the kick that made it level; "level at three all" and "two to level it" are not
+LEVELS = r"equali[sz]e[sd]?|(?<!to )level(?:s|led)? (?:it|things|the score)"
+# present tense only ("who scored twice" recalls a goal), never "the scores"; GOAL in capitals only
+GOAL_WORDS = re.compile(
+    rf"(?i:\b(?:(?<!the )scores(?! level| are)|nets|{LEVELS})\b"
+    r"|\bmakes? it (?:\d|one|two|three|four|five))|\bGOAL\b"
+)
+LEVEL = re.compile(rf"\b(?:{LEVELS})\b", re.I)
+PENALTY = re.compile(r"\b(?:penalty|spot[- ]kick)\b", re.I)  # "penalties" is the shootout
+SAVED = re.compile(r"\b(?:save|saves|saved|saving)\b", re.I)
+# how a shot that is no goal ended: a line with none of these is said like a goal, or says nothing
+ENDED = re.compile(
+    r"\b(?:wide|over|high|miss\w*|off (?:the )?target|off t|away|drifts?|sails?|skie[sd]|wayward|"
+    r"post|bar|save\w*|stands? tall|denie[sd]|den(?:y|ies)|keeps? it out|stops?|block\w*|"
+    r"parrie[sd]|claims?|gathers?|equal to|not|no|but|chance|close|just|inches|"
+    r"tr(?:y|ies)|attempt|effort)\b",
+    re.I,
+)
+
+
+def wrong_event(text: str, m: dict) -> list[str]:
+    """What a football line says happened that the moment's type and outcome deny; [] if nothing."""
+    if m.get("sport") != "football":
+        return []
+    d, s = m.get("detail") or {}, m.get("score") or {}
+    goal = m.get("type") == "Shot" and m.get("outcome") == "Goal"
+    wrong = []
+    if not goal and m.get("type") != "Full time" and GOAL_WORDS.search(text):  # full time recaps
+        wrong.append(f"a goal is called, but the moment is {m['type']}, {m.get('outcome')}")
+    tally = d.get("shootout") or s
+    if goal and LEVEL.search(text) and tally.get("home") != tally.get("away"):
+        wrong.append("the scores are not level after this goal")
+    gives_one = "own box" in d.get("where", "") or "shootout" in d  # a foul there can be one
+    if "card" in d and not gives_one and PENALTY.search(text):
+        wrong.append(f"a penalty is called, but the moment is a {d['card']}")
+    if m.get("outcome") in ("Off T", "Wayward") and SAVED.search(text):
+        wrong.append("a save is called, but the shot was off target")
+    if m.get("type") == "Shot" and not goal and not ENDED.search(text):
+        wrong.append(f"the line never says how the shot ended: {m.get('outcome')}")
     return wrong
 
 
@@ -618,7 +721,8 @@ def fallback_text(header: dict, m: dict) -> str:
 
 def checked(commentate, moment: dict, history: list[dict]) -> dict | None:
     """A moment's line whose numbers match the moment: regenerated once when they don't, then
-    replaced by the line built from the moment's data. A Stat line is the analyst's, and passes."""
+    replaced by the line built from the moment's data. A Stat line is the analyst's, and passes.
+    An accepted retry carries the rejected first try as `rejected`; a fallback carries none."""
     line = commentate(moment, history)
     if not (line and line.get("text")) or moment.get("type") == "Stat":
         return line
@@ -632,7 +736,7 @@ def checked(commentate, moment: dict, history: list[dict]) -> dict | None:
         return line
     again = commentate(moment, history)
     if again and again.get("text") and not wrong_numbers(again["text"], moment, header, history):
-        return again
+        return {**again, "rejected": line}  # the replay corrects the recorded first try with it
     return {**(again or line), "text": fallback_text(header, moment), "fallback": True}
 
 

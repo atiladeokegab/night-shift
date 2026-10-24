@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { momentTag } from '../moment'
+import { clockText, momentTag } from '../moment'
 import { embeds, posterUrl, setPlaying, showNoVideoCaption, shownCaption, watchUrl, type Transport } from '../player'
 import type { Caption as CaptionData } from '../turns'
 import { SPORT_NAMES, type Line, type Match, type Sport } from '../types'
 import { onScreen, type Clock, type ReplayState } from '../useReplay'
 import type { Player, Profile } from '../follow'
 import { latestShooter, MAPPED, pickedFor, type Picked, type Shots } from '../shots'
+import { CARD_COPY, matchTeams } from '../teams'
 import { Caption } from './Caption'
 import { Controls } from './Controls'
 import { FollowPicker } from './FollowPicker'
@@ -102,6 +103,9 @@ export function Live(props: Props) {
   const [chosenTab, setTab] = useState<'follow' | 'lines' | 'proof' | 'shots'>('lines')
   const tab = chosenTab === 'shots' && !mapped ? 'lines' : chosenTab // a sport with no shot map shows Lines
 
+  const ended = fullTime(replay, video)
+  const score = finalScore(match, shown.moments.at(-1))
+  const fullTimeText = `Full time${score ? ` · ${score}` : ''}`
   let overlay = null
   if (replay.phase === 'starting') {
     overlay = switching ? (
@@ -122,6 +126,16 @@ export function Live(props: Props) {
     )
   } else if (gated && video === 'loading') {
     overlay = <div className="overlay" aria-busy="true"><span className="spin" />Loading highlights…</div>
+  } else if (ended) {
+    overlay = (
+      <div className="overlay end" role="status">
+        <span>{fullTimeText}</span>
+        <span className="actions">
+          <button className="btn primary" onClick={onRetry}>Watch again</button>
+          {onNext && <button className="btn" onClick={onNext}>Next match →</button>}
+        </span>
+      </div>
+    )
   }
 
   const dim = replay.stream !== 'ok' || busy || video === 'loading'
@@ -129,19 +143,24 @@ export function Live(props: Props) {
   // in its fixed wording once a producer fixed it.
   const live = shown.lines.filter((l) => !replay.late.includes(l.line_id))
   const said = (l: Line) => replay.fixes[l.line_id]?.corrected_text ?? l.text
-  const caption = shownCaption(props.caption, live.map(said))
+  // A question waits in the caption's header; it and its answer take the caption once the answer speaks (#153).
+  const pending = props.caption?.kind === 'question' ? props.caption.text.replace(/^A viewer asks:\s*/, '') : undefined
+  const caption = shownCaption(pending === undefined ? props.caption : null, live.map(said))
   const line = caption?.kind === 'line' ? live.find((l) => said(l) === caption.text) : undefined
   const answer = caption?.kind === 'answer' ? replay.answers.find((a) => a.text === caption.text) : undefined
   const tagged = shown.moments.find((m) => m.idx === (line ?? answer)?.moment_idx) ?? (caption?.kind === 'line' ? undefined : moment)
   const marks = [...replay.moments, ...replay.queuedMoments].filter((m) => m.video_t !== undefined)
     .map((m) => ({ t: m.video_t!, done: m.video_t! <= replay.now }))
   const canPlay = !!transport && video === 'ok' && !busy
+  const noVideo = !gated || blocked || video === 'unavailable'
+  const title = CARD_COPY[match.match_id]?.title ?? match.title?.split(',')[0] ?? match.match_id
+  const speaker = caption?.speaker ?? line?.speaker
+  const onAirLabel = speaker === 'analyst' ? `Analyst · ${ANALYST[match.sport]}` : voiceLabel && `Lead · ${voiceLabel}`
+  const first = replay.queuedMoments.reduce<typeof moment>((a, m) => (a && (a.video_t ?? 0) <= (m.video_t ?? 0) ? a : m), null)
 
   return (
     <div className="live">
-      <Nav current="live" onGo={onGo} />
-      <div className="live-body">
-        <main className="live-main">
+      <Nav current="live" onGo={onGo}>
           <div className="pickbar glass">
             <button className="btn back" aria-label="Back to the wall" onClick={() => onGo('wall')}>←<span> Wall</span></button>
             <div className="seg" role="group" aria-label="Sport">
@@ -155,9 +174,12 @@ export function Live(props: Props) {
               aria-label={`Voice: ${voice.status === 'on' ? voice.chip : voice.status === 'off' ? 'Off' : 'Unavailable'}`}>
               <span><span className="pre">Voice: </span>{voice.status === 'on' ? voice.chip : voice.status === 'off' ? 'Off' : 'Unavailable'}</span>
             </button>
-            {onNext && <button className="btn" disabled={busy} onClick={onNext}>Next match →</button>}
+            {onNext && <button className="btn next" disabled={busy} aria-label="Next match" onClick={onNext}><span>Next match </span>→</button>}
           </div>
-          <section className="vcard" ref={card} aria-label={`${match.title ?? match.match_id} highlights`}>
+      </Nav>
+      <div className="live-body">
+        <main className="live-main">
+          <section className="vcard" ref={card} aria-label={`${match.title ?? match.match_id} highlights`} data-video={noVideo ? 'off' : undefined}>
             {/* A tap on the picture plays or pauses it; the Play button is the keyboard's way in. */}
             <div className="frame" onClick={canPlay ? toggle : undefined}>
               <div id="video" className={video === 'unavailable' && !busy ? 'off' : dim ? 'dim' : undefined}>
@@ -167,7 +189,7 @@ export function Live(props: Props) {
               </div>
               <div className="bug">
                 <ScoreBar match={match} moment={moment} moments={shown.moments} />
-                <OnAir voice={voice} label={voiceLabel} offAir={!!replay.error} />
+                <OnAir voice={voice} label={onAirLabel} offAir={!!replay.error} onOpen={busy ? undefined : onVoiceSheet} />
               </div>
               {showNoVideoCaption(replay, video) && (blocked ? (
                 <p className="novideo">Commentary only · <a href={watchUrl(match)} target="_blank" rel="noopener noreferrer">highlights on YouTube ↗</a></p>
@@ -176,7 +198,7 @@ export function Live(props: Props) {
               ))}
               {overlay}
             </div>
-            <Controls card={card} paused={paused} canPlay={canPlay} onToggle={toggle} now={replay.now} duration={replay.duration}
+            <Controls card={card} paused={paused || ended} canPlay={canPlay} onToggle={ended ? onRetry : toggle} now={replay.duration ? Math.min(replay.now, replay.duration) : replay.now} duration={replay.duration}
               marks={marks} onSeek={(t) => transport?.seek(t)} volume={volume} muted={muted} onVolume={onVolume} />
           </section>
           {replay.stream === 'reconnecting' && (
@@ -199,11 +221,18 @@ export function Live(props: Props) {
                   <button className="btn sm" onClick={onRetry}>Retry</button>
                 </div>
               </Caption>
+            ) : ended ? (
+              // Full time replaces the last play; the overlay above holds Watch again (#153).
+              <Caption caption={null}><p className="cap-text">{fullTimeText}</p></Caption>
             ) : caption ? (
-              <Caption caption={{ ...caption, speaker: caption.speaker ?? line?.speaker }} fixed={!!line && !!replay.fixes[line.line_id]}
-                tag={tagged ? momentTag(tagged) : undefined} asked={answer?.question} />
+              <Caption caption={{ ...caption, speaker }} fixed={!!line && !!replay.fixes[line.line_id]} offAir={answer?.off_air}
+                tag={tagged ? momentTag(tagged) : undefined} asked={answer?.question} pending={pending} title={title} />
             ) : (
-              <Caption caption={null}><p className="cap-state" aria-live="polite">Waiting for the first moment…</p></Caption>
+              <Caption caption={null}>
+                <p className="cap-state" aria-live="polite">
+                  {first?.video_t !== undefined ? `First call in ${mmss(first.video_t - replay.now)}` : first ? `First call at ${clockText(first)}` : 'Waiting for the first moment…'}
+                </p>
+              </Caption>
             )
           )}
         </main>
@@ -246,29 +275,54 @@ export function Live(props: Props) {
   )
 }
 
-function OnAir({ voice, label, offAir }: { voice: Props['voice']; label: string; offAir: boolean }) {
-  if (offAir) {
-    return (
-      <span className="onair glass off" role="status">
-        <span className="rec" />OFF AIR
-        <span className="who">{label}</span>
-      </span>
-    )
+// The sport's analyst by name, as core/voice.py's ANALYST_FOR reads them (#130).
+const ANALYST: Record<Sport, string> = { cricket: 'George', football: 'Sam', basketball: 'George', f1: 'Sam' }
+
+const mmss = (s: number) => {
+  const t = Math.max(0, Math.ceil(s))
+  return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`
+}
+
+// The replay is over once the stream has ended and the picture has reached everything it sent.
+function fullTime(replay: ReplayState, video: VideoState): boolean {
+  if (!replay.ended || replay.phase !== 'live' || replay.queuedMoments.length || replay.queuedLines.length) return false
+  return video !== 'ok' || !replay.duration || replay.now >= replay.duration - 2
+}
+
+// "CHE 2–2 TOT" from the last moment on screen; a race or an innings has no such line, so the card's result.
+function finalScore(match: Match, last: ReplayState['moments'][number] | undefined): string {
+  const s = last?.score
+  if (s && 'home' in s) {
+    const [home, away] = matchTeams(match)
+    return `${home.code} ${s.home}–${s.away} ${away.code}`
   }
-  if (voice.status !== 'on') {
-    return (
-      <span className="onair glass">
+  return CARD_COPY[match.match_id]?.result ?? ''
+}
+
+function OnAir({ voice, label, offAir, onOpen }: { voice: Props['voice']; label: string; offAir: boolean; onOpen?: () => void }) {
+  let cls = 'onair glass'
+  let body
+  if (offAir) {
+    cls += ' off'
+    body = <><span className="rec" />OFF AIR<span className="who">{label}</span></>
+  } else if (voice.status !== 'on') {
+    body = (
+      <>
         <span className="rec" />
         {voice.status === 'off' ? 'VOICE OFF' : 'VOICE UNAVAILABLE'}
         <span className="who">{voice.status === 'off' ? 'Subtitles only' : 'Subtitles carry on'}</span>
-      </span>
+      </>
     )
+  } else {
+    if (voice.speaking) cls += ' on'
+    body = <><span className="rec" /><span className="lbl">ON AIR</span><span className="bars" aria-hidden><span /><span /><span /><span /></span><span className="who">{label}</span></>
   }
+  const status = <span className="st" role={offAir || voice.status === 'on' ? 'status' : undefined}>{body}</span>
+  if (!onOpen) return <span className={cls}>{status}</span>
+  // A tap on the pill opens the voice sheet (the phone's bar has no voice button), never the play toggle under it.
   return (
-    <span className={`onair glass${voice.speaking ? ' on' : ''}`} role="status">
-      <span className="rec" />ON AIR
-      <span className="bars" aria-hidden><span /><span /><span /><span /></span>
-      <span className="who">{label}</span>
-    </span>
+    <button type="button" className={cls} aria-haspopup="dialog" onClick={(e) => (e.stopPropagation(), onOpen())}>
+      {status}<span className="sr-only"> Voice settings</span>
+    </button>
   )
 }

@@ -9,6 +9,7 @@ import pytest
 
 from core import insight
 from core.replay import Replay, run_replay
+from core.stats import stats
 from core.store import Store
 from data.matches import list_matches, load_moments, match_header, video_map
 
@@ -58,6 +59,12 @@ JUDGED = [
         "Bryant from deep, but the Lakers trail fifty-eight to seventy-five.",
         "Bryant from deep, 41 for Kobe, but the Lakers still trail 65 to 75.",
     ),
+    (
+        JORDAN,
+        30,
+        "Chicago Bulls take the lead, eighty-five to eighty-six!",
+        "Jordan drives and scores! The Jazz still lead, eighty-six to eighty-five.",
+    ),
 ]
 
 
@@ -74,6 +81,46 @@ def test_each_judged_line_is_wrong_and_its_fix_is_right(match_id, idx, heard, ri
     m, past = moment(match_id, idx), before(match_id, idx)
     assert insight.wrong_numbers(heard, m, match_header(match_id), past)
     assert insight.wrong_numbers(right, m, match_header(match_id), past) == []
+
+
+def test_each_home_away_moment_says_who_leads():
+    assert moment(JORDAN, 30)["detail"]["lead"] == "Utah Jazz lead 86-85"
+    assert moment(JORDAN, 28)["detail"]["lead"] == "level at 83-83"
+    final = load_moments("3869685")[-1]  # 3-3 after extra time, then penalties
+    assert final["detail"]["lead"] == "Argentina lead the shootout 4-2"
+
+
+@pytest.mark.parametrize(
+    ("idx", "text", "wrong"),
+    [
+        (28, "Jordan ties it! The Bulls take the lead? Not yet: 83 all.", []),
+        (28, "Jordan makes both, and the Bulls lead!", ["Chicago Bulls do not lead"]),
+        (29, "Stockton from deep! Utah back in front, 86-83.", []),
+        (28, "The Jazz led most of the night, and now it's 83 all.", []),
+        (30, "Bulls take a timeout. The Jazz lead by one.", []),
+    ],
+)
+def test_a_line_may_say_only_the_true_leader_leads(idx, text, wrong):
+    m = moment(JORDAN, idx)
+    assert insight.wrong_numbers(text, m, match_header(JORDAN), before(JORDAN, idx)) == wrong
+
+
+@pytest.mark.parametrize(
+    ("idx", "text", "wrong"),
+    [
+        (29, "Stockton for three! The Bulls down three.", []),
+        (26, "Utah up by two.", []),
+        (26, "Jazz lead by two, eighty-three to eighty-one.", []),
+        (30, "Jordan scores! Bulls down one, eighty-six to eighty-five.", []),
+        (30, "The Jazz lead 86-85, with 37 seconds left.", []),
+        (27, "Forty for Jordan! Bulls trail eighty-three, eighty-two, 59 seconds left.", []),
+        # 2 is in the moment (a 2-point basket), but the Bulls trail by one
+        (30, "Jordan scores, but the Bulls are still down two.", ["2 is not the margin (1)"]),
+    ],
+)
+def test_a_margin_is_the_score_difference(idx, text, wrong):
+    m = moment(JORDAN, idx)
+    assert insight.wrong_numbers(text, m, match_header(JORDAN), before(JORDAN, idx)) == wrong
 
 
 def test_a_cricket_score_may_be_said_wickets_first():
@@ -203,6 +250,64 @@ def test_the_analyst_says_at_most_two_lines_a_gap(tmp_path):
         if "insight" in ln:
             per_gap[ln["insight"]["after_idx"]] = per_gap.get(ln["insight"]["after_idx"], 0) + 1
     assert per_gap and max(per_gap.values()) == 2
+
+
+def auto_fixed(tmp_path, texts):
+    """One replay of Kobe's 80th point whose lead says `texts` in turn; what it corrected."""
+    said, sent = iter(texts), []
+
+    def commentate(m, history):
+        return {
+            "line_id": uuid.uuid4().hex,
+            "match_id": KOBE,
+            "moment_idx": m["idx"],
+            "text": next(said),
+        }
+
+    def correct(line, text):
+        sent.append((line["text"], text))
+        return {"mubit_request_id": "m1", "reply_matched": True, "recorded": True}
+
+    r, store = Replay(KOBE, 1e9), Store(tmp_path)
+    asyncio.run(run_replay(r, [moment(KOBE, 22)], commentate, store, correct=correct))
+    return sent, store
+
+
+WRONG_80, RIGHT_80 = JUDGED[4][2], JUDGED[4][3]
+
+
+def test_a_rejected_first_try_is_corrected_once_to_the_kept_line(tmp_path):
+    sent, store = auto_fixed(tmp_path, [WRONG_80, RIGHT_80])
+    assert sent == [(WRONG_80, RIGHT_80)]
+    [fix] = store.all("auto_fixes")
+    assert store.all("fixes") == []  # the review queue reads `fixes` as the people's
+    assert (
+        fix["reason"] == "auto: number check" and fix["auto"] and fix["corrected_text"] == RIGHT_80
+    )
+    [line] = store.all("lines")
+    assert line["text"] == RIGHT_80 and "rejected" not in line
+
+
+def test_a_fallback_is_never_sent_as_a_correction(tmp_path):
+    sent, store = auto_fixed(tmp_path, [WRONG_80, WRONG_80])
+    assert sent == [] and store.all("auto_fixes") == []
+    assert store.all("lines")[0]["fallback"]
+
+
+def test_a_line_right_first_time_sends_no_correction(tmp_path):
+    sent, store = auto_fixed(tmp_path, [RIGHT_80])
+    assert sent == [] and store.all("auto_fixes") == []
+
+
+def test_an_auto_fix_is_counted_apart_from_the_peoples(tmp_path):
+    _, store = auto_fixed(tmp_path, [WRONG_80, RIGHT_80])
+    s = stats(store)
+    assert s["fixes_auto"] == 1 and s["fixes_recorded"] == 0 and s["fixes_toward_next"] == 0
+    # the producer's fix-list corrections in prod stay "your fixes"
+    fix = {"reason": "fix list: wrong number", "recorded": True, "created_at": "2026-10-24T12"}
+    store.append("fixes", fix)
+    s = stats(store)
+    assert s["fixes_auto"] == 1 and s["fixes_recorded"] == 1 and s["fixes_toward_next"] == 1
 
 
 # lines the model said aloud at India v Pakistan idx 52, reasoning about its input
