@@ -16,7 +16,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 
-from core import insight
+from core import insight, predict
 from core.predict import load_pack, shot_points
 from core.replay import OFF_AIR, Replay, run_replay
 from core.stats import stats
@@ -35,7 +35,7 @@ class Deps:
     list_matches: Callable[[], list[dict]]
     load_moments: Callable[[str], list[dict]]
     commentate: Callable[[dict, list[dict]], dict]
-    video_map: Callable[[str], dict | None] = lambda match_id: None
+    video_map: Callable[..., dict | None] = lambda match_id, start_idx=None: None
     correct: Callable[[dict, str], dict] | None = None
     ask: Callable[[str, list[dict], list[dict]], dict] | None = None
 
@@ -53,6 +53,7 @@ def default_deps() -> Deps:
 class ReplayRequest(BaseModel):
     match_id: str
     speed: float = Field(10.0, gt=0)
+    start_idx: int | None = Field(None, ge=0)  # start at this moment: nothing before it is called
 
 
 class FixRequest(BaseModel):
@@ -111,11 +112,15 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
             moments = d.load_moments(req.match_id)
         except (KeyError, FileNotFoundError) as exc:
             raise HTTPException(404, f"no match {req.match_id!r}") from exc
+        jump = req.start_idx
+        if jump is not None and not any(m["idx"] == jump for m in moments):
+            raise HTTPException(422, f"no moment {jump} in {req.match_id!r}")
         replay = Replay(req.match_id, req.speed)
         replays[replay.id] = replay
-        video = d.video_map(req.match_id)
+        # a jump starts the video just before its moment (#163), as GET /matches' peak_video_start
+        video = d.video_map(req.match_id) if jump is None else d.video_map(req.match_id, jump)
         task = asyncio.create_task(
-            run_replay(replay, moments, d.commentate, store, video, speaker.prepare)
+            run_replay(replay, moments, d.commentate, store, video, speaker.prepare, jump or 0)
         )
         tasks.add(task)
         task.add_done_callback(tasks.discard)
@@ -204,6 +209,7 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
                 "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
                 "mubit_request_id": sent["mubit_request_id"],
                 "reply_matched": sent["reply_matched"],
+                "recorded": sent.get("recorded", False),  # sent to Mubit for training (#161)
             },
         )
         for replay in list(replays.values()):  # a replay may start during the awaits below
@@ -267,6 +273,38 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
             return shot_points(pack, past, len(past) - 1, name)
         except (ValueError, KeyError) as exc:
             raise HTTPException(404, f"no shot map for {name!r} in this match") from exc
+
+    def pack_so_far(replay_id: str, moment_idx: int | None) -> tuple[dict, list[dict]]:
+        """The replay's pack and its moments up to the one on screen, cut like the shot map's."""
+        d = need_deps()
+        replay = replays.get(replay_id)
+        if replay is None:
+            raise HTTPException(404, f"no replay {replay_id!r}")
+        moments = d.load_moments(replay.match_id)
+        pack = load_pack(moments[0]["sport"], replay.match_id) if moments else None
+        if pack is None:
+            raise HTTPException(404, "no pre-match pack for this match")
+        return pack, asked_so_far(replay, moments, moment_idx)[0]
+
+    @app.get("/replays/{replay_id}/players")
+    def players(replay_id: str, moment_idx: int | None = None):
+        """Everyone in the match (#140): the pack's roster plus anyone the moments so far name,
+        those first. Works before the first moment, from the roster alone."""
+        pack, past = pack_so_far(replay_id, moment_idx)
+        return predict.players(pack, past)
+
+    @app.get("/replays/{replay_id}/players/{name}/profile")
+    def profile(replay_id: str, name: str, moment_idx: int | None = None):
+        """A player's record before the match and tonight up to the moment on screen (#140)."""
+        pack, past = pack_so_far(replay_id, moment_idx)
+        if not past:
+            raise HTTPException(409, "nothing has happened yet")
+        try:
+            name = predict.find(pack, name)
+        except KeyError:  # named in a moment but not in the pack: tonight only
+            if name not in {p["name"] for p in predict.players(pack, past)}:
+                raise HTTPException(404, "no such player in this match") from None
+        return predict.profile(pack, past, len(past) - 1, name)
 
     @app.get("/stats")
     def get_stats():

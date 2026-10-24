@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { withAnswers } from '../ask'
+import { names, shortName } from '../follow'
 import { MicButton } from './MicButton'
 import { clockText } from '../moment'
 import type { Answer, Fix, Line, Moment } from '../types'
@@ -14,20 +15,38 @@ interface Props {
   onAsk: ((question: string) => Promise<void>) | null // null until a moment is on screen
   shooter: string | null // the latest shooter on screen, in a sport with a shot map (#120)
   onShots: (name: string) => void
+  followed?: string | null // the followed player's lines stand out (#140)
+  roster?: string[] // everyone in the match, so a shared surname needs the full name
+  onUnfollow?: () => void
 }
 
 // The Lines card (docs/design.md): every line so far, newest first, with its clock, the model's
 // first-text-word time ("first word" in the mockup: the #37 review asked for the measured thing's name)
 // and "Fix". A fixed line shows the correction over the struck-through original. Viewers' questions and
 // the commentator's answers (#117) sit among the lines at the moment they were asked.
-export function LineLog({ lines, late, fixes, moments, onFix, answers, onAsk, shooter, onShots }: Props) {
+// "3 called · 15 earlier": lines a jump (#163) brought from an earlier replay were not called this time.
+function count(lines: Line[]): string {
+  const earlier = lines.filter((l) => l.history).length
+  const called = lines.length - earlier
+  return [called && `${called} called`, earlier && `${earlier} earlier`].filter(Boolean).join(' · ')
+}
+
+export function LineLog({ lines, late, fixes, moments, onFix, answers, onAsk, shooter, onShots, followed, roster, onUnfollow }: Props) {
+  const said = (l: Line) => fixes[l.line_id]?.corrected_text ?? l.text
+  const theirs = followed ? lines.filter((l) => names(said(l), followed, roster)).length : 0
   return (
     <section className="panel lines glass" aria-label="Lines">
       <div className="panel-h">
         <h3>Lines</h3>
-        <span className="label">{lines.length ? `${lines.length} called` : ''}</span>
+        <span className="label">{count(lines)}</span>
       </div>
       <AskBox onAsk={onAsk} />
+      {followed && (
+        <div className="following">
+          <span>Following <b>{followed}</b> · {theirs} {theirs === 1 ? 'line' : 'lines'}</span>
+          {onUnfollow && <button className="btn sm" onClick={onUnfollow}>Clear</button>}
+        </div>
+      )}
       {shooter && <button className="btn sm shots-open" onClick={() => onShots(shooter)}>Shot map · {shooter}</button>}
       <p className="sr-only" aria-live="polite">{answers[0] ? `Touchline: ${answers[0].text}` : ''}</p>
       {lines.length === 0 && answers.length === 0 ? (
@@ -49,10 +68,11 @@ export function LineLog({ lines, late, fixes, moments, onFix, answers, onAsk, sh
             const m = moments.find((x) => x.idx === l.moment_idx)
             const fix = fixes[l.line_id]
             const isLate = late.includes(l.line_id)
+            const mine = names(said(l), followed, roster)
             const firstWord = l.first_word_ms != null // undefined or null: only the whole reply was timed
             const ms = l.first_word_ms ?? l.latency_ms
             return (
-              <li key={l.line_id} className={fix ? 'fixed' : isLate ? 'late' : undefined}>
+              <li key={l.line_id} className={fix ? 'fixed' : isLate ? 'late' : undefined} data-follow={mine || undefined}>
                 <span className="when num">{m ? clockText(m, true) : ''}</span>
                 <div className="text">
                   <span>{fix ? fix.corrected_text : l.text}</span>
@@ -62,7 +82,10 @@ export function LineLog({ lines, late, fixes, moments, onFix, answers, onAsk, sh
                   Fix
                 </button>
                 <div className="meta-l">
-                  <span className="num">{firstWord ? 'model first text word' : 'model reply'} {(ms / 1000).toFixed(2)} s</span>
+                  {l.history
+                    ? <span className="num">From an earlier replay</span> // a jump (#163) never called it, so no timing
+                    : <span className="num">{firstWord ? 'model first text word' : 'model reply'} {(ms / 1000).toFixed(2)} s</span>}
+                  {mine && <span className="pill follow">{shortName(followed!)}</span>}
                   {fix && <span className="pill fixed">Fixed</span>}
                   {isLate && !fix && <span className="pill late" title="The video had moved past it, so it was not shown or spoken">Late</span>}
                 </div>

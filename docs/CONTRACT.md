@@ -8,9 +8,10 @@ builds against it; only the lead changes it (anything else is a change-request, 
 "Build a product that routes its LLM calls through Mubit and turns your corrections into model
 updates for a recurring task." Track: Own your intelligence layer.
 
-Demo: the 2023 Women's World Cup final replays and Night Shift calls it aloud in under a second, the
-producer fixes one wrong line, our trained commentator calls a moment beside the big model, then one
-tap switches to India v Pakistan 2022 and the same commentator calls cricket.
+Demo: Kobe Bryant's 81 against Toronto (2006) replays and Night Shift calls it aloud, the first word of text in
+about 0.5 s (median), the producer fixes one wrong line, the big model's recorded lines are shown
+where our trained commentator's will go (6 versions trained, none has passed Mubit's test yet, best
+55.8%, and the app does not call an adapter), then one tap switches to India v Pakistan 2022 and the same commentator calls cricket.
 
 ## Shared core
 
@@ -61,12 +62,16 @@ and refuses to start without `STORE_URL=gs://bucket/prefix`.
   most 160 new insight and reply calls. A fix on either goes back, unrecorded, with that line's own
   Stat request.
 - **Fix** (core/): `{line_id, corrected_text, reason, created_at, mubit_request_id,
-  reply_matched: bool}`.
-- **Match** (data/): `{match_id, sport, title?, sample: bool, youtube_id?, video_start?, embed?}`; `sample`
+  reply_matched: bool, recorded: bool}`; `recorded` is true only when Mubit recorded the correction
+  for training (the owner's key). A Fix stored before it has none and counts as not recorded.
+- **Match** (data/): `{match_id, sport, title?, sample: bool, youtube_id?, video_start?, embed?, peak_idx?,
+  peak_video_start?}`; `sample`
   marks `data/sample/`; `youtube_id` and `video_start` are there when the match has a video map.
   `embed: false` (absent otherwise) means the video's owner blocks embedding: pages show its poster and
   a link to it on YouTube, never the player, and the commentary runs on the replay's own clock.
   `video_start` is the whole second the page starts the video at, 10 s before its first mapped moment (or 0).
+  `peak_idx` (#163) is the moment "Jump to the big moment" starts at; `peak_video_start` is the video's start
+  for that jump, 10 s before the first mapped moment from `peak_idx` on.
 - **Video map** (data/video/): `{youtube_id, embed?, source, moments: [{idx, video_t}]}`; `idx` is a Moment's
   `idx`, `video_t` the seconds into the video of that moment's first showing, increasing with `idx`.
   Only moments matched with confidence are listed.
@@ -77,7 +82,10 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
 
 - `GET /health` → `{status: "ok"}` (core)
 - `GET /matches` → `[Match]` (core over data/)
-- `POST /replays {match_id, speed>0}` → `{replay_id}` (core)
+- `POST /replays {match_id, speed>0, start_idx?}` → `{replay_id}` (core); `start_idx` (#163) starts the stream at
+  that moment: earlier moments are never called. They are sent first, untimed (no `video_t`), so the score
+  and clock are already there, each followed by the last line stored for it with `history: true`
+  (shown, never spoken), then that line's latest `fixed` if it has one. 422 if no such moment.
 - `GET /replays/{id}/stream` → SSE: per moment `moment`, `line`, `stats` in that order; `error`
   `{code: "commentator_off_air", detail}` if the commentator fails, where `detail` is a fixed
   viewer-safe string ("Commentator is off air for a moment"), never the provider's error text (that
@@ -106,6 +114,19 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   sent), never past the last moment the replay has sent. Basketball x, y are NBA LOC_X/LOC_Y (tenths
   of a foot, hoop at the origin), football StatsBomb 120x80. No LLM. 404 unknown replay, no pack for
   the match (cricket, F1) or unknown player; 409 no moment sent yet.
+- `GET /replays/{id}/players?moment_idx=` → `[{name, team, record, named}]` (core, #140): everyone
+  in the match, the pack's roster plus anyone the moments up to `moment_idx` name (`named: true`,
+  the latest first); `record` false and `team` null for a name the pack lacks. Works before the
+  first moment. 404 unknown replay or no pack for the match.
+- `GET /replays/{id}/players/{name}/profile?moment_idx=` → `{player, team, sport, window: {from,
+  to}, before, tonight, n, small_sample, text}` (core, #140): the pre-match record and tonight up
+  to `moment_idx`, cut like `/shots`. `before` (null with no record) and `tonight` hold games,
+  attempts, made and `zones: [{zone, attempts, made}]` (football adds `xg`); for cricket
+  `batting: {powerplay|middle|death: {balls, runs, outs}}` and `bowling`; for F1 `before` holds
+  wins, finishes, avg_finish, avg_gained and `tonight` `laps: [{lap, pos}]` while in the top five.
+  `n` is the pre-match sample (attempts, balls or races), `small_sample` when n < 10, `text` the
+  commentator's `get_player_profile`. Names resolve like the tool (accents, initials). No LLM.
+  404 unknown replay, pack or player; 409 no moment sent yet.
 - `GET /stage` → the backup live page (`core/stage.html`, static HTML over the routes here) (core)
 - `GET /voices` → `[{id, label, default_for: "cricket"|"football"|"basketball"|"f1"|null, lang: "en-IN"|"en-GB"|"en-US"}]`, the page's voice
   setting: an Indian English commentator for cricket, a British one for football, an American
@@ -122,8 +143,13 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   and the page then uses browser speech. The key never reaches the browser; each call logs
   `voice line=<id> first_byte_ms=<n> model=<model>`. (core)
 - `GET /stats` → `{lines, fixes, mubit_requests, first_word_ms_p50, first_word_ms_p95,
-  latency_ms_p50, latency_ms_p95, tokens_in, tokens_out, cost_per_line_usd, adapter}` (core). The
-  `stats` SSE event carries the same object.
+  latency_ms_p50, latency_ms_p95, tokens_in, tokens_out, cost_per_line_usd, adapter, by_speaker,
+  fixes_recorded, fixes_toward_next}` (core). The `stats` SSE event carries the same object.
+  - `by_speaker: {lead, analyst}`, each `{model, lines, first_word_ms_p50, first_word_ms_p95,
+    cost_per_line_usd}`: the lead's calls and the analyst's stat lines apart (a line with no
+    `speaker` is the lead's).
+  - `fixes_recorded: int`: fixes with `recorded: true`; `fixes` counts every stored fix.
+  - `fixes_toward_next: int`: recorded fixes since the latest `adapter` record (all of them before one).
   - `cost_per_line_usd: number | null`: mean cost of the stored lines, tokens × the model's list
     price; null when no line's model has a known price.
   - `adapter: {status: "not_trained"|"training"|"ready", kept: int|null, needed, agree: int|null,
