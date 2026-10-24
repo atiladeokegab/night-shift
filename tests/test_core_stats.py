@@ -114,6 +114,11 @@ AT = "2026-10-24T13:04:32.564923+00:00"
             "passed",
             "Passed Mubit's test (v7), 96% of a 95% target.",
         ),
+        (
+            {"status": "ready", "score": 96, "target": 95, "passed": True},
+            "testing",  # a pass with no version is about no adapter (#321 review)
+            "Testing: no version passed; best 96% of a 95% target.",
+        ),
     ],
 )
 def test_the_adapter_says_only_what_its_record_says(tmp_path, record, state, summary):

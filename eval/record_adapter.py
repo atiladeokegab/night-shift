@@ -3,12 +3,13 @@ panel show it. Writes to the store the server uses: STORE_DIR locally, or MODE=c
 
     uv run python -m eval.record_adapter --status ready --kept 31 --agree 23 --total 25
     uv run python -m eval.record_adapter --task where_are_we --status ready --kept 0 \
-        --version 1 --score 55.8 --target 95 --failed
+        --version 1 --version-id <as the console shows it> --score 55.8 --target 95 --failed
 
     uv run python -m eval.record_adapter --task score_check --status ready --version 2 \
         --version-id <as the console shows it> --score 96.1 --target 95 --passed \
         --source "Mubit console, Adapters > History"
 
+A verdict (--passed or --failed) needs the --version and --version-id it is about.
 --task defaults to commentary. Each task keeps its own records; /stats shows each task's latest.
 
 On a deployed service, copy the service's adapter records down, append, and copy them back
@@ -57,6 +58,8 @@ def main(argv=None, env=os.environ) -> dict:
         p.error("--kept can't be negative")
     if a.total is not None and not 0 <= a.agree <= a.total:
         p.error("need 0 <= --agree <= --total")
+    if a.passed is not None and (a.version is None or not a.version_id):
+        p.error("--passed and --failed need the --version and --version-id they are about")
     if a.version is not None and a.version < 1:
         p.error("--version starts at 1")
     if a.score is not None and not 0 <= a.score <= 100:

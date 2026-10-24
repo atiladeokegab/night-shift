@@ -46,7 +46,7 @@ def _by_task(store) -> dict[str, dict]:
 
 def _state(r: dict) -> tuple[str, str]:
     """What the latest record says, and only that: "passed" only when Mubit's gate was recorded as
-    passed, "testing" once a version, score or failed gate is recorded, else "collecting"."""
+    passed for a recorded version, "testing" once a version, score or failed gate is recorded, else "collecting"."""
     try:
         when = datetime.fromisoformat(r["created_at"]).astimezone(UTC)
         as_of = f", as of {when:%-d %b %Y %H:%M} UTC"
@@ -55,10 +55,9 @@ def _state(r: dict) -> tuple[str, str]:
     score, target = r.get("score"), r.get("target")
     of = f" of a {target:g}% target" if target is not None else ""
     best = f"{score:g}%{of}" if score is not None else ""
-    if r.get("passed") is True:
-        version = f" (v{r['version']})" if r.get("version") is not None else ""
+    if r.get("passed") is True and r.get("version") is not None:
         scored = f", {best}" if best else ""
-        return "passed", f"Passed Mubit's test{version}{scored}{as_of}."
+        return "passed", f"Passed Mubit's test (v{r['version']}){scored}{as_of}."
     if r.get("version") is not None or score is not None or r.get("passed") is False:
         scored = f"; best {best}" if best else ""
         return "testing", f"Testing: no version passed{scored}{as_of}."
@@ -101,7 +100,8 @@ def _adapters(by_task: dict[str, dict], records: list[dict]) -> dict:
             "version_id": r.get("version_id"),
             "score": r.get("score"),
             "target": r.get("target"),
-            "passed": r.get("passed"),
+            # a verdict with no version says nothing about any adapter (#321 review)
+            "passed": r.get("passed") if r.get("version") is not None else None,
             "kept": r.get("kept"),
             "recorded_at": r.get("created_at"),
             "source": r.get("source"),
