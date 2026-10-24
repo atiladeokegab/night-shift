@@ -107,11 +107,17 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   with no stream open and no request naming it (stream, seen, ask, players, shots, profile, fix).
 - `GET /lines/{line_id}` → the stored Line, 404 if none (core): the live smoke checks each line it
   streamed was stored.
-- `POST /lines/{line_id}/fix {corrected_text, reason?}` → Fix (core): stores the Fix in `fixes`
+- `POST /lines/{line_id}/fix {corrected_text, reason?}` → Fix (core). With env `PRODUCER_TOKEN` set,
+  it needs header `X-Producer-Token` equal to it (constant-time compare), else 401 and nothing is
+  stored or sent to Mubit; unset (local, tests) the check is off (#232). It stores the Fix in `fixes`
   beside the line, sends the correction turn (Agent below) and publishes `fixed` (the Fix), then
   `stats`, on the replay stream that carried the line; a late subscriber gets them too. 404 unknown
-  line, 422 blank `corrected_text` (trimmed), 503 no commentator or the Mubit call failed (nothing
-  stored, so the page can send it again).
+  line, 422 blank `corrected_text` (trimmed) or over 200 characters, 422 `{detail: {wrong: [...]}}`
+  when the number check finds the fix contradicts the line's moment (the review queue's check, a
+  milestone left out allowed; nothing stored or sent to Mubit) (#232), 503 no commentator or the
+  Mubit call failed (nothing stored, so the page can send it again). Every later replay of that
+  moment says the newest fix's text, rechecked against the moment, instead of calling the model: a
+  Line with `fixed: true` and `fix_id` (the fixed line's id), stored in `lines` (#232).
 - `POST /replays/{id}/ask {question, moment_idx?}` → Answer `{line_id, moment_idx, question, text,
   ...}` (core): a viewer's question (1-200 characters, trimmed) answered in 1-2 sentences from the
   match up to `moment_idx`, the last moment on the viewer's screen (default: the latest sent), never
@@ -163,7 +169,7 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
 - `GET /stats` → `{lines, fixes, mubit_requests, first_word_ms_p50, first_word_ms_p95,
   latency_ms_p50, latency_ms_p95, tokens_in, tokens_out, cost_per_line_usd, adapter, by_speaker,
   fixes_recorded, fixes_toward_next, voice_chars, matches_measured, cost_per_match_usd,
-  model_cost_per_match_usd, voice_cost_per_match_usd, fixes_auto, autonomy, autonomy_by_match}` (core). The `stats` SSE event carries the same object.
+  model_cost_per_match_usd, voice_cost_per_match_usd, fixes_auto, spoken_from_fix, autonomy, autonomy_by_match}` (core). The `stats` SSE event carries the same object.
   - `by_speaker: {lead, analyst}`, each `{model, lines, first_word_ms_p50, first_word_ms_p95,
     cost_per_line_usd}`: the lead's calls and the analyst's stat lines apart (a line with no
     `speaker` is the lead's).
@@ -171,6 +177,8 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   - `fixes_auto: int`: the `auto_fixes` records, fixes the number check sent itself (reason
     `auto: number check`): a lead line's rejected first try, corrected to its accepted retry (#162).
     Stored apart from `fixes`, so never in `fixes`, `fixes_recorded` or the review queue's fixed lines.
+  - `spoken_from_fix: int`: stored lead lines a replay said in a producer's fixed words (`fixed:
+    true`, #232). Never a model call, so never in `autonomy`.
   - `autonomy: {called, first_time, auto_fixed, to_human}` (#204): the lead's moment calls the
     number check saw (stored `checked: true`; not the analyst's lines, the lead's replies to them, or
     any line stored before the flag) by how the check left them: passed first
