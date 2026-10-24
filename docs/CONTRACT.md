@@ -43,6 +43,18 @@ and refuses to start without `STORE_URL=gs://bucket/prefix`.
 - **Line** (agent/): `{line_id, sport, match_id, moment_idx, text, model, latency_ms,
   first_word_ms, tokens_in, tokens_out, mubit_request_ids: [], tool_calls: [], created_at}`; tokens
   and latency summed over the whole tool loop; each id from `x-middleware-request-id`.
+- **Speakers, insights and replies** (core/insight.py, #130): every streamed and stored Line has
+  `speaker: "lead" | "analyst"`. Moment lines are `"lead"`. With a video map, the quiet stretch after
+  each mapped moment is filled with lines due at the last line's words / 2.7 + 2 s, until 6 s before
+  the next mapped moment. Each one is a Line with `video_t`, said over a synthetic Moment
+  `{...that moment, type: "Stat", outcome: <kind>, detail: {speaker, "Partner just said": <last line>,
+  stat?}}` with the same `idx`, sent through the same commentator request. An **insight** (`speaker:
+  "analyst"`) carries `insight: {match_id, after_idx, n, kind, detail, heard}`, where `kind` is
+  `"player profile"`, `"next to score"`, `"tally"`, `"score story"`, `"momentum"` or `"positions"`
+  and `detail` is the stat, built only from moments up to `after_idx` and the pre-match pack. Every
+  4th line in a stretch is a **reply** (`speaker: "lead"`, `reply: {..., kind: "reply"}`, no stat).
+  Both are cached per (match_id, after_idx, n) and reused by later replays; a replay makes at most
+  160 new insight and reply calls. A fix on either goes back with that line's own Stat request.
 - **Fix** (core/): `{line_id, corrected_text, reason, created_at, mubit_request_id,
   reply_matched: bool}`.
 - **Match** (data/): `{match_id, sport, title?, sample: bool, youtube_id?, video_start?, embed?}`; `sample`
