@@ -257,6 +257,7 @@ def cricket_match(m: dict) -> tuple[dict, list[dict]]:
     fixture = {
         "sport": "cricket",
         "mid": "",
+        "gender": info.get("gender"),  # Cricsheet mixes men's and women's under one team name
         "competition": "T20I",  # one stretch per year: a tour's few games would be no season
         "season": day[:4],
         "start": start,
@@ -267,7 +268,7 @@ def cricket_match(m: dict) -> tuple[dict, list[dict]]:
     }
     apps = [
         {
-            **{k: fixture[k] for k in ("sport", "competition", "season", "start")},
+            **{k: fixture[k] for k in ("sport", "competition", "season", "start", "gender")},
             "mid": "",
             "player": feed._s(name),
             "team": t["team"],
@@ -309,12 +310,18 @@ def stints(apps: list[dict]) -> list[dict]:
     record per appearance repeated every field name and made the store four times the size."""
     out: dict[tuple, dict] = {}
     for a in sorted(apps, key=lambda a: a["start"]):
-        key = (a["sport"], a["player"], a["team"], a["competition"], a["season"])
+        key = (a["sport"], a["player"], a["team"], a["competition"], a["season"], a.get("gender"))
         rec = out.setdefault(
             key,
             {
                 "id": list(key),
-                **dict(zip(("sport", "player", "team", "competition", "season"), key, strict=True)),
+                **dict(
+                    zip(
+                        ("sport", "player", "team", "competition", "season", "gender"),
+                        key,
+                        strict=True,
+                    )
+                ),
                 "keys": list(a["totals"]),
                 "games": [],
             },  # fmt: skip

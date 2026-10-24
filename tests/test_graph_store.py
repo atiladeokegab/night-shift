@@ -205,3 +205,34 @@ def test_cutoff_is_compared_in_utc_not_as_text(tmp_path, monkeypatch):
     got = graph.team_form("football", "Chelsea", "2016-05-02T23:30:00-02:00")
     assert got[0]["score"] == "9-0"
     assert graph.team_form("football", "Chelsea", "not a time") == []
+
+
+def test_a_team_name_shared_by_men_and_women_keeps_to_one_side(tmp_path, monkeypatch):
+    def cx(mid, start, gender, hg):
+        f = fx(mid, start, "Pakistan", "India", hg, 0, season="2022") | {"sport": "cricket"}
+        return f | {"gender": gender, "competition": "T20I"}
+
+    def cp(mid, start, gender, player):
+        a = ap(mid, start, player, "Pakistan", 0, season="2022")
+        return a | {"sport": "cricket", "gender": gender, "competition": "T20I",
+                    "totals": {"runs": 10}}  # fmt: skip
+
+    days = [("1", "female"), ("2", "male"), ("3", "female"), ("4", "male")]
+    fixtures = [cx(m, f"2022-10-0{m}T23:59:59", g, int(m)) for m, g in days]
+    apps = [
+        cp(m, f"2022-10-0{m}T23:59:59", g, "Nida" if g == "female" else "Babar") for m, g in days
+    ]
+    build_graph.write({"cricket": (fixtures, apps)}, tmp_path / "db")
+    monkeypatch.setattr(graph, "_kv", None)
+    graph._open_store(tmp_path / "db")
+    # before the 15th Pakistan's latest game was a men's one; before the 4th, a women's
+    assert [g["score"] for g in graph.team_form("cricket", "Pakistan", "2022-10-15")] == [
+        "4-0",
+        "2-0",
+    ]
+    assert [g["score"] for g in graph.team_form("cricket", "Pakistan", "2022-10-04")] == [
+        "3-0",
+        "1-0",
+    ]
+    assert [s["name"] for s in graph.squad("cricket", "Pakistan", "2022-10-15")] == ["Babar"]
+    assert [s["name"] for s in graph.squad("cricket", "Pakistan", "2022-10-04")] == ["Nida"]
