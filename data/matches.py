@@ -35,6 +35,8 @@ def list_matches() -> list[dict]:
         if vmap := video_map(h["match_id"]):
             match["youtube_id"] = vmap["youtube_id"]
             match["video_start"] = vmap["start"]
+            if vmap.get("embed") is False:  # owner blocks embedding: a poster and a link instead
+                match["embed"] = False
         out.append(match)
     return out
 
@@ -44,8 +46,9 @@ def load_moments(match_id: str) -> list[dict]:
 
 
 def video_map(match_id: str) -> dict | None:
-    """data/video/<sport>-<match_id>.json: {youtube_id, source, moments: [{idx, video_t}]}, plus
-    `start`: the whole second the page starts the video at, just before its first mapped moment."""
+    """data/video/<sport>-<match_id>.json: {youtube_id, embed?, source, moments: [{idx, video_t}]},
+    plus `start`: the whole second the page starts the video at, just before its first mapped
+    moment."""
     match_id = str(match_id)
     found = sorted(VIDEO.glob(f"*-{match_id}.json")) if match_id.isalnum() else []
     if not found:

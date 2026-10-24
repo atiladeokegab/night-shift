@@ -45,10 +45,12 @@ and refuses to start without `STORE_URL=gs://bucket/prefix`.
   and latency summed over the whole tool loop; each id from `x-middleware-request-id`.
 - **Fix** (core/): `{line_id, corrected_text, reason, created_at, mubit_request_id,
   reply_matched: bool}`.
-- **Match** (data/): `{match_id, sport, title?, sample: bool, youtube_id?, video_start?}`; `sample`
+- **Match** (data/): `{match_id, sport, title?, sample: bool, youtube_id?, video_start?, embed?}`; `sample`
   marks `data/sample/`; `youtube_id` and `video_start` are there when the match has a video map.
+  `embed: false` (absent otherwise) means the video's owner blocks embedding: pages show its poster and
+  a link to it on YouTube, never the player, and the commentary runs on the replay's own clock.
   `video_start` is the whole second the page starts the video at, 10 s before its first mapped moment (or 0).
-- **Video map** (data/video/): `{youtube_id, source, moments: [{idx, video_t}]}`; `idx` is a Moment's
+- **Video map** (data/video/): `{youtube_id, embed?, source, moments: [{idx, video_t}]}`; `idx` is a Moment's
   `idx`, `video_t` the seconds into the video of that moment's first showing, increasing with `idx`.
   Only moments matched with confidence are listed.
 
