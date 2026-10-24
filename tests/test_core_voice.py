@@ -194,8 +194,8 @@ def hoop(kind, outcome, period=2, clock="06:00", **detail):
         ({"type": "Wicket", "outcome": "caught"}, "[shouting]"),
         ({"type": "Six", "outcome": "6 runs"}, "[shouting]"),
         ({"type": "Last ball", "outcome": "1 run"}, "[shouting]"),
-        ({"type": "Shot", "outcome": "Saved"}, "[excited]"),
-        ({"type": "Four", "outcome": "4 runs"}, "[excited]"),
+        ({"type": "Shot", "outcome": "Saved"}, None),
+        ({"type": "Four", "outcome": "4 runs"}, None),
         ({"type": "Chase", "outcome": "dot ball"}, "[hushed]"),
         ({"type": "Substitution", "outcome": "Tactical"}, None),
         (hoop("Field goal", "2 points", period=4, clock="00:05"), "[shouting]"),
@@ -203,8 +203,8 @@ def hoop(kind, outcome, period=2, clock="06:00", **detail):
         (hoop("Field goal", "2 points", play="Bryant Slam Dunk (51 PTS)"), "[shouting]"),
         (hoop("Field goal", "3 points"), "[shouting]"),
         (hoop("End of game", "Final buzzer", period=4, clock="00:00"), "[shouting]"),
-        (hoop("Steal", "Steal", period=4, clock="00:18"), "[excited]"),
-        (hoop("Free throw", "1 point", period=4, clock="00:43"), "[excited]"),
+        (hoop("Steal", "Steal", period=4, clock="00:18"), None),
+        (hoop("Free throw", "1 point", period=4, clock="00:43"), None),
         (hoop("Field goal", "2 points"), None),  # a routine basket mid-game stays plain
         ({"sport": "f1", "type": "Lead change", "outcome": "P1 on track"}, "[shouting]"),
         ({"sport": "f1", "type": "Red flag", "outcome": "Red flag"}, "[shouting]"),
@@ -881,7 +881,7 @@ def test_an_analyst_line_is_made_ahead_in_the_analyst_voice_with_a_calmer_tag(mo
         return await speaker.audio(stat, analyst)  # the page asks for the same job
 
     assert asyncio.run(run()) == (AUDIO, "eleven_v3")
-    assert seen == [(analyst["eleven_id"], "eleven_v3", "[warmly] 40 tonight.")]
+    assert seen == [(analyst["eleven_id"], "eleven_v3", "40 tonight.")]
 
 
 def test_the_page_gets_an_analyst_line_in_the_analyst_voice(tmp_path, monkeypatch):
@@ -904,7 +904,7 @@ def test_the_page_gets_an_analyst_line_in_the_analyst_voice(tmp_path, monkeypatc
         assert client.get("/lines/s2/audio").status_code == 200
     analyst = analyst_voice("cricket")["eleven_id"]
     assert [v for v, _, _ in seen] == [analyst] * 3
-    assert seen[0][2] == "[warmly] Six fours." and seen[-1] == (
+    assert seen[0][2] == "Six fours." and seen[-1] == (
         analyst,
         "eleven_flash_v2_5",
         "Six fours.",
@@ -1236,5 +1236,21 @@ def test_a_goal_is_more_intense_than_a_pass_and_the_pair_is_voiced_to_match(monk
     asyncio.run(run(routine, "b"))
     assert seen == [
         ("[excited] Two.", {"stability": 0.0}),
-        ("[warmly] Two.", {"stability": 0.5}),
+        ("Two.", {"stability": 0.5}),
     ]
+
+
+def test_a_football_goal_is_as_big_as_the_game_state_makes_it():
+    from core.voice import intensity, tag_for
+
+    def goal(home, away, clock="30:00"):
+        return {
+            "sport": "football", "type": "Shot", "outcome": "Goal", "clock": clock,
+            "score": {"home": home, "away": away}, "detail": {},
+        }  # fmt: skip
+
+    assert intensity(goal(1, 1)) == "high"  # an equaliser
+    assert intensity(goal(1, 0)) == "high"  # the go-ahead
+    assert intensity(goal(2, 0, "85:00")) == "high"  # late, still a game
+    assert intensity(goal(4, 0)) == "medium" and tag_for(goal(4, 0)) == "[warmly]"
+    assert tag_for(goal(1, 1)) == "[shouting]"
