@@ -163,9 +163,13 @@ class Speaker:
             self._job(line, default_voice(line.get("sport")), deadline)
 
     async def audio(self, line: dict, voice: dict) -> tuple[bytes, str] | None:
-        made = await asyncio.shield(self._job(line, voice, None))
+        job = self._job(line, voice, None)
+        early = job.done()  # made as the line arrived, before anyone asked for it
+        made = await asyncio.shield(job)
         if made is None:  # the next request tries again
             self.jobs.pop((line["line_id"], voice["id"]), None)
+            if early:  # it ran out of its budget long before the page asked (/stage paces lines)
+                return await self.audio(line, voice)
         return made
 
     def _job(self, line: dict, voice: dict, deadline: float | None) -> asyncio.Task:
@@ -197,6 +201,7 @@ class Speaker:
         async with self.slots:
             left = until - time.monotonic()
             if left <= 0:  # it would land after the moment
+                log.warning("voice %s skipped: out of time", model)
                 return None
             try:
                 # httpx's timeout is per read: only this bounds the request plus every chunk
