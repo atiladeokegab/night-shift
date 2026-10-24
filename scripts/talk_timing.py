@@ -23,7 +23,6 @@ QUESTIONS = {"plain": "Where are we?", "tool": "How many shots has each side had
 
 def once(client: httpx.Client, secret: str, question: str) -> tuple[float, float]:
     replay = client.post("/replays", json={"match_id": MATCH, "speed": 4}).json()["replay_id"]
-    time.sleep(8)  # let a few moments happen
     ctx = client.get(f"/converse/{SPORT}/{MATCH}/token", params={"replay_id": replay}).json()["ctx"]
     body = {
         "stream": True,
