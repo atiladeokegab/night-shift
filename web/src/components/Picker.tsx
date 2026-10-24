@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { cardArt } from '../art'
-import { CARD_COPY, commentatorName, defaultVoice, matchTeams, voiceName } from '../teams'
+import { CARD_COPY, commentatorName, defaultVoice, matchTeams, teamStyle, voiceName } from '../teams'
 import { SPORT_NAMES, type Match, type Voice } from '../types'
 import { Nav, type Screen } from './Nav'
 
@@ -59,7 +59,7 @@ function Card({ match, voices, onStart }: { match: Match; voices: Voice[]; onSta
   // picture (#33; docs/design.md leaves 4x and 16x open).
   const [speed, setSpeed] = useState(match.youtube_id ? 1 : 4)
   const copy = CARD_COPY[match.match_id]
-  const [home, away] = matchTeams(match)
+  const [home, away] = copy?.crest ? [teamStyle(copy.crest), null] : matchTeams(match)
   const title = copy?.title ?? match.title?.split(',')[0] ?? match.match_id
   const detail = copy?.detail ?? match.title?.split(',').slice(1).join(',').trim()
   const voice = voiceName(defaultVoice(voices, match.sport))
@@ -77,10 +77,9 @@ function Card({ match, voices, onStart }: { match: Match; voices: Voice[]; onSta
         {copy && <p className="result">{copy.result}</p>}
         <div className="meta">{voice && <span className="voice">{commentatorName(voice)}</span>}</div>
         <div className="chips speeds" role="radiogroup" aria-label="Speed">
-          {SPEEDS.map(([value, name]) => (
-            <label key={value} title={match.youtube_id && value !== 1 ? 'The highlights play in real time' : undefined}>
-              <input type="radio" name={`speed-${match.match_id}`} checked={speed === value}
-                disabled={!!match.youtube_id && value !== 1} onChange={() => setSpeed(value)} />
+          {SPEEDS.filter(([value]) => !match.youtube_id || value === 1).map(([value, name]) => (
+            <label key={value} title={match.youtube_id ? 'The highlights play in real time' : undefined}>
+              <input type="radio" name={`speed-${match.match_id}`} checked={speed === value} onChange={() => setSpeed(value)} />
               <span>{name}</span>
             </label>
           ))}
