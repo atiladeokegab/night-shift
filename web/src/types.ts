@@ -65,6 +65,8 @@ export interface Line {
   video_t?: number // A-6.4@2: shown and spoken when the player reaches it (#47)
   speaker?: 'lead' | 'analyst' // #130: the moment's call, or a stat line between moments; none is the lead
   history?: boolean // #163: said in an earlier replay, before a jump's moment: shown, never spoken
+  fixed?: boolean // #232: said in a producer's fixed words, not called; `fix_id` is the line it fixed
+  fix_id?: string
 }
 
 // GET /stats and the `stats` SSE event (CONTRACT.md); percentiles are null until there is a line.
@@ -84,6 +86,7 @@ export interface Stats {
   by_speaker?: { lead: SpeakerStats; analyst: SpeakerStats } // #161: Haiku's calls apart from Sonnet's stat lines
   fixes_recorded?: number // fixes Mubit recorded for training; `fixes` counts every stored fix
   fixes_toward_next?: number // recorded fixes since the latest adapter record (#161)
+  spoken_from_fix?: number // lines a replay said in a producer's fixed words, not the model's (#232)
   // #174: a full replay's mean spend over matches_measured of them; null when it can't be measured
   matches_measured?: number
   cost_per_match_usd?: number | null
