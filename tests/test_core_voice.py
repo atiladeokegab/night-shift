@@ -904,7 +904,7 @@ def test_the_page_gets_an_analyst_line_in_the_analyst_voice(tmp_path, monkeypatc
         assert client.get("/lines/s2/audio").status_code == 200
     analyst = analyst_voice("cricket")["eleven_id"]
     assert [v for v, _, _ in seen] == [analyst] * 3
-    assert seen[0][2] == "[thoughtful] Six fours." and seen[-1] == (
+    assert seen[0][2] == "[warmly] Six fours." and seen[-1] == (
         analyst,
         "eleven_flash_v2_5",
         "Six fours.",
