@@ -16,14 +16,19 @@ from core.voice import NAMES
 from data.matches import CLUB_SUFFIX
 
 WORDS_PER_S = 2.7  # a line has likely finished speaking after its words at this rate
-PAUSE_S = 2.0  # then this breath before the next insight
+PAUSE_S = 2.0  # then this breath before the next line of the cold open
+# between two voices in a stretch, short, so the next is due as this one ends; the page holds a line
+# due early until the voice on air finishes (#288)
+TURN_S = 0.3
 CLEAR_S = 6.0  # no insight starts closer than this to the next mapped moment
 MAX_CALLS = 160  # new insight calls per replay; cached ones are free
-REPLY_EVERY = 3  # every 3rd line in a quiet stretch is the lead replying to the analyst
-PER_GAP = 3  # then the stretch ends: two analyst lines and the reply (#162)
+# after the lead's call the voices alternate, never one twice in a row (#288): the analyst
+# reacts, the lead comes back to them, the analyst answers the lead; then the stretch ends
+PER_GAP = 3
 # stored insights of another version are never reused (v1 re-called the play, v2 tallied counts,
-# v3 opened cold on the stat with no names)
-VERSION = 4
+# v3 opened cold on the stat with no names, v4 gave the analyst two lines in a row)
+VERSION = 5
+COMEBACK_WORDS = 10  # the longest lead comeback: the room it needs before the analyst can answer it
 OPEN = "cold open"  # the kind of the two lines before the first mapped moment (#221)
 OPENING = (  # who says each line of it and what to do: short, so even a read-back fits
     ("lead", "welcome the listener and name the match"),
@@ -34,9 +39,9 @@ NAME_EVERY = 3  # a line in a stretch uses the partner's name about this often
 RECENT = 6  # the key moments that count as recent play for momentum
 
 
-def due_after(t: float, text: str | None) -> float:
+def due_after(t: float, text: str | None, pause: float = PAUSE_S) -> float:
     """When the next insight is due after a line said at video time `t`."""
-    return t + len(str(text or "").split()) / WORDS_PER_S + PAUSE_S
+    return t + len(str(text or "").split()) / WORDS_PER_S + pause
 
 
 def _who(m: dict) -> str | None:
@@ -297,6 +302,7 @@ class Gaps:
         self.openers: set[tuple[str, ...]] = set()  # the analyst's first words so far (#221)
         self.turn = 0
         self.opens = 0
+        self.asked = None  # what the lead's last comeback asked the analyst about
         self.calls = 0
         self._pack = None
         self._header = None
@@ -336,7 +342,9 @@ class Gaps:
         """Whether an analyst line opens with the same first words as one before it this replay."""
         return len(o := opener(text)) == OPENER_WORDS and o in self.openers
 
-    def next_stat(self, past: list[dict], first: bool = False) -> tuple[str, str] | None:
+    def next_stat(
+        self, past: list[dict], first: bool = False, prefer: str | None = None
+    ) -> tuple[str, str] | None:
         """The next kind in turn with a detail not said yet in this replay; a stretch's first
         insight takes the pre-match pack's profile or odds when there is a pack, in a turn of its
         own, and the rest of the stretch the other kinds, so two lines a stretch reach them all."""
@@ -345,6 +353,7 @@ class Gaps:
         order = [(start + i) % len(KINDS) for i in range(len(KINDS))]
         if self.pack(past[-1]):
             order.sort(key=lambda k: (KINDS[k][0] in ("player profile", "next to score")) != opens)
+        order.sort(key=lambda k: KINDS[k][0] != prefer)  # what the lead just asked about, first
         for k in order:
             kind, make = KINDS[k]
             for detail in make(self.pack(past[-1]), past):
@@ -356,6 +365,14 @@ class Gaps:
                     return kind, detail
         return None
 
+    def peek(self, past: list[dict], first: bool = False) -> tuple[str, str] | None:
+        """The stat next_stat would pick now, without taking its turn."""
+        turn, opens = self.turn, self.opens
+        try:
+            return self.next_stat(past, first)
+        finally:
+            self.turn, self.opens = turn, opens
+
     def line(
         self,
         past: list[dict],
@@ -364,22 +381,31 @@ class Gaps:
         commentate,
         before: str | None = None,
         recent: list[str] = (),
+        end: float | None = None,
     ) -> tuple[dict, dict] | None:
         """The n-th line in the quiet stretch after past[-1]: the moment it is said over and its
         stored Line, the cached one, else a new commentate call (an analyst line that comes back
         empty hands the slot to the next kind, once; a line with a wrong number, new or cached, is
         made once more, then dropped). None ends the stretch. The
-        analyst speaks the insights and hears the line before it (`before`); now and then the
-        lead replies to the analyst. A line that repeats one of the `recent` ones is never said."""
+        analyst speaks the insights and the lead comes back to them in turn, each hearing the line
+        before it (`before`). The lead's comeback is told what the analyst's next stat is about when
+        that line fits before `end`, the next mapped moment, so a question from the lead gets its
+        answer. A line that repeats one of the `recent` ones, or echoes a phrase from one, is never
+        said."""
         m = past[-1]
         if n >= PER_GAP:
             return None
         ball = self.balls().get(m["idx"])
-        reply = n % REPLY_EVERY == REPLY_EVERY - 1
+        reply = n % 2 == 1
         role, speaker = ("reply", "lead") if reply else ("insight", "analyst")
+        heard = " ".join(str(before or "").split())  # one line: it must not forge a field
         ln = self.cached.get((m["idx"], n, False))
         if n == 0 and ball and (ln or {}).get("insight", {}).get("kind") != "orientation":
             ln = None  # stored before #205: the gap now opens on the ball
+        # the lead's call is made again each replay, so the first line's reaction to it is kept; a
+        # later line that answered another line is made again
+        if ln is not None and role in ln and n and ln[role].get("heard") != heard:
+            ln = None
         if ln is not None and role in ln:
             said_as = ln[role]
             # another replay's: never said twice; where the ball is may be said again
@@ -387,6 +413,8 @@ class Gaps:
                 return None
             if said_as["kind"] != "orientation" and repeats(ln.get("text") or "", list(recent)):
                 return None
+            if said_as["kind"] != "orientation" and echoes(ln.get("text") or "", list(recent)):
+                ln = None  # says a phrase a recent line said: made again
             if self.wrong(ln.get("text") or "", stat_moment(m, said_as, reply), past):
                 ln = None  # stored before the check (or a newer check fails it): made again
             elif not reply and not ln.get("fallback") and self.stale(ln.get("text") or ""):
@@ -395,29 +423,36 @@ class Gaps:
             return None
         else:
             ln = None
-            heard = " ".join(str(before or "").split())  # one line: it must not forge a field
             if reply:
                 picked = ("reply", heard)
             elif n == 0 and ball:  # a football stretch opens on who has the ball (#205)
                 from data.matches import orientation
 
                 picked = ("orientation", orientation(self.header(), past, ball))
-            else:  # after the ball, the next line is the stretch's first stat
-                picked = self.next_stat(past, first=n == 0 or (n == 1 and bool(ball)))
+            else:  # after the ball, the analyst's next line is the stretch's first stat
+                first = n == 0 or (n == 2 and bool(ball))
+                picked = self.next_stat(past, first, prefer=self.asked if n else None)
             if not picked:
                 return None
             said_as = {
                 "kind": picked[0],
                 "detail": picked[1],
                 "heard": heard,
-                # who said it: the lead's call opens the stretch, the analyst's line before
-                "by": "lead" if n % REPLY_EVERY == 0 else "analyst",
+                # who said it: always the other voice, the lead's call before the first line
+                "by": "analyst" if reply else "lead",
                 # by position, so a cached line keeps it: about one line in NAME_EVERY
                 "named": (m["idx"] + n) % NAME_EVERY == 0,
                 "v": VERSION,
             }
             if picked[0] == "orientation":  # said at the ball's time, the latest it reads (A-1.4)
                 said_as["clock"] = ball["clock"]
+            # the comeback is told what the analyst says next, when that line still fits before
+            # the next moment, so a question from the lead gets its answer
+            room = (
+                end is not None and video_t + COMEBACK_WORDS / WORDS_PER_S + TURN_S <= end - CLEAR_S
+            )
+            if reply and room and (topic := self.peek(past, first=bool(ball))):
+                said_as["next"] = topic[0]
         if ln is None:
             failed = False  # a try had a wrong number or a used opener
             for retry in (False, True):
@@ -436,13 +471,17 @@ class Gaps:
                     right = fresh or not self.wrong(said["text"], stat, past)
                     # the analyst's opener never repeats in a match: asked once more, told which
                     stale = not reply and self.stale(said["text"])
-                    if right and (not stale or retry and fresh):  # a ball line falls back below
+                    # nor does either voice say a recent line's phrase: asked once more, told it
+                    echo = None if fresh else echoes(said["text"], list(recent))
+                    if right and not echo and (not stale or retry and fresh):
                         said = {**said, "checked": True, **({"retried": True} if failed else {})}
-                        break
+                        break  # a ball line falls back below
                     if retry:
                         return None
                     if stale:
                         said_as = {**said_as, "never open with": " ".join(opener(said["text"]))}
+                    if echo:
+                        said_as = {**said_as, "never say": echo}
                     failed = True
                     continue
                 if reply or retry or self.calls >= MAX_CALLS:
@@ -470,7 +509,9 @@ class Gaps:
                     role: {**key, **said_as},
                 },
             )
-        if not reply:
+        if reply:
+            self.asked = said_as.get("next")  # the analyst answers it next
+        else:
             self.used.add(said_as["detail"])
             if not ln.get("fallback"):  # the data's ball line is not the analyst's opener
                 self.openers.add(opener(ln["text"]))
@@ -584,6 +625,23 @@ def _words(text: str) -> list[tuple[str, bool]]:
         if low and low not in STOP:
             out.append((EVENT.get(low, low), w[0].isupper() and low not in EVENT))
     return out
+
+
+# a run of this many words two lines share is the same phrase; 4 caught "chelsea have a lot" (#288)
+ECHO_WORDS = 5
+
+
+def echoes(text: str, recent: list[str]) -> str | None:
+    """The first run of ECHO_WORDS words the line shares with one of the recent lines, else None:
+    the two voices never say the same phrase ("Chelsea have a lot to find" from both)."""
+    words = re.findall(r"[\w'’]+", text.lower())
+    runs = {tuple(words[i : i + ECHO_WORDS]) for i in range(len(words) - ECHO_WORDS + 1)}
+    for prev in recent[-RECENT_LINES:]:
+        p = re.findall(r"[\w'’]+", prev.lower())
+        for i in range(len(p) - ECHO_WORDS + 1):
+            if tuple(p[i : i + ECHO_WORDS]) in runs:
+                return " ".join(p[i : i + ECHO_WORDS])
+    return None
 
 
 def repeats(text: str, recent: list[str]) -> bool:
@@ -1271,8 +1329,15 @@ def stat_moment(m: dict, said_as: dict, reply: bool) -> dict:
         "you are": NAMES[me],
         "partner": f"{NAMES[partner]}, the {partner}",
         "call partner by name": "yes" if said_as.get("named") else "no",
+        # the comeback may ask about what the analyst says next, so the next line answers it
+        **(
+            {f"{NAMES['analyst']}'s next point is about": said_as["next"]}
+            if "next" in said_as
+            else {}
+        ),
         f"{NAMES[by]} just said": said_as["heard"],
         **({"never open with": said_as["never open with"]} if "never open with" in said_as else {}),
+        **({"never say": said_as["never say"]} if "never say" in said_as else {}),
     }
     event = (
         f"the lead answers the analyst, who just said: {said_as['heard']}"

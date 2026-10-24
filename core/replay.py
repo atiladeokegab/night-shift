@@ -265,20 +265,34 @@ async def run_replay(
             # last line has likely been spoken
             end = min((t for t in video_t.values() if t > tag["video_t"]), default=None)
             t, said = tag["video_t"], (line or {}).get("text")
+            held = []  # the lead's question, said only once its answer is made
             for n in itertools.count():
-                t = insight.due_after(t, said)
+                # each voice as the other ends; the page holds a line until the one on air ends
+                t = insight.due_after(t, said, insight.TURN_S)
                 if end is None or t > end - insight.CLEAR_S:
                     break
                 got = await call(
-                    moment["idx"], gaps.line, list(history), n, t, commentate, said, list(recent)
+                    moment["idx"],
+                    gaps.line,
+                    list(history),
+                    n,
+                    t,
+                    commentate,
+                    said,
+                    [*recent, *(ln["text"] for _, ln, _ in held)],
+                    end,
                 )
                 if got is None:
                     break
-                stat, said_line = got
-                await replay.publish("moment", {**stat, "video_t": t})
-                await say({**said_line, "video_t": t}, stat)
-                said = said_line["text"]
-                recent.append(said)
+                held.append((*got, t))
+                said = got[1]["text"]
+                if "next" in got[1].get("reply", {}):
+                    continue  # may ask the analyst something: the answer goes out with it
+                for stat, said_line, at in held:
+                    await replay.publish("moment", {**stat, "video_t": at})
+                    await say({**said_line, "video_t": at}, stat)
+                    recent.append(said_line["text"])
+                held = []
         # played from kick-off to its last moment: a match for cost per full replay
         if not start_idx and not replay.smoke:
             done = {"replay_id": replay.id, "match_id": replay.match_id, "line_ids": spoke}

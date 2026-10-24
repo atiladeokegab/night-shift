@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { listen, NO_MIC, NO_SPEECH, recognizer, type Recognizer } from './voice.ts'
+import { isViewer, listen, listenAlways, MIC_FAILED, NO_MIC, NO_SPEECH, recognizer, type Recognizer } from './voice.ts'
 
 class Fake implements Recognizer {
   lang = ''
@@ -85,4 +85,95 @@ test('the mic is hidden where the browser has no speech recognition', () => {
   } finally {
     delete g.webkitSpeechRecognition
   }
+})
+
+const always = () => {
+  const fakes: Fake[] = []
+  const got: string[] = []
+  const on = { ...record().on, barge: () => got.push('barge') }
+  for (const k of ['heard', 'done', 'hint'] as const) on[k] = (t: string) => got.push(`${k} ${t}`)
+  return { fakes, got, on, make: () => (fakes.push(new Fake()), fakes[fakes.length - 1]) }
+}
+
+test('Mic on starts the recognizer again after the browser ends it, until it is turned off', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'] })
+  const { fakes, got, on, make } = always()
+  const stop = listenAlways(make, on, () => null)
+  assert.equal(fakes.length, 1)
+  assert.ok(fakes[0].started)
+  t.mock.timers.tick(5000)
+  fakes[0].onend?.() // Chrome stops after a silence
+  t.mock.timers.tick(0)
+  assert.equal(fakes.length, 2)
+  assert.ok(fakes[1].started)
+  fakes[1].onend?.() // ended at once: wait a second, never spin
+  t.mock.timers.tick(999)
+  assert.equal(fakes.length, 2)
+  t.mock.timers.tick(1)
+  assert.equal(fakes.length, 3)
+  stop()
+  assert.ok(fakes[2].stopped)
+  fakes[2].onend?.()
+  t.mock.timers.tick(5000)
+  assert.equal(fakes.length, 3, 'off stays off')
+  assert.deepEqual(got, [])
+})
+
+test("Mic on never sends the page's own line back, and sends the viewer's question once", () => {
+  const { fakes, got, on, make } = always()
+  const line = 'Michael Jordan with the driving layup, forty-three for him! Utah still lead, eighty-six to eighty-five.'
+  let onAir = [line]
+  listenAlways(make, on, () => onAir)
+  fakes[0].say(false, 'Michael Jordan with the')
+  fakes[0].say(true, 'Michael Jordan with the driving layup forty three for him')
+  fakes[0].say(false, 'who') // under 3 words while a line is on air: could be the line
+  assert.deepEqual(got, [], 'an echo is neither shown, sent nor a barge-in')
+  fakes[0].say(false, 'who leads the')
+  fakes[0].say(true, 'who leads the scoring tonight')
+  assert.deepEqual(got, ['barge', 'heard who leads the', 'done who leads the scoring tonight'])
+  onAir = [] // nothing on air: one word is the viewer
+  fakes[0].say(true, 'score?')
+  assert.deepEqual(got.slice(3), ['barge', 'done score?'])
+})
+
+test('Mic on turns itself off with the hint when the mic is denied', () => {
+  for (const [error, hint] of [['not-allowed', NO_MIC], ['network', MIC_FAILED]]) {
+    const { fakes, got, on, make } = always()
+    listenAlways(make, on, () => null)
+    fakes[0].onerror?.({ error })
+    fakes[0].onend?.()
+    assert.deepEqual(got, [`hint ${hint}`])
+    assert.equal(fakes.length, 1)
+  }
+  const { fakes, got, on, make } = always()
+  listenAlways(make, on, () => null)
+  fakes[0].onerror?.({ error: 'no-speech' }) // a silence: keep listening
+  assert.deepEqual(got, [])
+})
+
+test('isViewer: a question that shares a word with the line is still the viewer', () => {
+  assert.ok(isViewer('who scored that goal', ['Goal! Salah scores at the far post.']))
+  assert.ok(!isViewer('Salah scores at the far post', ['Goal! Salah scores at the far post.']))
+  assert.ok(!isViewer('', []))
+})
+
+test("the tail of the line before the one on air is still the page's own voice", () => {
+  const before = 'Michael Jordan with the driving layup, forty-three for him! Utah still lead, eighty-six to eighty-five.'
+  const next = 'Stockton brings it up, eighteen seconds left.'
+  assert.ok(isViewer('utah still lead eighty six to eighty five', [next]), 'checked against the newest line alone, it passes')
+  assert.ok(!isViewer('utah still lead eighty six to eighty five', [next, before]))
+  const { fakes, got, on, make } = always()
+  listenAlways(make, on, () => [next, before])
+  fakes[0].say(true, 'utah still lead eighty six to eighty five')
+  assert.deepEqual(got, [])
+})
+
+test('turned off mid-sentence, the result the browser finalises on stop() is never sent', () => {
+  const { fakes, got, on, make } = always()
+  const stop = listenAlways(make, on, () => [])
+  fakes[0].say(false, 'who leads')
+  stop() // also what unmounting does
+  fakes[0].say(true, 'who leads now')
+  fakes[0].onend?.()
+  assert.deepEqual(got, ['barge', 'heard who leads'])
 })

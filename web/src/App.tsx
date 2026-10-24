@@ -325,6 +325,7 @@ export default function App() {
           onFix={(line) => setFixing({ line, phase: 'edit' })}
           onAsk={askCommentator}
           onLook={replay.look}
+          mic={{ airing: speech.airing, duck: speech.hush }}
           interrupted={interrupted}
           onHear={hearAgain}
           onShots={replay.shots}
