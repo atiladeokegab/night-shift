@@ -878,3 +878,16 @@ def test_a_quiet_stretch_talks_about_one_player_then_the_next_stretch_another(tm
     one = stretch()
     assert {k for k, _ in one} == {"player profile"} and len({n for _, n in one}) == 1
     assert stretch()[0][1] != one[0][1]
+
+
+def test_a_players_conversation_holds_no_fact_from_after_the_moment_it_follows(tmp_path):
+    # #378: the sizing to the next big moment is asserted in the replay test above (never into it)
+    moments = load_moments("3869685")
+    gaps = insight.Gaps("3869685", Store(tmp_path))
+    pack = gaps.pack(moments[0])
+    first = moments[0]["idx"]
+    later = {t["player"] for t in pack["tonight"] if t["idx"] > first}
+    sooner = {t["player"] for t in pack["tonight"] if t["idx"] <= first}
+    assert later - sooner  # someone's first shot comes after the moment
+    for detail in insight._profiles(pack, moments[:1]):
+        assert not any(detail.startswith(f"{n} tonight") for n in later - sooner), detail
