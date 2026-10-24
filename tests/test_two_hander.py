@@ -151,3 +151,36 @@ def test_the_ball_line_opening_a_stretch_hears_the_call_by_name(tmp_path):
     ball = [q for q in asked if "\nEvent: Stat, orientation: " in q]
     assert ball and all("speaker: analyst, you are: Julian" in q for q in ball)
     assert all(f"{NAMES['lead']} just said: " in q for q in ball)
+
+
+def test_a_cold_open_with_no_numbers_passes_the_number_check(tmp_path):
+    # build-149's check over each open line and the request it was said over: a welcome that
+    # says no number passes; one that adds a number the match doesn't give is caught
+    header = {}
+
+    def welcome(moment, history):
+        if not moment["outcome"].startswith(insight.OPEN):
+            return None
+        h = header["now"]
+        match = f"{h['home']} against {h['away']}" if h.get("home") else h["stage"]
+        text = (
+            f"Welcome along, {match} in the {h['competition']}, with {NAMES['analyst']}."
+            if moment["detail"]["speaker"] == "lead"
+            else f"Great to be with you, {NAMES['lead']}, what a night for it."
+        )
+        return {"line_id": uuid.uuid4().hex, "moment_idx": moment["idx"], "text": text}
+
+    checked = 0
+    for match_id in ("0020500591", "0049700088", "1298150", "9636", "3869685", WSL):
+        header["now"] = match_header(match_id)
+        store = Store(tmp_path / match_id)
+        r = Replay(match_id, 1e9)
+        asyncio.run(run_replay(r, load_moments(match_id), welcome, store, video_map(match_id)))
+        for line in (e["data"] for e in r.events if e["event"] == "line"):
+            over = insight.said_over(line, load_moments)
+            m, past = over[-1], over[:-1]
+            assert insight.wrong_numbers(line["text"], m, header["now"], past) == [], line["text"]
+            crowd = f"{line['text']} A crowd of 61,482 tonight."
+            assert insight.wrong_numbers(crowd, m, header["now"], past), match_id
+            checked += 1
+    assert checked >= 8  # both lines on the four long run-ins, at least Jim on the rest
