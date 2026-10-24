@@ -85,6 +85,7 @@ def football_match(m: dict) -> tuple[dict, list[dict]]:
                 "sport": "football",
                 "mid": mid,
                 "player": name,
+                "identity": str(p["player_id"]),
                 "team": feed._side(t["team_name"]),
                 "start": start,
                 "competition": fixture["competition"],
@@ -169,12 +170,13 @@ def basketball_season(year: int) -> tuple[list[dict], list[dict]]:
                 "ag": g["score"][0],
             }
         )
-        for (name, abbr), totals in g["totals"].items():
+        for (identity, name, abbr), totals in g["totals"].items():
             apps.append(
                 {
                     "sport": "basketball",
                     "mid": mid,
                     "player": name,
+                    "identity": identity,
                     "team": g["names"][abbr],
                     "start": start,
                     "competition": "NBA",
@@ -197,8 +199,9 @@ def _basketball_row(g: dict, r: dict, meta: tuple) -> None:
         abbr, name = r[f"PLAYER{n}_TEAM_ABBREVIATION"], feed._s(r[f"PLAYER{n}_NAME"])
         if name and abbr in (home, away):
             g["names"][abbr] = feed._team(r, n)
+            identity = feed._s(r.get(f"PLAYER{n}_ID")) or f"team:{abbr}:{name}"
             who[n] = g["totals"].setdefault(
-                (name, abbr), {"points": 0, "rebounds": 0, "assists": 0}
+                (identity, name, abbr), {"points": 0, "rebounds": 0, "assists": 0}
             )
     if 1 in who:
         if kind == "1":
@@ -229,11 +232,17 @@ def cricket_match(m: dict) -> tuple[dict, list[dict]]:
     day = info["dates"][0]
     start = f"{day}T23:59:59"  # no start time in Cricsheet: the whole day is "not before"
     score = dict.fromkeys(teams, 0)
-    tot, played = {}, set()  # played: who batted or bowled a ball
+    people = (info.get("registry") or {}).get("people") or {}
+    tot, by_team_name, played = {}, {}, set()  # played: who batted or bowled a ball
     for team, names in info["players"].items():
         for name in names:
-            tot[name] = {
+            team = feed._s(team)
+            identity = feed._s(people.get(name)) or f"team:{team}:{name}"
+            by_team_name[(team, name)] = identity
+            tot[identity] = {
+                "player": feed._s(name),
                 "team": feed._s(team),
+                "identity": identity,
                 "totals": {"runs": 0, "balls": 0, "wickets": 0},
             }
     for inn in m.get("innings") or []:
@@ -244,14 +253,17 @@ def cricket_match(m: dict) -> tuple[dict, list[dict]]:
                 score[feed._s(inn["team"])] = (
                     score.get(feed._s(inn["team"]), 0) + d["runs"]["total"]
                 )
-                played |= {d["batter"], d["bowler"]}
-                bat = tot.get(d["batter"])
+                batting_team = feed._s(inn["team"])
+                bowling_team = next((t for t in teams if t != batting_team), "")
+                batter = tot.get(by_team_name.get((batting_team, d["batter"])))
+                bowler = tot.get(by_team_name.get((bowling_team, d["bowler"])))
+                played |= {p["identity"] for p in (batter, bowler) if p}
+                bat = batter
                 if bat and "wides" not in d.get("extras", {}):
                     bat["totals"]["balls"] += 1
                 if bat:
                     bat["totals"]["runs"] += d["runs"]["batter"]
                 for w in d.get("wickets") or []:
-                    bowler = tot.get(d["bowler"])
                     if bowler and w["kind"] not in NOT_BOWLERS:
                         bowler["totals"]["wickets"] += 1
     fixture = {
@@ -270,13 +282,14 @@ def cricket_match(m: dict) -> tuple[dict, list[dict]]:
         {
             **{k: fixture[k] for k in ("sport", "competition", "season", "start", "gender")},
             "mid": "",
-            "player": feed._s(name),
+            "player": t["player"],
+            "identity": t["identity"],
             "team": t["team"],
             "minutes": 0,
             "totals": t["totals"],
         }
-        for name, t in tot.items()
-        if name in played
+        for identity, t in tot.items()
+        if identity in played
     ]
     return fixture, apps
 
@@ -310,14 +323,23 @@ def stints(apps: list[dict]) -> list[dict]:
     record per appearance repeated every field name and made the store four times the size."""
     out: dict[tuple, dict] = {}
     for a in sorted(apps, key=lambda a: a["start"]):
-        key = (a["sport"], a["player"], a["team"], a["competition"], a["season"], a.get("gender"))
+        identity = a.get("identity") or f"team:{a['team']}:{a['player']}"
+        key = (
+            a["sport"],
+            identity,
+            a["player"],
+            a["team"],
+            a["competition"],
+            a["season"],
+            a.get("gender"),
+        )
         rec = out.setdefault(
             key,
             {
                 "id": list(key),
                 **dict(
                     zip(
-                        ("sport", "player", "team", "competition", "season", "gender"),
+                        ("sport", "identity", "player", "team", "competition", "season", "gender"),
                         key,
                         strict=True,
                     )
