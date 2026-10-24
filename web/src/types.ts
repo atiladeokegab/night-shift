@@ -160,5 +160,6 @@ export interface Voice {
   lang: string // a BCP 47 tag for the browser speech fallback, e.g. "en-IN", "en-GB"
   default_for?: Sport
   same_as?: string // the id of the entry with the same ElevenLabs voice: a sport's pick that repeats it
+  analyst_for?: Sport[] // the sports whose analyst lines this voice reads (core/voice.py analyst_voice)
   browser?: boolean
 }

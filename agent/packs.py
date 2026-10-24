@@ -36,6 +36,7 @@ MATCHES = {
     ("basketball", "0049700088"): ("shotdetail_1997", "shotdetail_po_1997"),
     ("football", "3869685"): (43, 106),
     ("football", "3754092"): (2, 27),  # Premier League 2015/16
+    ("football", "3913122"): (37, 281),  # FA Women's Super League 2023/24
     ("cricket", "1298150"): ("2022",),
     ("f1", "9636"): (2024,),
 }

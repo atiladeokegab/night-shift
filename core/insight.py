@@ -572,15 +572,20 @@ LEADS = (  # a claim that a team is in front now; "led" and questions are no cla
 )
 
 
+# StatsBomb's women's sides: "Bristol City WFC", "Spain Women's"; a line says "Bristol City lead"
+CLUB_SUFFIX = re.compile(r"\s+(?:WFC|LFC|FC|Women's|Women)$", re.I)
+
+
 def _sides(header: dict) -> tuple[dict[str, str], str]:
-    """Each way a line names a team ("Chicago Bulls", "Bulls", "Chicago") to its side, and the
-    regex alternation of those names, longest first."""
-    side = {}
-    for s in ("home", "away"):
-        name = header[s].split()
-        for n in (header[s], name[-1], " ".join(name[:-1])):
-            if n:
-                side[n.lower()] = s
+    """Each way a line names a team ("Chicago Bulls", "Bulls", "Chicago"; "Brighton" for "Brighton
+    & Hove Albion WFC") to its side, and the regex alternation of those names, longest first."""
+    words = {s: CLUB_SUFFIX.sub("", header[s]).split() or [header[s]] for s in ("home", "away")}
+    names = {
+        s: {n.lower() for n in (header[s], " ".join(w), w[-1], " ".join(w[:-1]), w[0]) if n}
+        for s, w in words.items()
+    }
+    shared = names["home"] & names["away"]  # "Manchester" names neither side of a derby
+    side = {n: s for s, ns in names.items() for n in ns - shared}
     return side, "|".join(re.escape(n) for n in sorted(side, key=len, reverse=True))
 
 
@@ -690,7 +695,7 @@ ENDED = re.compile(
 
 def wrong_event(text: str, m: dict) -> list[str]:
     """What a football line says happened that the moment's type and outcome deny; [] if nothing."""
-    if m.get("sport") != "football":
+    if m.get("sport") != "football" or m.get("type") == "Stat":  # a reply over a stat recalls play
         return []
     d, s = m.get("detail") or {}, m.get("score") or {}
     goal = m.get("type") == "Shot" and m.get("outcome") == "Goal"

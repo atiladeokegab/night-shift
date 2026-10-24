@@ -9,6 +9,8 @@ const KNOWN: [string, string, string, string][] = [
   ['Pakistan', 'PAK', '#0F8A4C', '#FFFFFF'],
   ['Chelsea', 'CHE', '#034694', '#FFFFFF'],
   ['Tottenham', 'TOT', '#F4F4F4', '#132257'],
+  ['Brighton', 'BHA', '#0057B8', '#FFFFFF'], // codes as on the broadcast's score bug
+  ['Bristol City', 'BRI', '#E21A23', '#FFFFFF'],
   ['Verstappen', 'VER', '#3671C6', '#FFFFFF'], // Red Bull blue, 2024
 ]
 const OTHER: [string, string][] = [['#C9D2E3', '#0E1524'], ['#8FA3C7', '#0E1524']]
@@ -74,6 +76,11 @@ export const CARD_COPY: Record<string, { title: string; detail: string; result: 
     title: 'Battle of the Bridge',
     detail: 'Premier League · Chelsea v Tottenham · 2 May 2016',
     result: 'Chelsea 2–2 Tottenham: Leicester are champions',
+  },
+  '3913122': {
+    title: 'Brighton v Bristol City', // the long tail: a league match, not a famous one
+    detail: "Women's Super League · Brighton v Bristol City · 21 Jan 2024",
+    result: "Brighton 3–2 Bristol City, Terland's winner in stoppage time",
   },
   '1298150': {
     title: 'India v Pakistan',
