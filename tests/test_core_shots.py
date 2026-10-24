@@ -6,7 +6,8 @@ import threading
 import pytest
 from fastapi.testclient import TestClient
 
-from core.app import Deps, create_app, load_pack
+from core.app import Deps, create_app
+from core.predict import load_pack
 from core.smoke import read_stream
 from core.store import Store
 from data.matches import list_matches, load_moments
@@ -34,7 +35,8 @@ def client_for(tmp_path, commentate=line):
 
 def later_cut(match_id, name):
     """A moment with some of the player's shots at or before it and some after."""
-    idxs = sorted(t["idx"] for t in load_pack(match_id)["tonight"] if t["player"] == name)
+    sport = load_moments(match_id)[0]["sport"]
+    idxs = sorted(t["idx"] for t in load_pack(sport, match_id)["tonight"] if t["player"] == name)
     cut = next(i for i in idxs if i < idxs[-1])
     return cut, idxs
 

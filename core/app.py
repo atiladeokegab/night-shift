@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 
+from core.predict import load_pack, shot_points
 from core.replay import OFF_AIR, Replay, run_replay
 from core.stats import stats
 from core.store import open_store
@@ -24,39 +25,6 @@ log = logging.getLogger("night_shift.app")
 REJOIN_S = 10.0  # a replay with no open stream this long is stopped: its lines cost model calls
 
 WEB = Path(__file__).resolve().parent.parent / "web" / "dist"
-PACKS = Path(__file__).resolve().parent.parent / "data" / "packs"
-
-try:
-    from core.predict import shot_points
-except ImportError:  # shortcut: stand-in until #119's core/predict.py lands, then delete it
-
-    def shot_points(pack: dict, moments: list, idx: int, name: str) -> dict:
-        p = pack["players"][name]
-        zones = [
-            {"zone": z, "attempts": v["att"], "made": v["made"], "rate": v["made"] / v["att"]}
-            for z, v in p["zones"].items()
-        ]
-        tonight = [
-            {k: t[k] for k in ("x", "y", "made", "idx")}
-            for t in pack["tonight"]
-            if t.get("player") == name and t["idx"] <= idx
-        ]
-        season = [{k: s[k] for k in ("x", "y", "made", "zone")} for s in p["shots"]]
-        return {
-            "player": name,
-            "sport": pack["sport"],
-            "season": season,
-            "tonight": tonight,
-            "zones": zones,
-        }
-
-
-def load_pack(match_id: str) -> dict:
-    """data/packs/<sport>-<match_id>.json (#118); KeyError when the match has none."""
-    found = sorted(PACKS.glob(f"*-{match_id}.json")) if match_id.isalnum() else []
-    if not found:  # an id from a request is untrusted: only plain ids reach the glob
-        raise KeyError(match_id)
-    return json.loads(found[0].read_text(encoding="utf-8"))
 
 
 @dataclass
@@ -263,12 +231,12 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
         past, _ = asked_so_far(replay, d.load_moments(replay.match_id), moment_idx)
         if not past:
             raise HTTPException(409, "nothing has happened yet")
-        try:
-            pack = load_pack(replay.match_id)
-            if pack.get("coords") is None:  # cricket has no shot locations
+        pack = load_pack(past[-1]["sport"], replay.match_id)
+        try:  # ValueError: a sport with no shot locations (cricket); KeyError: no such player
+            if pack is None:
                 raise KeyError(replay.match_id)
-            return shot_points(pack, past, past[-1]["idx"], name)
-        except KeyError as exc:
+            return shot_points(pack, past, len(past) - 1, name)
+        except (ValueError, KeyError) as exc:
             raise HTTPException(404, f"no shot map for {name!r} in this match") from exc
 
     @app.get("/stats")
