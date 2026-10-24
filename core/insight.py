@@ -1612,6 +1612,14 @@ SCORED = re.compile(
 NOT_YET = re.compile(r"\b(?:to|could|would|can|will|might|may|should|if|the)\s+(?:\w+\s+)?$", re.I)
 NTH_GOAL = {"first": 1, "second": 2, "third": 3, "fourth": 4, "brace": 2}
 HALVES_SAID = {"second half": 2, "first half of extra time": 3, "second half of extra time": 4}
+# a lead said to move ("extend their lead to eighteen", "cutting the gap"): wrong at a moment
+# that scored nothing
+LEAD_MOVED = re.compile(
+    r"\b(?:extend|stretch|widen|increas|grow|grew|cut|trim|narrow|reduc|clos)\w{0,4}\b"
+    r"(?:\s+\w+){0,2}\s+(?:lead|gap|deficit|advantage|margin)\b",
+    re.I,
+)
+MAY_MOVE = re.compile(r"\b(?:to|could|would|can|will|might|may|should|if)\s+(?:\w+\s+)?$", re.I)
 NOW_IN = r"\b(?:we're|we are|it's|it is|deep|now|already)\s+(?:\w+\s+)?(?:in|into)\s+the\s+"
 
 
@@ -1702,6 +1710,21 @@ def wrong_claims(text: str, past: list[dict], question: str = "") -> list[str]:
     return wrong
 
 
+def wrong_lead_move(text: str, past: list[dict]) -> list[str]:
+    """A lead said to grow or shrink at a moment whose score is the one before it: "What just
+    happened?" on Vujacic's steal at 120-102 was answered "Lakers extend their lead to eighteen"
+    (#389), the free throws before it, not the steal. "Could extend their lead" is fine."""
+    if len(past) < 2 or past[-1].get("score") is None or past[-1]["score"] != past[-2].get("score"):
+        return []
+    if not any(not MAY_MOVE.search(text[: hit.start()]) for hit in LEAD_MOVED.finditer(text)):
+        return []
+    m = past[-1]
+    lead = (m.get("detail") or {}).get("lead")
+    return [
+        f"the score did not change at this moment ({m.get('type')}){f'; {lead}' if lead else ''}"
+    ]
+
+
 def checked_answer(ask, question: str, past: list[dict], lines: list[dict]) -> dict | None:
     """An Ask answer whose numbers (wrong_answer) and goals and half (wrong_claims) match what it
     was given: asked again once with the reasons when they don't, then the status from the data
@@ -1716,8 +1739,10 @@ def checked_answer(ask, question: str, past: list[dict], lines: list[dict]) -> d
         answer = ask(question, past, lines, **({"wrong": wrong} if retry else {}))
         if answer is None:
             return None
-        wrong = wrong_answer(answer, question, past, lines) + wrong_claims(
-            answer["text"], past, question
+        wrong = (
+            wrong_answer(answer, question, past, lines)
+            + wrong_claims(answer["text"], past, question)
+            + wrong_lead_move(answer["text"], past)
         )
         if not wrong:
             return {**answer, "checked": True, **({"retried": True} if retry else {})}
