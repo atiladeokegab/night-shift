@@ -186,3 +186,42 @@ def test_a_wrong_answer_is_asked_again_once_then_off_air(tmp_path):
         rid = finished_replay(client)
         said = client.post(f"/replays/{rid}/ask", json={"question": "Score?", "moment_idx": 1})
     assert said.json()["text"] == "Reds 1." and said.json()["retried"] and len(asked) == 2
+
+
+def test_ten_two_pointers_is_ten_of_them():
+    assert insight.said("ten two-pointers") == [10.0, 2.0, "pointers"]
+    assert insight.said("ninety-six, one oh-four") == [96.0, 104.0]
+
+
+def test_a_retry_never_passes_the_call_cap(tmp_path, monkeypatch):
+    monkeypatch.setattr(insight, "MAX_CALLS", 3)
+    asked = []
+
+    def calls(moment, history):
+        if moment["type"] != "Stat":
+            return commentator.commentate(moment, history, provider=Fake())
+        asked.append(moment["idx"])
+        return {"line_id": uuid.uuid4().hex, "moment_idx": moment["idx"], "text": WRONG_LINE}
+
+    replay(KOBE, Store(tmp_path), calls=calls)
+    assert len(asked) == 3  # the third call's retry would be the fourth
+
+
+@pytest.mark.parametrize("match_id", ["3869685", "3913122"])
+def test_every_orientation_line_passes_the_analyst_check(match_id, tmp_path):
+    """A stretch opens on where the ball is (#205); its clock and score must not drop it."""
+    from data.matches import balls, orientation
+
+    moments, header, found = load_moments(match_id), match_header(match_id), balls(match_id)
+    gaps, said = insight.Gaps(match_id, Store(tmp_path)), 0
+    for i, m in enumerate(moments):
+        if not (b := found.get(m["idx"])):
+            continue
+        text = orientation(header, moments[: i + 1], b)
+        said_as = {"kind": "orientation", "detail": text, "heard": "", "clock": b["clock"]}
+        stat = insight.stat_moment(m, said_as, False)
+        minute = int(b["clock"].split(":")[0]) + 1  # "in the 23rd minute" of a 22:10 clock
+        for line in (text, f"{minute} minutes played. {text}"):
+            assert gaps.wrong(line, stat, moments[: i + 1]) == [], line
+        said += 1
+    assert said >= 10
