@@ -97,9 +97,7 @@ def test_form_facts_are_cached_per_replay_only_after_a_successful_lookup(tmp_pat
     calls = []
     facts = ["Home form fact", "Away form fact"]
     monkeypatch.setattr(insight.Gaps, "pack", lambda self, moment: None)
-    monkeypatch.setattr(
-        insight, "_form", lambda pack, past: calls.append(past[-1]["idx"]) or facts
-    )
+    monkeypatch.setattr(insight, "_form", lambda pack, past: calls.append(past[-1]["idx"]) or facts)
     monkeypatch.setattr(insight, "KINDS", (("form", insight._form),))
 
     def past(idx):
