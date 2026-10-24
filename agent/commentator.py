@@ -121,6 +121,7 @@ def render_message(header: dict, past: list[dict]) -> str:
 
 MAX_FIXES = 5  # the request stays small
 FIXES = "Producer fixes earlier in this match, to follow from now on:\n{fixes}"
+SEEN = "On screen: {seen}"  # what a viewer's shared screen shows (#291, agent/look.py)
 
 
 def _fixes(past: list[dict], fixes) -> str:
@@ -173,12 +174,13 @@ def match_fixes(store, match_id: str, known: dict | None = None) -> list[dict]:
     return list(out.values())
 
 
-def build_request(header: dict, past: list[dict], fixes=()) -> dict:
+def build_request(header: dict, past: list[dict], fixes=(), seen: str | None = None) -> dict:
     """The exact production request for the last moment in `past`. A Stat moment (an insight or
     reply, core/insight.py) gets the analyst's own prompt and no tools: it is never recorded, so
     the frozen prompt and tools the lines train on stay one task. `fixes`, the match's stored
     producer fixes ({moment_idx, said, reason, fixed}), go in the user message, never the system
-    prompt, so the Mubit task stays the same; none leaves the request as it was."""
+    prompt, so the Mubit task stays the same; none leaves the request as it was. `seen`, a note of
+    the viewer's shared screen (#291), goes there too, after them."""
     request = {
         "model": MODEL,
         "max_tokens": MAX_TOKENS,
@@ -190,6 +192,8 @@ def build_request(header: dict, past: list[dict], fixes=()) -> dict:
     }
     if said := _fixes(past, fixes):
         request["messages"][0]["content"] += "\n" + FIXES.format(fixes=said)
+    if seen:
+        request["messages"][0]["content"] += "\n" + SEEN.format(seen=seen)
     if past[-1]["type"] == "Stat":
         request["system"] = ANALYST
         # unrecorded, so its model is free to differ from the lines' (one Mubit task)
@@ -277,7 +281,12 @@ def _fit(text: str, limit: int = MAX_WORDS) -> str:
 
 
 def commentate(
-    moment: dict, history: list[dict], header: dict | None = None, provider=None, fixes=()
+    moment: dict,
+    history: list[dict],
+    header: dict | None = None,
+    provider=None,
+    fixes=(),
+    seen: str | None = None,
 ) -> dict:
     """The server's seam: one Line for `moment`, given only the earlier moments and the match's
     producer fixes (`build_request`)."""
@@ -287,7 +296,9 @@ def commentate(
         header = match_header(moment["match_id"])
     moments = [*history, moment]
     try:
-        return line_for(header, moments, len(history), provider or provider_for(moment), fixes)
+        return line_for(
+            header, moments, len(history), provider or provider_for(moment), fixes, seen
+        )
     except NoLine:
         return None  # the replay skips the moment
 
@@ -436,11 +447,13 @@ def unrecorded_provider():
     return _unrecorded
 
 
-def line_for(header: dict, moments: list[dict], idx: int, provider, fixes=()) -> dict:
+def line_for(
+    header: dict, moments: list[dict], idx: int, provider, fixes=(), seen: str | None = None
+) -> dict:
     """One Line for moments[idx], with at most one tool round."""
     past = moments[: idx + 1]  # never anything later than this moment
     start = time.monotonic()
-    request = build_request(header, past, fixes)
+    request = build_request(header, past, fixes, seen)
     reply, replies, tool_calls, offset = _call(provider, request, header, past)
     limit = ANALYST_WORDS if past[-1]["type"] == "Stat" else MAX_WORDS
     text = spoken(" ".join(b["text"] for b in reply["content"] if b["type"] == "text"), limit)
