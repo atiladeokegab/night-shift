@@ -86,7 +86,7 @@ export const CARD_COPY: Record<string, { title: string; detail: string; result: 
     result: 'Lakers 122–104 Raptors, Kobe Bryant 81 points',
   },
   '0049700088': {
-    title: "Jordan's last shot",
+    title: "Jordan's last shot as a Bull", // his last game was 2003, with the Wizards
     detail: '1998 NBA Finals, Game 6 · Jazz v Bulls · 14 Jun 1998',
     result: 'Bulls 87–86 Jazz',
   },
@@ -115,7 +115,7 @@ export function commentatorName(name: string): string {
 
 // The dock chip's name, short enough for a phone and never a lone nationality ("British"): the voice's own
 // name before a colon or comma ("Connor: British, energetic" is "Connor", "Raju, Cricket Commentator" is "Raju"),
-// else a pick's role words ("British Football Announcer" is "Football Announcer"). The sheet shows labels whole.
+// else a pick's role words ("British Football Announcer" is "Football Announcer"), as the sheet names it (#154).
 export function chipName(v: Voice | null): string {
   if (!v) return ''
   if (v.browser) return 'Browser voice'
@@ -124,6 +124,10 @@ export function chipName(v: Voice | null): string {
   const words = v.label.split(/\s+/)
   return words.length > 2 ? words.slice(-2).join(' ') : v.label
 }
+
+// The voice sheet's name for an option: a voice with a description shows it whole ("Connor: British,
+// energetic"); a pick shows the dock chip's name, so the bar and the sheet agree and fit a phone (#154).
+export const sheetName = (v: Voice): string => (/[:,(]/.test(v.label) ? v.label : chipName(v))
 
 // The voice sheet's options for a sport: one per voice. Of the entries for the same voice (same_as), the
 // sport's chosen one shows, else its default, else the first, so football's pick and f1's default are one option.
