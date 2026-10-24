@@ -84,6 +84,11 @@ export interface Stats {
   by_speaker?: { lead: SpeakerStats; analyst: SpeakerStats } // #161: Haiku's calls apart from Sonnet's stat lines
   fixes_recorded?: number // fixes Mubit recorded for training; `fixes` counts every stored fix
   fixes_toward_next?: number // recorded fixes since the latest adapter record (#161)
+  // #174: a full replay's mean spend over matches_measured of them; null when it can't be measured
+  matches_measured?: number
+  cost_per_match_usd?: number | null
+  model_cost_per_match_usd?: number | null
+  voice_cost_per_match_usd?: number | null
 }
 
 export interface SpeakerStats {

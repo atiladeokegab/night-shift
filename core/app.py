@@ -87,7 +87,7 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
     store = store or open_store()
     deps = deps or default_deps()
     replays: dict[str, Replay] = {}
-    speaker = Speaker(tts_transport)
+    speaker = Speaker(tts_transport, store)
     tasks: set[asyncio.Task] = set()
     running: dict[str, asyncio.Task] = {}  # replay id: its run_replay task, until it ends
     asking: set[str] = set()  # replay ids with a viewer's question in flight
