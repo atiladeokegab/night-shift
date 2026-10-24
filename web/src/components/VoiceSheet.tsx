@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { sheetVoices } from '../teams'
 import { SPORT_NAMES, type Sport, type Voice } from '../types'
 
 interface Props {
@@ -39,7 +40,7 @@ export function VoiceSheet({ sports, voices, chosen, available, on, onToggle, on
             <div key={sport} role="radiogroup" aria-label={`${SPORT_NAMES[sport]} voice`}>
               <span className="label">{SPORT_NAMES[sport]}</span>
               <div className="opts">
-                {voices.map((v) => (
+                {sheetVoices(voices, sport, chosen(sport)?.id).map((v) => (
                   <label key={v.id} className="opt">
                     <input type="radio" name={`voice-${sport}`} checked={chosen(sport)?.id === v.id}
                       disabled={!on || !available} onChange={() => onPick(sport, v)} />

@@ -86,7 +86,7 @@ def test_voices_lists_one_default_per_sport(tmp_path):
     with client_for(tmp_path, upstream()) as client:
         voices = client.get("/voices").json()
     assert {v["default_for"] for v in voices} >= {"cricket", "football"}
-    assert all(set(v) == {"id", "label", "default_for", "lang"} for v in voices)
+    assert all(set(v) == {"id", "label", "default_for", "lang"} for v in voices)  # no same_as
     lang = {v["default_for"]: v["lang"] for v in voices}
     assert lang["cricket"] == "en-IN" and lang["football"] == "en-GB"
     assert lang["basketball"] == "en-US"  # Sam, the American play-by-play pick
@@ -351,6 +351,9 @@ def test_the_deployed_picks_give_every_sport_its_own_default(tmp_path, monkeypat
         "f1": "announcer",
         "basketball": "sam",
     }
+    # football's pick is the announcer: the sheet lists it once, and only for the repeat
+    repeats = {v["id"]: v["same_as"] for v in voices if "same_as" in v}
+    assert repeats == {"football-pick": "announcer"}
     assert [voice_in(r) for r in seen] == ["gU0LNdkMOQCOrPrwtbee"]
 
 

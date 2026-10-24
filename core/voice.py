@@ -265,9 +265,14 @@ def voice_router(store, speaker: Speaker) -> APIRouter:
     def voices():
         sports = sorted({v["default_for"] for v in VOICES if v["default_for"]}, reverse=True)
         default = {default_voice(s)["id"]: s for s in sports}  # one sport per voice
+        voices = all_voices()
+        first = {}  # a pick reusing a voice names the entry it repeats, so the page lists it once
+        for v in voices:
+            first.setdefault(v["eleven_id"], v["id"])
         return [
             {**{k: v[k] for k in ("id", "label", "lang")}, "default_for": default.get(v["id"])}
-            for v in all_voices()
+            | ({"same_as": first[v["eleven_id"]]} if first[v["eleven_id"]] != v["id"] else {})
+            for v in voices
         ]
 
     @router.get("/lines/{line_id}/audio")
