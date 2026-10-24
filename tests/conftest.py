@@ -13,3 +13,9 @@ def no_budget_guard(monkeypatch):
     """The live site's limits (#244) are off in tests; tests/test_guard.py sets its own."""
     for name in ("MAX_LIVE_REPLAYS", "REPLAYS_PER_HOUR", "ASKS_PER_HOUR", "DAILY_BUDGET_USD"):
         monkeypatch.setenv(name, "0")
+
+
+@pytest.fixture(autouse=True)
+def fresh_stats(monkeypatch):
+    """The live stats throttle is off in tests, so counts are current; a test sets its own."""
+    monkeypatch.setattr("core.stats.STATS_EVERY_S", 0.0)

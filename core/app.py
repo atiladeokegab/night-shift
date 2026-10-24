@@ -455,7 +455,7 @@ def create_app(
                 e["data"].get("line_id") == line_id for e in replay.events if e["event"] == "line"
             ):
                 await replay.publish("fixed", fix)
-                await replay.publish("stats", await asyncio.to_thread(stats, store))
+                await replay.publish("stats", await asyncio.to_thread(stats, store, True))
         if d.teach and req.reason in TEACHES:  # it passed the number check above
             task = asyncio.create_task(teach(line))
             tasks.add(task)
