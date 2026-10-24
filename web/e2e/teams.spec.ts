@@ -11,9 +11,9 @@ interface Recorded {
 }
 const recorded = (name: string): Recorded => JSON.parse(readFileSync(new URL(`./fixtures/teams-${name}.json`, import.meta.url), 'utf8'))
 
-const MATCHES = [
+const MATCHES: { name: string; tile: RegExp; facts?: boolean }[] = [
   { name: 'chelsea-spurs', tile: /^Football ?Battle of the Bridge/ },
-  { name: 'lakers-raptors', tile: /^Basketball ?Kobe's 81/ },
+  { name: 'lakers-raptors', tile: /^Basketball ?Kobe's 81/, facts: true }, // the basketball graph has landed (#402)
 ]
 
 async function openTeams(page: Page, tile: RegExp, body: Recorded['teams'], width = 1280) {
@@ -27,7 +27,7 @@ async function openTeams(page: Page, tile: RegExp, body: Recorded['teams'], widt
   return page.getByRole('region', { name: 'Teams' })
 }
 
-for (const { name, tile } of MATCHES) {
+for (const { name, tile, facts: expected } of MATCHES) {
   test(`Teams on ${name}: no empty cell and no result from the match day or later`, async ({ page }) => {
     const rec = recorded(name)
     // the recording itself: nothing in it is dated on or after the match
@@ -36,11 +36,16 @@ for (const { name, tile } of MATCHES) {
 
     const panel = await openTeams(page, tile, rec.teams)
     const facts = rec.teams.teams.some((t) => t.form.length || t.squad.length) || rec.teams.head_to_head.length
+    if (expected) expect(facts, 'the recording has real team facts').toBe(true)
     if (!facts) {
       await expect(panel.getByText('No team facts for this match.')).toBeVisible()
       return
     }
     for (const t of rec.teams.teams) await expect(panel.getByRole('heading', { name: t.team, level: 3 })).toBeVisible()
+    if (expected) {
+      await expect(panel.getByText('No team facts for this match.')).toHaveCount(0)
+      await expect(panel.getByText('Kobe Bryant').first()).toBeVisible()
+    }
     const cells = await panel.locator('li, p, h3, h4').allInnerTexts()
     expect(cells.length).toBeGreaterThan(0)
     for (const text of cells) {
