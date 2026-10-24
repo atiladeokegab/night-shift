@@ -545,7 +545,7 @@ page ([`web/`](web)). It replays a match's event feed, asks the commentator agen
 JSON lines on Cloud Storage, and streams moments and lines to the browser over server-sent events.
 The commentator's tools and the shot map read per-match stats packs ([`data/packs/`](data/packs)).
 Follow a player reads the same packs as a graph in embedded SurrealDB (players, teams, matches and
-seasons, loaded in memory at startup in under a second), which also answers "Also in our library":
+seasons, loaded in memory at startup in about a second), which also answers "Also in our library":
 the player's other matches and teammates. If the graph fails, it reads the packs.
 
 **At scale (a plan, not built).**
