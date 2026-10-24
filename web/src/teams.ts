@@ -1,4 +1,4 @@
-import type { Match, Sport, Voice } from './types'
+import type { Match, Moment, Sport, Voice } from './types'
 
 // Team colours and crest ink from docs/design.md ("Tokens") and the mockup's crests; any other team
 // gets a neutral one.
@@ -39,6 +39,23 @@ export function matchTeams(match: Match): [TeamStyle, TeamStyle] {
 export function sides(match: Match, team: string): { ours: TeamStyle; theirs: TeamStyle } {
   const [home, away] = matchTeams(match)
   return team === away.name ? { ours: away, theirs: home } : { ours: home, theirs: away }
+}
+
+// The cricket score bar: the batting side's runs/wickets, and the other side only once it has a total
+// (the second innings), so a first innings never reads as "PAK 1/1 IND", one-all.
+export function cricketScore(match: Match, moment: Moment | null, moments: Moment[]) {
+  if (!moment) return { batting: matchTeams(match)[0], score: '0/0', fielding: null }
+  const { ours, theirs } = sides(match, moment.team)
+  const s = moment.score
+  // The fielding side's total: their last first-innings moment, else the target less one.
+  const first = moments.filter((m) => m.period === 1 && m.team === theirs.name).at(-1)?.score
+  const total = first && 'runs' in first ? `${first.runs}/${first.wickets}`
+    : 'runs' in s && s.target ? String(s.target - 1) : null
+  return {
+    batting: ours,
+    score: 'runs' in s ? `${s.runs}/${s.wickets}` : '0/0',
+    fielding: moment.period === 2 && total ? { team: theirs, total } : null,
+  }
 }
 
 // Card copy: the two demo matches from docs/design.md ("Copy"), and the iconic ones by what they are

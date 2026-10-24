@@ -274,6 +274,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   /* The score bar keeps two rows (teams and score; clock and period or chase): no REPLAY tag or rule. */
   .scorebar .replay, .scorebar .sep { display: none; }
   .subtitle { bottom: 170px; gap: 12px; }
+  .subtitle::before { inset: -64px 0 -40px; } /* the -18% glow made the page scroll sideways */
   /* Under the score bar, clear of the moment tag; an alert banner takes the spot while it shows. */
   .novideo { top: 148px; transform: none; font-size: .85rem; }
   /* The scrim sized to the phone's subtitle lane (two lines and the tag above the two-row dock), so
@@ -289,6 +290,10 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   .dock .glass { max-width: 100%; }
   .seg { flex: 1 1 100%; justify-content: center; min-width: 0; overflow-x: auto; scrollbar-width: none; }
   .seg button { padding: 0 12px; flex: none; }
+  /* A long voice name shortens with an ellipsis rather than pushing "Next match" onto a third row,
+     which would rise over the subtitle; the voice sheet shows the full name. */
+  .dock .voice { flex: 1 1 0; min-width: 0; }
+  .dock .voice span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .timeline { bottom: 18px; grid-template-columns: 1fr auto; }
   .timeline .yt { display: none; }
   .banner { top: 112px; }

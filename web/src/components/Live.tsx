@@ -115,8 +115,8 @@ export function Live(props: Props) {
                 </button>
               ))}
             </div>
-            <button className="btn" disabled={busy} aria-haspopup="dialog" onClick={onVoiceSheet}>
-              Voice: {voice.status === 'on' ? voice.name : voice.status === 'off' ? 'Off' : 'Unavailable'}
+            <button className="btn voice" disabled={busy} aria-haspopup="dialog" onClick={onVoiceSheet}>
+              <span>Voice: {voice.status === 'on' ? voice.name : voice.status === 'off' ? 'Off' : 'Unavailable'}</span>
             </button>
             {onNext && <button className="btn" disabled={busy} onClick={onNext}>Next match →</button>}
           </div>

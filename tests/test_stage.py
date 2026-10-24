@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
 from core.app import create_app
@@ -14,3 +16,11 @@ def test_stage_tags_a_moment_like_the_main_page(tmp_path):
     page = TestClient(create_app(store=Store(tmp_path))).get("/stage").text
     assert "momentTag(m)" in page and '"Goal"' in page  # "28:29 · Goal", not "Shot · 28:29"
     assert "${m.type} · ${m.clock}" not in page
+
+
+def test_stage_matches_the_app_and_hides_empty_pieces(tmp_path):
+    page = TestClient(create_app(store=Store(tmp_path))).get("/stage").text
+    assert '<link rel="icon" type="image/svg+xml" href="/favicon.svg">' in page
+    assert (Path(__file__).parents[1] / "web" / "public" / "favicon.svg").is_file()
+    assert '<span class="wordmark">Touchline.</span>' in page
+    assert "#score:empty, #sync:empty, .panel.lines:has(.log:empty)" in page

@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Touchline stage</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
@@ -56,6 +57,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .sep { width: 1px; height: 20px; background: var(--line-hi); }
 .clock { color: var(--amber); font-size: 1.15rem; }
 .period { color: var(--muted); font: 500 .85rem/1 var(--body); }
+/* Nothing empty shows: the score bar and sync pills, the Lines card and the stats wait for data. */
+#score:empty, #sync:empty, .panel.lines:has(.log:empty), .panel:has(> .stats:empty) { display: none; }
 .sync { padding: 6px 10px; border-radius: 999px; border: 1px solid var(--line-hi); color: var(--muted); font: 500 .75rem/1 var(--body); background: rgba(6, 8, 15, .5); }
 .subtitle { bottom: 72px; display: grid; justify-items: center; gap: 16px; text-align: center; }
 .subtitle::before { content: ""; position: absolute; inset: -64px -18% -40px; z-index: -1; background: radial-gradient(closest-side, rgba(4, 6, 12, .82), rgba(4, 6, 12, .5) 62%, transparent); }
@@ -88,6 +91,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .live { position: static; pointer-events: auto; }
   #video { position: relative; height: 56.25vw; }
   .nav { position: sticky; z-index: 2; background: var(--bg); flex-wrap: wrap; }
+  /* The match picks take their own row and scroll inside the page width, never past it. */
+  .nav .seg { order: 1; flex: 1 1 100%; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+  .seg button { flex: none; white-space: nowrap; }
   .lane, .side, .novideo { position: static; width: auto; margin: 16px var(--gut); }
   .subtitle::before { display: none; }
 }
@@ -98,7 +104,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 <p class="novideo" id="novideo" hidden>No video for this match: lines show as they arrive.</p>
 <main class="live">
   <nav class="nav">
-    <span class="wordmark">Touchline</span>
+    <span class="wordmark">Touchline.</span>
     <div class="seg" id="sports" role="group" aria-label="Sport"></div>
     <span class="onair glass" id="onair"><span class="rec"></span>ON AIR</span>
   </nav>
