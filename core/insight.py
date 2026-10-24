@@ -4,6 +4,7 @@ moments up to the one it follows and the pre-match pack, and it goes through the
 call as any line, so the Mubit task stays one task. Insight lines are kept in the store and reused
 by later replays of the same match."""
 
+import itertools
 import math
 import re
 from collections import Counter
@@ -302,16 +303,24 @@ class Gaps:
         return self._balls
 
     def header(self) -> dict:
+        """The match header, {} for a match that isn't bundled (its numbers are still checked)."""
         if self._header is None:
             from data.matches import match_header
 
-            self._header = match_header(self.match_id)
+            try:
+                self._header = match_header(self.match_id)
+            except KeyError:
+                self._header = {}
         return self._header
 
     def pack(self, m: dict):
         if self._pack is None:
             self._pack = predict.load_pack(m.get("sport", ""), self.match_id) or {}
         return self._pack
+
+    def wrong(self, text: str, stat: dict, past: list[dict]) -> list[str]:
+        """What an analyst line or reply gets wrong against its stat and the moments before it."""
+        return wrong_numbers(text, stat, self.header() or None, past)
 
     def next_stat(self, past: list[dict], first: bool = False) -> tuple[str, str] | None:
         """The next kind in turn with a detail not said yet in this replay; a stretch's first
@@ -344,7 +353,8 @@ class Gaps:
     ) -> tuple[dict, dict] | None:
         """The n-th line in the quiet stretch after past[-1]: the moment it is said over and its
         stored Line, the cached one, else a new commentate call (an analyst line that comes back
-        empty hands the slot to the next kind, once). None ends the stretch. The
+        empty hands the slot to the next kind, once; a line with a wrong number, new or cached, is
+        made once more, then dropped). None ends the stretch. The
         analyst speaks the insights and hears the line before it (`before`); now and then the
         lead replies to the analyst. A line that repeats one of the `recent` ones is never said."""
         m = past[-1]
@@ -363,6 +373,8 @@ class Gaps:
                 return None
             if said_as["kind"] != "orientation" and repeats(ln.get("text") or "", list(recent)):
                 return None
+            if self.wrong(ln.get("text") or "", stat_moment(m, said_as, reply), past):
+                ln = None  # stored before the check (or a newer check fails it): made again
         elif self.calls >= MAX_CALLS:
             return None
         else:
@@ -382,14 +394,26 @@ class Gaps:
             if picked[0] == "orientation":  # said at the ball's time, the latest it reads (A-1.4)
                 said_as["clock"] = ball["clock"]
         if ln is None:
+            failed = False  # a try had a wrong number
             for retry in (False, True):
+                if self.calls >= MAX_CALLS:
+                    return None
                 self.calls += 1
                 # the same seam as every line: only moments up to the one followed reach the model
                 said = commentate(stat_moment(m, said_as, reply), list(past))
-                # where the ball is now is news, though it reads like where it was before
+                # where the ball is now is news, though it reads like where it was before; its own
+                # check (wrong_orientation, below) falls back to the data's line, never drops it
                 fresh = said_as["kind"] == "orientation"
                 if said and said.get("text") and (fresh or not repeats(said["text"], list(recent))):
-                    break
+                    # the moment lines' number check: a wrong number gets the same stat once more,
+                    # then the line is dropped; an unchecked number is never said
+                    if fresh or not self.wrong(said["text"], stat_moment(m, said_as, reply), past):
+                        said = {**said, "checked": True, **({"retried": True} if failed else {})}
+                        break
+                    if retry:
+                        return None
+                    failed = True
+                    continue
                 if reply or retry or self.calls >= MAX_CALLS:
                     return None
                 self.used.add(said_as["detail"])  # dropped: the next kind gets this slot, once
@@ -482,6 +506,9 @@ ORDINALS = {
 }
 
 
+TOKEN = r"\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?|[a-z]+|[^\w\s'’-]"
+
+
 def said(text: str) -> list:
     """The line as words, each number phrase as one float: digits or words ("ninety-six",
     "eighty-first", "one hundred and four"), and scores as spoken ("one twenty-two", "one oh-four").
@@ -496,7 +523,8 @@ def said(text: str) -> list:
             out.extend(words)
         cur, words = None, []
 
-    for w in re.findall(r"\d+(?:\.\d+)?|[a-z]+|[^\w\s'’-]", text.lower()):
+    for w in re.findall(TOKEN, text.lower()):
+        w = w.replace(",", "") if w[0].isdigit() else w  # "967 of 1,873" is one number
         if not w[0].isalnum():  # punctuation ends a number: "for four, ninety-three needed"
             flush()
             continue
@@ -515,8 +543,9 @@ def said(text: str) -> list:
             cur, words = (cur or 0) + TENS[w], [*words, w]
         elif w in UNITS or (w in ORDINALS and cur):
             v = UNITS.index(w) if w in UNITS else ORDINALS[w]
-            # "one hundred and eleven": a teen after a hundred is part of it too
-            if not (cur and (cur % 10 == 0 and v < 10 or cur % 100 == 0 and v < 20)):
+            # "one hundred and eleven": a teen after a hundred is part of it too; "ten two-pointers"
+            # is ten of them, so a unit joins only a tens word ("ninety-six")
+            if not (cur and (words[-1] in TENS and v < 10 or cur % 100 == 0 and v < 20)):
                 flush()
             cur, words = (cur or 0) + v, [*words, w]
         elif w == "hundred" and (cur or words == ["a"]):
@@ -564,6 +593,29 @@ def _given(m: dict, header: dict | None = None) -> set[float]:
             for full in (45, 90, 105, 120):
                 given |= {float(full), float(full - minute), float(full - minute - 1)}
     return given
+
+
+def _derived(text: str) -> set[float]:
+    """What a stat's own text gives by adding or dividing, as the analyst says it: a tally's counts
+    and runs or points summed over any of its kinds ("four shots", "ten boundaries", "28 runs in
+    boundaries"), each "a of b" as a percentage, and each score's margin and the change between two
+    ("a ten-point hole", "a 21-11 run")."""
+    counts, worth = [], []
+    for what, n in re.findall(r"(?:\(([^)]*)\))? x(\d+)\b", text):
+        counts.append(int(n))
+        worth.append(int(n) * int(v[0]) if (v := re.findall(r"\d+", what)) else 0)
+    out = set()
+    for picks in itertools.product((0, 1), repeat=min(len(counts), 10)):
+        out.add(sum(p * c for p, c in zip(picks, counts, strict=False)))
+        out.add(sum(p * w for p, w in zip(picks, worth, strict=False)))
+    for a, b in re.findall(r"(\d+) of (\d+)", text):
+        if int(b):
+            out |= {round(100 * int(a) / int(b)), 100 * int(a) // int(b)}
+    scores = [(int(a), int(b)) for a, b in re.findall(r"(\d+)-(\d+)", text)]
+    out |= {abs(a - b) for a, b in scores}
+    for (a, b), (c, d) in itertools.pairwise(scores):
+        out |= {abs(c - a), abs(d - b)}
+    return {float(n) for n in out}
 
 
 def _ball(m: dict) -> int:
@@ -670,6 +722,9 @@ def _wrong_margin(text: str, m: dict, header: dict) -> list[str]:
     return wrong
 
 
+LAST_BALL = re.compile(r"\blast ball\b", re.I)
+
+
 def wrong_numbers(
     text: str, m: dict, header: dict | None = None, past: list[dict] = ()
 ) -> list[str]:
@@ -677,8 +732,10 @@ def wrong_numbers(
     play gives (`past`: the moments before it); [] when nothing."""
     s, d = m.get("score") or {}, m.get("detail") or {}
     given = _given(m, header) | _streaks(m, past)
-    if m.get("type") == "Stat" and past:  # said just after that moment: "two free throws" on 2 of 2
-        given |= _given(past[-1], header)
+    if m.get("type") == "Stat":  # an analyst line: its stat, said just after past[-1]
+        given |= _derived(str(m.get("outcome")))
+        if past:  # "two free throws" on 2 of 2
+            given |= _given(past[-1], header)
     words = said(text)
     heard = [  # "Number 23" names a player, it is no stat
         n
@@ -694,15 +751,23 @@ def wrong_numbers(
         wrong.append(f"the milestone is unsaid: {d['milestone']}")
     if m.get("sport") == "cricket":
         score = {(s.get("runs"), s.get("wickets")), (s.get("wickets"), s.get("runs"))}
-        for a, w, b in zip(words, words[1:], words[2:], strict=False):
-            # wickets first ("India two for ten") is a broadcast convention too
-            if w == "for" and isinstance(a, float) and isinstance(b, float) and (a, b) not in score:
+        for a, w, b, unit in zip(words, words[1:], words[2:], [*words[3:], ""], strict=False):
+            # wickets first ("India two for ten") is a broadcast convention too; "a six for 6 runs"
+            # is no score
+            if (
+                w == "for"
+                and isinstance(a, float)
+                and isinstance(b, float)
+                and (a, b) not in score
+                and unit not in ("run", "runs")
+            ):
                 wrong.append(f"{a:g} for {b:g} is not runs for wickets")
         left = d.get("balls_left")
         if (
             left is not None
             and left > 1
             and re.search(r"\b(final|last) (ball|delivery)", text, re.I)
+            and not LAST_BALL.search(str(m.get("outcome")))  # a tally's "Last ball (2 runs)"
         ):
             wrong.append(f"{left} balls are left, not one")
         if (
@@ -829,7 +894,8 @@ def wrong_event(text: str, m: dict) -> list[str]:
 
 def checked(commentate, moment: dict, history: list[dict]) -> dict | None:
     """A moment's line whose numbers match the moment: regenerated once when they don't, then
-    replaced by the line built from the moment's data. A Stat line is the analyst's, and passes.
+    replaced by the line built from the moment's data. A Stat line is the analyst's: `Gaps.line`
+    checks it.
     Every line the check saw is marked `checked` (#204). An accepted retry carries the rejected
     first try as `rejected` and is marked `retried`; a fallback keeps the failed try as `tried` and
     the check's reasons as `wrong`, for the producer's review queue."""
@@ -869,6 +935,41 @@ def wrong_orientation(
     wrong = wrong_numbers(text, stat, header, past)
     wrong += wrong_event(text, {**stat, "type": "Possession", "outcome": ""})
     return wrong + [f"says what comes next: {hit[0]}" for hit in NEXT.finditer(text)]
+
+
+def wrong_answer(answer: dict, question: str, past: list[dict], lines: list[dict]) -> list[str]:
+    """Each number an Ask answer says that nothing it was given gives: the moments so far (and
+    what they add up to, as a tally does), the lines heard, the question and its tools' outputs."""
+    from data.matches import match_header
+
+    try:
+        header = match_header(past[-1]["match_id"])
+    except KeyError:
+        header = None
+    tools = [str(t.get("output")) for t in answer.get("tool_calls") or []]
+    src = " ".join([question, *(ln.get("text") or "" for ln in lines), *tools])
+    given = set(numbers(src)) | {float(x) for x in re.findall(r"\d+", src)} | _derived(src)
+    for p in past:
+        given |= _given(p, header)
+    now = _given(past[-1], header)  # "how many more to pass Wilt's 100?": 100 less Kobe's 43
+    given |= {abs(q - n) for q in numbers(question) for n in now}
+    for key in (_who, lambda p: p.get("team")):
+        for name in {key(p) for p in past} - {None}:
+            mine = Counter(f"{p['type']} ({p.get('outcome')})" for p in past if key(p) == name)
+            given |= _derived(", ".join(f"{k} x{v}" for k, v in mine.items()))
+    return [f"{n:g} is not in the match so far" for n in numbers(answer["text"]) if n not in given]
+
+
+def checked_answer(ask, question: str, past: list[dict], lines: list[dict]) -> dict | None:
+    """An Ask answer whose numbers match what it was given: asked again once when one doesn't, then
+    None (the calm off-air line), so a viewer never hears an unchecked number."""
+    for retry in (False, True):
+        answer = ask(question, past, lines)
+        if answer is None:
+            return None
+        if not wrong_answer(answer, question, past, lines):
+            return {**answer, "checked": True, **({"retried": True} if retry else {})}
+    return None
 
 
 def stat_moment(m: dict, said_as: dict, reply: bool) -> dict:
