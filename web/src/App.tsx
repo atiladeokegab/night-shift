@@ -189,7 +189,9 @@ export default function App() {
     const at = Number(q.get('at') ?? NaN)
     if (!m || !Number.isInteger(at) || opened.current) return
     opened.current = true
+    const sent = session.current
     videoStartAt(m.match_id, at).then((s) =>
+      session.current === sent &&
       start({ ...m, video_start: s ?? m.video_start }, m.youtube_id ? 1 : 4, false, false, at),
     )
   })
