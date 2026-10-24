@@ -46,6 +46,12 @@ export function SideBySide() {
         agreement (matched the big model's answers on Mubit's test): <strong>{adapter.status}</strong>. Moments from
         held-out matches the adapter never trained on.
       </p>
+      {!adapter.callable && (
+        <p className="hint" style={{ marginTop: 8 }}>
+          <strong>Why "Ours" is empty:</strong> Mubit can't call an adapter by API, and none of our {adapter.adapters}{' '}
+          has passed its test yet; the best is {adapter.best_match_pct}%.
+        </p>
+      )}
       <ol style={{ listStyle: 'none', padding: 0, margin: '14px 0 0', display: 'grid', gap: 14 }}>
         {pairs.map((p) => (
           <li key={`${p.sport}-${p.match_id}-${p.moment_idx}`} style={{ borderTop: '1px solid var(--line)', paddingTop: 12 }}>
@@ -59,7 +65,6 @@ export function SideBySide() {
           </li>
         ))}
       </ol>
-      {!adapter.callable && <p className="small">No adapter line: {adapter.why}.</p>}
     </section>
   )
 }
