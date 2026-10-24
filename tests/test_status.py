@@ -206,6 +206,24 @@ def test_at_the_end_whoever_leads_has_won():
     assert "Who leads: level at 2-2\n" in sent("3754092", 46)  # a draw stays level
 
 
+def test_at_the_end_the_winner_never_still_leads():
+    # keyed run on 2e552e9: the flag fell and the line still said "leads"
+    said = "Lap sixty-nine of sixty-nine. Max Verstappen leads. The chequered flag falls!"
+    flag = Says(said)
+    out = st.status(upto(14, "9636"), provider=flag)
+    assert len(flag.requests) == 2 and out["text"].endswith("Max Verstappen won.")
+    won = Says("Lap sixty-nine of sixty-nine. Max Verstappen has won it from seventeenth!")
+    assert st.status(upto(14, "9636"), provider=won)["text"] == won.text
+    last_lap = Says(said)  # idx 13, the last lap: the race is still on, so he leads
+    assert st.status(upto(13, "9636"), provider=last_lap)["text"] == said
+    shootout = Says("Penalty shootout, three-all. Argentina lead the shootout four-two.")
+    st.status(upto(68, FINAL), provider=shootout)  # full time: Argentina have won it
+    assert len(shootout.requests) == 2
+    assert not st.leads_at_the_end(
+        "Ninety-six minutes played. Level at two-all, leading nobody.", upto(46, "3754092")[-1]
+    )  # a draw: Chelsea v Spurs full time
+
+
 @pytest.mark.parametrize(
     "question,yes",
     [
