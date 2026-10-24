@@ -1,6 +1,7 @@
 """Cost per match (#174): what one full replay spent, model plus voice, from the store only."""
 
 import asyncio
+import json
 
 from core.replay import Replay, run_replay
 from core.store import Store
@@ -33,3 +34,22 @@ def test_a_jump_is_not_a_match(tmp_path):
     store = Store(tmp_path)
     asyncio.run(run_replay(Replay("f1", speed=1.0), MOMENTS, commentate, store, VIDEO, None, 1))
     assert store.all("replays") == []
+
+
+def test_the_voice_records_the_characters_of_each_call_that_spoke(monkeypatch, tmp_path):
+    import httpx
+
+    from core.voice import VOICES, Speaker
+
+    def handle(request):  # v3 fails, so flash speaks the untagged text
+        v3 = json.loads(request.content)["model_id"] == "eleven_v3"
+        return httpx.Response(500 if v3 else 200, content=b"mp3")
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "fake-eleven")
+    store = Store(tmp_path)
+    speaker = Speaker(httpx.MockTransport(handle), store)
+    line = {"line_id": "x", "sport": "football", "text": "Goal!", "replay_id": "r1"}
+    assert asyncio.run(speaker.audio(line, VOICES[1])) == (b"mp3", "eleven_flash_v2_5")
+    assert store.all("voice") == [
+        {"line_id": "x", "replay_id": "r1", "model": "eleven_flash_v2_5", "chars": 5}
+    ]
