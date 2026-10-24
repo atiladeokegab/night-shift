@@ -65,3 +65,32 @@ def test_adapter_reads_the_latest_recorded_result(tmp_path):
         "total": 25,
         "cost_measurable": False,
     }
+
+
+def test_lead_and_analyst_lines_are_reported_apart(tmp_path):
+    # #161: one line count, p95 and cost mixed Haiku's calls with Sonnet's stat lines
+    store = Store(tmp_path)
+    store.append("lines", {**line(1), "first_word_ms": 500, "speaker": "lead"})
+    store.append("lines", {**line(2), "first_word_ms": 700})  # older lines carry no speaker
+    store.append(
+        "lines", {**line(3, model="claude-sonnet-5-5"), "first_word_ms": 2000, "speaker": "analyst"}
+    )
+    lead, analyst = stats(store)["by_speaker"]["lead"], stats(store)["by_speaker"]["analyst"]
+    assert lead["models"] == ["claude-haiku-4-5"] and lead["lines"] == 2
+    assert lead["first_word_ms_p95"] == 700 and lead["cost_per_line_usd"] == pytest.approx(0.0011)
+    assert analyst == {
+        "models": ["claude-sonnet-5-5"],
+        "lines": 1,
+        "first_word_ms_p50": 2000,
+        "first_word_ms_p95": 2000,
+        "cost_per_line_usd": None,
+    }
+
+
+def test_fixes_toward_the_next_adapter_count_since_its_latest_record(tmp_path):
+    store = Store(tmp_path)
+    store.append("fixes", {"line_id": "a", "created_at": "2026-10-24T12:00:00+00:00"})
+    assert stats(store)["fixes_toward_next"] == 1  # no adapter yet: every fix counts
+    store.append("adapter", {"status": "training", "created_at": "2026-10-24T13:00:00+00:00"})
+    store.append("fixes", {"line_id": "b", "created_at": "2026-10-24T14:00:00+00:00"})
+    assert stats(store)["fixes"] == 2 and stats(store)["fixes_toward_next"] == 1
