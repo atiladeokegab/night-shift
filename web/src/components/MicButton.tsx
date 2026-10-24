@@ -115,11 +115,15 @@ export function MicOn({ on, onToggle, mic, disabled, onHeard, onSend, onHint }: 
 
   if (!make) return null
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-      <button type="button" className={`btn sm${on ? ' primary' : ''}`} aria-pressed={on} onClick={() => onToggle(!on)}>
+    // One line in both states, with room under it for the pressed button's glow.
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, height: 38, marginBottom: 14 }}>
+      <button type="button" className={`btn sm${on ? ' primary' : ''}`} aria-pressed={on} onClick={() => onToggle(!on)}
+        style={{ flex: 'none', whiteSpace: 'nowrap', gap: 6 }}>
         {icon}Mic on
       </button>
-      <p className="hint" aria-live="polite">{on ? 'Listening' : 'Talk any time'} · headphones work best</p>
+      <p className="hint" aria-live="polite" style={{ minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        {on ? 'Listening' : 'Hands-free'} · use headphones
+      </p>
     </div>
   )
 }

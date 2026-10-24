@@ -64,7 +64,7 @@ export function LineLog({ lines, late, fixes, moments, onFix, answers, interrupt
                 <li key={a.line_id} className={`qa${a.off_air ? ' off' : ''}${isStale(a, moments) ? ' stale' : ''}`}>
                   <span className="when">Ask</span>
                   <div className="text">
-                    <div className="q">{a.question}{at && <span className="at"> · {at}</span>}</div>
+                    <div className="q">{a.question}{at && <span className="at nw"> · {at}</span>}</div>
                     <span>{a.text}</span>
                   </div>
                   {interrupted.includes(a.line_id) && (
