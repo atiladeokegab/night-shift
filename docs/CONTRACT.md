@@ -150,7 +150,11 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   reply already agreed with code), corrected (it disagreed and the correction turn followed),
   uncorrected or leader_only (a disagreement sent without a correction turn) or error (the call
   failed: no example). `mubit_request_id` is the last call's: the correction turn's when there is
-  one. It says only that a training example was sent, never that a model was updated.
+  one. It says only that a training example was sent, never that a model was updated. Every line
+  carries `scorecheck_examples`: the `scorecheck_examples` rows its fixes sent, source `fix`
+  (`{id, match_id, idx, text, kind, gold, mubit_request_id, line_id, source, created_at}`, oldest
+  first; `[]` until one is sent, #392, #400). `text` is the line as said or the fixed text; `gold`
+  its score label from the event data.
 - `POST /lines/{line_id}/fix {corrected_text, reason?}` → Fix (core). With env `PRODUCER_TOKEN` set,
   it needs header `X-Producer-Token` equal to it (constant-time compare), else 401 and nothing is
   stored or sent to Mubit; unset (local, tests) the check is off (#232). `scripts/deploy.sh` sets it
