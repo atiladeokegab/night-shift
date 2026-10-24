@@ -51,7 +51,7 @@ commentary for every match possible.
 - Unsourced statistics in the pitch.
 - Our own fine-tuning or model hosting: Mubit trains the model.
 - Any claim that our model beats the big one: it matches it, at lower cost.
-- Betting, odds or predictions.
+- Betting or betting odds. Predictions are in scope (the lead, 2026-10-24) only as rates from each player's pre-match record plus the match so far, never from a later moment.
 
 ## The demo, in one line
 
