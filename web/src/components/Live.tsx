@@ -107,7 +107,7 @@ export function Live(props: Props) {
         )}
         <div className="lane dock">
           <div className="glass">
-            <button className="btn back" onClick={() => onGo('wall')}>← Wall</button>
+            <button className="btn back" aria-label="Back to the wall" onClick={() => onGo('wall')}>←<span> Wall</span></button>
             <div className="seg" role="group" aria-label="Sport">
               {sports.map((s) => (
                 <button key={s} aria-pressed={match.sport === s} disabled={busy} onClick={() => s !== match.sport && onSport(s)}>
