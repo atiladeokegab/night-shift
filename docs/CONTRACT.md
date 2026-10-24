@@ -231,13 +231,19 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
     `not_configured`. Kept per process. The page then shows "Voice: browser fallback (ElevenLabs
     unavailable)" on air and on the Proof card.
   - `linecheck: {checked, flags, rules_missed, fixes_sent, examples_today,
-    examples_today_by_kind}` (#298, #305): live lead lines Line check
+    examples_today_by_kind, heldout}` (#298, #305, #317): live lead lines Line check
     checked (`linechecks` rows), those it flagged a field `wrong` on, the flags on lines the rules
     check passed (every live check is on such a line, so today it equals `flags`), and producer
     fixes sent to Line check as examples (`linecheck_fixes` rows: a fix with reason Wrong score,
     Wrong player or Wrong fact whose line code can label, sent on the owner's key; kind error
     left out). `examples_today` counts those created today (UTC) and `examples_today_by_kind`
-    splits them by kind, e.g. `{"corrected": 2, "matched": 1}`.
+    splits them by kind, e.g. `{"corrected": 2, "matched": 1}`. `heldout` (#317) is
+    `eval/linecheck_heldout.json` as `eval/linecheck_eval.py --json` wrote it from one keyed,
+    unrecorded run on the held-out labels: `{labels, lines, wrong, rules: {caught, false_alarms},
+    line_check: {caught, false_alarms}, errors}`, or `null` without the file. The Proof card's
+    Checker model row says it in counts, e.g. "held-out: caught 3 of 5 wrong lines (rules: 1 of 5),
+    5 false alarms", never as a percentage. A flag only sends a line to the fix queue; it never
+    unsays it.
   - `by_speaker: {lead, analyst}`, each `{model, served_by, lines, first_word_ms_p50,
     first_word_ms_p95, cost_per_line_usd}`: the lead's calls and the analyst's stat lines apart (a
     line with no `speaker` is the lead's). `served_by` (#250): the lines' `served_by` values,
