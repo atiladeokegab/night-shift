@@ -116,16 +116,27 @@ def shot_points(pack: dict, moments: list, idx: int, name: str) -> dict:
 
 def next_score_odds(pack: dict, moments: list, idx: int) -> dict[str, list[dict]]:
     """Per team, each player's chance of scoring the team's next basket or goal: their share of
-    the team's attempts (pre-match, blended with tonight) times their rate. Sums to 1 per team."""
+    the team's attempts (pre-match, blended with tonight) times their rate. Sums to 1 per team.
+    Only players seen so far tonight and not substituted off count, so a sub still on the bench is
+    never named; a team with nobody seen yet who has a shot on record is left out."""
     if pack["sport"] not in SHOTS:
         raise ValueError(f"no next-to-score odds for {pack['sport']}")
     so_far = _so_far(pack, moments, idx)
+    # shortcut: the packs mark no starters, so a starter counts once a moment or shot names them;
+    # add starters to the packs if early-match odds look thin
+    seen = {n for m in moments[: idx + 1] for n in m["players"].values()}
+    seen |= {t["player"] for t in so_far}
+    seen -= {
+        m["players"].get("off") for m in moments[: idx + 1]
+    }  # substituted off: not coming back
     out = {}
     for team, totals in pack["teams"].items():
         roster = {n: p for n, p in pack["players"].items() if p["team"] == team}
-        mine = [t for t in so_far if t["player"] in roster]
+        mine = [t for t in so_far if t["player"] in roster]  # every team shot, the share's base
         rows = []
         for n, p in roster.items():
+            if n not in seen:
+                continue
             shots = [t for t in mine if t["player"] == n]
             if not (p["attempts"] or shots):
                 continue
@@ -157,10 +168,16 @@ def odds_text(pack: dict, moments: list, idx: int) -> str:
         return "Next-to-score odds are for basketball and football; ask for a player's profile."
     football = pack["sport"] == "football"
     lines = [
-        "Next to score for each team: share of the team's attempts (before tonight, blended with "
-        f"tonight) times the {'xG per shot' if football else 'make rate'}."
+        "Next to score for each team, among the players seen so far tonight: share of the team's "
+        "attempts (before tonight, blended with tonight) times the "
+        f"{'xG per shot' if football else 'make rate'}."
     ]
-    for team, rows in next_score_odds(pack, moments, idx).items():
+    odds = next_score_odds(pack, moments, idx)
+    for team in pack["teams"]:
+        if team not in odds:
+            lines.append(f"{team}: nobody with a shot on record seen yet tonight.")
+            continue
+        rows = odds[team]
         said = []
         for r in rows[:TOP]:
             small = ", small sample" if r["before"] < SMALL else ""
