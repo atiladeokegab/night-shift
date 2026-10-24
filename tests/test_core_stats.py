@@ -182,3 +182,19 @@ def test_with_no_owners_key_no_fix_counts_as_recorded(tmp_path):
     store = Store(tmp_path)
     store.append("fixes", fix("lead", "12", recorded=False))
     assert stats(store)["fixes_recorded"] == 0 and stats(store)["fixes_toward_next"] == 0
+
+
+def test_a_full_replay_with_a_line_said_from_a_fix_still_has_a_cost(tmp_path):
+    # a line with no model call (a fixed line, #232) costs 0, so it no longer blanks the match
+    store = Store(tmp_path)
+    store.append("lines", {**line(1), "replay_id": "a"})  # 0.001 + 0.0001
+    store.append("lines", {"line_id": "l2", "replay_id": "a", "fixed": True, "text": "Fixed."})
+    store.append("answers", {"line_id": "q1", "replay_id": "a", "text": "No model here."})
+    store.append("replays", {"replay_id": "a", "match_id": "f1", "line_ids": ["l1", "l2"]})
+    store.append("voice", {"replay_id": "a", "model": "eleven_v3", "chars": 1000})  # 0.08
+    out = stats(store)
+    assert out["model_cost_per_match_usd"] == pytest.approx(0.0011)
+    assert out["cost_per_match_usd"] == pytest.approx(0.0811)
+    store.append("lines", {**line(3, model="claude-unknown"), "replay_id": "a"})
+    store.append("replays", {"replay_id": "a", "match_id": "f1", "line_ids": ["l3"]})
+    assert stats(store)["model_cost_per_match_usd"] is None  # an unknown model stays unpriced

@@ -21,6 +21,8 @@ def _pct(values: list[float], p: float) -> float | None:
 
 
 def _cost(line: dict) -> float | None:
+    if not line.get("model"):  # no model call: a line said from a producer's fix (#232) costs 0
+        return 0.0
     price = PRICES.get(line.get("model"))
     if price is None:
         return None
