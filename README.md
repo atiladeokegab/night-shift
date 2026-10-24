@@ -22,12 +22,16 @@ What you hear are **replays, as if live**: real matches' event data played back 
 
 **Who it is for:** a blind or low-vision fan following a match with no described commentary. Two whole matches lead the page, every key moment from start to finish with no video: Orlando Pride v North Carolina Courage (NWSL, 2018) and Netherlands v Nepal (Women's T20 World Cup Qualifier, 2026). A key-moments replay costs $0.35 on average, voice included: $0.09 model and $0.26 voice, over the 37 measured on the live [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats) on 24 October 2026 at 19:37 UTC (`cost_per_match_usd`). That is not the price of a full 90 minutes: a whole match calls every moment, so it costs more.
 
-<!-- DEMO GIF SLOT (build-140): the demo GIF, full width, with a one-line caption under it. -->
+<img src="docs/media/demo.gif" alt="A 9-second screen recording of the live Touchline page: lines are called one after another and stack in the Lines card as the match goes on, and one of them carries an auto-fixed tag." width="100%">
 
-**How well the check works:** on 300 new lines the live site had said, labelled by a separate model
-before the check ran, it caught 1 of the 6 wrong lines (recall 17%) with no false alarm (precision
-100%, 1 of 1), exactly as before #293: on unseen lines the new rules caught nothing more. On the 300
-lines the rules were written against it catches 14 of 15, a tuned-on score. Small samples; [both sets](#how-well-the-check-works).
+<sub>Touchline calls match moments as spoken lines. Each line is checked against the match data, and one is marked auto-fixed.</sub>
+
+**How well the check works:** on 288 held-out lead lines the live site had said, labelled by a
+separate model, 5 were wrong. Line check, the second-opinion model that sends a line to the
+producer's fix queue after it is said, caught 3 of the 5 with 3 false alarms; the number check that
+runs before a line is spoken caught 1 of the 5 with none (`/stats` `linecheck.heldout`, 24 October
+2026 at 20:44 UTC). On the lines the number check's rules were written against it catches 14 of 15,
+a tuned-on score. Small samples: one catch moves these a lot; [both sets](#how-well-the-check-works).
 
 [**Try it live**](https://night-shift-5zvig7nbvq-ew.a.run.app) · [**Correction loop**](#correction-loop-with-evidence) · [**For judges**](#for-judges) · [**Real numbers**](#real-numbers) · [**Architecture**](docs/ARCHITECTURE.md) · [**Known limitations**](#known-limitations) · [**Checks**](#checks) · [**Run it**](#run-it) · [**Demo script**](docs/demo.md)
 
@@ -388,9 +392,11 @@ Before a lead line is spoken, the number check reads it against the moment's dat
 ([`core/insight.py`](core/insight.py) `wrong_numbers`, which includes the event check). We measured
 it twice, on two separate sets of 300 lines the live site had already said.
 
-**On lines it was never tuned on, recall did not improve.** On 300 held-out lines it caught 1 of
-the 6 wrong lines (recall 17%) and flagged no right line (precision 100%, 1 of 1): the same as the
-check before #293. The first set is the one the new rules were written against, so its 14 of 15 is a
+**On lines it was never tuned on, it catches little.** On the 288 held-out lead lines `/stats`
+serves (`linecheck.heldout`), it caught 1 of the 5 wrong lines with no false alarm, and Line check
+caught 3 of the 5 with 3 false alarms ([Line check beside the rules](#line-check-beside-the-rules)).
+On all 300 held-out lines, the analyst's included, it caught 1 of the 6 wrong lines (recall 17%) and
+flagged no right line (precision 100%, 1 of 1): the same as the check before #293. The first set is the one the new rules were written against, so its 14 of 15 is a
 tuned-on score, not the result.
 
 | Labels | Checker | Lines | Wrong | Flagged | Caught | Missed | False alarms | Precision | Recall |
@@ -492,7 +498,8 @@ wrong and a right line for each of the six rules.
 The same labelled lines, lead lines only, through Line check: a keyed run of
 [`eval/linecheck_eval.py`](eval/linecheck_eval.py), recording off, on integration `b4d4cf4`. On
 unseen lines Line check caught 3 of 5 wrong lines, against 1 of 5 for the rules, and it flagged 5
-right ones. A Line check flag only sends the line to the producer's fix queue; it never stops the line
+right ones. The later run `/stats` serves ([`eval/linecheck_heldout.json`](eval/linecheck_heldout.json), #317)
+also caught 3 of 5, with 3 false alarms. A Line check flag only sends the line to the producer's fix queue; it never stops the line
 being said. The samples are small: one catch moves these a lot.
 
 | Set | Checker | Flagged | Caught | Wrong lines |
@@ -652,10 +659,11 @@ the player's other matches and teammates. If the graph fails, it reads the packs
 
 ## Known limitations
 
-- **The number check misses most wrong lines it was not tuned on.** On 300 new labelled live lines
-  it caught 1 of the 6 wrong ones (recall 17%, no better than before #293), with no false alarm
-  (precision 100%, 1 of 1). It checks the score, the leader and the key
-  numbers, not every claim ([how well the check works](#how-well-the-check-works)).
+- **The checks miss wrong lines they were not tuned on.** On 288 held-out lead lines (5 wrong), the
+  number check, which runs before a line is spoken, caught 1 of the 5 with no false alarm; Line
+  check, which flags a line for the producer after it is said, caught 3 of the 5 with 3 false alarms
+  (`/stats` `linecheck.heldout`, 24 October 2026 at 20:44 UTC). They check the score, the leader and
+  the key numbers, not every claim ([how well the check works](#how-well-the-check-works)).
 - **The voice comes seconds after the moment.** From the moment (in a video replay, the video
   reaching it) to its line's audio ready on the server: p50 3.5 s, p95 6.4 s over 1,033 lead lines
   (`/stats` `by_speaker.lead.audio_first_ms_p50` and `_p95`, 24 October 2026 at 20:36 UTC). Lines
