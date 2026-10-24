@@ -33,7 +33,8 @@ export function About({ onGo }: { onGo: (screen: Screen) => void }) {
         </div>
         <p className="foot">
           Match data: StatsBomb open data (football), Cricsheet (cricket), NBA play-by-play (basketball) and OpenF1
-          timing (F1). Video: broadcast highlights on YouTube, embedded and muted. Commentary is AI-generated.
+          timing (F1). Video: broadcast highlights on YouTube, embedded and muted where their owners allow it, linked
+          where they don't. Commentary is AI-generated.
         </p>
       </main>
     </div>
