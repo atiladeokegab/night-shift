@@ -26,6 +26,8 @@ export function useSpeech() {
   const turn = useRef(0) // only the newest utterance may change `speaking`
   const floor = useRef(new Floor<OnAir>())
   const aired = useRef<(() => void) | null>(null) // ends the answer on air, so its subtitle comes down
+  // the held line's clip, fetched while the other voice is on air, so it starts as that one ends (#288)
+  const fetched = useRef<{ url: string; audio: HTMLAudioElement } | null>(null)
 
   // Stops the sound only.
   const stop = useCallback(() => {
@@ -103,7 +105,9 @@ export function useSpeech() {
         if (next) play(next)
       }
       if (isDemo || voice?.browser) return speakInBrowser(line.text, lang, sound, mine, done)
-      const audio = new Audio(lineAudioUrl(line.line_id, sound.id))
+      const url = lineAudioUrl(line.line_id, sound.id)
+      const audio = fetched.current?.url === url ? fetched.current.audio : new Audio(url)
+      fetched.current = null
       audio.volume = level.current
       playing.current = audio
       // A 503 (no key, upstream down) or a network failure lands here; only the current line falls back,
@@ -136,6 +140,10 @@ export function useSpeech() {
       if (!on || silent.current) return
       const item: OnAir = { line, voice, speaker: line.speaker ?? 'lead', big, decisive }
       if (floor.current.take(item, performance.now())) play(item)
+      else if (!isDemo && !voice?.browser) {
+        const url = lineAudioUrl(line.line_id, voiceOf(item.speaker, voice?.id).id)
+        fetched.current = { url, audio: new Audio(url) } // an Audio loads its src at once
+      }
     },
     [on, play],
   )
