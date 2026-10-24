@@ -120,6 +120,7 @@ def football_moments(
         return nicknames.get(obj.get("id"), _name(obj)) if isinstance(obj, dict) else ""
 
     home = header["home"]
+    knockout = _s(header.get("stage")) not in ("", "Group Stage", "Regular Season")
     score = {"home": 0, "away": 0}
     shootout = {"home": 0, "away": 0}
     keepers = {}  # event id of a saved shot -> keeper name, from Goal Keeper events
@@ -170,6 +171,13 @@ def football_moments(
         elif kind == "Injury Stoppage":
             outcome = "Injury stoppage"
             players["injured"] = player
+        elif kind == "Half End" and period in (2, 4, 5):
+            # the final whistle, from the score at the whistle (A-1.4): a level knockout goes on
+            level = score["home"] == score["away"]
+            if period < 5 and level and (period == 4 or knockout):
+                continue
+            kind = outcome = "Full time"
+            team = ""
         else:
             continue
         if period == 5:
@@ -191,6 +199,8 @@ def football_moments(
         if len(loc) >= 2 and _num(loc[0]) is not None and _num(loc[1]) is not None:
             moment["x"], moment["y"] = loc[0], loc[1]
         moments.append(moment)
+        if kind == "Full time":
+            break  # both sides log the whistle
     return moments
 
 

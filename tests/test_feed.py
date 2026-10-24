@@ -458,3 +458,39 @@ def test_womens_sides_go_by_the_country_name():
     goal = ev("Shot", team="Spain Women's", shot={"outcome": {"name": "Goal"}})
     [m] = feed.football_moments(header, [goal])
     assert m["team"] == "Spain" and m["score"] == {"home": 1, "away": 0}
+
+
+def test_football_full_time_is_called_at_the_whistle_that_ends_the_match():
+    def whistle(period, minute):
+        return [
+            ev("Half End", team=t, id=f"end{period}{t}", period=period, minute=minute)
+            for t in ("Reds", "Blues")
+        ]
+
+    def goal(team, period):
+        return ev(
+            "Shot",
+            team=team,
+            id=f"goal{period}{team}",
+            period=period,
+            shot={"outcome": {"name": "Goal"}},
+        )
+
+    def called(stage, events):
+        return [
+            (m["period"], m["clock"])
+            for m in feed.football_moments({**HEADER, "stage": stage}, events)
+            if m["type"] == "Full time"
+        ]
+
+    win = [goal("Reds", 2), *whistle(1, 46), *whistle(2, 94)]
+    assert called("Final", win) == [(2, "94:05")]
+    [ft] = [m for m in feed.football_moments(HEADER, win) if m["type"] == "Full time"]
+    assert (ft["outcome"], ft["team"], ft["score"]) == ("Full time", "", {"home": 1, "away": 0})
+    # a level knockout tie goes on: no whistle at 90 or 120 is full time, the shoot-out's is
+    draw = [*whistle(2, 95), goal("Reds", 3), goal("Blues", 4), *whistle(4, 122), *whistle(5, 130)]
+    assert called("Final", draw) == [(5, "130:05")]
+    assert (
+        called("Final", draw[:-2]) == []
+    )  # A-1.4: the same match cut at 120 minutes calls nothing
+    assert called("Group Stage", whistle(2, 93)) == [(2, "93:05")]  # a group draw ends at 90
