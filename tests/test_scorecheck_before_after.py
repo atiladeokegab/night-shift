@@ -14,10 +14,13 @@ ba = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(ba)
 
 
-def test_the_fixed_line_is_a_wrong_score_in_the_frozen_request():
-    header, moments = match_header(ba.MATCH), load_moments(ba.MATCH)
-    i = next(i for i, m in enumerate(moments) if m["idx"] == ba.IDX)
-    assert gold(header, moments[i], moments[:i], ba.LINE)["score"] == ba.KEY == "wrong"
-    req = scorecheck.build_request(header, moments[i], ba.LINE)
-    assert req["system"] == scorecheck.SYSTEM
-    assert "Score: Chelsea 1, Tottenham Hotspur 2" in req["messages"][0]["content"]
+def test_each_case_is_in_the_frozen_request_with_its_key():
+    keys = {}
+    for name, (match, idx, line) in ba.CASES.items():
+        header, moments = match_header(match), load_moments(match)
+        i = next(i for i, m in enumerate(moments) if m["idx"] == idx)
+        keys[name] = gold(header, moments[i], moments[:i], line)["score"]
+        req = scorecheck.build_request(header, moments[i], line)
+        assert req["system"] == scorecheck.SYSTEM and line in req["messages"][0]["content"]
+    assert keys["cahill"] == "wrong"  # "lead one-nil" at 1-2
+    assert keys["jordan"] == keys["kohli"] == "ok"  # the ledger's gold for both
