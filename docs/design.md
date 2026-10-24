@@ -1,5 +1,8 @@
 # Design
 
+> Spec as of PRD v2; the shipped page differs: a seven-match wall, four sports, voices in
+> `docs/voice.md`.
+
 Designer: Atilade (@atiladeokegab). Owned by the designer: to change anything here, open a
 change-request (AGENTS.md §7) addressed to them. Each vertical's `Design:` line says which
 sections of this page it must follow.
@@ -159,7 +162,7 @@ flowchart LR
 | Voice | Voice off: the pill reads "VOICE OFF · Subtitles only". | Speaking: the dot pulses and the bars move beside "ON AIR". | "VOICE UNAVAILABLE · Subtitles carry on"; the voice setting shows "Voice unavailable. Subtitles carry on." and no switch. |
 | Producer fix | Box emptied: "Send fix" disabled, hint "Type the corrected line, or reject it." | "Sending fix…" with a spinner on the button, the sheet locked. | "Fix not saved. Check the connection and send again." The sheet stays open with the text kept. |
 | Proof card | Every number "–" and "No lines yet." | "Loading stats…" | "Stats unavailable. Lines still play." |
-| Adapter result | "Not trained yet: needs 25 kept lines (12 so far)." | "Training: Mubit is building the adapter." | Cost not measurable: "Adapter cost: Not measurable. Mubit doesn't report the adapter's cost to the app." |
+| Adapter result | "Not trained yet: needs 25 kept lines (<n> so far)." | "Training: Mubit is building the adapter." | Cost not measurable: "Adapter cost: Not measurable. Mubit doesn't report the adapter's cost to the app." |
 
 ## Copy
 
@@ -167,7 +170,7 @@ flowchart LR
 |---|---|
 | Wordmark | "Touchline." |
 | Nav | "Live", "Fixtures", "About" |
-| Tagline on the picker | "A live AI commentator for matches nobody calls." |
+| Tagline on the picker | "Touchline: the describer that checks itself" |
 | Picker heading | "Pick a match" |
 | Football card | "Football" / "Battle of the Bridge" / "Premier League · Chelsea v Tottenham · 2 May 2016" / "Chelsea 2–2 Tottenham: Leicester are champions" |
 | Cricket card | "Cricket" / "India v Pakistan" / "T20 World Cup · MCG, Melbourne · 23 Oct 2022" / "India won by 4 wickets, off the last ball" |
@@ -175,7 +178,7 @@ flowchart LR
 | Card button | "Start replay →" |
 | Picker footer | "Match data: StatsBomb open data and Cricsheet. Highlights: broadcast highlights on YouTube (the TV coverage for Chelsea v Tottenham, the TV feed for India v Pakistan), embedded, muted. Commentary is AI-generated." |
 | About heading | "Every match deserves a commentator." |
-| About text | "Most matches are played with nobody calling them. Touchline watches a match's event feed and calls each key moment in one emotional spoken line, about a second after it happens, over the broadcast highlights." / "One commentator, two sports. The same agent calls football and cricket; switch sport and it follows." / "It learns from its producer. A wrong line is fixed in one tap. Every call and every fix goes through Mubit, which trains a smaller commentator that matches the big one at lower cost." |
+| About text | "Most matches are played with nobody describing them. Touchline watches a match's event feed and describes each key moment in one emotional spoken line, with the model's first word in about half a second (median, GET /stats), over the broadcast highlights." / "One commentator, four sports. The same agent calls football, cricket, basketball and F1; switch sport and it follows." / "It learns from its producer. A wrong line is fixed in one tap. Every call and every fix goes through Mubit, which trains a smaller commentator on the recorded ones; the aim is one that matches the big one at lower cost, and none of its versions has passed Mubit's test yet." |
 | Score bar tag | "REPLAY" |
 | Football clock | "82:39" with "1st half" or "2nd half" |
 | Cricket clock | "Over 19.4" with "need 6 off 3", and "PAK 159/8" |
@@ -188,10 +191,10 @@ flowchart LR
 | Lines card | "Lines", "<n> called", "Fix", "first word 0.58 s", "Fixed", "Rejected" |
 | Fix sheet | "Fix this line" / "Touchline said" / "Corrected line" / "What was wrong" / "Wrong fact", "Wrong player", "Wrong score", "Tone", "Other" / "Send fix", "Reject line", "Cancel" / "Your fix goes back through Mubit and is kept beside the original." |
 | Toasts | "Fix sent. Kept beside the original." / "Line rejected." |
-| Proof card | "Proof" / "First word p50", "First word p95", "Cost per line", "Lines", "Fixes", "Adapter" / "Agrees with the big model on 23 of 25 test moments." / "First word: time from the moment to the first spoken word. Measured through Mubit." |
+| Proof card | "Proof" / "First word p50", "First word p95", "Cost per line", "Lines", "Fixes", "Adapter" / "6 versions trained, best 55.8% on Mubit's test; none passed yet." / "First word: time from the moment to the first spoken word. Measured through Mubit." |
 
 Sample lines in the mockup (samples of the emotional register A-3.6 asks for, not the agent's output;
-the video times are placeholders until the video maps land in `data/`):
+the video times are the mockup's, not the video maps' in `data/video/`):
 
 | Moment | Line |
 |---|---|
@@ -204,7 +207,3 @@ the video times are placeholders until the video maps land in `data/`):
 | Over 19.1 Pandya out | "Pandya goes! Caught off Nawaz, first ball of the last over!" |
 | Over 19.4 no-ball six | "Full toss, waist high, and Kohli dispatches it for six! No-ball, free hit!" |
 | Over 19.6 Ashwin winning single | "Ashwin lifts it over mid-off! India win it off the very last ball!" |
-
-Open, for the lead: the third voice choice (Australian is a placeholder) and whether Fixtures should
-list more than the two demo matches. Rejecting a line has no endpoint in the contract yet; the mockup
-assumes it is sent as a fix with the reason "Rejected" and an empty corrected line.

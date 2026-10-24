@@ -1,17 +1,18 @@
 # The demo
 
-**The promise: every match gets a commentator.** The peak is Kobe Bryant's 81st point called aloud
+**Touchline: the describer that checks itself, for the matches nobody describes.** The peak is Kobe Bryant's 81st point called aloud
 over the NBA's own broadcast picture. The script runs two minutes.
 
 Everything runs from main's deployed URL, with the sound on. Anything shown outside our product, such
 as Mubit's console, is said aloud as such.
 
-**All six videos pass the embed check on our origin** (YouTube's player reports them playable there,
-with no error); a person still has to see each one play after deploy, since our build server can't.
-Messi v Mbappé now uses a re-upload of the broadcast (#116). The Battle of the Bridge (Chelsea v
+**Six of the seven videos pass the embed check on our origin** (YouTube's player reports them playable
+there, with no error). The seventh, Brighton v Bristol City, allows embedding (YouTube's oEmbed answers
+200, checked 2026-10-24) but has not had the player check yet. A person still has to see each one play after deploy, since our build server can't.
+Messi v Mbappé now uses a re-upload of the broadcast. The Battle of the Bridge (Chelsea v
 Tottenham, 2016, a 3-minute clip of the four goals) and Verstappen's P17 to P1 at Interlagos (2024, a
 3-minute clip of him winning São Paulo from 17th) replaced the 2023 Women's World Cup final and the
-2024 British Grand Prix, whose videos would not embed (#114). The demo uses Kobe's 81, Jordan's last shot and India v Pakistan.
+2024 British Grand Prix, whose videos would not embed. The demo uses Kobe's 81, Jordan's last shot and India v Pakistan.
 
 ## Before going on
 
@@ -56,8 +57,9 @@ what it already did:
 
 *Point at OFF AIR.* "Our commentator is off air right now: its model credit has run out. Here's what
 it has already called." *Point at the proof panel's line count, then switch to the Mubit console
-tab.* "This is Mubit's console, not our product: every line Touchline has called is stored here, one
-request each, and it's the data our own commentator trains on." Then go to step 6, the proof. There
+tab.* "This is Mubit's console, not our product. The live site's lines aren't recorded; what is
+recorded here, one request each, is our own replay runs and every producer fix, and that's the data
+our own commentator trains on." Then go to step 6, the proof. There
 is no page in our product that lists the stored lines' text, so show them in Mubit's console.
 
 ## The script
@@ -69,10 +71,10 @@ video map and its play-by-play; they were not seen live (see the check below).
 
 ### 1. The promise (0:00–0:15)
 
-*Wall tab: six matches, none of them called, each video muted (all six pass the embed check).*
+*Wall tab: seven matches, none of them called, each video muted (six have passed the embed check, the seventh allows embedding).*
 
-"Tonight thousands of matches will be played that nobody calls. Fans get a ticker, or silence.
-Touchline gives every match a commentator."
+"Most matches are played with nobody describing them. Fans get a ticker, or silence.
+Touchline describes them, and checks every number in the lead's calls before it speaks."
 
 ### 2. Tap into a match (0:15–0:30)
 
@@ -129,8 +131,8 @@ Then one of these, matching the adapter's state on the panel:
   never saw." Read the result off the panel as shown, and claim nothing beyond it.
 - **Adapter not ready (the fallback):** *Point at the Lines card, then switch to the Mubit console
   tab.* "Every line you heard today came from the big models: Claude Haiku for the calls, Claude
-  Sonnet for the analyst. This is Mubit's console, not our product: it holds the recorded calls, the
-  data our own commentator trains on. None of our own commentator's 6 versions has passed Mubit's
+  Sonnet for the analyst. This is Mubit's console, not our product: it holds the recorded calls from
+  our replay runs and the producer fixes, the data our own commentator trains on. None of our own commentator's 6 versions has passed Mubit's
   test yet, so we won't show you a line it hasn't earned."
 
   On the off-air path no line was heard today, so open with "Every line Touchline has called came from
@@ -139,7 +141,7 @@ Then one of these, matching the adapter's state on the panel:
 
 ### 7. Close (1:55–2:00)
 
-"Every match deserves a commentator. Now every match can have one."
+"Touchline. The describer that checks itself, for the match nobody described."
 
 ## Rehearsal
 
@@ -152,7 +154,7 @@ date, the commit deployed on main and the total time. Check in particular:
 - the voice changes when the sport changes;
 - a fix shows as Fixed and the proof panel's fix count goes up by one.
 
-### Timed rehearsal with "Jump to the big moment" (#163)
+### Timed rehearsal with "Jump to the big moment"
 
 Every wall tile has a **Jump to the big moment** pill at its top left. It opens the same live stage
 with the video 10 s before the match's peak and the commentary starting at that moment: nothing
@@ -169,6 +171,7 @@ checked-in video map; nobody has watched them live yet. Run it with a stopwatch 
 | Messi v Mbappé | Jump to the big moment | 10:18 | 10.8 first penalty, then one about every 6 s | 46.4 full time |
 | Verstappen, P17 to P1 | Jump to the big moment | 2:08 | 10.4 into P1 | 24.2 chequered flag |
 | Battle of the Bridge | Jump to the big moment | 1:54 | 10.4 Hazard's equaliser | 10.4 |
+| Brighton v Bristol City (WSL, 2024) | Jump to the big moment | 2:41 | 10 Carrie Jones's equaliser · 40 Terland's winner | 78 full time |
 
 The two-minute run with the jump, Kobe as the peak:
 
@@ -179,12 +182,17 @@ The two-minute run with the jump, Kobe as the peak:
    picture."
 5. **1:36** The buzzer is called. **Ask after full time:** type or say "How many did Kobe score?" in
    the Ask box. A finished replay keeps answering for at least a minute after the buzzer
-   (REJOIN_S + 60 s, #163 and #157).
+   (REJOIN_S + 60 s).
 6. **1:45** If there's time, ← Wall, then India v Pakistan's **Jump to the big moment**: the last-over
    wicket is called by Raju 10 s after play (script step 4), then the proof (step 6) and close.
 
 Kobe's buzzer at 79 s leaves no room for the fix (script step 5) inside two minutes; do the fix on
 India v Pakistan's lines instead of Ask, or drop Ask.
+
+## History (superseded)
+
+Kept as a record of earlier checks. Where it differs from the sections above (six matches, which
+ones play with video), the sections above are current.
 
 ### Kobe cue check, 2026-10-24 about 07:25 UTC
 
@@ -195,24 +203,24 @@ on our build server, with the commentator off air:
   commentary waits" before YouTube refused to play headless (error 150). The stream's error turned the
   badge to OFF AIR with the subtitle "Commentator is off air for a moment". On the wall, Kobe, Jordan
   and India v Pakistan read "Tap to hear it called"; Messi v Mbappé and the two matches since replaced
-  (#114) read "Commentary only".
+  read "Commentary only".
 - **From the data, not seen live:** Kobe's replay has 20 moments, each with a video time, hence "20
   held". The video map puts the 30-point jumper at 8:10 (490.5 s), the free throws for 80 and 81 at
   23:53 and 24:03 (1433 and 1443 s), Bonner's jumper at 24:23 and the final buzzer at 25:02. These come
   from the checked-in video map; nobody has yet watched the video to confirm each shot is on screen at
   its time.
 
-### Earlier headless check, 2026-10-24 about 00:15 UTC (the football script before #104)
+### Earlier headless check, 2026-10-24 about 00:15 UTC (the earlier football script)
 
 Each step was checked on the deployed URL (main at 42f73cc, the wall live) in headless Chrome on our
 build server. This is not the timed rehearsal, which still needs a person.
 
 - **YouTube refused to play in headless Chrome** (error 150; tiles say "Highlights unavailable here"
   or stay black). Three of the six videos embed (Kobe's 81, Jordan's last shot and India v
-  Pakistan); the other three are commentary only, because their owners block embedding (#104). For the
+  Pakistan); the other three are commentary only, because their owners block embedding. For the
   three that embed, this is most likely the headless browser on a cloud server. Confirm playback on
   the demo laptop.
-- **Wall:** six tiles. Tapping the Women's World Cup final (since replaced, #114) went full screen, and the first call came 5.9 s later.
+- **Wall:** six tiles. Tapping the Women's World Cup final (since replaced) went full screen, and the first call came 5.9 s later.
   ← Wall took 0.1 s. India v Pakistan's first call came 20.2 s after the tap; that run's first audio
   request returned 503, and the same request returned 200 in 2.5 s when retried.
 - **Stage, with a stand-in for the player's clock:** football held all 15 lines 18 s after the tap,
