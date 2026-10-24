@@ -1,5 +1,7 @@
+import { useState, type FormEvent } from 'react'
+import { withAnswers } from '../ask'
 import { clockText } from '../moment'
-import type { Fix, Line, Moment } from '../types'
+import type { Answer, Fix, Line, Moment } from '../types'
 
 interface Props {
   lines: Line[] // newest first, only what the picture has reached
@@ -7,23 +9,39 @@ interface Props {
   fixes: Record<string, Fix>
   moments: Moment[]
   onFix: (line: Line) => void
+  answers: Answer[] // newest first
+  onAsk: ((question: string) => Promise<void>) | null // null until a moment is on screen
 }
 
 // The Lines card (docs/design.md): every line so far, newest first, with its clock, the model's
 // first-text-word time ("first word" in the mockup: the #37 review asked for the measured thing's name)
-// and "Fix". A fixed line shows the correction over the struck-through original.
-export function LineLog({ lines, late, fixes, moments, onFix }: Props) {
+// and "Fix". A fixed line shows the correction over the struck-through original. Viewers' questions and
+// the commentator's answers (#117) sit among the lines at the moment they were asked.
+export function LineLog({ lines, late, fixes, moments, onFix, answers, onAsk }: Props) {
   return (
     <section className="panel lines glass" aria-label="Lines">
       <div className="panel-h">
         <h3>Lines</h3>
         <span className="label">{lines.length ? `${lines.length} called` : ''}</span>
       </div>
-      {lines.length === 0 ? (
+      <AskBox onAsk={onAsk} />
+      <p className="sr-only" aria-live="polite">{answers[0] ? `Touchline: ${answers[0].text}` : ''}</p>
+      {lines.length === 0 && answers.length === 0 ? (
         <p className="hint">Lines appear here as Touchline calls them.</p>
       ) : (
         <ul className="log">
-          {lines.map((l) => {
+          {withAnswers(lines, answers).map(({ line: l, answer: a }) => {
+            if (a) {
+              return (
+                <li key={a.line_id} className={`qa${a.off_air ? ' off' : ''}`}>
+                  <span className="when">Ask</span>
+                  <div className="text">
+                    <div className="q">{a.question}</div>
+                    <span>{a.text}</span>
+                  </div>
+                </li>
+              )
+            }
             const m = moments.find((x) => x.idx === l.moment_idx)
             const fix = fixes[l.line_id]
             const isLate = late.includes(l.line_id)
@@ -50,5 +68,33 @@ export function LineLog({ lines, late, fixes, moments, onFix }: Props) {
         </ul>
       )}
     </section>
+  )
+}
+
+// "Ask the commentator" (#117): text in, one question at a time; the answer lands in the log and is spoken.
+function AskBox({ onAsk }: { onAsk: Props['onAsk'] }) {
+  const [question, setQuestion] = useState('')
+  const [asking, setAsking] = useState(false)
+  const send = async (e: FormEvent) => {
+    e.preventDefault()
+    const q = question.trim()
+    if (!q || asking || !onAsk) return
+    setAsking(true)
+    try {
+      await onAsk(q)
+      setQuestion('')
+    } finally {
+      setAsking(false)
+    }
+  }
+  return (
+    <form className="ask" onSubmit={send}>
+      <label className="sr-only" htmlFor="ask-q">Ask the commentator</label>
+      <input id="ask-q" value={question} maxLength={200} readOnly={asking} disabled={!onAsk} autoComplete="off" enterKeyHint="send"
+        placeholder={onAsk ? 'Ask the commentator…' : 'Ask once play starts'} onChange={(e) => setQuestion(e.target.value)} />
+      <button className="btn sm primary" disabled={!onAsk || asking || !question.trim()}>
+        {asking ? <><span className="spin sm" />Asking…</> : 'Ask'}
+      </button>
+    </form>
   )
 }

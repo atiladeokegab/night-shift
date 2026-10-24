@@ -198,6 +198,21 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .pill { font: 600 .62rem/1 var(--body); letter-spacing: .14em; text-transform: uppercase; border-radius: 5px; padding: 4px 6px; }
 .pill.fixed { color: #06202d; background: var(--fix); }
 .pill.late { color: var(--faint); border: 1px solid var(--line-hi); }
+/* Ask the commentator (#117): the form under the Lines heading; a question and its answer sit in the log on a
+   tint of their own, apart from the play-by-play. 16px text so a phone doesn't zoom into the field. */
+.ask { display: flex; gap: 8px; margin-bottom: 12px; }
+.ask input { flex: 1; min-width: 0; height: 38px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line-hi);
+  background: rgba(0, 0, 0, .3); color: var(--fg); font: 500 1rem/1 var(--body); }
+.ask input::placeholder { color: var(--muted); }
+.ask input:focus { outline: none; border-color: var(--amber); box-shadow: 0 0 0 4px rgba(255, 181, 71, .15); }
+.ask input:disabled { opacity: .6; }
+.ask .btn.sm { height: 38px; gap: 6px; }
+.log .qa { padding: 12px 8px; border-radius: 10px; border-top-color: transparent; background: rgba(255, 255, 255, .06); }
+.log .qa + li { border-top-color: transparent; }
+.log .qa .when { color: var(--fg); }
+.log .qa .q { color: var(--muted); font-size: .82rem; font-style: italic; margin-bottom: 4px; overflow-wrap: anywhere; }
+.log .qa.off .text > span { color: var(--muted); }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px 12px; margin: 0; }
 .stats div { display: grid; gap: 8px; align-content: start; }
 .stats dt { letter-spacing: .1em; line-height: 1.3; }

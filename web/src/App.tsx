@@ -170,6 +170,12 @@ export default function App() {
     )
   }
 
+  // #117: the answer is spoken in the voice the viewer picked; an off-air answer is shown, never spoken.
+  const askCommentator = async (question: string, momentIdx: number) => {
+    const answer = await replay.ask(question, momentIdx)
+    if (answer && !answer.off_air) speech.say(answer, voiceNow.current)
+  }
+
   const sports = SPORTS.filter((s) => matches?.some((m) => m.sport === s))
   const voiceUsable = speech.available || voices.some((v) => !v.browser)
   const voiceStatus: VoiceStatus = !voiceUsable ? 'unavailable' : speech.on ? 'on' : 'off'
@@ -191,6 +197,7 @@ export default function App() {
           onNext={(matches?.length ?? 0) > 1 ? next : null}
           onVoiceSheet={() => setVoiceSheet(true)}
           onFix={(line) => setFixing({ line, phase: 'edit' })}
+          onAsk={askCommentator}
           onRetry={() => start(current.match, current.speed)}
           onReconnect={replay.reconnect}
           onGo={go}
