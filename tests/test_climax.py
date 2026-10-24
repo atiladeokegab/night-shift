@@ -257,7 +257,8 @@ def test_an_auto_fix_is_counted_apart_from_the_peoples(tmp_path):
     s = stats(store)
     assert s["fixes_auto"] == 1 and s["fixes_recorded"] == 0 and s["fixes_toward_next"] == 0
     # the producer's fix-list corrections in prod (no `auto` key) stay "your fixes"
-    store.append("fixes", {"reason": "fix list: wrong number", "recorded": True})
+    fix = {"reason": "fix list: wrong number", "recorded": True, "created_at": "2026-10-24T12"}
+    store.append("fixes", fix)
     s = stats(store)
     assert s["fixes_auto"] == 1 and s["fixes_recorded"] == 1 and s["fixes_toward_next"] == 1
 
