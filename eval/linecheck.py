@@ -161,15 +161,30 @@ LEVEL = re.compile(
 )
 
 
-def lead_claims(text: str, header: dict) -> list[str | None]:
-    """Who the line says leads: "home", "away", or None for level. Questions are no claim."""
+EXTENDS = r"\s+(?:(?:now|still)\s+)?(?:extend|extends|extended)\s+(?:it|the lead|their lead)\b"
+# a lead claim with no team named: it is the scorer's ("Kobe takes the lead", "the go-ahead bucket")
+ACTOR_LEADS = re.compile(
+    r"\b(?:take|takes|took)\s+the\s+lead\b|\bgo-ahead\b|\bgoes\s+ahead\b"
+    r"|\b(?:extend|extends|extended)\s+(?:it|the\s+lead|their\s+lead)\b",
+    re.I,
+)
+
+
+def lead_claims(text: str, header: dict, team: str | None = None) -> list[str | None] | None:
+    """Who the line says leads: "home", "away", or None for level. Questions are no claim. None
+    when the line says someone takes the lead and the moment has no team to give it to."""
     side, names = insight._sides(header)
     other = {"home": "away", "away": "home"}
     out = []
     for sentence in re.split(r"(?<=[.!?])\s+", text):
         if sentence.rstrip().endswith("?"):
             continue
-        out += [side[c.lower()] for c in re.findall(rf"\b({names}){insight.LEADS}", sentence, re.I)]
+        named = rf"\b({names})(?:{insight.LEADS}|{EXTENDS})"
+        out += [side[c.lower()] for c in re.findall(named, sentence, re.I)]
+        for _ in ACTOR_LEADS.finditer(re.sub(named, "", sentence, flags=re.I)):
+            if (team or "").lower() not in side:
+                return None
+            out.append(side[team.lower()])
         out += [side[c.lower()] for c in re.findall(rf"\b({names}){WINS}", sentence, re.I)]
         out += [other[side[c.lower()]] for c in re.findall(rf"\b({names}){TRAILS}", sentence, re.I)]
         out += [None] * len(LEVEL.findall(sentence))
@@ -490,7 +505,9 @@ def gold(header: dict, m: dict, past: list[dict], text: str) -> dict | None:
 
     # leader
     if "home" in s:
-        claims = lead_claims(text, header)
+        claims = lead_claims(text, header, m.get("team"))
+        if claims is None:
+            return None
         if not claims and _re(r"wins?|won|victory|winners?|champions?").search(text):
             return None  # "the Albion hold on for the win": a claim code doesn't read
         # "level at three all" is true of a shootout's match too, whoever leads the kicks
