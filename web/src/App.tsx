@@ -250,6 +250,8 @@ export default function App() {
           onFix={(line) => setFixing({ line, phase: 'edit' })}
           onAsk={askCommentator}
           onShots={replay.shots}
+          onPlayers={replay.players}
+          onProfile={replay.profile}
           onRetry={() => start(current.match, current.speed)}
           onReconnect={replay.reconnect}
           onGo={go}

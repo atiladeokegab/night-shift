@@ -107,10 +107,10 @@ fix can't be chosen in advance. If a line has a factual slip, fix that. Otherwis
 wording, for example American spelling ('defense' to 'defence') or a vaguer line to name the player.
 Keep the correction to a word or two, typed in a few seconds. The sheet shows what Touchline said,
 with the line ready to correct. Type the correction and send. The line shows Fixed and the proof
-panel's fix count goes up by one.*
+card's Training "Fixes" goes up by one.*
 
 "Say a line is wrong. A producer corrects it right here. The fix is kept beside the original, and it
-goes back through Mubit to train our own commentator."
+is recorded for training on the owner's Mubit app."
 
 ### 6. The proof (1:35–1:55)
 
