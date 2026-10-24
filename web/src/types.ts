@@ -116,6 +116,8 @@ export interface ReviewItem {
   play: string
   text: string
   wrong: string[] // what the number check found, e.g. "58 is not in the moment"
+  lines: number // how many wordings of this mistake (same match, moment and reasons) were said (#227)
+  others: string[] // the older wordings, newest first; one fix clears them all
   later_check: boolean // said before today's check, which fails it; false: its retry failed as it was said
 }
 
