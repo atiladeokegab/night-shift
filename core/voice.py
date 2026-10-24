@@ -120,7 +120,7 @@ def all_voices(env=os.environ) -> list[dict]:
         chosen = env.get(f"VOICE_{sport.upper()}") if sport else None
         ours = next((x for x in VOICES if x["id"] == chosen), None)
         if chosen and (ours is None or ours["default_for"] not in (None, sport)):
-            label = f"{sport.title()} pick"
+            label = env.get(f"VOICE_LABEL_{sport.upper()}") or f"{sport.title()} pick"
             eleven_id = ours["eleven_id"] if ours else chosen
             picks.append({**v, "id": f"{sport}-pick", "label": label, "eleven_id": eleven_id})
     return VOICES + picks

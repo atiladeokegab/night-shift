@@ -353,6 +353,26 @@ def test_f1_calls_passes_pit_stops_the_safety_car_and_the_flag():
     assert ms[-1]["players"] == {"winner": "Lewis Hamilton"}
 
 
+def red_flag_rows():
+    """race_rows with a red flag at 00:30: as at Monaco and Suzuka 2024, each car's tyre change
+    while parked in the lane comes as a pit row with the whole stoppage as its lane time."""
+    rows = race_rows()
+    rows["race_control"].insert(
+        1, {"date": at(30), "category": "Flag", "flag": "RED", "message": "RED FLAG"}
+    )
+    rows["pit"] += [
+        {"date": at(31), "driver_number": 44, "lap_number": 1, "pit_duration": 2358.0},  # Monaco
+        {"date": at(32), "driver_number": 1, "lap_number": 1, "pit_duration": 1577.6},  # Suzuka
+        {"date": at(5), "driver_number": 10, "lap_number": 1, "pit_duration": 40.0},  # flag shown
+    ]
+    return rows
+
+
+def test_f1_a_tyre_change_under_a_red_flag_is_not_a_pit_stop():
+    stops = [m for m in feed.f1_moments(RACE, red_flag_rows()) if m["type"] == "Pit stop"]
+    assert [(m["players"]["driver"], m["clock"]) for m in stops] == [("Lando Norris", "02:09")]
+
+
 def test_f1_standing_puts_a_pitting_car_in_the_pit_lane_without_reading_ahead():
     ms = feed.f1_moments(RACE, race_rows())  # Norris pits at 01:48, his new place lands 6 s later
     during = next(m for m in ms if m["type"] == "Conditions")  # 01:50
@@ -398,7 +418,7 @@ def known(rows: dict, t) -> dict:
 def test_f1_no_moment_reads_a_row_from_later_in_the_feed():
     slow = race_rows()  # Gasly is slow, not out: his lap 2 lands after the others start lap 3
     slow["laps"].append({"date_start": at(150), "driver_number": 10, "lap_number": 2})
-    for rows in (race_rows(), slow):
+    for rows in (race_rows(), slow, red_flag_rows()):
         start = feed._when(rows["race_control"][0]["date"])
         ms = feed.f1_moments(RACE, rows)
         secs = lambda m: 60 * int(m["clock"][:2]) + int(m["clock"][3:])  # noqa: E731
@@ -413,3 +433,16 @@ def test_openf1_rejects_a_session_key_that_is_not_a_number():
     for bad in ("latest", "9558&x=1", "../etc"):
         with pytest.raises(KeyError):
             feed.openf1("laps", bad)
+
+
+def test_womens_sides_go_by_the_country_name():
+    meta = {
+        "match_id": 3906390,
+        "home_team": {"home_team_name": "Spain Women's"},
+        "away_team": {"away_team_name": "England Women's"},
+    }
+    header = feed.football_header(meta)
+    assert (header["home"], header["away"]) == ("Spain", "England")
+    goal = ev("Shot", team="Spain Women's", shot={"outcome": {"name": "Goal"}})
+    [m] = feed.football_moments(header, [goal])
+    assert m["team"] == "Spain" and m["score"] == {"home": 1, "away": 0}
