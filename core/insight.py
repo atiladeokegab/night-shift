@@ -602,9 +602,11 @@ class Gaps:
             stat = stat_moment(m, said_as, lead)
             # the moment lines' number check on every open line, cached ones too (#224's for the
             # stretches): a number the match doesn't give is never said; nor a stored answer to a
-            # welcome since made again
+            # welcome since made again; nor one too long for the room, which is made again to fit
             if ln is not None and (
-                said_as["heard"] != heard or self.wrong(ln.get("text") or "", stat, history)
+                said_as["heard"] != heard
+                or self.wrong(ln.get("text") or "", stat, history)
+                or due_after(t, ln.get("text"), 0) > first_t - TURN_S
             ):
                 ln, said_as = None, {**said_as, "heard": heard, "words": words}
                 stat = stat_moment(m, said_as, lead)

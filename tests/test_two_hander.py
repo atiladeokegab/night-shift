@@ -382,3 +382,29 @@ def test_a_kickoff_open_leaves_no_quiet_before_the_first_call(tmp_path):
         assert end <= first_t - insight.TURN_S, match_id
         assert insight.room(end + insight.TURN_S, first_t) < insight.MIN_WORDS, match_id
     assert asked and max(asked) == insight.OPEN_WORDS and min(asked) >= insight.MIN_WORDS
+
+
+def test_a_stored_welcome_too_long_for_the_room_is_made_again_to_fit(tmp_path):
+    # 3754092's first call is 6.3 s in: a 17-word welcome, stored by a replay whose model ignored
+    # the length, ran into it; the next replay makes it again, asked for what fits
+    asked = []
+
+    def welcome(obeys):
+        def said(moment, history):
+            if not moment["outcome"].startswith(insight.OPEN):
+                return None
+            asked.append(int(moment["detail"]["length"].split()[2]))
+            text = " ".join(["word"] * (asked[-1] if obeys else 17))
+            return {"line_id": uuid.uuid4().hex, "moment_idx": moment["idx"], "text": text}
+
+        return said
+
+    store, vmap = Store(tmp_path), video_map(CHELSEA)
+    first_t = min(m["video_t"] for m in vmap["moments"])
+    for obeys in (False, True):
+        asked.clear()
+        r = Replay(CHELSEA, 1e9)
+        asyncio.run(run_replay(r, load_moments(CHELSEA), welcome(obeys), store, vmap))
+        said = before_first([e["data"] for e in r.events if e["event"] == "line"], store)
+    assert asked == [min(insight.OPEN_WORDS, int((first_t - insight.TURN_S) * insight.WORDS_PER_S))]
+    assert said and insight.due_after(said[0]["video_t"], said[0]["text"], 0) <= first_t
