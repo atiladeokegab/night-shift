@@ -13,7 +13,15 @@ import sys
 import httpx
 
 URL = "https://night-shift-5zvig7nbvq-ew.a.run.app"
-MEN_ONLY = {"B de Leede"}  # a men's Netherlands player: must not be in a women's squad (#466)
+MEN_ONLY = {
+    "MP O'Dowd",
+    "SA Edwards",
+    "SA Engelbrecht",
+    "L van Beek",
+    "R Paudel",
+    "DS Airee",
+    "K Bhurtel",
+}  # men's players (#466)
 
 
 def teams(c: httpx.Client, sport: str, match: str) -> dict:
