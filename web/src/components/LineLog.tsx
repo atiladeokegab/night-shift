@@ -38,6 +38,13 @@ function count(lines: Line[]): string {
   return [called && `${called} called`, earlier && `${earlier} earlier`].filter(Boolean).join(' · ')
 }
 
+// "Fix the analyst line at 06:12: Kobe again! That is forty for…": two lines on one moment need different names.
+function fixName(l: Line, m: Moment | undefined): string {
+  const words = l.text.split(/\s+/)
+  const start = words.slice(0, 6).join(' ') + (words.length > 6 ? '…' : '')
+  return `Fix the ${l.speaker === 'analyst' ? 'analyst' : 'lead'} line${m ? ` at ${clockText(m, true)}` : ''}: ${start}`
+}
+
 export function LineLog({ lines, late, fixes, checks = {}, examples = {}, moments, onFix, answers, interrupted = [], onHear, onAsk, shooter, onShots, followed, roster, onUnfollow, voiced, mic }: Props) {
   const said = (l: Line) => fixes[l.line_id]?.corrected_text ?? l.text
   const theirs = followed ? lines.filter((l) => names(said(l), followed, roster)).length : 0
@@ -95,7 +102,7 @@ export function LineLog({ lines, late, fixes, checks = {}, examples = {}, moment
                   <span>{fix ? fix.corrected_text : l.text}</span>
                   {fix && <div className="orig">{l.text}</div>}
                 </div>
-                <button className="btn sm" disabled={!!fix} onClick={() => onFix(l)} aria-label={`Fix the line${m ? ` at ${clockText(m, true)}` : ''}`}>
+                <button className="btn sm" disabled={!!fix} onClick={() => onFix(l)} aria-label={fixName(l, m)}>
                   Fix
                 </button>
                 <div className="meta-l">

@@ -207,6 +207,7 @@ export function Live(props: Props) {
       <p className="sr-only" role="status">{replay.phase === 'live' ? `${paused ? 'Paused' : `Playing ${title}`}${covered ? ' · Screen covered' : ''}` : ''}</p>
       <div className="live-body">
         <main className="live-main">
+          <h1 className="sr-only">{title}</h1>
           <section className="vcard" ref={card} aria-label={`${match.title ?? match.match_id} ${gated ? 'highlights' : 'match'}`} data-video={noVideo ? 'off' : undefined}>
             {/* A tap on the picture plays or pauses it; the Play button is the keyboard's way in. */}
             <div className="frame" data-eyes={covered ? 'closed' : undefined} onClick={canPlay ? toggle : undefined}>
@@ -353,9 +354,10 @@ function OnAir({ voice, label, offAir, onOpen }: { voice: Props['voice']; label:
   } else {
     if (voice.speaking) cls += ' on'
     body = <><span className="rec" /><span className="lbl">ON AIR</span><span className="bars" aria-hidden><span /><span /><span /><span /></span>{/* #314: the pill is short on a phone; the full reason is its title and the Proof card's voice row */}
-      {voice.fellBack ? <span className="who" title={FALLBACK_NOTE}>Device voice</span> : <span className="who">{label}</span>}</>
+      {/* aria-hidden: the speaker turns over every few lines, and the status must not announce each one */}
+      {voice.fellBack ? <span className="who" title={FALLBACK_NOTE}>Device voice</span> : <span className="who" aria-hidden>{label}</span>}</>
   }
-  const status = <span className="st" role={offAir || voice.status === 'on' ? 'status' : undefined}>{body}</span>
+  const status = <span className="st" role="status">{body}</span>
   if (!onOpen) return <span className={cls}>{status}</span>
   // A tap on the pill opens the voice sheet (the phone's bar has no voice button), never the play toggle under it.
   return (
