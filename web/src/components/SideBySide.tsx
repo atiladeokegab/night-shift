@@ -1,8 +1,8 @@
 // The repo's data/, read at build time: eval/side_by_side.py writes it offline, so every line here is recorded.
-import raw from '../../../data/side_by_side.json?raw'
+import data from '../../../data/side_by_side.json' with { type: 'json' }
 import { viewOf, type Line, type Report } from '../sideBySide'
 
-const report = JSON.parse(raw) as Report
+const report = data as Report
 
 // "Big model vs ours" (#141) on held-out moments. Until Mubit serves a passing adapter version there is no
 // line of ours to show, so the big model's recorded lines stand as the baseline it must match; once a pair
