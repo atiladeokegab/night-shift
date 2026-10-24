@@ -22,12 +22,14 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from core import graph, insight, ledger, predict, review
+from core.converse import converse_router
 from core.guard import OFF_TODAY, Guard, SayOnly, cached_commentator, client_ip
 from core.look import Looks, Unshared
-from core.predict import load_pack, shot_points
+from core.predict import shot_points
 from core.replay import OFF_AIR, Replay, run_replay
 from core.stats import stats
 from core.store import open_store
+from core.teams import router as teams_router
 from core.voice import Speaker, voice_of, voice_router
 
 log = logging.getLogger("touchline.app")
@@ -315,18 +317,14 @@ def create_app(
             row = {"line_id": line["line_id"], **sent, "created_at": at}
             await asyncio.to_thread(store.append, "linecheck_fixes", row)
 
-    async def score_teach(line: dict) -> None:
-        """A fix as one Score check example (#321), unless that line was already sent."""
+    async def score_teach(line: dict, corrected: str) -> None:
+        """A fix as Score check examples (#321): the line as said and the producer's text."""
+        from eval.seed_scorecheck import send_fix
+
         try:
-            done = {r["id"] for r in await asyncio.to_thread(store.all, "scorecheck_examples")}
-            sent = await asyncio.to_thread(need_deps().score_teach, line, done)
+            await asyncio.to_thread(send_fix, store, line, corrected, need_deps().score_teach)
         except Exception as exc:
             log.warning("score check example for %s not sent: %s", line["line_id"], str(exc)[:300])
-            return
-        if sent and sent["kind"] != "error":
-            at = datetime.now(UTC).isoformat(timespec="seconds")
-            row = {**sent, "line_id": line["line_id"], "source": "fix", "created_at": at}
-            await asyncio.to_thread(store.append, "scorecheck_examples", row)
 
     def stop_later(replay: Replay) -> None:
         if replay.stopping:
@@ -460,8 +458,8 @@ def create_app(
             task = asyncio.create_task(teach(line))
             tasks.add(task)
             task.add_done_callback(tasks.discard)
-        if d.score_teach and req.reason in TEACHES:
-            task = asyncio.create_task(score_teach(line))
+        if d.score_teach:  # any reason: its label is the data's, and the fix passed the check
+            task = asyncio.create_task(score_teach(line, req.corrected_text))
             tasks.add(task)
             task.add_done_callback(tasks.discard)
         return fix
@@ -567,7 +565,7 @@ def create_app(
         past, _ = asked_so_far(replay, d.load_moments(replay.match_id), moment_idx)
         if not past:
             raise HTTPException(409, "nothing has happened yet")
-        pack = load_pack(past[-1]["sport"], replay.match_id)
+        pack = predict.pack(past[-1]["sport"], replay.match_id)
         try:  # ValueError: a sport with no shot locations (cricket); KeyError: no such player
             if pack is None:
                 raise KeyError(replay.match_id)
@@ -582,7 +580,7 @@ def create_app(
         replay = viewed(replay_id)
         moments = d.load_moments(replay.match_id)
         sport = moments[0]["sport"] if moments else None
-        pack = sport and (graph.pack(replay.match_id) or load_pack(sport, replay.match_id))
+        pack = sport and predict.pack(sport, replay.match_id)
         if not pack:
             raise HTTPException(404, "no pre-match pack for this match")
         return pack, asked_so_far(replay, moments, moment_idx)[0]
@@ -654,7 +652,13 @@ def create_app(
         if await asyncio.to_thread(guard.off_air, store):
             raise HTTPException(503, "voice off air for today")
 
+    app.include_router(teams_router)
     app.include_router(voice_router(store, speaker), dependencies=[Depends(voice_on)])
+    app.include_router(
+        converse_router(
+            need_deps=need_deps, viewed=viewed, asked_so_far=asked_so_far, guard=guard, store=store
+        )
+    )
     # the built page (web/, #18) at /, mounted last so every API route above wins
     if WEB.is_dir():
         app.mount("/", StaticFiles(directory=WEB, html=True), name="web")

@@ -310,3 +310,21 @@ export interface Ledger {
   sent: number // examples sent to Score check
   rows: LedgerRow[] // the newest 50 corrections
 }
+
+// GET /teams/{sport}/{match_id} (#375): the graph's view of both sides before the match; sections may be empty.
+export interface TeamGame {
+  date: string
+  opponent: string
+  home: boolean
+  score: string
+  result: string // W, D, L, or another code a sport uses
+}
+export interface TeamInfo {
+  team: string
+  form: TeamGame[]
+  squad: { name: string; matches: number; headline: string }[]
+}
+export interface Teams {
+  teams: TeamInfo[]
+  head_to_head: TeamGame[]
+}

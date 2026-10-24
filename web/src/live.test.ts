@@ -329,3 +329,9 @@ test('each Fix button has its own name: the speaker, the clock and the first wor
   assert.ok(names.includes('Fix the lead line at 06:12: Kobe pulls up from the elbow…'), names.join(' | '))
   assert.ok(names.includes('Fix the analyst line at 06:12: Kobe again! That is forty for…'), names.join(' | '))
 })
+
+test('the live page headings never skip a level: the h1 title, then an h2 per panel', () => {
+  const levels = [...render().matchAll(/<h([1-6])[\s>]/g)].map((m) => Number(m[1]))
+  assert.equal(levels[0], 1)
+  levels.forEach((l, i) => i && assert.ok(l <= levels[i - 1] + 1, `h${levels[i - 1]} then h${l}: ${levels.join(',')}`))
+})
