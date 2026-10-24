@@ -26,10 +26,12 @@ export function useSpeech() {
   const turn = useRef(0) // only the newest utterance may change `speaking`
   const floor = useRef(new Floor<OnAir>())
   const aired = useRef<(() => void) | null>(null) // ends the answer on air, so its subtitle comes down
+  const saying = useRef({ text: '', until: 0 }) // what Mic on (#286) may hear back: on air, or ended under 3 s ago
 
   // Stops the sound only.
   const stop = useCallback(() => {
     turn.current++
+    if (saying.current.until === Infinity) saying.current.until = performance.now() + 3000
     playing.current?.pause()
     playing.current = null
     if (available) window.speechSynthesis.cancel()
@@ -95,9 +97,11 @@ export function useSpeech() {
       item.start?.()
       const mine = turn.current
       const { line, voice } = item
+      saying.current = { text: line.text, until: Infinity }
       const lang = voice?.lang ?? 'en-GB'
       const sound = voiceOf(item.speaker, voice?.id)
       const done = () => {
+        saying.current.until = performance.now() + 3000
         item.end?.()
         const next = floor.current.ended(item, performance.now())
         if (next) play(next)
@@ -168,5 +172,7 @@ export function useSpeech() {
     [on, play],
   )
 
-  return { available, on, setOn: toggle, speaking, say, sayAnswer, hush, volume, muted, setVolume }
+  const airing = useCallback(() => (saying.current.until > performance.now() ? saying.current.text : null), [])
+
+  return { available, on, setOn: toggle, speaking, say, sayAnswer, hush, airing, volume, muted, setVolume }
 }
