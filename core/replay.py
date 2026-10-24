@@ -46,6 +46,9 @@ class Replay:
         self.done = False
         self.listeners = 0  # open streams; none for REJOIN_S stops the replay (core/app.py)
         self.stopping: asyncio.TimerHandle | None = None  # that stop, until a stream opens
+        # a video replay's lines are all sent ahead: when (time.monotonic) the viewer reaches the
+        # last one, so it is not forgotten while the video still plays (core/app.py)
+        self.ends_at: float | None = None
         self._changed = asyncio.Condition()
 
     async def publish(self, event: str, data: dict) -> None:
@@ -83,6 +86,8 @@ async def run_replay(
     # A video map: only mapped moments are called, each tagged with its video time and sent as
     # soon as it is ready; the page holds each line until the player reaches that time.
     video_t = {m["idx"]: m["video_t"] for m in video["moments"]} if video else None
+    if video_t:
+        replay.ends_at = replay.started + max(video_t.values()) - video.get("start", 0)
     # every store call runs in a thread: a slow bucket must never stall the event loop (#156)
     gaps = await asyncio.to_thread(insight.Gaps, replay.match_id, store) if video else None
 

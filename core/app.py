@@ -4,6 +4,7 @@ commentator come from data/ and agent/ (#13) through `Deps`, so tests inject the
 import asyncio
 import json
 import logging
+import time
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -130,7 +131,8 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
         replay.stopping = asyncio.get_running_loop().call_later(REJOIN_S, abandon, replay)
 
     def forget_later(replay: Replay) -> None:
-        asyncio.get_running_loop().call_later(REJOIN_S + FORGET_S, forget, replay)
+        playing = max(0.0, (replay.ends_at or 0.0) - time.monotonic())  # a video still to watch
+        asyncio.get_running_loop().call_later(playing + REJOIN_S + FORGET_S, forget, replay)
 
     def forget(replay: Replay) -> None:
         """Drop a finished replay's events from memory; one still streamed waits another round."""
