@@ -213,15 +213,21 @@ class Speaker:
 
     def _job(self, line: dict, voice: dict, deadline: float | None) -> asyncio.Task:
         key = (line["line_id"], voice["id"])
-        if key not in self.jobs:
-            self.jobs[key] = asyncio.create_task(self._make(line, voice, deadline))
-        self.jobs[key] = self.jobs.pop(key)  # most recently asked last
-        over = max(0, len(self.jobs) - KEEP_JOBS)
-        for old in [k for k, job in self.jobs.items() if job.done()][:over]:
-            del self.jobs[old]
+        job = self.jobs.pop(key, None)
+        if job is None:
+            job = asyncio.create_task(self._make(line, voice, deadline))
+            job.add_done_callback(lambda _: self._trim())  # pending jobs may have filled the cap
+        self.jobs[key] = job  # most recently asked last
+        self._trim(keep=key)
         while len(self.tags) > KEEP_JOBS * 4:  # a dropped tag only flattens a re-made line
             del self.tags[next(iter(self.tags))]
-        return self.jobs[key]
+        return job
+
+    def _trim(self, keep: tuple[str, str] | None = None) -> None:
+        """Forget the least recently asked finished audio past KEEP_JOBS; never unfinished jobs."""
+        over = max(0, len(self.jobs) - KEEP_JOBS)
+        for old in [k for k, job in self.jobs.items() if job.done() and k != keep][:over]:
+            del self.jobs[old]
 
     async def _make(self, line: dict, voice: dict, deadline: float | None):
         key = os.environ.get("ELEVENLABS_API_KEY")

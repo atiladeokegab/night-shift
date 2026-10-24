@@ -751,3 +751,63 @@ def test_only_the_last_keep_jobs_lines_audio_stays_in_memory(monkeypatch):
 
     asyncio.run(run())
     assert [k[0] for k in speaker.jobs] == ["l3", "l4", "l5"]
+
+
+def gated(slow_text="slow"):
+    """A transport that holds every request for `slow_text` until the gate opens."""
+    import asyncio
+
+    gate = asyncio.Event()
+
+    async def handle(request: httpx.Request) -> httpx.Response:
+        if json.loads(request.content)["text"].endswith(slow_text):
+            await gate.wait()
+        return httpx.Response(200, content=AUDIO)
+
+    return gate, httpx.MockTransport(handle)
+
+
+def test_cached_audio_is_served_while_unfinished_jobs_fill_the_cap(monkeypatch):
+    import asyncio
+
+    from core import voice
+    from core.voice import VOICES, Speaker
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    monkeypatch.setattr(voice, "KEEP_JOBS", 2)
+    done = {"line_id": "d", "sport": "football", "text": "Goal!"}
+
+    async def run():
+        gate, transport = gated()
+        speaker = Speaker(transport)
+        for i in range(2):  # unfinished, in 2 of the 3 slots: the cap is full
+            speaker.prepare({"line_id": f"s{i}", "sport": "football", "text": "slow"}, {})
+        first = await speaker.audio(done, VOICES[1])
+        again = await speaker.audio(done, VOICES[1])  # its own job must not be evicted under it
+        gate.set()
+        return first, again
+
+    assert asyncio.run(run()) == ((AUDIO, "eleven_v3"),) * 2
+
+
+def test_jobs_that_finish_after_the_cap_filled_are_trimmed_too(monkeypatch):
+    import asyncio
+
+    from core import voice
+    from core.voice import Speaker
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    monkeypatch.setattr(voice, "KEEP_JOBS", 2)
+
+    async def run():
+        gate, transport = gated()
+        speaker = Speaker(transport)
+        for i in range(5):
+            speaker.prepare({"line_id": f"s{i}", "sport": "football", "text": "slow"}, {})
+        assert len(speaker.jobs) == 5  # unfinished jobs are never dropped
+        gate.set()
+        await asyncio.gather(*speaker.jobs.values())
+        await asyncio.sleep(0)  # the done callbacks
+        return [k[0] for k in speaker.jobs]
+
+    assert asyncio.run(run()) == ["s3", "s4"]

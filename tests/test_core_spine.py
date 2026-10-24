@@ -312,3 +312,39 @@ def test_a_finished_replay_is_forgotten_after_rejoin_s_and_its_margin(tmp_path, 
 
     body, status = asyncio.run(run())
     assert body.count(b"event: line") == 3 and status == 404
+
+
+def test_a_replay_started_while_a_fix_counts_stats_does_not_break_the_fix(tmp_path, monkeypatch):
+    import asyncio
+    import threading
+
+    import httpx
+
+    from core import app as core_app
+
+    entered, release = threading.Event(), threading.Event()
+    real = core_app.stats
+
+    def slow_stats(store):
+        entered.set()
+        release.wait(5)
+        return real(store)
+
+    sent = {"mubit_request_id": "r-fix", "reply_matched": True}
+    deps = Deps(lambda: [], lambda mid: LONG[:1], fake_commentate, correct=lambda *a, **k: sent)
+    app = create_app(Store(tmp_path), deps)
+
+    async def run():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://t") as c:
+            rid = (await c.post("/replays", json={"match_id": "long", "speed": 1e6})).json()
+            await sse(app, rid["replay_id"])  # its line is on the stream
+            monkeypatch.setattr(core_app, "stats", slow_stats)
+            body = {"corrected_text": "Goal!", "reason": "wrong"}
+            fix = asyncio.create_task(c.post("/lines/long-0/fix", json=body))
+            await asyncio.to_thread(entered.wait, 5)
+            await c.post("/replays", json={"match_id": "long", "speed": 1e6})
+            release.set()
+            return (await fix).status_code
+
+    assert asyncio.run(run()) == 200

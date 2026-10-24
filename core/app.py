@@ -197,7 +197,7 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
                 "reply_matched": sent["reply_matched"],
             },
         )
-        for replay in replays.values():
+        for replay in list(replays.values()):  # a replay may start during the awaits below
             if any(
                 e["data"].get("line_id") == line_id for e in replay.events if e["event"] == "line"
             ):
