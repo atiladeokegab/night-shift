@@ -221,12 +221,17 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   - `budget: {daily_budget_usd, spent_today_usd, off_air}` (#244): the cap (null when off), the
     model and voice spend of lines, answers and Line checks created today (UTC), and whether it
     is past the cap.
-  - `voice: {provider: "elevenlabs"|"browser", last_error, since}` (#306, GET /stats only): who
+  - `voice: {provider: "elevenlabs"|"browser", last_error, since, characters_left}` (#306, GET /stats only): who
     speaks the lines. `browser` from ElevenLabs' last failure until it returns audio again, with
     `last_error` its `detail.status` on a 401 or 429 (e.g. `quota_exceeded`), `timeout`,
     `network`, or the status, and `since` when the failing began (ISO, UTC). No key:
     `not_configured`. Kept per process. The page then shows "Voice: browser fallback (ElevenLabs
-    unavailable)" on air and on the Proof card.
+    unavailable)" on air and on the Proof card. `characters_left: int|null`: the main key's
+    ElevenLabs `character_limit` minus `character_count` (`GET /v1/user/subscription`), read at
+    most every 5 minutes; null with no key or when it can't be read. `scripts/demo_check.py`
+    fails its voice row below 30,000. Once the main key answers `quota_exceeded`, each call tries
+    the keys in `ELEVENLABS_API_KEY_FALLBACKS` (comma-separated) in order; a backup key's 402 is
+    tried once more in George, the one voice a free-plan key may speak. Unset, nothing changes.
   - `linecheck: {checked, flags, rules_missed, fixes_sent, examples_today,
     examples_today_by_kind}` (#298, #305): live lead lines Line check
     checked (`linechecks` rows), those it flagged a field `wrong` on, the flags on lines the rules

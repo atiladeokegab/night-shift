@@ -6,7 +6,12 @@ import pytest
 from scripts import demo_check
 
 READY = {
-    "voice": {"provider": "elevenlabs", "last_error": None, "since": None},
+    "voice": {
+        "provider": "elevenlabs",
+        "last_error": None,
+        "since": None,
+        "characters_left": 30_000,
+    },
     "budget": {"daily_budget_usd": 50.0, "spent_today_usd": 3.21, "off_air": False},
     "linecheck": {"checked": 800, "flags": 12, "rules_missed": 12, "fixes_sent": 3},
 }
@@ -65,6 +70,8 @@ def test_a_ready_site_passes_and_only_one_replay_is_written():
             fake(stats={**READY, "voice": {"provider": "browser", "last_error": "quota_exceeded"}}),
             "voice",
         ),
+        (fake(stats={**READY, "voice": {**READY["voice"], "characters_left": 29_999}}), "voice"),
+        (fake(stats={**READY, "voice": {**READY["voice"], "characters_left": None}}), "voice"),
         (fake(audio=(503, "application/json")), "audio"),
         (fake(stats={**READY, "budget": {**READY["budget"], "spent_today_usd": 50.0}}), "budget"),
         (fake(stats={k: v for k, v in READY.items() if k != "linecheck"}), "linecheck"),
@@ -89,3 +96,12 @@ def test_main_exits_non_zero_on_a_fail(monkeypatch, capsys):
     assert "FAIL audio" in out and "PASS health" in out
     monkeypatch.setattr(demo_check, "check", lambda url, s: real(url, s, fake()))
     assert demo_check.main(["http://t"]) == 0
+
+
+def test_the_voice_row_shows_the_characters_left_either_way():
+    assert "30,000 characters left" in run(fake())["voice"][1]
+    low = run(fake(stats={**READY, "voice": {**READY["voice"], "characters_left": 1_234}}))
+    assert low["voice"] == (
+        False,
+        "voice: provider elevenlabs, last_error None, 1,234 characters left (need 30,000)",
+    )

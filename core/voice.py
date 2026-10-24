@@ -17,6 +17,10 @@ from fastapi.responses import Response
 log = logging.getLogger("touchline.voice")
 
 TTS_URL = "https://api.elevenlabs.io/v1/text-to-speech/{voice}"
+METER_URL = "https://api.elevenlabs.io/v1/user/subscription"
+METER_TTL_S = 300.0  # /stats reads the characters left at most once per 5 minutes
+METER_TIMEOUT_S = 3.0
+GEORGE = "JBFqnCBsd6RMkjVDRZzb"  # the one voice a free-plan backup key may speak
 MODEL = "eleven_v3"  # VOICE_MODEL_<SPORT> overrides it per sport
 FALLBACK_MODEL = "eleven_flash_v2_5"  # no audio tags: it would read "[shouting]" aloud
 V3_TIMEOUT_S = 20.0  # v3 takes 2-3 s warm, 11-15 s on a cold first request
@@ -178,6 +182,12 @@ def failure(resp: httpx.Response) -> str:
     return str(resp.status_code) if resp.status_code != 200 else "empty"
 
 
+def backup_keys(env=os.environ) -> list[str]:
+    """ELEVENLABS_API_KEY_FALLBACKS: comma-separated keys tried in order once the main key's quota
+    is gone."""
+    return [k.strip() for k in env.get("ELEVENLABS_API_KEY_FALLBACKS", "").split(",") if k.strip()]
+
+
 def voice_of(line: dict) -> dict:
     """Who reads a line when the page picks no voice: the analyst's lines in the analyst voice."""
     if line.get("speaker") == "analyst":
@@ -201,13 +211,41 @@ class Speaker:
         self.failing: dict | None = (
             None  # {last_error, since} until ElevenLabs answers again (#306)
         )
+        self.meter: tuple[float, int | None] | None = None  # (when read, characters left)
 
     def health(self) -> dict:
         """Who speaks the lines: ElevenLabs, or the browser since ElevenLabs last failed."""
         if not os.environ.get("ELEVENLABS_API_KEY"):
-            return {"provider": "browser", "last_error": "not_configured", "since": None}
+            return {
+                "provider": "browser",
+                "last_error": "not_configured",
+                "since": None,
+                "characters_left": None,
+            }
         failing = self.failing or {"last_error": None, "since": None}
-        return {"provider": "browser" if self.failing else "elevenlabs", **failing}
+        return {
+            "provider": "browser" if self.failing else "elevenlabs",
+            **failing,
+            "characters_left": self.characters_left(),
+        }
+
+    def characters_left(self) -> int | None:
+        """The main key's character_limit minus character_count, read at most every METER_TTL_S;
+        None when it can't be read."""
+        if self.meter and time.monotonic() - self.meter[0] < METER_TTL_S:
+            return self.meter[1]
+        try:
+            with httpx.Client(transport=self.transport, timeout=METER_TIMEOUT_S) as client:
+                resp = client.get(
+                    METER_URL, headers={"xi-api-key": os.environ["ELEVENLABS_API_KEY"]}
+                )
+                sub = resp.raise_for_status().json()
+            left = int(sub["character_limit"]) - int(sub["character_count"])
+        except Exception as exc:  # the meter never breaks /stats; the type only, never the key
+            log.warning("voice meter failed: %s", type(exc).__name__)
+            left = None
+        self.meter = (time.monotonic(), left)
+        return left
 
     def _failed(self, kind: str) -> None:
         since = (self.failing or {}).get("since") or datetime.now(UTC).isoformat(timespec="seconds")
@@ -313,6 +351,32 @@ class Speaker:
             )
 
     async def _tts(self, client, key, voice, model, text, until, least=0.0) -> bytes | None:
+        # shortcut: every call tries the main key first, so a spent key costs one quick 401 a line
+        # and credits added come back at once; remember the working key if that 401 ever matters
+        for backup, k in enumerate([key, *backup_keys()]):
+            resp = await self._post(client, k, voice["eleven_id"], model, text, until, least)
+            if (
+                backup
+                and resp is not None
+                and resp.status_code == 402
+                and voice["eleven_id"] != GEORGE
+            ):
+                # a free-plan backup key can't speak library voices: once more as George
+                resp = await self._post(client, k, GEORGE, model, text, until, least)
+            if resp is None:
+                return None
+            if failure(resp) != "quota_exceeded":
+                break
+        if resp.status_code != 200 or not resp.content:
+            log.warning("voice %s answered %d", model, resp.status_code)
+            self._failed(failure(resp))
+            return None
+        self.failing = None
+        return resp.content
+
+    async def _post(
+        self, client, key, eleven_id, model, text, until, least
+    ) -> httpx.Response | None:
         async with self.slots:
             left = max(until - time.monotonic(), least)
             if left <= 0:  # it would land after the moment
@@ -322,7 +386,7 @@ class Speaker:
                 # httpx's timeout is per read: only this bounds the request plus every chunk
                 async with asyncio.timeout(left):
                     resp = await client.post(
-                        TTS_URL.format(voice=voice["eleven_id"]),
+                        TTS_URL.format(voice=eleven_id),
                         params={"output_format": "mp3_44100_128"},
                         headers={"xi-api-key": key, "accept": "audio/mpeg"},
                         json={"text": text, "model_id": model},
@@ -333,12 +397,7 @@ class Speaker:
                 timeout = isinstance(exc, (TimeoutError, httpx.TimeoutException))
                 self._failed("timeout" if timeout else "network")
                 return None
-        if resp.status_code != 200 or not resp.content:
-            log.warning("voice %s answered %d", model, resp.status_code)
-            self._failed(failure(resp))
-            return None
-        self.failing = None
-        return resp.content
+        return resp
 
 
 def warm(
