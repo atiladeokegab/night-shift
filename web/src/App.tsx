@@ -14,9 +14,9 @@ import type { VideoState } from './components/VideoStage'
 import { VoiceSheet } from './components/VoiceSheet'
 import { Wall } from './components/Wall'
 import { chipName, defaultVoice, wallOrder } from './teams'
-import { SPORTS, type Line, type Match, type Moment, type Sport, type Voice } from './types'
+import { SPORTS, type Answer, type Line, type Match, type Moment, type Sport, type Voice } from './types'
 import { QuietSpell, WHERE } from './quiet'
-import { airAnswer, bigSoon, isBig, type Caption } from './turns'
+import { airAnswer, bigSoon, isBig, isDecisive, type Caption } from './turns'
 import { onScreen, useReplay } from './useReplay'
 import { useSpeech } from './useSpeech'
 import { viewOf } from './view'
@@ -38,6 +38,7 @@ export default function App() {
   // #131: a viewer's question, then its answer, takes the caption from the lines while it is on
   const [asking, setAsking] = useState<Caption | null>(null)
   const asked = useRef(0) // only the newest question may change the caption
+  const [interrupted, setInterrupted] = useState<string[]>([]) // answers a decisive moment cut off
   const [paused, setPaused] = useState(false)
   const [describeQuiet, setDescribeQuiet] = useState(true) // #186: on by default
   const speech = useSpeech()
@@ -59,7 +60,10 @@ export default function App() {
   // as the line; a layout effect runs before useReplay's speaking effect, so `presented` already has it.
   const presented = useRef<Moment[]>([])
   const sayLine = useCallback(
-    (line: Line) => speech.say(line, voiceNow.current, isBig(presented.current.find((m) => m.idx === line.moment_idx))),
+    (line: Line) => {
+      const m = presented.current.find((x) => x.idx === line.moment_idx)
+      speech.say(line, voiceNow.current, isBig(m), isDecisive(m))
+    },
     [speech],
   )
   const replay = useReplay(sayLine, speech.hush)
@@ -222,19 +226,30 @@ export default function App() {
 
   // #117: an off-air answer is shown, never spoken. #131: the stage shows the question, then the answer
   // while it is spoken. #139: the analyst answers at a gap, never with a big moment due in the next 3 s.
-  const askCommentator = async (question: string, momentIdx: number, viewer = true) => {
+  // A decisive moment may cut an answer off: the Lines card marks it, with "Hear it again".
+  const askCommentator = async (question: string, momentIdx: number, viewer = true, ask = () => replay.ask(question, momentIdx)) => {
     const sent = session.current
     const mine = ++asked.current
     await airAnswer(
       question,
-      () => replay.ask(question, momentIdx),
+      ask,
       (answer, started) =>
-        answer.off_air ? null : speech.sayAnswer(answer, voiceNow.current, started, () => bigSoon(ahead.current.queuedMoments, ahead.current.now)),
+        answer.off_air
+          ? null
+          : (speech
+              .sayAnswer(answer, voiceNow.current, started, () => bigSoon(ahead.current.queuedMoments, ahead.current.now))
+              ?.then((cut) => {
+                if (cut && session.current === sent) setInterrupted((ids) => [...ids, answer.line_id])
+              }) ?? null),
       setAsking,
       () => session.current === sent && asked.current === mine,
       undefined,
       viewer ? undefined : '',
     )
+  }
+  const hearAgain = (answer: Answer) => {
+    setInterrupted((ids) => ids.filter((id) => id !== answer.line_id))
+    void askCommentator(answer.question, answer.moment_idx, true, async () => answer)
   }
 
   // The stage's caption (#132's contract): the question or answer while one is on, else the line on
@@ -300,6 +315,8 @@ export default function App() {
           onVoiceSheet={() => setVoiceSheet(true)}
           onFix={(line) => setFixing({ line, phase: 'edit' })}
           onAsk={askCommentator}
+          interrupted={interrupted}
+          onHear={hearAgain}
           onShots={replay.shots}
           onPlayers={replay.players}
           onProfile={replay.profile}
