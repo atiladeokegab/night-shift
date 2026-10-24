@@ -2,7 +2,7 @@ import type { Moment } from './types'
 
 // Who speaks when (#131), kept out of React so the tests reach it. Two commentators share the air:
 // the lead calls the moments, the analyst fills the gaps with numbers (#130); a viewer's answer is
-// spoken in the lead's voice.
+// spoken in the analyst's voice, at a natural gap (#139).
 
 export type Speaker = 'lead' | 'analyst'
 
@@ -13,22 +13,36 @@ export const isBig = (m: Pick<Moment, 'type' | 'outcome'> | undefined): boolean 
 // A held line spoken later than this after it was due is shown, never spoken: it would trail the picture.
 export const HOLD_MAX_MS = 5000
 
+// A viewer's answer is not started while a big moment is due within this many seconds (#139).
+export const BIG_SOON_S = 3
+
+// A big moment the picture reaches within BIG_SOON_S of `now` (video seconds): only gated moments know when.
+export const bigSoon = (moments: Pick<Moment, 'type' | 'outcome' | 'video_t'>[], now: number): boolean =>
+  moments.some((m) => isBig(m) && m.video_t !== undefined && m.video_t >= now && m.video_t - now <= BIG_SOON_S)
+
 export interface Turn {
   speaker: Speaker
-  answer?: boolean // a viewer's answer: never cut off, and it cuts in on any line
+  answer?: boolean // a viewer's answer: never cut off, and it waits for a gap
   big?: boolean
 }
 
 // The floor: one voice at a time. A line by the same speaker cuts off the one before it, so the voice
 // never falls behind the match; a line never cuts off the other speaker unless it is a big moment; and
 // nothing cuts off an answer. A line that may not cut in waits (the newest only) for the turn on air
-// to end. Times are in ms on one clock.
+// to end. A viewer's answer waits for a gap (#139): the commentary goes on until the line on air ends
+// with no big moment due (`bigDue`), then the answer takes the floor. Times are in ms on one clock.
 export class Floor<T extends Turn> {
   private on: T | null = null
   private held: { item: T; due: number } | null = null
+  private asked: T | null = null // the answer waiting for a gap
+  bigDue: () => boolean = () => false
 
-  // A turn due at `now`: true to say it at once, false when it waits for the one on air.
+  // A turn due at `now`: true to say it at once, false when it waits for the one on air (or a gap).
   take(item: T, now: number): boolean {
+    if (item.answer) {
+      this.asked = item
+      return this.gap() === item
+    }
     const on = this.on
     const waits = !item.answer && !!on && (!!on.answer || (on.speaker !== item.speaker && !item.big))
     if (waits) {
@@ -45,15 +59,27 @@ export class Floor<T extends Turn> {
     if (this.on !== item) return null
     const held = this.held
     this.on = null
+    const answer = this.gap()
+    if (answer) return answer // the held line waits for the answer now
     this.held = null
     if (!held || now - held.due > HOLD_MAX_MS) return null
     this.on = held.item
     return held.item
   }
 
+  // The waiting answer, once nothing is on air and no big moment is due; it holds the floor from here.
+  gap(): T | null {
+    const answer = this.asked
+    if (!answer || this.on || this.bigDue()) return null
+    this.asked = null
+    this.on = answer
+    return answer
+  }
+
   clear() {
     this.on = null
     this.held = null
+    this.asked = null
   }
 }
 
@@ -75,23 +101,27 @@ export interface Caption {
 
 export const READ_MS = 6000 // an answer that isn't spoken (voice off, off air) stays up this long
 
-// A viewer's question on the stage: "A viewer asks: …" until the answer arrives, then the answer for
-// as long as it is spoken (`speak` resolves at its end; null when it isn't spoken), then the lines
-// again. Resolves once the answer is in, so the ask box is free while it is spoken. `current` is false
-// once the replay or a newer question replaced this one: it then changes nothing.
+// A viewer's question on the stage: "A viewer asks: … · thinking…" until the answer starts (#139: it
+// waits for a gap in the commentary), then the answer in the analyst's voice for as long as it is spoken
+// (`speak` calls `started` as it goes on air and resolves at its end; null when it isn't spoken, and then
+// it shows at once), then the lines again. Resolves once the answer is in, so the ask box is free while
+// it waits and is spoken. `current` is false once the replay or a newer question replaced this one: it
+// then changes nothing.
 export async function airAnswer<A extends { text: string }>(
   question: string,
   ask: () => Promise<A | null>,
-  speak: (answer: A) => Promise<void> | null,
+  speak: (answer: A, started: () => void) => Promise<void> | null,
   show: (caption: Caption | null) => void,
   current: () => boolean,
   readMs = READ_MS,
 ): Promise<void> {
-  show({ kind: 'question', text: `A viewer asks: ${question}` })
+  show({ kind: 'question', text: `A viewer asks: ${question} · thinking…` })
   const answer = await ask()
   if (!current()) return
   if (!answer) return show(null)
-  show({ kind: 'answer', text: answer.text, speaker: 'lead' })
-  const aired = speak(answer) ?? new Promise<void>((r) => setTimeout(r, readMs))
+  const started = () => current() && show({ kind: 'answer', text: answer.text, speaker: 'analyst' })
+  const spoken = speak(answer, started)
+  if (!spoken) started()
+  const aired = spoken ?? new Promise<void>((r) => setTimeout(r, readMs))
   void aired.then(() => current() && show(null))
 }
