@@ -93,6 +93,15 @@ def _lead(m: dict) -> str:
     return re.sub(r"\bleads?\b", "won", lead, count=1) if m["type"] in END else lead
 
 
+def names_a_batter(text: str, crease: str) -> bool:
+    """Whether the text names a batter at the crease ("A and B") by surname, as a whole word:
+    "Ali" is not in "really"."""
+    return any(
+        re.search(rf"\b{re.escape(n.split()[-1])}\b", text, re.IGNORECASE)
+        for n in crease.split(" and ")
+    )
+
+
 def _cricket_lead(m: dict, d: dict) -> str:
     return d.get("lead") or d.get("chase") or f"no one yet, {m['team']} batting first"
 
@@ -184,7 +193,7 @@ def status(past: list[dict], header: dict | None = None, provider=None) -> dict:
         wrong = [w for w in wrong if not w.startswith("the line never says how the shot ended")]
         # a cricket status names a batter at the crease (the surname will do)
         crease = m["sport"] != "cricket" or m["type"] in END or not (c := _crease(m))
-        named = crease or any(n.split()[-1].lower() in text.lower() for n in c.split(" and "))
+        named = crease or names_a_batter(text, c)
         return (
             bool(text)
             and says_score(text, m)
