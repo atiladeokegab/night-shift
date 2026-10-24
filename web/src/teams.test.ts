@@ -46,7 +46,7 @@ test('the dock chip shows a voice by its own name or its role, never a lone nati
   assert.equal(chipName(voice('Connor: British, energetic')), 'Connor')
   assert.equal(chipName(voice('Viraj: Indian English, energetic')), 'Viraj')
   assert.equal(chipName(voice('George: British, warm')), 'George')
-  assert.equal(chipName(voice('British Football Announcer')), 'Football Announcer')
+  assert.equal(chipName(voice('British Football Announcer')), 'British Football Announcer') // as the sheet names it
   assert.equal(chipName(voice('Football pick')), 'Football pick')
   assert.equal(chipName({ ...voice('British (browser)'), browser: true }), 'Browser voice')
   assert.equal(chipName(null), '')
