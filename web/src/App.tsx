@@ -16,6 +16,7 @@ import { Wall } from './components/Wall'
 import { chipName, defaultVoice, wallOrder } from './teams'
 import { SPORTS, type Line, type Match, type Moment, type Sport, type Voice } from './types'
 import { QuietSpell, WHERE } from './quiet'
+import { askKey, isRepeat } from './ask'
 import { airAnswer, bigSoon, isBig, type Caption } from './turns'
 import { onScreen, useReplay } from './useReplay'
 import { useSpeech } from './useSpeech'
@@ -38,6 +39,7 @@ export default function App() {
   // #131: a viewer's question, then its answer, takes the caption from the lines while it is on
   const [asking, setAsking] = useState<Caption | null>(null)
   const asked = useRef(0) // only the newest question may change the caption
+  const inFlight = useRef<string | null>(null) // the question being asked, by askKey
   const [paused, setPaused] = useState(false)
   const [describeQuiet, setDescribeQuiet] = useState(true) // #186: on by default
   const speech = useSpeech()
@@ -223,18 +225,24 @@ export default function App() {
   // #117: an off-air answer is shown, never spoken. #131: the stage shows the question, then the answer
   // while it is spoken. #139: the analyst answers at a gap, never with a big moment due in the next 3 s.
   const askCommentator = async (question: string, momentIdx: number, viewer = true) => {
+    if (isRepeat(replay.state.answers, inFlight.current, question, momentIdx)) return
+    const key = (inFlight.current = askKey(question, momentIdx))
     const sent = session.current
     const mine = ++asked.current
-    await airAnswer(
-      question,
-      () => replay.ask(question, momentIdx),
-      (answer, started) =>
-        answer.off_air ? null : speech.sayAnswer(answer, voiceNow.current, started, () => bigSoon(ahead.current.queuedMoments, ahead.current.now)),
-      setAsking,
-      () => session.current === sent && asked.current === mine,
-      undefined,
-      viewer ? undefined : '',
-    )
+    try {
+      await airAnswer(
+        question,
+        () => replay.ask(question, momentIdx),
+        (answer, started) =>
+          answer.off_air ? null : speech.sayAnswer(answer, voiceNow.current, started, () => bigSoon(ahead.current.queuedMoments, ahead.current.now)),
+        setAsking,
+        () => session.current === sent && asked.current === mine,
+        undefined,
+        viewer ? undefined : '',
+      )
+    } finally {
+      if (inFlight.current === key) inFlight.current = null
+    }
   }
 
   // The stage's caption (#132's contract): the question or answer while one is on, else the line on

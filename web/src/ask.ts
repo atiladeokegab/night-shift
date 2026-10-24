@@ -31,3 +31,12 @@ export const answeredAt = (a: Pick<Answer, 'moment_idx'>, moments: Moment[]): st
 }
 export const isStale = (a: Pick<Answer, 'moment_idx'>, moments: Pick<Moment, 'idx'>[]): boolean =>
   moments.some((m) => m.idx > a.moment_idx)
+
+// One question at one moment is asked once (#186): the page's own quiet-spell "Where are we?" and a
+// viewer's press a moment later would give two identical rows. `asking` is the key in flight. An
+// off-air answer doesn't count, so asking again can still get one.
+export const askKey = (question: string, momentIdx: number): string => `${momentIdx}|${question.trim().toLowerCase()}`
+export const isRepeat = (answers: Answer[], asking: string | null, question: string, momentIdx: number): boolean => {
+  const key = askKey(question, momentIdx)
+  return asking === key || answers.some((a) => !a.off_air && askKey(a.question, a.moment_idx) === key)
+}

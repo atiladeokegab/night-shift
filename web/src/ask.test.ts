@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { answeredAt, isStale, withAnswers } from './ask.ts'
+import { answeredAt, askKey, isRepeat, isStale, withAnswers } from './ask.ts'
 import type { Moment } from './types.ts'
 
 const line = (idx: number) => ({ line_id: `l${idx}`, match_id: 'm', moment_idx: idx, text: `line ${idx}`, latency_ms: 1 })
@@ -30,4 +30,13 @@ test("an answer carries its own time, from the moment it was asked at", () => {
 test('an answer goes stale once a later key moment is on screen, never before', () => {
   assert.equal(isStale(answer('a', 66), [at(65, '103:00'), at(66, '104:30')]), false)
   assert.equal(isStale(answer('a', 66), [at(66, '104:30'), at(67, '105:41')]), true)
+})
+
+test("one ask gives one row: the page's own \"Where are we?\" and a press at the same moment ask once", () => {
+  const where = { ...answer('a1', 24), question: 'Where are we?' }
+  assert.equal(isRepeat([], askKey('Where are we?', 24), 'Where are we?', 24), true) // the quiet spell's is in flight
+  assert.equal(isRepeat([where], null, 'where are we? ', 24), true) // already answered at this moment
+  assert.equal(isRepeat([where], null, 'Where are we?', 25), false) // a later moment asks again
+  assert.equal(isRepeat([{ ...where, off_air: true }], null, 'Where are we?', 24), false) // off air: ask again
+  assert.equal(isRepeat([where], askKey('Who scores next?', 24), 'Who scores next?', 25), false)
 })
