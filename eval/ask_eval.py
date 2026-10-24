@@ -383,6 +383,7 @@ def ask(q: dict, kind: str) -> dict:
         "text": text,
         "verdict": verdict(text, q),
         "fallback": bool(said.get("fallback")),
+        "tried": said.get("tried"),  # the model's reply a fallback replaced
         "in_message": facts,
     }
 
@@ -396,7 +397,8 @@ def main(argv: list[str] | None = None) -> int:
     print("| # | Match | At | Question | Route | In message | Answer | Verdict |")
     print("|---|---|---|---|---|---|---|---|")
     for i, (q, r) in enumerate(rows, 1):
-        said = r["text"].replace("|", "/") + (" (fallback)" if r["fallback"] else "")
+        tried = f"; the model said: {' '.join(r['tried'].split())}" if r["tried"] else ""
+        said = (r["text"] + (f" (fallback{tried})" if r["fallback"] else "")).replace("|", "/")
         facts = {True: "yes", False: "no"}.get(r["in_message"], r["in_message"])
         print(
             f"| {i} | {q['match']} | {q['idx']} | {q['q']} | {r['route']} | {facts} "

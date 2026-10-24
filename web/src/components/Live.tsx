@@ -168,9 +168,8 @@ export function Live(props: Props) {
     .map((m) => ({ t: m.video_t!, done: m.video_t! <= replay.now }))
   const canPlay = !!transport && video === 'ok' && !busy
   const noVideo = !gated || blocked || video === 'unavailable'
-  const covered = closed && !noVideo
+  const covered = closed // with no picture too: the page blacks out to its line and score (#338)
   useEffect(() => {
-    if (noVideo) return
     const down = (e: KeyboardEvent) => {
       if (!eyesKey(e)) return
       e.preventDefault()
@@ -178,7 +177,7 @@ export function Live(props: Props) {
     }
     window.addEventListener('keydown', down)
     return () => window.removeEventListener('keydown', down)
-  }, [noVideo, onEyes])
+  }, [onEyes])
   const title = CARD_COPY[match.match_id]?.title ?? match.title?.split(',')[0] ?? match.match_id
   const speaker = caption?.speaker ?? line?.speaker
   const onAirLabel = speaker === 'analyst' ? ['Analyst', voice.analyst].filter(Boolean).join(' · ') : voiceLabel && `Lead · ${voiceLabel}`
@@ -205,7 +204,7 @@ export function Live(props: Props) {
             {onNext && <button className="btn next" disabled={busy} aria-label="Next match" onClick={onNext}><span>Next match </span>→</button>}
           </div>
       </Nav>
-      <p className="sr-only" role="status">{replay.phase === 'live' ? `${paused ? 'Paused' : `Playing ${title}`}${covered ? ' · Video covered' : ''}` : ''}</p>
+      <p className="sr-only" role="status">{replay.phase === 'live' ? `${paused ? 'Paused' : `Playing ${title}`}${covered ? ' · Screen covered' : ''}` : ''}</p>
       <div className="live-body">
         <main className="live-main">
           <section className="vcard" ref={card} aria-label={`${match.title ?? match.match_id} ${gated ? 'highlights' : 'match'}`} data-video={noVideo ? 'off' : undefined}>
@@ -233,7 +232,7 @@ export function Live(props: Props) {
             </div>
             <Controls card={card} paused={paused || ended} canPlay={canPlay} onToggle={ended ? onRetry : toggle} now={replay.duration ? Math.min(replay.now, replay.duration) : replay.now} duration={replay.duration}
               marks={marks} onSeek={(t) => transport?.seek(t)} volume={volume} muted={muted} onVolume={onVolume}
-              eyes={noVideo ? undefined : { closed: covered, onToggle: onEyes }}>
+              eyes={{ closed: covered, onToggle: onEyes }}>
               {/* not hidden at the stream's end: the picture plays on, and the server says when it takes no more */}
               {!noVideo && props.onLook && replay.phase === 'live' && (
                 <Watch key={replayKey} onLook={props.onLook} time={() => replay.now} />

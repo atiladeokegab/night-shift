@@ -12,7 +12,7 @@ interface Props {
   volume: number // the commentary voice, 0 to 1; the video stays muted
   muted: boolean
   onVolume: (volume: number, muted: boolean) => void
-  eyes?: { closed: boolean; onToggle: () => void } // Close your eyes (#277), only with a video to cover
+  eyes?: { closed: boolean; onToggle: () => void } // Close your eyes (#277), with or without a video (#338)
   children?: ReactNode // Let them watch (#291), beside it
 }
 

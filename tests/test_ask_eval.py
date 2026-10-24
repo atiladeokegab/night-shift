@@ -45,12 +45,23 @@ def test_a_first_person_decline_is_said_not_dropped():
     assert later["text"] == "I can't tell you what comes later, but Spurs lead two-one."
 
 
+def test_a_long_answer_sentence_is_cut_at_a_clause_not_dropped():
+    # #340: keyed #29 fell back although the Courage's 18 shots were in the message
+    long = (
+        "They have had eighteen shots so far, absolutely dominating the play here in the first half"
+        " while Orlando Pride have struggled badly to find any rhythm at all going forward tonight!"
+    )
+    said = said_to("7457", 20, f"How many shots have the Courage had? {long}")
+    assert said["text"] == "They have had eighteen shots so far!" and "fallback" not in said
+
+
 def test_an_answer_with_nothing_to_say_gives_the_status_not_off_air():
     tool = [{"type": "tool_use", "id": "t1", "name": "get_score", "input": {}}]
     for replies in (["I have all the information I need."], ["How long is left?"], [tool, tool]):
         said = said_to("3754092", 26, *replies)
         assert said["fallback"] and said["text"].startswith("No word on that yet. "), replies
         assert "Tottenham Hotspur lead 2-1" in said["text"]
+    assert said_to("3754092", 26, "Let me check.")["tried"] == "Let me check."  # kept to read
 
 
 def test_a_football_ask_holds_each_sides_shots_cards_and_each_scorers_goals():
