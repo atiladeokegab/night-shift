@@ -548,10 +548,18 @@ def test_a_prepared_lines_v3_call_gets_the_longer_timeout_and_a_live_one_its_dea
 
     monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
     timeouts = []
+    timeout = asyncio.timeout
+
+    def bound(delay):
+        timeouts.append(delay)
+        return timeout(delay)
+
+    monkeypatch.setattr(asyncio, "timeout", bound)
+    models = []
 
     def handle(request: httpx.Request) -> httpx.Response:
         model = json.loads(request.content)["model_id"]
-        timeouts.append((model, request.extensions["timeout"]["read"]))
+        models.append(model)
         return httpx.Response(200, content=AUDIO)
 
     speaker = Speaker(httpx.MockTransport(handle))
@@ -564,8 +572,8 @@ def test_a_prepared_lines_v3_call_gets_the_longer_timeout_and_a_live_one_its_dea
         await speaker.audio(live, VOICES[1])
 
     asyncio.run(run())
-    (m1, ahead), (m2, now) = timeouts
-    assert m1 == m2 == "eleven_v3"
+    ahead, now = timeouts
+    assert models == ["eleven_v3", "eleven_v3"]
     assert PREPARED_V3_S - 0.5 < ahead <= PREPARED_V3_S  # past its moment: late v3 beats flash
     assert now <= LIVE_BUDGET_S - FALLBACK_RESERVE_S  # the request-started line keeps its deadline
 
