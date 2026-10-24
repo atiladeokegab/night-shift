@@ -66,7 +66,7 @@ CHECKS = {
     "#468 Orlando form of 5, newest 12 May": orlando,
     "#466 women's cricket squad has no men's players": cricket_women,
     "#466 men's cricket squad still has players": cricket_men,
-    "#472 Proof card held-out rules row reads 2 of 5": heldout,
+    "#472 /stats held-out rules row reads 2 of 5": heldout,
     "#463 a dropped replay answers 404 (the page then says it ended)": dropped,
 }
 
