@@ -534,4 +534,6 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .flag .wrong { margin: 0; padding-left: 18px; color: var(--amber); }
 .flag .said { padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); color: var(--muted); }
 .flag .btn { justify-self: start; }
+.flag .others summary { cursor: pointer; color: var(--muted); }
+.flag .others ul { margin: 6px 0 0; padding-left: 18px; color: var(--muted); display: grid; gap: 4px; }
 .stats dd a { color: var(--amber); display: inline-block; padding: 12px 0; margin: -12px 0; } /* a 44 px tap target, same layout (#170) */
