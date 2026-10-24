@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { getReview, getStats } from '../api'
 import type { Adapter, Autonomy, SpeakerStats, Stats } from '../types'
 import { SideBySide } from './SideBySide'
-import { adapterRows, autonomyRows, nextAdapter } from '../proof'
+import { adapterGood, adapterRows, autonomyRows, nextAdapter } from '../proof'
 
 interface Props {
   live: Stats | null // the latest `stats` event from the replay, newer than the first GET /stats
@@ -59,7 +59,7 @@ export function ProofPanel({ live, matchId }: Props) {
           )}
           <div className="wide">
             <dt className="label">Adapter</dt>
-            <dd className={adapter?.status === 'ready' ? 'good' : undefined}>{adapterText(adapter)}</dd>
+            <dd className={adapterGood(stats) ? 'good' : undefined}>{adapterText(adapter)}</dd>
           </div>
           {/* each Mubit task's latest version, as recorded from Mubit's console (#209) */}
           {!!tasks.length && (
