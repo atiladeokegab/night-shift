@@ -156,3 +156,11 @@ def test_a_finished_replay_still_answers_questions_after_its_stream_closes(tmp_p
         time.sleep(0.2)  # the stream is closed and REJOIN_S has passed
         res = client.post(f"/replays/{rid}/ask", json={"question": "Score?"})
         assert res.status_code == 200 and res.json()["text"] == "3-0"
+
+
+def test_the_video_start_for_any_moment_is_the_one_a_jump_there_uses(tmp_path):
+    deps = Deps(list_matches, load_moments, recording([]), video_map)
+    with TestClient(create_app(Store(tmp_path), deps)) as client:
+        start = client.get("/matches/3869685/start", params={"at": 45}).json()["video_start"]
+        assert start == video_map("3869685", 45)["start"] == 441  # idx 45 at 451.2 s, less 10
+        assert client.get("/matches/nope/start", params={"at": 3}).json() == {"video_start": None}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import './App.css'
-import { listMatches, listVoices, postFix } from './api'
+import { listMatches, listVoices, postFix, videoStartAt } from './api'
 import { About } from './components/About'
 import type { FixPhase } from './components/FixSheet'
 import { FixSheet } from './components/FixSheet'
@@ -173,6 +173,19 @@ export default function App() {
     }
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
+  })
+
+  // #188: ?match=<id>&at=<idx> opens that match at that moment, as its jump pill does (a film take).
+  const opened = useRef(false)
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search)
+    const m = matches?.find((x) => x.match_id === q.get('match'))
+    const at = Number(q.get('at') ?? NaN)
+    if (!m || !Number.isInteger(at) || opened.current) return
+    opened.current = true
+    videoStartAt(m.match_id, at).then((s) =>
+      start({ ...m, video_start: s ?? m.video_start }, m.youtube_id ? 1 : 4, false, false, at),
+    )
   })
 
   // #171: the Proof card links to #review, so it opens the Review screen without a route through Live.
