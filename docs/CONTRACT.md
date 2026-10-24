@@ -51,8 +51,8 @@ and refuses to start without `STORE_URL=gs://bucket/prefix`.
   "Partner just said": <last line>}}` with the same `idx` (a reply's outcome is "the lead answers the
   analyst, who just said: <last line>"). Its request is a line's message with the analyst's own
   system prompt (agent/analyst.md), no tools, never recorded, on `ANALYST_MODEL` (default
-  claude-sonnet-5-5, priced in core/stats.py; a model outside its prices is left out of the cost). An **insight** (`speaker:
-  "analyst"`) carries `insight: {match_id, after_idx, n, kind, detail, heard}`, where `kind` is
+  claude-sonnet-5-5 with `thinking: {"type": "between_tools"}`, priced in core/stats.py; a
+  model outside its prices is left out of the cost). An **insight** (`speaker: "analyst"`) carries `insight: {match_id, after_idx, n, kind, detail, heard}`, where `kind` is
   `"player profile"`, `"next to score"`, `"tally"`, `"score story"`, `"momentum"` or `"positions"`
   and `detail` is one short fact (a profile, odds or positions give one fact per insight; a
   pre-match fact names its period, such as "this season before tonight"), built only from moments up to `after_idx` and the pre-match pack. Every

@@ -130,6 +130,9 @@ def build_request(header: dict, past: list[dict]) -> dict:
         # unrecorded, so its model is free to differ from the lines' (one Mubit task)
         request["model"] = os.environ.get("ANALYST_MODEL") or ANALYST_MODEL
         del request["tools"], request["tool_choice"]
+        if request["model"] == "claude-sonnet-5-5":
+            # its lowest thinking setting, so thinking can't eat MAX_TOKENS; other models 400 on it
+            request["thinking"] = {"type": "between_tools"}
     return request
 
 

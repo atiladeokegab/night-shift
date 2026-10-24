@@ -241,6 +241,16 @@ def test_the_analyst_model_is_a_setting_and_the_lines_model_never_moves(tmp_path
     assert {ln["model"] for ln in lines if gap(ln)} == {want}
 
 
+@pytest.mark.parametrize("model", ["claude-sonnet-5-5", "claude-haiku-4-5"])
+def test_only_a_sonnet_stat_request_turns_thinking_down(tmp_path, monkeypatch, model):
+    monkeypatch.setenv("ANALYST_MODEL", model)
+    _, fake = replay(CHELSEA, Store(tmp_path))
+    stats = stat_calls(fake)
+    want = [{"type": "between_tools"}] if model == "claude-sonnet-5-5" else [None]
+    assert stats and [q.get("thinking") for q in stats] == want * len(stats)
+    assert not any("thinking" in q for q in fake.requests if q not in stats)
+
+
 def test_analyst_and_reply_lines_never_go_through_the_recorded_provider(tmp_path, monkeypatch):
     recorded, unrecorded = Fake(), Fake()
     monkeypatch.setattr(commentator, "default_provider", lambda: recorded)
