@@ -47,13 +47,12 @@ test('before core reports adapters, no rows', () => {
   assert.deepEqual(adapterRows(undefined), [])
 })
 
-test('the Adapter row is green only for a ready commentary adapter the gate did not fail', () => {
-  const ready = { status: 'ready' as const, kept: 31, agree: 23, total: 25, cost_measurable: false }
-  assert.equal(adapterGood({ adapter: ready }), true) // before per-task records: as before
-  assert.equal(adapterGood({ adapter: ready, adapters: { commentary: { ...record, passed: true } } }), true)
-  assert.equal(adapterGood({ adapter: ready, adapters: { commentary: { ...record, passed: null } } }), true)
-  assert.equal(adapterGood({ adapter: ready, adapters: { commentary: { ...record, passed: false } } }), false)
-  assert.equal(adapterGood({ adapter: { ...ready, status: 'training' } }), false)
-  // another task's failed gate isn't commentary's
-  assert.equal(adapterGood({ adapter: ready, adapters: { line_check: { ...record, passed: false } } }), true)
+test('the Adapter row is green only for a recorded pass of the gate', () => {
+  const adapter = { status: 'ready' as const, kept: 31, agree: 23, total: 25, cost_measurable: false }
+  assert.equal(adapterGood({ adapter: { ...adapter, state: 'passed' } }), true)
+  // ready with no verdict, a failed gate, still collecting, or no state from core: never green
+  assert.equal(adapterGood({ adapter: { ...adapter, state: 'testing' } }), false)
+  assert.equal(adapterGood({ adapter: { ...adapter, status: 'training', state: 'collecting' } }), false)
+  assert.equal(adapterGood({ adapter }), false)
+  assert.equal(adapterGood({}), false)
 })

@@ -35,6 +35,5 @@ function adapterRow(a: TaskAdapter | undefined): string {
   ].filter(Boolean).join(', ') || 'ready'
 }
 
-// The Adapter row's green dot: a ready commentary adapter, unless Mubit's gate failed it (#222).
-export const adapterGood = (stats: Pick<Stats, 'adapter' | 'adapters'>): boolean =>
-  stats.adapter?.status === 'ready' && stats.adapters?.commentary?.passed !== false
+// The Adapter row's green dot: only a recorded pass of Mubit's gate, never one inferred from a status.
+export const adapterGood = (stats: Pick<Stats, 'adapter'>): boolean => stats.adapter?.state === 'passed'
