@@ -89,6 +89,8 @@ class Tap:
         }
 
 
+# The model saying the question back about "the viewer": spoken() only drops an echo ending in "?"
+ABOUT_VIEWER = re.compile(r"^(?:So )?[Tt]he (?:viewer|fan|user)\b")
 SENTENCE = re.compile(r"(?<=[.!?])\s+")
 
 
@@ -134,7 +136,7 @@ async def speak(ask, inner, question: str, past: list[dict], lines: list[dict]):
             buf = ready.pop()  # the sentence still being written
         for sentence in ready if not tooled else []:
             heard = commentator.spoken(sentence, words_left, ask=True)
-            if not heard:
+            if not heard or ABOUT_VIEWER.match(heard):
                 continue
             if not checked(heard, question, past, lines):
                 failed = True

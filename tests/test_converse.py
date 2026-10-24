@@ -228,3 +228,13 @@ def test_a_first_sentence_that_fails_falls_back_to_the_safe_answer(monkeypatch):
     inner = model([(0, "The Reds lead 9-0 and Player1 has 40 goals.")])
     said = asyncio.run(sentences(inner))
     assert said and "9-0" not in said[0] and "40" not in said[0]
+
+
+def test_the_question_said_back_is_not_spoken():
+    inner = model(
+        [
+            (0, "The viewer is asking who scored the first goal so far tonight. "),
+            (0, "Well, Player1 scored for the Reds."),
+        ]
+    )
+    assert asyncio.run(sentences(inner)) == ["Well, Player1 scored for the Reds."]
