@@ -35,8 +35,9 @@ export interface Turn {
   fill?: boolean // a line in a quiet stretch (#297): any other line cuts it, so a moment is never late
 }
 
-// The floor: one voice at a time, and no turn ever cuts another mid-line, a viewer's answer included. Turns wait
-// in order for the one on air to end; a big moment goes ahead of the routine ones waiting. A viewer's answer waits
+// The floor: one voice at a time. A routine turn never cuts another: turns wait in order for the one on air to
+// end. Only a big moment cuts in on a routine line (the caller fades it out, `cut` says which), and never on
+// another big one; it also goes ahead of the routine ones waiting. A viewer's answer is cut only by a decisive moment. A viewer's answer waits
 // for a gap (#139): the commentary goes on until the line on air ends with no big moment due (`bigDue`), then the
 // answer takes the floor. While the viewer talks and their answer waits, no fill line starts (#297).
 // Times are in ms on one clock.
@@ -47,11 +48,13 @@ export class Floor<T extends Turn> {
   private quietUntil = 0 // the viewer is talking: no fill line before this
   bigDue: () => boolean = () => false
   onCut: (answer: T) => void = () => {}
+  cut: T | null = null // the turn the last `take` cut off, to fade out
 
-  // A turn due at `now`: true to say it at once, false when it waits. No turn ever cuts another mid-line:
-  // everything waits its turn, in order. A big moment goes first and drops the routine turns still waiting
-  // (they would delay it); a fill line waits for nothing and is dropped when another turn is due.
+  // A turn due at `now`: true to say it at once, false when it waits. Routine turns wait in order; a big
+  // moment cuts the routine line on air (`cut`) or, if the line is big or an answer, goes first once it ends,
+  // dropping the routine turns still waiting (they would delay it); a fill line waits for nothing.
   take(item: T, now: number): boolean {
+    this.cut = null
     if (item.answer) {
       this.asked = item
       return this.gap() === item
@@ -59,6 +62,14 @@ export class Floor<T extends Turn> {
     if (item.fill && (this.asked || now < this.quietUntil)) return false
     if (this.on) {
       if (item.fill) return false
+      const on = this.on
+      if (on.answer ? item.decisive : item.big && !on.big) {
+        if (on.answer) this.onCut(on)
+        this.held = this.held.filter((h) => h.item.big)
+        this.cut = on
+        this.on = item
+        return true
+      }
       this.held = this.held.filter((h) => !h.item.fill && (!item.big || h.item.big))
       this.held.push({ item, due: now })
       return false

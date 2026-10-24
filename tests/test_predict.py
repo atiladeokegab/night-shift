@@ -61,7 +61,9 @@ def test_the_tools_see_only_the_match_so_far(sport, match_id, who):
         cut = {**pack, "tonight": [t for t in pack["tonight"] if t["idx"] <= k]}
         past = moments[: k + 1]
         said = run_tool("get_player_profile", {"name": who}, header, past)
-        assert said == predict.profile_text(cut, moments, k, who)
+        # the graph's season so far is cut at the match's date, before any moment (#374)
+        season = predict.season_text(sport, predict.find(pack, who), header["date"])
+        assert said.removesuffix(f"\n{season}") == predict.profile_text(cut, moments, k, who)
         odds = run_tool("get_next_score_odds", {}, header, past)
         assert odds == predict.odds_text(cut, moments, k)
 

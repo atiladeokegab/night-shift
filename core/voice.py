@@ -85,14 +85,8 @@ TAGS = {
     "Wicket": "[shouting]",
     "Six": "[shouting]",
     "Last ball": "[shouting]",
-    "Shot": "[excited]",
-    "Four": "[excited]",
-    "Foul Committed": "[excited]",
-    "Bad Behaviour": "[excited]",
     "Chase": "[hushed]",
     "End of game": "[shouting]",
-    "Steal": "[excited]",
-    "Free throw": "[excited]",
     "Lead change": "[shouting]",  # f1: an overtake for the lead
     "Red flag": "[shouting]",  # a crash stops the race
     "Finish": "[shouting]",
@@ -106,7 +100,7 @@ TAGS = {
 }
 
 ANSWER_TAG = "[excited]"
-ANALYST_TAG = "[thoughtful]"  # the analyst's stat lines between moments (#130) are calmer
+ANALYST_TAG = None  # the analyst's stat lines between moments (#130) read plain, like the lead's
 # What the two commentators call each other (#221): only the analyst's and reply requests carry
 # them, never the lead's recorded moment prompt
 NAMES = {"lead": "Jim", "analyst": "Julian"}
@@ -128,10 +122,48 @@ def _big_basket(m: dict) -> bool:
     )
 
 
-def tag_for(moment: dict) -> str | None:
+def _call_tag(moment: dict) -> str | None:
     if moment.get("outcome") == "Goal" or _big_basket(moment):
         return "[shouting]"
     return TAGS.get(moment.get("type"))
+
+
+def _goal_stakes(m: dict) -> str | None:
+    """A football goal from the state of the game: level, a go-ahead or a one-goal game is high, a
+    goal in a late two-goal game too; a goal that makes it three or more is medium (#378)."""
+    score = m.get("score") or {}
+    if m.get("sport") != "football" or m.get("outcome") != "Goal" or "home" not in score:
+        return None
+    margin = abs(score["home"] - score["away"])
+    try:
+        late = int(str(m.get("clock")).split(":")[0]) >= 80
+    except ValueError:
+        late = False
+    return "high" if margin <= 1 or (late and margin == 2) else "medium"
+
+
+def intensity(moment: dict) -> str:
+    """How big a moment is: the tag its call gets, and for a football goal the game's state; a stat
+    line carries its moment's (#378)."""
+    if moment.get("type") == "Stat":
+        return (moment.get("detail") or {}).get("intensity", "calm")
+    return _goal_stakes(moment) or {"[shouting]": "high", "[excited]": "medium"}.get(
+        _call_tag(moment), "calm"
+    )
+
+
+# How the pair sounds at each intensity: one tag for both voices, so they share a pitch and tone
+# like two people in one booth (#378); a big moment lifts them together.
+PAIR_TAG = {"high": "[excited]", "medium": "[warmly]", "calm": None}  # routine reads plain
+# eleven_v3 takes stability at 0 (creative), 0.5 (natural) or 1 (robust) only
+STABILITY = {"high": 0.0, "medium": 0.5, "calm": 0.5}
+
+
+def tag_for(moment: dict) -> str | None:
+    if moment.get("type") == "Stat":  # a stat line or comeback: its moment's intensity, by speaker
+        return PAIR_TAG[intensity(moment)]
+    tag = _call_tag(moment)
+    return PAIR_TAG["medium"] if tag == "[shouting]" and intensity(moment) == "medium" else tag
 
 
 def all_voices(env=os.environ) -> list[dict]:
@@ -256,6 +288,7 @@ class Speaker:
         self.jobs: dict[tuple[str, str], asyncio.Task] = {}
         self.clips: dict[tuple[str, str], Clip] = {}  # each job's audio as it streams in
         self.tags: dict[str, str | None] = {}
+        self.stability: dict[str, float] = {}
         self.slots = asyncio.Semaphore(CONCURRENCY)
         self.closed_until = 0.0  # time.monotonic() the 429 breaker lets calls through again
         # shortcut: per process; one Cloud Run instance today, a shared store if it ever runs more
@@ -308,6 +341,7 @@ class Speaker:
         """Start the line's audio in its sport's voice; `deadline` is when (time.monotonic) its
         moment plays, None to speak it as it arrives."""
         self.tags[line["line_id"]] = tag_for(moment)
+        self.stability[line["line_id"]] = STABILITY[intensity(moment)]
         if os.environ.get("ELEVENLABS_API_KEY"):
             self._job(line, voice_of(line), deadline)
 
@@ -360,6 +394,8 @@ class Speaker:
         self._trim(keep=key)
         while len(self.tags) > KEEP_JOBS * 4:  # a dropped tag only flattens a re-made line
             del self.tags[next(iter(self.tags))]
+        while len(self.stability) > KEEP_JOBS * 4:
+            del self.stability[next(iter(self.stability))]
         return job
 
     def _ended(self, key: tuple[str, str], job: asyncio.Task, clip: Clip) -> None:
@@ -394,7 +430,7 @@ class Speaker:
         if "question" in line:
             said = ANSWER_TAG
         elif line.get("speaker") == "analyst":
-            said = ANALYST_TAG
+            said = self.tags.get(line["line_id"], ANALYST_TAG)
         else:
             said = self.tags.get(line["line_id"])
         tag = said if "v3" in model else None
@@ -406,7 +442,17 @@ class Speaker:
                 for _ in range(1 if ahead else 2):  # a cold first request can time out; retry warm
                     until = min(end - FALLBACK_RESERVE_S, time.monotonic() + V3_TIMEOUT_S)
                     least = PREPARED_V3_S if ahead else 0.0
-                    audio = await self._tts(client, key, voice, model, text, until, least, clip)
+                    audio = await self._tts(
+                        client,
+                        key,
+                        voice,
+                        model,
+                        text,
+                        until,
+                        least,
+                        clip,
+                        self.stability.get(line["line_id"]),
+                    )
                     if audio:
                         await self._spent(line, model, text, clip)
                         return audio, model
@@ -435,11 +481,15 @@ class Speaker:
                 self.store.append, "voice", {**said, "model": model, "chars": len(text)}
             )
 
-    async def _tts(self, client, key, voice, model, text, until, least, clip) -> bytes | None:
+    async def _tts(
+        self, client, key, voice, model, text, until, least, clip, stability=None
+    ) -> bytes | None:
         # shortcut: every call tries the main key first, so a spent key costs one quick 401 a line
         # and credits added come back at once; remember the working key if that 401 ever matters
         for backup, k in enumerate([key, *backup_keys()]):
-            resp = await self._post(client, k, voice["eleven_id"], model, text, until, least, clip)
+            resp = await self._post(
+                client, k, voice["eleven_id"], model, text, until, least, clip, stability
+            )
             if (
                 backup
                 and resp is not None
@@ -447,7 +497,9 @@ class Speaker:
                 and voice["eleven_id"] != GEORGE
             ):
                 # a free-plan backup key can't speak library voices: once more as George
-                resp = await self._post(client, k, GEORGE, model, text, until, least, clip)
+                resp = await self._post(
+                    client, k, GEORGE, model, text, until, least, clip, stability
+                )
             if resp is None:
                 return None
             if failure(resp) != "quota_exceeded":
@@ -463,7 +515,7 @@ class Speaker:
         return b"".join(clip.chunks)
 
     async def _post(
-        self, client, key, eleven_id, model, text, until, least, clip
+        self, client, key, eleven_id, model, text, until, least, clip, stability=None
     ) -> httpx.Response | None:
         """One TTS call, streamed into `clip` chunk by chunk; the response, read only when it
         failed (failure() reads its body), or None when it timed out or the network failed."""
@@ -484,7 +536,15 @@ class Speaker:
                         TTS_URL.format(voice=eleven_id) + "/stream",
                         params={"output_format": "mp3_44100_128"},
                         headers={"xi-api-key": key, "accept": "audio/mpeg"},
-                        json={"text": text, "model_id": model},
+                        json={
+                            "text": text,
+                            "model_id": model,
+                            **(
+                                {"voice_settings": {"stability": stability}}
+                                if stability is not None and "v3" in model
+                                else {}
+                            ),
+                        },
                         timeout=V3_TIMEOUT_S,
                     ) as resp,
                 ):
