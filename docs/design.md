@@ -103,7 +103,7 @@ voice speaks. Cards lift 3px on hover and their artwork scales 3.5% over 1.2s. S
   legible (from the bottom on phones, with the text at the bottom).
 - **Live, desktop (over 1100px).** The highlights fill the first screen edge to edge. Over them: the
   nav; the score bar top left with the ON AIR pill at the right of the same row; the moment tag and
-  subtitle centred over the lower third; the dock (Fixtures, sport switch, voice) under it; the video
+  subtitle centred over the lower third; the dock (Wall, sport switch, voice) under it; the video
   timeline at the very bottom. The Lines and Proof cards stand in a 384px glass column on the right,
   over the video. A dark wash at the top and bottom keeps the overlays legible.
 - **Live, tablet (760 to 1100px).** The stage is 74% of the screen height; Lines and Proof sit under it
@@ -124,7 +124,7 @@ voice speaks. Cards lift 3px on hover and their artwork scales 3.5% over 1.2s. S
 | Score bar | Team colour bars and codes, the score, the clock (football "69:01" and the half; cricket "Over 19.4", "need 6 off 3" in an amber chip, with both teams' totals at the same weight: "IND 154/5 PAK 159/8"), "REPLAY" | Updates with each moment |
 | ON AIR pill | Red dot, "ON AIR", four amber bars, the voice ("British commentator") | Dot and bars move only while speaking; "VOICE OFF" or "VOICE UNAVAILABLE" otherwise |
 | Subtitle | Over a soft dark scrim so it never sits on the players: the moment tag ("28:29 · Goal", "Over 19.4 · No-ball · Six") above the line in large type | Replaced by the next moment's line; a fixed line turns `--fix` with a "Fixed" tag |
-| Dock | "← Fixtures", the Football / Cricket switch, "Voice: British" | The switch starts the other demo match; Voice opens the voice setting |
+| Dock | "← Wall", the Football / Cricket switch, "Voice: British" | The switch starts the other demo match; Voice opens the voice setting |
 | Timeline | "Broadcast highlights · YouTube · muted", the progress track with a marker per mapped moment (amber once called), a small "Synced to video" chip, "3:05 / 4:56" | Read only |
 | Lines card | Every line so far, newest first: clock, line, first-word time, "Fix". Sized to its content; the oldest line fades out at the bottom rather than being cut | "Fix" opens the producer fix |
 | Proof card | First word p50 and p95, cost per line, lines, fixes, the adapter's result | Read only |
@@ -185,7 +185,7 @@ flowchart LR
 | Moment tag | "<clock> · <moment>": "Goal", "Penalty", "Off the woodwork", "Stoppage", "Six", "Wicket", "No-ball · Six", "India win" |
 | ON AIR pill | "ON AIR" and "<voice> commentator"; "VOICE OFF" and "Subtitles only"; "VOICE UNAVAILABLE" and "Subtitles carry on" |
 | Timeline caption | "Broadcast highlights · YouTube · muted" |
-| Dock | "← Fixtures", "Football", "Cricket", "Voice: <British, Indian, Australian, Off or Unavailable>" |
+| Dock | "← Wall", "Football", "Cricket", "Voice: <British, Indian, Australian, Off or Unavailable>" |
 | Voice setting | "Commentator voice" / "Each line is spoken in this voice. A change applies from the next line, without reloading." / "Voice" / "Football", "Cricket" / "British", "Indian", "Australian" / "Default" / "Done" |
 | Voice toast | "<voice> commentator from the next line." |
 | Lines card | "Lines", "<n> called", "Fix", "first word 0.58 s", "Fixed", "Rejected" |
