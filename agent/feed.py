@@ -34,6 +34,7 @@ DEMO = {
     ("football", "3869685"),
     ("football", "3913122"),  # Brighton v Bristol City, WSL 2024: the long tail
     ("football", "7457"),  # Orlando Pride 3-4 North Carolina Courage, NWSL 2018: a whole match
+    ("cricket", "1515217"),  # Netherlands v Nepal, Women's T20 World Cup Qualifier 2026: whole
     ("basketball", "0049700088"),  # Jordan, 1998 Finals Game 6
     ("basketball", "0020500591"),  # Kobe's 81 v Toronto
     ("f1", "9636"),  # Verstappen, 2024 São Paulo Grand Prix
