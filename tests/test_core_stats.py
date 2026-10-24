@@ -28,6 +28,12 @@ def test_cost_per_line_is_tokens_times_list_price(tmp_path):
     assert stats(store)["cost_per_line_usd"] == pytest.approx(0.0022)
 
 
+def test_the_analysts_sonnet_lines_are_priced(tmp_path):
+    store = Store(tmp_path)
+    store.append("lines", line(1, model="claude-sonnet-5-5", tokens_in=1000, tokens_out=20))
+    assert stats(store)["cost_per_line_usd"] == pytest.approx(0.0022)  # 0.002 + 0.0002
+
+
 def test_lines_from_an_unpriced_model_are_left_out_of_cost(tmp_path):
     store = Store(tmp_path)
     store.append("lines", line(1, tokens_in=1000, tokens_out=20))

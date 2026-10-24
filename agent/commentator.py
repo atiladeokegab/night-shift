@@ -28,6 +28,9 @@ TOOLS = json.loads((AGENT / "tools.json").read_text(encoding="utf-8"))
 ASK_TOOLS = TOOLS + json.loads((AGENT / "ask_tools.json").read_text(encoding="utf-8"))
 TOOL_CHOICE = {"type": "auto"}
 MODEL = "claude-haiku-4-5"
+ANALYST_MODEL = (
+    "claude-sonnet-5-5"  # the stat lines, unrecorded: Haiku slipped on their facts in probe 7
+)
 MAX_TOKENS = 100
 MUBIT_URL = "https://api.mubit.ai/anthropic"
 log = logging.getLogger(__name__)
@@ -125,7 +128,7 @@ def build_request(header: dict, past: list[dict]) -> dict:
     if past[-1]["type"] == "Stat":
         request["system"] = ANALYST
         # unrecorded, so its model is free to differ from the lines' (one Mubit task)
-        request["model"] = os.environ.get("ANALYST_MODEL") or MODEL
+        request["model"] = os.environ.get("ANALYST_MODEL") or ANALYST_MODEL
         del request["tools"], request["tool_choice"]
     return request
 
