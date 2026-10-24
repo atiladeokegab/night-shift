@@ -555,6 +555,33 @@ def talks_to_itself(text: str) -> bool:
     return bool(SELF_TALK.search(text))
 
 
+LEADS = (  # a claim that a team is in front now; "led" and questions are no claim
+    r"\s+(?:(?:are|is|now|still|back|again)\s+){0,2}"
+    r"(?:(?:take|takes|retake|retakes|regain|regains|reclaim|reclaims)\s+(?:the|a)\s+lead"
+    r"|leads?|go ahead|goes ahead|ahead|in front)\b"
+)
+
+
+def _false_lead(text: str, m: dict, header: dict) -> list[str]:
+    """Each team a line says leads, when it doesn't: "Chicago Bulls take the lead" at 85-86."""
+    from data.matches import leader
+
+    side = {}
+    for s in ("home", "away"):
+        name = header[s].split()
+        for n in (header[s], name[-1], " ".join(name[:-1])):
+            if n:
+                side[n.lower()] = s
+    names = "|".join(re.escape(n) for n in sorted(side, key=len, reverse=True))
+    claims = {
+        side[c.lower()]
+        for sentence in re.split(r"(?<=[.!?])\s+", text)
+        if not sentence.rstrip().endswith("?")
+        for c in re.findall(rf"\b({names}){LEADS}", sentence, re.I)
+    }
+    return [f"{header[s]} do not lead" for s in sorted(claims) if s != leader(m)]
+
+
 def wrong_numbers(
     text: str, m: dict, header: dict | None = None, past: list[dict] = ()
 ) -> list[str]:
@@ -571,6 +598,8 @@ def wrong_numbers(
     wrong = [f"{n:g} is not in the moment" for n in heard if n not in given]
     if talks_to_itself(text):
         wrong.append("the line talks to itself")
+    if "home" in s and header:
+        wrong += _false_lead(text, m, header)
     if "milestone" in d and not set(numbers(d["milestone"])) & set(numbers(text)):
         wrong.append(f"the milestone is unsaid: {d['milestone']}")
     if m.get("sport") == "cricket":

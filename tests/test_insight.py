@@ -306,7 +306,7 @@ def test_a_dropped_analyst_line_hands_its_slot_to_the_next_kind_once(tmp_path):
     assert per_stretch and set(per_stretch.values()) == {2}
 
 
-GOAL = "GOAL! Cole Palmer slots it home, and Chelsea lead 1-0!"
+GOAL = "GOAL! Cole Palmer slots it home, and it's 1-0!"  # Chelsea never lead this game
 
 
 def test_the_analyst_never_restates_the_leads_call(tmp_path):
@@ -320,13 +320,13 @@ def test_the_analyst_never_restates_the_leads_call(tmp_path):
             return {
                 "line_id": uuid.uuid4().hex,
                 "moment_idx": moment["idx"],
-                "text": "Palmer scores, and Chelsea lead 1-0.",
+                "text": "Palmer scores, and it's 1-0.",
             }
         return commentator.commentate(moment, history, provider=fake)
 
     store = Store(tmp_path)
     lines, _ = replay(CHELSEA, store, calls=calls)
-    assert opened and all(ln["text"] != "Palmer scores, and Chelsea lead 1-0." for ln in lines)
+    assert opened and all(ln["text"] != "Palmer scores, and it's 1-0." for ln in lines)
     assert [ln["text"] for ln in store.all("lines")] == [ln["text"] for ln in lines]
     # a moment's own line is always said (where 1-0 is the wrong score, the number check's)
     assert sum(not gap(ln) for ln in lines) == len(video_map(CHELSEA)["moments"])
@@ -336,7 +336,7 @@ def test_the_analyst_never_restates_the_leads_call(tmp_path):
 @pytest.mark.parametrize(
     ("line", "repeat"),
     [
-        ("Palmer scores, and Chelsea lead 1-0.", True),
+        ("Palmer scores, and it's 1-0.", True),
         ("Palmer finds the net, Chelsea 1-0 up.", True),
         (GOAL, True),
         ("Cole Palmer this season before tonight: 5 goals from 20 shots.", False),
