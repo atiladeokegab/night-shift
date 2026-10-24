@@ -17,6 +17,7 @@ import httpx
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
+from agent import commentator
 from core import insight
 from core.guard import OFF_TODAY, client_ip
 from core.replay import OFF_AIR
@@ -57,6 +58,106 @@ def question_of(messages: list[dict]) -> str:
     return f"{question} (you had just said: {before[:BEFORE_CHARS]})" if before else question
 
 
+class Tap:
+    """A provider that hands each piece of text to `on_text` as the model writes it, and `on_tool`
+    when it asks for a tool, then returns the whole reply as the Ask path expects. One without a
+    streaming client (the offline FakeProvider) gives its text in one piece when done."""
+
+    def __init__(self, inner, on_text, on_tool):
+        self.inner, self.on_text, self.on_tool = inner, on_text, on_tool
+
+    def call(self, request: dict) -> dict:
+        client = getattr(self.inner, "client", None)
+        if client is None:
+            reply = self.inner.call(request)
+            self.on_text(" ".join(b["text"] for b in reply["content"] if b["type"] == "text"))
+            return reply
+        with client.messages.stream(**request) as stream:
+            for event in stream:
+                if event.type == "text":
+                    self.on_text(event.text)
+                elif event.type == "content_block_start" and event.content_block.type == "tool_use":
+                    self.on_tool()
+            msg = stream.get_final_message()
+        return {
+            "content": [commentator._block(b) for b in msg.content],
+            "usage": {
+                "input_tokens": msg.usage.input_tokens,
+                "output_tokens": msg.usage.output_tokens,
+            },
+            "request_id": None,
+        }
+
+
+SENTENCE = re.compile(r"(?<=[.!?])\s+")
+
+
+def checked(text: str, question: str, past: list[dict], lines: list[dict]) -> bool:
+    """Ask's number and claim checks on a piece of an answer."""
+    one = {"text": text}
+    return not (
+        insight.wrong_answer(one, question, past, lines)
+        + insight.wrong_claims(text, past, question)
+    )
+
+
+async def speak(ask, inner, question: str, past: list[dict], lines: list[dict]):
+    """The answer's sentences, each as soon as the model has written it and Ask's checks pass it.
+    A sentence that fails stops the answer there; if nothing was said yet (or a tool was used, so
+    the checks need its output) the whole answer goes through `insight.checked_answer`."""
+    loop = asyncio.get_running_loop()
+    pieces = asyncio.Queue()
+
+    def put(kind, value=None):
+        loop.call_soon_threadsafe(pieces.put_nowait, (kind, value))
+
+    tap = Tap(inner, lambda t: put("text", t), lambda: put("tool"))
+
+    def work():
+        try:
+            return ask(question, past, lines, provider=tap)
+        finally:
+            put("end")
+
+    task = asyncio.create_task(asyncio.to_thread(work))
+    buf, said, words_left, tooled, failed = "", [], commentator.ANSWER_WORDS, False, False
+    while not failed:
+        kind, value = await pieces.get()
+        if kind == "tool":
+            tooled = True
+        elif kind == "text":
+            buf += value
+        ready = SENTENCE.split(buf)
+        if kind == "end":
+            ready, buf = [r for r in ready if r.strip()], ""
+        else:
+            buf = ready.pop()  # the sentence still being written
+        for sentence in ready if not tooled else []:
+            heard = commentator.spoken(sentence, words_left, ask=True)
+            if not heard:
+                continue
+            if not checked(heard, question, past, lines):
+                failed = True
+                break
+            words_left -= len(heard.split())
+            said.append(heard)
+            yield heard
+            if words_left <= 0:
+                failed = True  # the answer's length: the rest is not said
+                break
+        if kind == "end":
+            break
+    if said:
+        return
+    try:
+        await task
+    except Exception:  # the calm off-air line, never the provider's error
+        yield OFF_AIR
+        return
+    safe = await asyncio.to_thread(insight.checked_answer, ask, question, past, lines)
+    yield safe["text"] if safe else OFF_AIR
+
+
 def chunk(cid: str, delta: dict, finish: str | None = None) -> str:
     body = {
         "id": cid,
@@ -74,6 +175,18 @@ def sse(text: str):
     parts = text.split(" ")  # word by word, each with the space after it, so speech starts at once
     for i, part in enumerate(parts):
         yield chunk(cid, {"content": part + (" " if i < len(parts) - 1 else "")})
+    yield chunk(cid, {}, "stop")
+    yield "data: [DONE]\n\n"
+
+
+async def sse_of(sentences):
+    """The chat.completion.chunk stream for sentences as they come."""
+    cid = f"chatcmpl-{uuid.uuid4().hex}"
+    yield chunk(cid, {"role": "assistant"})
+    first = True
+    async for sentence in sentences:
+        yield chunk(cid, {"content": ("" if first else " ") + sentence})
+        first = False
     yield chunk(cid, {}, "stop")
     yield "data: [DONE]\n\n"
 
@@ -142,8 +255,14 @@ def converse_router(*, need_deps, viewed, asked_so_far, guard, store, env=os.env
         d = need_deps()
         replay = viewed(held["replay_id"])
         past, lines = asked_so_far(replay, d.load_moments(replay.match_id), held["moment_idx"])
+        question = question_of(messages)
+        if question and body.get("stream", True) and d.ask:
+            if await asyncio.to_thread(guard.off_air, store):
+                return StreamingResponse(sse(OFF_TODAY), media_type="text/event-stream")
+            said = speak(d.ask, commentator.unrecorded_provider(), question, past, lines)
+            return StreamingResponse(sse_of(said), media_type="text/event-stream")
         text = OFF_AIR
-        if question := question_of(messages):
+        if question:
             try:
                 if await asyncio.to_thread(guard.off_air, store):
                     text = OFF_TODAY
