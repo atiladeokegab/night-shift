@@ -494,6 +494,9 @@ class FakeProvider:
         asked = "\nViewer question: " in text
         if isinstance(said, str) and said.startswith("Producer correction"):
             content = [{"type": "text", "text": said.split(": ", 1)[1]}]
+        elif "Who leads" in fields:  # "Where are we?" (agent/status.py): the data read back
+            text = f"{fields['Moment']}. {fields['Score']}. {fields['Who leads']}."
+            content = [{"type": "text", "text": text}]
         elif asked:  # a viewer's question: the score in the request, so a spoiler would show
             score = fields.get("Score after this moment")
             content = [{"type": "text", "text": f"So far, {score}."}]
