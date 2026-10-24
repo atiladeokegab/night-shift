@@ -217,8 +217,9 @@ wicket, hushed for the build-up ([`core/voice.py`](core/voice.py), [docs/voice.m
 
 The lead calls each big moment. In the quiet stretches between them, an analyst fills the gap with a
 stat line built only from the pre-match pack and the match so far, in a calmer second voice. The
-two take turns, up to three lines a stretch: the analyst's stat, the lead coming back to it, then
-another stat ([`core/insight.py`](core/insight.py) `PER_GAP`). Stat lines are stored and reused
+two take turns until the next moment (#297): the analyst's stat, the lead coming back to it, then
+the next stat, each line one that ends before the moment ([`core/insight.py`](core/insight.py)
+`Gaps.line`). Stat lines are stored and reused
 by later replays of the same match.
 
 Since #142 the analyst has its own prompt ([`agent/analyst.md`](agent/analyst.md)) with the stat
