@@ -50,10 +50,11 @@ and refuses to start without `STORE_URL=gs://bucket/prefix`.
   `{...that moment, type: "Stat", outcome: "<kind>: <detail>", players: {}, detail: {speaker,
   "Partner just said": <last line>}}` with the same `idx` (a reply's outcome is "the lead answers the
   analyst, who just said: <last line>"). Its request is a line's message with the analyst's own
-  system prompt (agent/analyst.md), no tools, never recorded. An **insight** (`speaker:
+  system prompt (agent/analyst.md), no tools, never recorded, on `ANALYST_MODEL` (default the line
+  model; a model outside core/stats.py's prices is left out of the cost). An **insight** (`speaker:
   "analyst"`) carries `insight: {match_id, after_idx, n, kind, detail, heard}`, where `kind` is
   `"player profile"`, `"next to score"`, `"tally"`, `"score story"`, `"momentum"` or `"positions"`
-  and `detail` is the stat, built only from moments up to `after_idx` and the pre-match pack. Every
+  and `detail` is one short fact (a profile, odds or positions give one fact per insight), built only from moments up to `after_idx` and the pre-match pack. Every
   4th line in a stretch is a **reply** (`speaker: "lead"`, `reply: {..., kind: "reply"}`, no stat).
   Both are cached per (match_id, after_idx, n, v: 2) and reused by later replays; a replay makes at
   most 160 new insight and reply calls. A fix on either goes back, unrecorded, with that line's own
