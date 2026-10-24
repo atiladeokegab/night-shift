@@ -81,13 +81,18 @@ class Tap:
                 elif event.type == "content_block_start" and event.content_block.type == "tool_use":
                     self.on_tool()
             msg = stream.get_final_message()
+            headers = getattr(getattr(stream, "response", None), "headers", {})
+        request_id = next(
+            (value for key, value in headers.items() if key.lower() == "x-middleware-request-id"),
+            None,
+        )
         return {
             "content": [commentator._block(b) for b in msg.content],
             "usage": {
                 "input_tokens": msg.usage.input_tokens,
                 "output_tokens": msg.usage.output_tokens,
             },
-            "request_id": None,
+            "request_id": request_id,
         }
 
 
@@ -322,6 +327,7 @@ def converse_router(*, need_deps, viewed, asked_so_far, guard, store, env=os.env
 
         def record(made: dict) -> None:  # as Ask stores its answer: its tokens count in spent_today
             store.append("answers", {**made, "replay_id": held["replay_id"]})
+            guard._spent = None
 
         ask = counted(d.ask, record)
         if body.get("stream", True):

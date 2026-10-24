@@ -166,6 +166,30 @@ test('a decisive moment cuts the answer on air; a big one that is not decisive w
   assert.deepEqual(cut, ['answer'])
 })
 
+test('a decisive moment supersedes an older big turn waiting behind the answer it cuts', () => {
+  const floor = new Floor<Said>()
+  const answer: Said = { id: 'answer', speaker: 'analyst', answer: true }
+  const oldBig: Said = { id: 'older basket', speaker: 'lead', big: true }
+  const goal: Said = { id: 'current goal', speaker: 'lead', big: true, decisive: true }
+  assert.equal(floor.take(answer, 0), true)
+  assert.equal(floor.take(oldBig, 100), false)
+  assert.equal(floor.take(goal, 6001), true)
+  assert.equal(floor.cut, answer)
+  assert.equal(floor.ended(answer, 6100), null) // its late audio callback cannot replace the goal
+  assert.equal(floor.ended(goal, 7000), null) // the superseded basket is not played after the goal
+})
+
+test('a nondecisive big turn still waits for the answer and then plays in order', () => {
+  const floor = new Floor<Said>()
+  const answer: Said = { id: 'answer', speaker: 'analyst', answer: true }
+  const basket: Said = { id: 'basket', speaker: 'lead', big: true }
+  assert.equal(floor.take(answer, 0), true)
+  assert.equal(floor.take(basket, 100), false)
+  assert.equal(floor.cut, null)
+  assert.equal(floor.ended(answer, 200), basket)
+  assert.equal(floor.ended(basket, 300), null)
+})
+
 test('a goal, a wicket, a lead change and the final whistle are decisive; a basket or a six is not', () => {
   assert.equal(isDecisive({ type: 'Shot', outcome: 'Goal' }), true)
   assert.equal(isDecisive({ type: 'Own Goal Against', outcome: 'Own goal' }), true)
