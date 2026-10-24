@@ -5,7 +5,7 @@ import { expect, test, type Page } from '@playwright/test'
 // or the live screen, every control is a 44 px target, and a keyboard alone starts a match and asks a question.
 
 const WIDTHS = [390, 1280]
-const KOBE = /Kobe's 81/
+const KOBE = /^Basketball ?Kobe's 81/ // the tile, never its Jump pill
 
 // Every utterance the page starts: the browser's speech and any audio element (ElevenLabs lines).
 async function listen(page: Page) {
@@ -77,7 +77,7 @@ test('keyboard only: Tab to Kobe, Enter, it is called aloud; Tab to Ask, Enter, 
   await expect(page.getByRole('button', { name: KOBE })).toBeVisible()
   const focused = () => page.evaluate(() => {
     const el = document.activeElement as HTMLElement | null
-    return el ? `${el.id} ${el.getAttribute('aria-label') ?? ''} ${el.textContent ?? ''}` : ''
+    return el ? `${el.id} ${el.getAttribute('aria-label') ?? ''} ${el.textContent ?? ''}`.trim() : ''
   })
   const tabTo = async (to: RegExp) => {
     for (let i = 0; i < 40; i++) {
@@ -97,7 +97,7 @@ test('keyboard only: Tab to Kobe, Enter, it is called aloud; Tab to Ask, Enter, 
   // A line on the caption is heard, never announced over the voice.
   await expect(page.getByRole('region', { name: 'Caption' })).toHaveAttribute('aria-live', 'off')
 
-  await tabTo(/^ask-q /)
+  await tabTo(/^ask-q\b/)
   const before = (await said(page)).length
   await page.keyboard.type('How many points has Kobe got?')
   await page.keyboard.press('Enter')

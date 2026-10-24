@@ -452,6 +452,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 :is(.wordmark, .links button, .seg button, .ctl, .btn.sm, .pickbar .btn, .tabs button)::after {
   content: ""; position: absolute; inset: min(0px, calc(50% - 22px));
 }
+.tile-yt::after { content: ""; position: absolute; inset: min(0px, calc(50% - 22px)); } /* already absolute, on the tile */
 .scrub input { inset: -4px 0; height: auto; }
 .controls .vol { height: 44px; }
 .ask input, .ask .btn.sm { height: 44px; }
