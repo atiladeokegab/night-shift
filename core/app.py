@@ -181,7 +181,8 @@ def create_app(
         if jump is not None and not any(m["idx"] == jump for m in moments):
             raise HTTPException(422, f"no moment {jump} in {req.match_id!r}")
         commentate, speak, correct = d.commentate, speaker.prepare, d.correct
-        linecheck = d.linecheck and checked_under_cap(d.linecheck)
+        # the deploy's live smoke stays cheap: no second opinion
+        linecheck = checked_under_cap(d.linecheck) if d.linecheck and not req.smoke else None
         if d.fixes:  # a fix applies to the next lines straight away, this replay's too
             commentate = with_fixes(d.commentate, store)
         # shortcut: the cap is checked only as a replay starts, so a running replay can overshoot

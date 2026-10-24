@@ -103,15 +103,17 @@ def check(header: dict, m: dict, past: list[dict], text: str, provider) -> dict:
     }
 
 
-def live_check(line: dict, m: dict, past: list[dict]) -> dict:
+def live_check(line: dict, m: dict, past: list[dict]) -> dict | None:
     """`check` as the replay runs it: recorded as MUBIT_RECORD says, but a held-out match's line
-    never, so the test set never trains the adapter."""
-    from agent.commentator import default_provider, unrecorded_provider
+    never, so the test set never trains the adapter. None, and no call, offline (no key)."""
+    from agent.commentator import FakeProvider, default_provider, unrecorded_provider
     from data.matches import match_header
     from eval.linecheck import HELD_OUT
 
     held = line["match_id"] in HELD_OUT
     provider = unrecorded_provider() if held else default_provider()
+    if isinstance(provider, FakeProvider):
+        return None
     return check(match_header(line["match_id"]), m, past, line["text"], provider)
 
 
