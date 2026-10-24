@@ -1,6 +1,6 @@
 # Contract
 
-Written by the lead's agent from the day spec (`~/hub/projects/night-shift/day-spec.md`). Every area
+Written by the lead from the day's spec. Every area
 builds against it; only the lead changes it (anything else is a change-request, AGENTS.md §6).
 
 ## Assignment
@@ -8,7 +8,7 @@ builds against it; only the lead changes it (anything else is a change-request, 
 "Build a product that routes its LLM calls through Mubit and turns your corrections into model
 updates for a recurring task." Track: Own your intelligence layer.
 
-Demo: Kobe Bryant's 81 against Toronto (2006) replays and Night Shift calls it aloud, the first word of text in
+Demo: Kobe Bryant's 81 against Toronto (2006) replays and Touchline calls it aloud, the first word of text in
 about 0.5 s (median), the producer fixes one wrong line, the big model's recorded lines are shown
 where our trained commentator's will go (6 versions trained, none has passed Mubit's test yet, best
 55.8%, and the app does not call an adapter), then one tap switches to India v Pakistan 2022 and the same commentator calls cricket.
@@ -170,6 +170,11 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   404 for an unknown line or voice; 503 with no `ELEVENLABS_API_KEY` or every attempt failed,
   and the page then uses browser speech. The key never reaches the browser; each call logs
   `voice line=<id> first_byte_ms=<n> model=<model>`. (core)
+- `GET /review` → `[{line_id, match_id, match, sport, moment_idx, clock, period, score, play, text,
+  wrong, later_check, lines, others}]`, newest first: the producer's fix queue, one entry per
+  mistake among the stored lead lines the number check flags, unfixed (`wrong` is the check's
+  reasons). Grouping and `later_check` are under `GET /stats` → `autonomy` below. (core,
+  `core/review.py`)
 - `GET /stats` → `{lines, fixes, mubit_requests, first_word_ms_p50, first_word_ms_p95,
   latency_ms_p50, latency_ms_p95, tokens_in, tokens_out, cost_per_line_usd, adapter, by_speaker,
   fixes_recorded, fixes_toward_next, voice_chars, matches_measured, cost_per_match_usd,
@@ -249,5 +254,5 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
 ## Check
 
 `make check` (ruff, ruff format, pytest) and `make smoke` (check, then an offline replay of each
-sample match through the app with `FakeProvider`). Contract tests: `tests/acceptance/test_A_2_*.py`,
+sample match through the app with `FakeProvider`). Contract tests:
 `tests/test_core_spine.py`.

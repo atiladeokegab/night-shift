@@ -54,7 +54,9 @@ type VideoMatch = Pick<Match, 'youtube_id' | 'video_start' | 'embed'>
 
 // A match plays its highlights here only when it has a video and the video's owner allows embedding.
 export const embeds = (m: VideoMatch): boolean => !!m.youtube_id && m.embed !== false
-export const posterUrl = (youtubeId: string) => `https://i.ytimg.com/vi/${encodeURIComponent(youtubeId)}/hqdefault.jpg`
+// hqdefault exists for every video; maxresdefault (1280 wide) only for HD uploads, so only the hero asks for it
+export const posterUrl = (youtubeId: string, size: 'hqdefault' | 'maxresdefault' = 'hqdefault') =>
+  `https://i.ytimg.com/vi/${encodeURIComponent(youtubeId)}/${size}.jpg`
 // A blocked video on YouTube itself, from just before its first mapped moment.
 export const watchUrl = (m: VideoMatch) =>
   `https://www.youtube.com/watch?v=${encodeURIComponent(m.youtube_id ?? '')}&t=${Math.floor(m.video_start ?? 0)}s`

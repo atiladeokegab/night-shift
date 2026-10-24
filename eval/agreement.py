@@ -1,6 +1,6 @@
 """Does the trained adapter call a moment the way the big model does? Held-out matches only (A-8.1).
 
-    set -a; . ~/private/night-shift/mubit.env; set +a
+    export MUBIT_API_KEY=...  # the owner's key, which records
     MUBIT_ADAPTER_MODEL=<the adapter's model name in Mubit> uv run python -m eval.agreement
 
 The adapter is tested only when it can be: the latest adapter record in the store says ready

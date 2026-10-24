@@ -1,6 +1,6 @@
 # Night Shift: Mubit Hackathon, London
 
-A live AI commentator for matches nobody calls. An agent with tools turns a real match event feed into one spoken line per key moment, with the first word of text in about 0.5 s (median); producers fix wrong lines, every call and fix goes through Mubit, and Mubit trains a small commentator model on the recorded calls: 6 versions trained, none has passed Mubit's test yet (best 55.8%), and the app does not call an adapter. Track: Own your intelligence layer.
+Touchline: the describer that checks itself, for the matches a platform streams with nobody describing them. An agent with tools turns a real match event feed into one spoken line per key moment, with the first word of text in about 0.5 s (median); producers fix wrong lines, every call and fix goes through Mubit, and Mubit trains a small commentator model on the recorded calls: 6 versions trained, none has passed Mubit's test yet (best 55.8%), and the app does not call an adapter. Track: Own your intelligence layer.
 
 Official rules: https://luma.com/nightshift-london
 
@@ -34,5 +34,3 @@ date, so this UTC column is the clock, never the milestone.
 |---|---|---|---|
 | Atilade | @atiladeokegab | lead, designer, electronic engineering, IBM Z/COBOL, AI agents, product |  |
 | Persia | @PersiaF04 | full stack engineer |  |
-
-The lead's agents: Zeus, Prometheus, Hermes. When this page or a review says "the lead", it may be one of them acting for the lead.

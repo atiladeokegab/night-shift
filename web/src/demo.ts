@@ -54,8 +54,7 @@ export function streamDemo(matchId: string, onEvent: (e: StreamEvent) => void): 
   return () => timers.forEach(clearTimeout)
 }
 
-// Stats for the demo feed: every demo line takes 600 ms; cost and the adapter stay unknown,
-// as they are on the real server until #29 lands.
+// Stats for the demo feed: every demo line takes 600 ms; cost and the adapter stay unknown in demo mode.
 export function demoStats(lines = 0): Stats {
   const ms = lines ? 600 : null
   return {

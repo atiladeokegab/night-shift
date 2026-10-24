@@ -86,7 +86,7 @@ done
 grant gcloud iam service-accounts add-iam-policy-binding "$RUNTIME" "${P[@]}" \
   --member "serviceAccount:$DEPLOYER" --role roles/iam.serviceAccountUser
 
-# Whoever runs deploy.sh (a person, or the hub VM's service account) may impersonate the deployer.
+# Whoever runs deploy.sh (a person, or a service account) may impersonate the deployer.
 case "$DEPLOY_AS" in
   *.gserviceaccount.com) member="serviceAccount:$DEPLOY_AS" ;;
   *) member="user:$DEPLOY_AS" ;;

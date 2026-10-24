@@ -1,4 +1,4 @@
-"""#162: the mock judges' wrong climax lines. Each moment states its chase or milestone, a lead line
+"""#162: wrong climax lines heard in testing. Each moment states its chase or milestone, a lead line
 whose numbers don't match its moment is said again once and then built from the moment's data,
 and the analyst says at most two lines a gap."""
 
@@ -15,8 +15,8 @@ from data.matches import list_matches, load_moments, match_header, video_map
 
 CRICKET, KOBE, JORDAN = "1298150", "0020500591", "0049700088"
 
-# (match, moment idx, what a judge heard, a right line for the same moment)
-JUDGED = [
+# (match, moment idx, the wrong line heard, a right line for the same moment)
+HEARD_WRONG = [
     (
         CRICKET,
         53,
@@ -76,8 +76,8 @@ def before(match_id, idx):
     return [m for m in load_moments(match_id) if m["idx"] < idx]
 
 
-@pytest.mark.parametrize(("match_id", "idx", "heard", "right"), JUDGED)
-def test_each_judged_line_is_wrong_and_its_fix_is_right(match_id, idx, heard, right):
+@pytest.mark.parametrize(("match_id", "idx", "heard", "right"), HEARD_WRONG)
+def test_each_wrong_line_is_flagged_and_its_fix_passes(match_id, idx, heard, right):
     m, past = moment(match_id, idx), before(match_id, idx)
     assert insight.wrong_numbers(heard, m, match_header(match_id), past)
     assert insight.wrong_numbers(right, m, match_header(match_id), past) == []
@@ -228,12 +228,12 @@ def test_every_moments_fallback_line_passes_its_own_check():
             assert insight.wrong_numbers(text, m, header) == [], (match["match_id"], m["idx"], text)
 
 
-def test_a_replay_never_says_a_judged_line(tmp_path):
-    wrong = {(mid, idx): heard for mid, idx, heard, _ in JUDGED}
+def test_a_replay_never_says_a_line_heard_wrong(tmp_path):
+    wrong = {(mid, idx): heard for mid, idx, heard, _ in HEARD_WRONG}
     for match_id in (CRICKET, KOBE):
 
         def commentate(m, history, match_id=match_id):
-            # a Stat moment carries the idx it follows: only the moment's own line is judged
+            # a Stat moment carries the idx it follows: only the moment's own line is checked
             key = (match_id, m["idx"]) if m["type"] != "Stat" else None
             text = wrong.get(key, f"{m['type']} {uuid.uuid4().hex}")
             return {"line_id": uuid.uuid4().hex, "moment_idx": m["idx"], "text": text}
@@ -283,7 +283,7 @@ def auto_fixed(tmp_path, texts):
     return sent, store
 
 
-WRONG_80, RIGHT_80 = JUDGED[4][2], JUDGED[4][3]
+WRONG_80, RIGHT_80 = HEARD_WRONG[4][2], HEARD_WRONG[4][3]
 
 
 def test_a_rejected_first_try_is_corrected_once_to_the_kept_line(tmp_path):
