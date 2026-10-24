@@ -443,3 +443,21 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .following { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; padding: 8px 8px 8px 12px; border-radius: 10px;
   border: 1px solid rgba(255, 181, 71, .35); background: rgba(255, 181, 71, .08); font-size: .88rem; color: var(--muted); }
 .following b { color: var(--fg); font-weight: 600; }
+
+/* #170: every control is a 44 px target (WCAG 2.5.5) without moving anything: the small ones get an
+   invisible hit area around them, and the range inputs fill the 48 px controls bar. */
+:is(.wordmark, .links button, .seg button, .ctl, .btn.sm, .pickbar .btn, .tabs button) { position: relative; }
+:is(.wordmark, .links button, .seg button, .ctl, .btn.sm, .pickbar .btn, .tabs button)::after {
+  content: ""; position: absolute; inset: min(0px, calc(50% - 22px));
+}
+.scrub input { inset: -4px 0; height: auto; }
+.controls .vol { height: 44px; }
+.ask input, .ask .btn.sm { height: 44px; }
+.log { padding-top: 8px; margin-top: -8px; } /* room inside the scroller for the first row's Fix target */
+@media (max-width: 760px) {
+  /* The sport tabs scroll sideways, which clips anything around them, and the controls sit flush on the
+     card's edge: both take 44 px for real, in the same bar height for the controls. */
+  .seg button { height: 44px; }
+  .controls { padding-block: 0; }
+  .ctl { width: 44px; height: 44px; }
+}

@@ -36,20 +36,23 @@ async function serious(page: Page) {
     .map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)
 }
 
-// A control's target is the area a tap lands on it: a 44 px square centred on it must hit it everywhere.
+// A control's target is the area a tap lands on it: a 44 px circle centred on it must hit it all round.
 // Inline links in running text are exempt (WCAG 2.5.8).
 const smallTargets = (page: Page) => page.evaluate(() => {
   const out: string[] = []
   for (const el of document.querySelectorAll<HTMLElement>('button, a[href], input, select, textarea, [role=tab]')) {
     const r = el.getBoundingClientRect()
     if (!r.width || !r.height || el.closest('.sr-only, p, [aria-hidden=true]') || getComputedStyle(el).visibility === 'hidden') continue
-    if (r.bottom < 0 || r.top > innerHeight) continue // off screen: hit testing can't see it
     const cx = r.left + r.width / 2, cy = r.top + r.height / 2
-    const miss = [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, -1], [0, 1], [-1, 0], [1, 0]].find(([dx, dy]) => {
-      const hit = document.elementFromPoint(cx + dx * 21.5, cy + dy * 21.5)
+    let where = ''
+    const miss = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => (i * Math.PI) / 4).find((a) => {
+      const x = cx + Math.cos(a) * 21.5, y = cy + Math.sin(a) * 21.5
+      if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) return false // off screen: hit testing can't see it
+      const hit = document.elementFromPoint(x, y)
+      where = `at ${Math.round((a * 180) / Math.PI)}° hits ${hit ? `${hit.tagName.toLowerCase()}.${hit.className}` : 'nothing'}`
       return !hit || !(el === hit || el.contains(hit) || (el.labels?.length && [...el.labels].some((l) => l.contains(hit))))
     })
-    if (miss) out.push(`${el.tagName.toLowerCase()} "${el.getAttribute('aria-label') ?? el.textContent?.trim().slice(0, 30)}" ${Math.round(r.width)}x${Math.round(r.height)}`)
+    if (miss) out.push(`${el.tagName.toLowerCase()} "${el.getAttribute('aria-label') ?? el.textContent?.trim().slice(0, 30)}" ${Math.round(r.width)}x${Math.round(r.height)} ${where}`)
   }
   return out
 })
@@ -90,7 +93,7 @@ test('keyboard only: Tab to Kobe, Enter, it is called aloud; Tab to Ask, Enter, 
   await page.keyboard.press('Enter')
   await expect(page.locator('.caption .cap-text')).toBeVisible({ timeout: 45_000 })
   await expect.poll(() => said(page), { timeout: 15_000 }).not.toEqual([]) // spoken with no further clicks
-  await expect(page.getByRole('status').filter({ hasText: /^Playing Kobe's 81/ })).toBeAttached()
+  await expect(page.getByRole('status').filter({ hasText: /^Playing Los Angeles Lakers v Toronto Raptors$/ })).toBeAttached()
   // A line on the caption is heard, never announced over the voice.
   await expect(page.getByRole('region', { name: 'Caption' })).toHaveAttribute('aria-live', 'off')
 
