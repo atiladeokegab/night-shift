@@ -117,6 +117,26 @@ def _where(header: dict, m: dict) -> str:
     return f"on the {'left' if left else 'right'} wing" if wide else f"in {other}'s half"
 
 
+def balls(match_id: str) -> dict[int, dict]:
+    """Who has the ball a beat after each football moment (#205), by the moment's idx. Kept out of
+    the moments: a moment published at its own time must not carry play from after it (A-1.4)."""
+    return {b["after_idx"]: b for b in _read(match_id).get("balls", [])}
+
+
+def orientation(header: dict, past: list[dict], b: dict) -> str:
+    """Who has the ball (`b`, from balls()) in the gap after the last of the `past` football
+    moments (#205), and the score when that moment changed it. StatsBomb gives a side's attack
+    only as towards x = 120: the line says whose goal they attack, never left or right."""
+    m, before = past[-1], past[-2] if len(past) > 1 else None
+    other = header["away"] if b["team"] == header["home"] else header["home"]
+    team, other = CLUB_SUFFIX.sub("", b["team"]), CLUB_SUFFIX.sub("", other)
+    where = _where(header, {"type": "Pass", **b}).replace(f"{team}'s own", "their own")
+    text = f"{team} have the ball {where}, attacking {other}'s goal."
+    if before and before["score"] != m["score"] and "lead" in m["detail"]:
+        text += f" {m['detail']['lead'][0].upper()}{m['detail']['lead'][1:]}."
+    return text
+
+
 def leader(m: dict) -> str | None:
     """Who leads after a home/away moment, "home", "away" or None when level; a shootout decides
     once the goals are level."""
@@ -170,9 +190,14 @@ def _bundle(sport: str, match_id: str, meta: dict | None = None) -> None:
 
     header, moments = feed.load(sport, match_id, meta)
     path = SAMPLE / f"{sport}-{match_id}.json"
+    found = [{"after_idx": m["idx"], **m.pop("ball")} for m in moments if "ball" in m]
     rows = ",\n".join(json.dumps(m, ensure_ascii=False) for m in moments)  # one moment per line
     head = json.dumps(header, ensure_ascii=False)
-    path.write_text(f'{{"header": {head},\n "moments": [\n{rows}\n]}}\n', encoding="utf-8")
+    body = f'{{"header": {head},\n "moments": [\n{rows}\n]'
+    if found:  # who has the ball between moments (#205), one per line
+        body += ',\n "balls": [\n' + ",\n".join(json.dumps(b, ensure_ascii=False) for b in found)
+        body += "\n]"
+    path.write_text(body + "}\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

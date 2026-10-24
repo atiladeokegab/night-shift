@@ -288,6 +288,25 @@ class Gaps:
         self.opens = 0
         self.calls = 0
         self._pack = None
+        self._header = None
+        self._balls = None
+
+    def balls(self) -> dict[int, dict]:
+        if self._balls is None:
+            from data.matches import balls
+
+            try:
+                self._balls = balls(self.match_id)
+            except KeyError:  # not a bundled match: no ball data
+                self._balls = {}
+        return self._balls
+
+    def header(self) -> dict:
+        if self._header is None:
+            from data.matches import match_header
+
+            self._header = match_header(self.match_id)
+        return self._header
 
     def pack(self, m: dict):
         if self._pack is None:
@@ -331,30 +350,45 @@ class Gaps:
         m = past[-1]
         if n >= PER_GAP:
             return None
+        ball = self.balls().get(m["idx"])
         reply = n % REPLY_EVERY == REPLY_EVERY - 1
         role, speaker = ("reply", "lead") if reply else ("insight", "analyst")
         ln = self.cached.get((m["idx"], n))
+        if n == 0 and ball and (ln or {}).get("insight", {}).get("kind") != "orientation":
+            ln = None  # stored before #205: the gap now opens on the ball
         if ln is not None and role in ln:
             said_as = ln[role]
-            if not reply and said_as["detail"] in self.used:  # another replay's: never said twice
+            # another replay's: never said twice; where the ball is may be said again
+            if not reply and said_as["kind"] != "orientation" and said_as["detail"] in self.used:
                 return None
-            if repeats(ln.get("text") or "", list(recent)):
+            if said_as["kind"] != "orientation" and repeats(ln.get("text") or "", list(recent)):
                 return None
         elif self.calls >= MAX_CALLS:
             return None
         else:
             ln = None
             heard = " ".join(str(before or "").split())  # one line: it must not forge a field
-            picked = ("reply", heard) if reply else self.next_stat(past, first=n == 0)
+            if reply:
+                picked = ("reply", heard)
+            elif n == 0 and ball:  # a football stretch opens on who has the ball (#205)
+                from data.matches import orientation
+
+                picked = ("orientation", orientation(self.header(), past, ball))
+            else:  # after the ball, the next line is the stretch's first stat
+                picked = self.next_stat(past, first=n == 0 or (n == 1 and bool(ball)))
             if not picked:
                 return None
             said_as = {"kind": picked[0], "detail": picked[1], "heard": heard, "v": VERSION}
+            if picked[0] == "orientation":  # said at the ball's time, the latest it reads (A-1.4)
+                said_as["clock"] = ball["clock"]
         if ln is None:
             for retry in (False, True):
                 self.calls += 1
                 # the same seam as every line: only moments up to the one followed reach the model
                 said = commentate(stat_moment(m, said_as, reply), list(past))
-                if said and said.get("text") and not repeats(said["text"], list(recent)):
+                # where the ball is now is news, though it reads like where it was before
+                fresh = said_as["kind"] == "orientation"
+                if said and said.get("text") and (fresh or not repeats(said["text"], list(recent))):
                     break
                 if reply or retry or self.calls >= MAX_CALLS:
                     return None
@@ -363,6 +397,11 @@ class Gaps:
                 if not picked:
                     return None
                 said_as = {**said_as, "kind": picked[0], "detail": picked[1]}
+                said_as.pop("clock", None)  # a stat is said at its moment's time
+            if said_as["kind"] == "orientation" and wrong_orientation(
+                said["text"], m, said_as, self.header(), past
+            ):
+                said = {**said, "text": said_as["detail"], "fallback": True}
             key = {"match_id": self.match_id, "after_idx": m["idx"], "n": n}
             ln = self.store.append(
                 "lines",
@@ -816,6 +855,22 @@ def checked(commentate, moment: dict, history: list[dict]) -> dict | None:
     return {**again, "text": fallback_text(header, moment), "fallback": True, **tried}
 
 
+# where the ball goes next is not in the data: an orientation line never says it
+NEXT = re.compile(r"\b(?:will|looking to|looks? to|about to|going to|set to|heading)\b|'ll\b", re.I)
+
+
+def wrong_orientation(
+    text: str, m: dict, said_as: dict, header: dict, past: list[dict]
+) -> list[str]:
+    """What an orientation line (#205) gets wrong: a number its stat and moment m don't give, a
+    false leader, a goal called (the ball in play between key moments is no event), or where the
+    ball goes next."""
+    stat = stat_moment(m, said_as, False)
+    wrong = wrong_numbers(text, stat, header, past)
+    wrong += wrong_event(text, {**stat, "type": "Possession", "outcome": ""})
+    return wrong + [f"says what comes next: {hit[0]}" for hit in NEXT.finditer(text)]
+
+
 def stat_moment(m: dict, said_as: dict, reply: bool) -> dict:
     """The synthetic Stat moment an insight or reply is said over: moment m's team and score, with
     the stat itself (or, for the lead's reply, what the analyst just said) as the Event, so the
@@ -828,7 +883,15 @@ def stat_moment(m: dict, said_as: dict, reply: bool) -> dict:
         if reply
         else f"{said_as['kind']}: {said_as['detail']}"
     )
-    return {**m, "type": "Stat", "outcome": event, "players": {}, "detail": {**keep, **said_to}}
+    clock = said_as.get("clock", m.get("clock"))  # an orientation line's is the ball's (#205)
+    return {
+        **m,
+        "clock": clock,
+        "type": "Stat",
+        "outcome": event,
+        "players": {},
+        "detail": {**keep, **said_to},
+    }
 
 
 def said_over(line: dict, load_moments) -> list[dict] | None:
