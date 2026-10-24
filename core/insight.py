@@ -664,6 +664,50 @@ def wrong_numbers(
             and re.search(r"\b(level|tied|all square)\b", text, re.I)
         ):
             wrong.append("the scores are not level")
+    return wrong + wrong_event(text, m)  # so checked() regenerates a wrong event too
+
+
+# A football line that calls the wrong kind of event, worse than a wrong number: a miss called as a
+# goal, a booking as a penalty, a shot wide as saved (the live final's idx 18, 28, 59 and 63).
+# "levels it" is the kick that made it level; "level at three all" and "two to level it" are not
+LEVELS = r"equali[sz]e[sd]?|(?<!to )level(?:s|led)? (?:it|things|the score)"
+# present tense only ("who scored twice" recalls a goal), never "the scores"; GOAL in capitals only
+GOAL_WORDS = re.compile(
+    rf"(?i:\b(?:(?<!the )scores(?! level| are)|nets|{LEVELS})\b"
+    r"|\bmakes? it (?:\d|one|two|three|four|five))|\bGOAL\b"
+)
+LEVEL = re.compile(rf"\b(?:{LEVELS})\b", re.I)
+PENALTY = re.compile(r"\b(?:penalty|spot[- ]kick)\b", re.I)  # "penalties" is the shootout
+SAVED = re.compile(r"\b(?:save|saves|saved|saving)\b", re.I)
+# how a shot that is no goal ended: a line with none of these is said like a goal, or says nothing
+ENDED = re.compile(
+    r"\b(?:wide|over|high|miss\w*|off (?:the )?target|off t|away|drifts?|sails?|skie[sd]|wayward|"
+    r"post|bar|save\w*|stands? tall|denie[sd]|den(?:y|ies)|keeps? it out|stops?|block\w*|"
+    r"parrie[sd]|claims?|gathers?|equal to|not|no|but|chance|close|just|inches|"
+    r"tr(?:y|ies)|attempt|effort)\b",
+    re.I,
+)
+
+
+def wrong_event(text: str, m: dict) -> list[str]:
+    """What a football line says happened that the moment's type and outcome deny; [] if nothing."""
+    if m.get("sport") != "football":
+        return []
+    d, s = m.get("detail") or {}, m.get("score") or {}
+    goal = m.get("type") == "Shot" and m.get("outcome") == "Goal"
+    wrong = []
+    if not goal and m.get("type") != "Full time" and GOAL_WORDS.search(text):  # full time recaps
+        wrong.append(f"a goal is called, but the moment is {m['type']}, {m.get('outcome')}")
+    tally = d.get("shootout") or s
+    if goal and LEVEL.search(text) and tally.get("home") != tally.get("away"):
+        wrong.append("the scores are not level after this goal")
+    gives_one = "own box" in d.get("where", "") or "shootout" in d  # a foul there can be one
+    if "card" in d and not gives_one and PENALTY.search(text):
+        wrong.append(f"a penalty is called, but the moment is a {d['card']}")
+    if m.get("outcome") in ("Off T", "Wayward") and SAVED.search(text):
+        wrong.append("a save is called, but the shot was off target")
+    if m.get("type") == "Shot" and not goal and not ENDED.search(text):
+        wrong.append(f"the line never says how the shot ended: {m.get('outcome')}")
     return wrong
 
 

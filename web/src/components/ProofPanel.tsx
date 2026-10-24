@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { getReview, getStats } from '../api'
 import type { Adapter, SpeakerStats, Stats } from '../types'
 import { SideBySide } from './SideBySide'
+import { nextAdapter } from '../proof'
 
 interface Props {
   live: Stats | null // the latest `stats` event from the replay, newer than the first GET /stats
@@ -27,6 +28,7 @@ export function ProofPanel({ live }: Props) {
   else {
     const empty = stats.lines === 0
     const adapter = stats.adapter
+    const next = nextAdapter(stats.fixes_toward_next ?? 0, adapter?.needed ?? 25)
     // the lead's calls (Haiku) and the analyst's stat lines (Sonnet) apart, so neither skews the other
     const groups: [string, SpeakerStats][] = stats.by_speaker
       ? [['Lead', stats.by_speaker.lead], ['Analyst', stats.by_speaker.analyst]]
@@ -39,7 +41,7 @@ export function ProofPanel({ live }: Props) {
           {/* own heading so the fix counts don't read as the analyst's */}
           <div className="wide">
             <dt className="label">Training</dt>
-            <dd>Your fixes Mubit trains on</dd>
+            <dd>{next.note ?? 'Your fixes Mubit trains on'}</dd>
           </div>
           <Figure label="Fixes" value={String(stats.fixes_recorded ?? 0)} />
           {!!flagged && (
@@ -49,7 +51,7 @@ export function ProofPanel({ live }: Props) {
             </div>
           )}
           {stats.fixes_toward_next !== undefined && (
-            <Figure label="Next adapter" value={`${stats.fixes_toward_next} of ${adapter?.needed ?? 25}`} />
+            <Figure className="two" label="Next adapter" value={next.value} />
           )}
           <div className="wide">
             <dt className="label">Adapter</dt>
@@ -66,7 +68,7 @@ export function ProofPanel({ live }: Props) {
         <div className="panel-h"><h3>Proof</h3></div>
         {body}
         <p className="small">
-          First word: time from the moment to the first word of the model's text reply, measured through
+          First word: time from the match moment to the first word of the model's text reply, measured through
           Mubit. Finishing the line, speech synthesis and playback are not included.
           Cost per match: one replay run start to finish, at list prices. Model: its LLM tokens; Voice: its speech characters.
           {stats?.adapter && !stats.adapter.cost_measurable && " Adapter cost: not measurable; Mubit doesn't report it to the app."}
@@ -86,9 +88,9 @@ function PerMatch({ stats }: { stats: Stats }) {
         <dt className="label">Cost per match</dt>
         <dd>{n ? `Model + Voice, mean of ${n} full ${n === 1 ? 'replay' : 'replays'}` : 'Shows once a match plays start to finish'}</dd>
       </div>
-      <Figure label="Total" value={cents(stats.cost_per_match_usd)} />
-      <Figure label="Model" value={cents(stats.model_cost_per_match_usd)} />
-      <Figure label="Voice" value={cents(stats.voice_cost_per_match_usd)} />
+      <Figure className="third" label="Total" value={cents(stats.cost_per_match_usd)} />
+      <Figure className="third" label="Model" value={cents(stats.model_cost_per_match_usd)} />
+      <Figure className="third" label="Voice" value={cents(stats.voice_cost_per_match_usd)} />
     </>
   )
 }
@@ -101,18 +103,19 @@ function Speaker({ name, s }: { name: string; s: SpeakerStats }) {
         <dt className="label">{name}</dt>
         <dd>{[s.model, `${s.lines.toLocaleString()} lines · all matches`].filter(Boolean).join(' · ')}</dd>
       </div>
-      {/* one "First word" caption over both, so each label fits one line at 1280 px */}
+      {/* one "First word" caption over both, so each label fits one line at 1280 px; "Cost" over its own */}
       <div className="cap" aria-hidden="true"><dt className="label">First word</dt></div>
-      <Figure label={<><span className="sr-only">First word </span>Median</>} value={v(seconds(s.first_word_ms_p50))} />
-      <Figure label={<><span className="sr-only">First word </span>P95</>} value={v(seconds(s.first_word_ms_p95))} />
-      <Figure label="Cost per line" value={v(dollars(s.cost_per_line_usd))} />
+      <div className="cap side" aria-hidden="true"><dt className="label">Cost</dt></div>
+      <Figure className="third" label={<><span className="sr-only">First word </span>Median</>} value={v(seconds(s.first_word_ms_p50))} />
+      <Figure className="third" label={<><span className="sr-only">First word </span>P95</>} value={v(seconds(s.first_word_ms_p95))} />
+      <Figure className="third" label={<><span className="sr-only">Cost </span>Per line</>} value={v(dollars(s.cost_per_line_usd))} />
     </>
   )
 }
 
-function Figure({ label, value }: { label: ReactNode; value: string }) {
+function Figure({ label, value, className }: { label: ReactNode; value: string; className?: string }) {
   return (
-    <div>
+    <div className={className}>
       <dt className="label">{label}</dt>
       <dd className="num">{value}</dd>
     </div>
