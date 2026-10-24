@@ -15,7 +15,7 @@ from fastapi.testclient import TestClient
 
 from agent import commentator
 from agent.commentator import FakeProvider
-from core import insight, predict, smoke
+from core import graph, insight, predict, smoke
 from core.app import Deps, create_app
 from core.predict import load_pack
 from core.replay import Replay, run_replay
@@ -204,6 +204,8 @@ def test_a_pack_match_cites_the_pack_and_one_without_uses_tonight_only(tmp_path,
     # Chelsea has a pack (#134): take it away to see a match without one
     assert load_pack("football", CHELSEA) is not None
     monkeypatch.setattr(predict, "load_pack", lambda sport, match_id: None)
+    monkeypatch.setattr(graph, "_db", None)  # nor the graph's, nor its form facts (#374)
+    monkeypatch.setattr(graph, "_kv", None)
     chelsea, _ = replay(CHELSEA, Store(tmp_path / "chelsea"))
     said = [ln["insight"] for ln in chelsea if "insight" in ln]
     tonight = {"tally", "score story", "look back", "momentum", "orientation"}  # the ball: #205

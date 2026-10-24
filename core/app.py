@@ -25,7 +25,7 @@ from core import graph, insight, ledger, predict, review
 from core.converse import converse_router
 from core.guard import OFF_TODAY, Guard, SayOnly, cached_commentator, client_ip
 from core.look import Looks, Unshared
-from core.predict import load_pack, shot_points
+from core.predict import shot_points
 from core.replay import OFF_AIR, Replay, run_replay
 from core.stats import stats
 from core.store import open_store
@@ -569,7 +569,7 @@ def create_app(
         past, _ = asked_so_far(replay, d.load_moments(replay.match_id), moment_idx)
         if not past:
             raise HTTPException(409, "nothing has happened yet")
-        pack = load_pack(past[-1]["sport"], replay.match_id)
+        pack = predict.pack(past[-1]["sport"], replay.match_id)
         try:  # ValueError: a sport with no shot locations (cricket); KeyError: no such player
             if pack is None:
                 raise KeyError(replay.match_id)
@@ -584,7 +584,7 @@ def create_app(
         replay = viewed(replay_id)
         moments = d.load_moments(replay.match_id)
         sport = moments[0]["sport"] if moments else None
-        pack = sport and (graph.pack(replay.match_id) or load_pack(sport, replay.match_id))
+        pack = sport and predict.pack(sport, replay.match_id)
         if not pack:
             raise HTTPException(404, "no pre-match pack for this match")
         return pack, asked_so_far(replay, moments, moment_idx)[0]
