@@ -685,6 +685,28 @@ def test_the_comeback_is_told_what_the_analyst_answers_with(tmp_path):
         assert f"{NAMES['analyst']}'s next point is about: {reply['reply']['next']}" in q
 
 
+@pytest.mark.parametrize("match_id", [KOBE, CHELSEA])
+def test_a_question_from_the_lead_is_never_left_unanswered(tmp_path, match_id):
+    # #288: the lead asks whenever it can; the analyst's answer to a question fails twice
+    count = itertools.count()
+    asked = f"{NAMES['analyst']}'s next point is about"
+
+    def asking(moment, history):
+        detail, i = moment["detail"], next(count)
+        words = " ".join(letters(10 * i + k) for k in range(6))
+        if moment["type"] == "Stat" and str(detail.get(f"{NAMES['lead']} just said")).endswith("?"):
+            words = ""  # the answer: an empty line, the next kind's too
+        elif asked in detail:
+            words += f", {NAMES['analyst']}?"
+        return {"line_id": uuid.uuid4().hex, "moment_idx": moment["idx"], "text": words}
+
+    lines, _ = replay(match_id, Store(tmp_path), calls=asking)
+    stored = [ln for ln in Store(tmp_path).all("lines") if (ln.get("reply") or {}).get("next")]
+    assert stored  # questions were asked, and none of them answered
+    said = [ln["text"] for ln in lines]
+    assert not [q for q in said if q.endswith("?")]
+
+
 @pytest.mark.parametrize(
     ("line", "recent", "echo"),
     [
@@ -713,4 +735,4 @@ def test_no_voice_says_a_phrase_a_recent_line_said(tmp_path):
     for i, text in enumerate(said):
         assert not insight.echoes(text, said[max(0, i - insight.RECENT_LINES) : i])
     told = [m["detail"].get("never say") for m in asked if m["type"] == "Stat"]
-    assert "chelsea have a lot" in told
+    assert "chelsea have a lot to" in told

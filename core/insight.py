@@ -627,7 +627,8 @@ def _words(text: str) -> list[tuple[str, bool]]:
     return out
 
 
-ECHO_WORDS = 4  # a run of this many words two lines share is the same phrase (#288)
+# a run of this many words two lines share is the same phrase; 4 caught "chelsea have a lot" (#288)
+ECHO_WORDS = 5
 
 
 def echoes(text: str, recent: list[str]) -> str | None:
