@@ -264,7 +264,7 @@ def test_the_analyst_says_at_most_two_lines_a_gap(tmp_path):
 
 def auto_fixed(tmp_path, texts):
     """One replay of Kobe's 80th point whose lead says `texts` in turn; what it corrected."""
-    said, sent = iter(texts), []
+    said, sent, reasons = iter(texts), [], []
 
     def commentate(m, history):
         return {
@@ -274,12 +274,16 @@ def auto_fixed(tmp_path, texts):
             "text": next(said),
         }
 
-    def correct(line, text):
+    def correct(line, text, reason):
         sent.append((line["text"], text))
-        return {"mubit_request_id": "m1", "reply_matched": True, "recorded": True}
+        reasons.append(reason)
+        return {"mubit_request_id": "m1", "reply_passed": True, "recorded": True}
 
     r, store = Replay(KOBE, 1e9), Store(tmp_path)
     asyncio.run(run_replay(r, [moment(KOBE, 22)], commentate, store, correct=correct))
+    # the correction turn gives the checker's own reason, as a producer's gives theirs (#245)
+    milestone = "number check: the milestone is unsaid: Kobe Bryant has 80 points tonight"
+    assert set(reasons) <= {milestone}
     return sent, store
 
 

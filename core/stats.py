@@ -124,7 +124,10 @@ def stats(store) -> dict:
         "by_speaker": {"lead": _speaker(lead), "analyst": _speaker(analyst)},
         "fixes_recorded": len(recorded),
         # fixes recorded since the latest adapter record: the corrections toward the next one
-        "fixes_toward_next": sum(f.get("created_at", "") > since for f in recorded),
+        # whose corrected reply passed the number check (#245; a fix before it has no flag)
+        "fixes_toward_next": sum(
+            f.get("created_at", "") > since and f.get("reply_passed") is not False for f in recorded
+        ),
         "fixes_auto": len(store.all("auto_fixes")),  # the number check's own (#162), not a person's
         "spoken_from_fix": sum(1 for ln in lead if ln.get("fixed")),  # a producer's fix (#232)
         "voice_chars": sum(v.get("chars", 0) for v in voice),
