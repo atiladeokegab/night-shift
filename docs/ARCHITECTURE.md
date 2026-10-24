@@ -58,8 +58,9 @@ flowchart LR
 3. Each moment's line goes through the number check, `checked()` in
    [`core/insight.py`](../core/insight.py). A line whose numbers don't match the moment's data gets
    one retry; if the retry is wrong too, a line built from the data is spoken instead. A retry that
-   passes is sent to Mubit as an automatic correction of the first try. The analyst's stat lines
-   are not checked yet.
+   passes is sent to Mubit as an automatic correction of the first try. The analyst's stat lines,
+   the lead's replies to them and Ask answers get the same check; one still wrong after its retry is
+   dropped, never said.
 4. The line is appended to the store, sent to ElevenLabs, and published on the SSE stream with its
    video time.
 5. The page holds the line until the YouTube player reaches that time, then shows and speaks it.

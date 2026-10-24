@@ -16,7 +16,7 @@
 
 ### The match nobody described
 
-Touchline describes the matches a platform streams with nobody describing them. It checks every number in the lead's calls before it speaks (the analyst's stat lines are checked from [#224](https://github.com/atiladeokegab/night-shift/pull/224) on), fixes what it can itself, sends the rest to a producer, and every fix trains that platform's own describer in Mubit.
+Touchline describes the matches a platform streams with nobody describing them. It checks every number before it speaks, fixes what it can itself, sends the rest to a producer, and every fix trains that platform's own describer in Mubit.
 
 What you hear are **replays, as if live**: real matches' event data played back over their broadcast highlights, each line called at its moment as if the match were on now. Sky Sports now describes [about 109 Premier League games a season](#the-problem) aloud, and none below the top flight.
 

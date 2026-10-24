@@ -15,10 +15,11 @@ export function About({ onGo }: { onGo: (screen: Screen) => void }) {
             moment reaches the picture. The matches here are replays of real matches, as if live.
           </p>
           <p>
-            <strong>It checks every number in the lead's calls.</strong> Before a call is spoken, its score, who leads,
+            <strong>It checks every number before it speaks.</strong> Before a call is spoken, its score, who leads,
             the margin and the players' counts are checked against the match data. A call that fails is tried once
             more; if that fails too, a line built from the data is spoken instead and a producer sees the call. The
-            analyst's stat lines are not checked yet.
+            analyst's stat lines and the answers to fans' questions get the same check; one still wrong after its retry
+            is dropped, never said.
           </p>
           <p>
             <strong>One describer, four sports.</strong> The same agent, with the same prompt, describes football,
