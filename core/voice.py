@@ -83,6 +83,7 @@ TAGS = {
     "Lead change": "[shouting]",  # f1: an overtake for the lead
     "Red flag": "[shouting]",  # a crash stops the race
     "Finish": "[shouting]",
+    "Full time": "[shouting]",
     "Lights out": "[excited]",
     "Overtake": "[excited]",
     "Pit stop": "[excited]",

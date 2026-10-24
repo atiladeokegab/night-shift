@@ -33,7 +33,7 @@ export type Score =
   | { lap: number; laps: number; top: F1Place[] }
 
 // type: football "Shot" | "Own Goal Against" | "Foul Committed" | "Bad Behaviour" | "Substitution" |
-// "Injury Stoppage"; cricket "Wicket" | "Six" | "Four" | "No ball" | "Last ball" | "Chase".
+// "Injury Stoppage" | "Full time"; cricket "Wicket" | "Six" | "Four" | "No ball" | "Last ball" | "Chase".
 export interface Moment {
   sport: Sport
   match_id: string
