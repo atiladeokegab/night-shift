@@ -26,7 +26,10 @@ function stadium(id: string, w: number, h: number, sport: string, seed: number, 
     const cx = w * fx, cy = h * 0.075
     s += `<polygon points="${cx - 8},${cy} ${cx + 8},${cy} ${cx + w * 0.1 * (fx < 0.5 ? 1.4 : 0.6)},${hz + ph * 0.5} ${cx - w * 0.1 * (fx < 0.5 ? 0.6 : 1.4)},${hz + ph * 0.5}" fill="url(#${id}b)"/>
       <circle cx="${cx}" cy="${cy}" r="${w * 0.17}" fill="url(#${id}g)" opacity=".7"/>`
+    // The lamps at 0.3 land under the sport label on a tall card; App.css hides them there.
+    s += `<g${fx === 0.3 ? ' class="by-label"' : ''}>`
     for (let r = 0; r < 2; r++) for (let c = 0; c < 4; c++) s += `<rect x="${cx - 14 + c * 7.5}" y="${cy - 6 + r * 7}" width="5" height="5" rx="1" fill="#fff"/>`
+    s += '</g>'
   }
   const roof = (x: number) => h * 0.21 - h * 0.07 * 4 * (x / w) * (1 - x / w)
   s += `<path d="M0 ${h * 0.21} Q${w / 2} ${h * 0.07} ${w} ${h * 0.21} L${w} ${hz} L0 ${hz} Z" fill="#0A1020"/>`
