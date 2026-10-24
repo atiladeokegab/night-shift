@@ -164,6 +164,14 @@ Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026. Track: Own
 
 **Live:** <https://night-shift-5zvig7nbvq-ew.a.run.app> (Cloud Run, real Mubit calls, sound on).
 
+### What's new tonight
+
+- **A graph of teams and players:** SurrealDB holds 612 football matches and everyone in them, and answers only from matches before this one, so nothing later leaks.
+- **Talk:** press **Talk** and the match pauses while you speak with the commentator; each answer goes through Claude via Mubit and the same check as Ask. Escape, or 12 s of silence, resumes.
+- **One speaking queue:** no line cuts another off mid-word; a big moment goes first, and routine lines that have gone stale are dropped.
+- **Teams tab:** press **T** for each side's form, their last meetings and the squad, as they stood before the match.
+- **One broadcast pair:** both voices share one tone per moment, lit up for a goal and plain for a pass, and in quiet stretches they take turns on one player.
+
 ### The 60-second path
 
 1. Open the live link and tap **Brighton v Bristol City**, a Women's Super League match from the
