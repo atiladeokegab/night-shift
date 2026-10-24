@@ -26,7 +26,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from playwright.sync_api import Page, sync_playwright
+from playwright.sync_api import Error, Page, sync_playwright
 
 BASE = "https://night-shift-5zvig7nbvq-ew.a.run.app"
 OUT = Path.home() / "hub/projects/night-shift/film"
@@ -106,11 +106,19 @@ def wsl(page: Page, base: str) -> float:
     return start
 
 
-def final_extra_time(page: Page, base: str) -> float:
-    page.goto(f"{base}/?match=3869685&at=45")
-    start = ready(page)
+def orlando(page: Page, base: str) -> float:
+    # Opens on the wall, where the tile says "Whole match, every key moment" (#246), then plays it.
+    page.goto(f"{base}/")
+    tile = page.locator("button.tile", has_text="Orlando")
+    tile.wait_for()
+    tile.scroll_into_view_if_needed()
+    page.wait_for_timeout(1500)
+    start = time.time()
+    page.wait_for_timeout(3000)
+    tile.click()
+    ready(page)
     first_line(page)
-    page.wait_for_timeout(30_000)
+    page.wait_for_timeout(16_000)
     return start
 
 
@@ -180,7 +188,7 @@ def proof(page: Page, base: str) -> float:
 
 SHOTS = {
     "01-wsl": wsl,
-    "02-final-extra-time": final_extra_time,
+    "02-orlando": orlando,
     "03-ask": ask,
     "04-fix-queue": fix_queue,
     "05-fix-jordan": fix_jordan,
@@ -222,14 +230,22 @@ def shoot(browser, name: str, base: str, out: Path, work: Path) -> None:
     ctx.expose_function("__filmPlay", lambda src: events.append(("play", src, time.time())))
     ctx.expose_function("__filmStop", lambda src: events.append(("stop", src, time.time())))
     ctx.add_init_script(HOOK)
-    audio: dict[str, object] = {}
-    ctx.on("response", lambda r: "/audio" in r.url and r.ok and audio.setdefault(r.url, r))
+    bodies: dict[str, bytes] = {}
+
+    def keep(r) -> None:
+        # Read as it arrives: Chromium drops a body from its buffer once later clips fill it.
+        if "/audio" in r.url and r.ok and r.url not in bodies:
+            try:
+                bodies[r.url] = r.body()
+            except Error:
+                pass  # counted as a missing clip below
+
+    ctx.on("response", keep)
     page = ctx.new_page()
     t0 = time.time()
     try:
         t1 = SHOTS[name](page, base) or t0
     finally:
-        bodies = {url: r.body() for url, r in audio.items()}
         ctx.close()
     clips, missing = [], 0
     for kind, src, t in events:
