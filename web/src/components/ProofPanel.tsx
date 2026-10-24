@@ -51,7 +51,7 @@ export function ProofPanel({ live }: Props) {
             </div>
           )}
           {stats.fixes_toward_next !== undefined && (
-            <Figure label="Next adapter" value={next.value} />
+            <Figure className="two" label="Next adapter" value={next.value} />
           )}
           <div className="wide">
             <dt className="label">Adapter</dt>
@@ -88,9 +88,9 @@ function PerMatch({ stats }: { stats: Stats }) {
         <dt className="label">Cost per match</dt>
         <dd>{n ? `Model + Voice, mean of ${n} full ${n === 1 ? 'replay' : 'replays'}` : 'Shows once a match plays start to finish'}</dd>
       </div>
-      <Figure className="cost" label="Total" value={cents(stats.cost_per_match_usd)} />
-      <Figure className="cost" label="Model" value={cents(stats.model_cost_per_match_usd)} />
-      <Figure className="cost" label="Voice" value={cents(stats.voice_cost_per_match_usd)} />
+      <Figure className="third" label="Total" value={cents(stats.cost_per_match_usd)} />
+      <Figure className="third" label="Model" value={cents(stats.model_cost_per_match_usd)} />
+      <Figure className="third" label="Voice" value={cents(stats.voice_cost_per_match_usd)} />
     </>
   )
 }
@@ -105,10 +105,10 @@ function Speaker({ name, s }: { name: string; s: SpeakerStats }) {
       </div>
       {/* one "First word" caption over both, so each label fits one line at 1280 px; "Cost" over its own */}
       <div className="cap" aria-hidden="true"><dt className="label">First word</dt></div>
-      <Figure label={<><span className="sr-only">First word </span>Median</>} value={v(seconds(s.first_word_ms_p50))} />
-      <Figure label={<><span className="sr-only">First word </span>P95</>} value={v(seconds(s.first_word_ms_p95))} />
       <div className="cap side" aria-hidden="true"><dt className="label">Cost</dt></div>
-      <Figure label={<><span className="sr-only">Cost </span>Per line</>} value={v(dollars(s.cost_per_line_usd))} />
+      <Figure className="third" label={<><span className="sr-only">First word </span>Median</>} value={v(seconds(s.first_word_ms_p50))} />
+      <Figure className="third" label={<><span className="sr-only">First word </span>P95</>} value={v(seconds(s.first_word_ms_p95))} />
+      <Figure className="third" label={<><span className="sr-only">Cost </span>Per line</>} value={v(dollars(s.cost_per_line_usd))} />
     </>
   )
 }
