@@ -58,6 +58,12 @@ JUDGED = [
         "Bryant from deep, but the Lakers trail fifty-eight to seventy-five.",
         "Bryant from deep, 41 for Kobe, but the Lakers still trail 65 to 75.",
     ),
+    (
+        JORDAN,
+        30,
+        "Chicago Bulls take the lead, eighty-five to eighty-six!",
+        "Jordan drives and scores! The Jazz still lead, eighty-six to eighty-five.",
+    ),
 ]
 
 
@@ -74,6 +80,28 @@ def test_each_judged_line_is_wrong_and_its_fix_is_right(match_id, idx, heard, ri
     m, past = moment(match_id, idx), before(match_id, idx)
     assert insight.wrong_numbers(heard, m, match_header(match_id), past)
     assert insight.wrong_numbers(right, m, match_header(match_id), past) == []
+
+
+def test_each_home_away_moment_says_who_leads():
+    assert moment(JORDAN, 30)["detail"]["lead"] == "Utah Jazz lead 86-85"
+    assert moment(JORDAN, 28)["detail"]["lead"] == "level at 83-83"
+    final = load_moments("3869685")[-1]  # 3-3 after extra time, then penalties
+    assert final["detail"]["lead"] == "Argentina lead the shootout 4-2"
+
+
+@pytest.mark.parametrize(
+    ("idx", "text", "wrong"),
+    [
+        (28, "Jordan ties it! The Bulls take the lead? Not yet: 83 all.", []),
+        (28, "Jordan makes both, and the Bulls lead!", ["Chicago Bulls do not lead"]),
+        (29, "Stockton from deep! Utah back in front, 86-83.", []),
+        (28, "The Jazz led most of the night, and now it's 83 all.", []),
+        (30, "Bulls take a timeout. The Jazz lead by one.", []),
+    ],
+)
+def test_a_line_may_say_only_the_true_leader_leads(idx, text, wrong):
+    m = moment(JORDAN, idx)
+    assert insight.wrong_numbers(text, m, match_header(JORDAN), before(JORDAN, idx)) == wrong
 
 
 def test_a_cricket_score_may_be_said_wickets_first():
