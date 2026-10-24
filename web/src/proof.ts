@@ -1,4 +1,4 @@
-import type { Autonomy, HeldOut, LineCheck, LineCheckExample, LineCheckStats, Stats, TaskAdapter, VoiceHealth } from './types'
+import type { Autonomy, ConsoleReading, HeldOut, LineCheck, LineCheckExample, LineCheckStats, Stats, TaskAdapter, VoiceHealth } from './types'
 
 const NONE: Autonomy = { called: 0, first_time: 0, auto_fixed: 0, to_human: 0 }
 
@@ -44,6 +44,16 @@ export function heldoutRow(h: HeldOut | null | undefined): string | null {
   if (!h) return null
   const alarms = h.line_check.false_alarms
   return `held-out: caught ${h.line_check.caught} of ${h.wrong} wrong lines (rules: ${h.rules.caught} of ${h.wrong}), ${alarms} false alarm${alarms === 1 ? '' : 's'}`
+}
+
+// Mubit's console as read by hand (#317), with its source and time, e.g. "Mubit console, 24 Oct 19:15
+// UTC: 8 tasks, 7 adapters, 0 serving; best 58.3% of a 95% target". A dated reading, never live data.
+export function consoleRow(c: ConsoleReading | null | undefined): string | null {
+  if (!c) return null
+  const day = new Date(c.read_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+  const scores = Object.values(c.listed).map((t) => t.quality)
+  const best = scores.length ? `; best ${Math.max(...scores)}% of a ${c.target}% target` : ''
+  return `${c.source}, ${day} ${c.read_at.slice(11, 16)} UTC: ${c.tasks} tasks, ${c.adapters} adapters, ${c.serving} serving${best}`
 }
 
 // What a Line check flag does: it never unsays a line (#317).

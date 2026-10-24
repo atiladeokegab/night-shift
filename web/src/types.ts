@@ -191,6 +191,18 @@ export interface Adapter {
   agree: number | null
   total: number | null
   cost_measurable: boolean
+  console?: ConsoleReading | null // #317: data/mubit_console.json, a dated hand reading, never live
+}
+
+// #317: Mubit's console overview as read by hand on `read_at`, and the tasks it listed
+export interface ConsoleReading {
+  source: string
+  read_at: string // ISO, UTC
+  tasks: number
+  adapters: number
+  serving: number
+  target: number
+  listed: Record<string, { status: string; examples: number; quality: number }> // by task name: no brackets in a `stats` event
 }
 
 // One Mubit task's latest adapter record (#209), as the lead read it off Mubit's console; null where it didn't say.

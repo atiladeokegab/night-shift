@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { adapterGood, adapterRows, autonomyRows, checkText, exampleText, FALLBACK_NOTE, FLAG_NOTE, heldoutRow, linecheckRow, TRAINING_LABEL, voiceRow } from './proof.ts'
-import type { HeldOut } from './types.ts'
+import { adapterGood, adapterRows, autonomyRows, checkText, consoleRow, exampleText, FALLBACK_NOTE, FLAG_NOTE, heldoutRow, linecheckRow, TRAINING_LABEL, voiceRow } from './proof.ts'
+import type { ConsoleReading, HeldOut } from './types.ts'
 
 const all = { called: 10, first_time: 6, auto_fixed: 2, to_human: 2 }
 const kobe = { called: 6, first_time: 3, auto_fixed: 1, to_human: 2 }
@@ -103,4 +103,14 @@ test('the held-out row says Line check beside the rules in counts, never a perce
   }
   assert.match(FLAG_NOTE, /fix queue/)
   assert.match(FLAG_NOTE, /never unsays/)
+})
+
+test("the console row is the committed reading, dated and sourced, and claims no adapter serves (#317)", () => {
+  const c: ConsoleReading = JSON.parse(readFileSync(new URL('../../data/mubit_console.json', import.meta.url), 'utf8'))
+  const row = consoleRow(c) ?? ''
+  assert.equal(row, 'Mubit console, 24 Oct 19:15 UTC: 8 tasks, 7 adapters, 0 serving; best 58.3% of a 95% target')
+  assert.doesNotMatch(row, /pass/i)
+  assert.equal(consoleRow({ ...c, listed: {} }), 'Mubit console, 24 Oct 19:15 UTC: 8 tasks, 7 adapters, 0 serving')
+  assert.equal(consoleRow(null), null)
+  assert.equal(consoleRow(undefined), null)
 })

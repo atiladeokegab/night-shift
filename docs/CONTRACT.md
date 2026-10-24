@@ -287,7 +287,7 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   - `cost_per_line_usd: number | null`: mean cost of the stored lines, tokens × the model's list
     price; null when no line's model has a known price.
   - `adapter: {state: "collecting"|"testing"|"passed", summary, kept: int|null, agree: int|null,
-    total: int|null, cost_measurable: bool}`. `state` is what the record shows:
+    total: int|null, cost_measurable: bool, console}`. `state` is what the record shows:
     `passed` only when Mubit's gate was recorded as passed, `testing` once a version, score or failed
     gate is recorded, else `collecting`; never inferred from the record's `status` or a count of fixes. `summary`
     says it in words, as of the record's time, e.g. "Testing: no version passed; best 55.8% of a 95%
@@ -299,6 +299,12 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
     stored lines, since a stored line doesn't prove Mubit kept it. `cost_measurable` is false while
     the app can't call the adapter. These are the commentary task's: a record with no `task` is
     commentary's, and another task's record leaves this key and `fixes_toward_next` alone.
+    `console` (#317) is `data/mubit_console.json`, Mubit's console overview read by hand at
+    `read_at`: `{source, read_at, how, tasks, adapters, serving, target, listed: {[name]: {status,
+    examples, quality}}}` (keyed by name: the `stats` event carries no brackets), or `null` without the file. It is a dated reading, never live data, and
+    changes only when someone reads the console again and commits it. The Proof card's Adapter row
+    shows it as "Mubit console, 24 Oct 19:15 UTC: 8 tasks, 7 adapters, 0 serving; best 58.3% of a
+    95% target".
   - `adapters: {[task]: {state, version: int|null, score: number|null, target: number|null,
     passed: bool|null, kept: int|null, recorded_at}}`: each Mubit task's latest `adapter` record
     (#209), keyed `commentary`, `where_are_we` or `line_check`; a task with no record is absent.

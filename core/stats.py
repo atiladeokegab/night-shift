@@ -18,6 +18,8 @@ VOICE_PRICES = {
 ADAPTER_NEEDED = 25
 # Line check beside the rules on held-out labelled lines (#317): eval/linecheck_eval.py --json
 HELDOUT = Path(__file__).parent.parent / "eval" / "linecheck_heldout.json"
+# Mubit's console overview as read by hand on a stated day (#317): a dated reading, never live data
+CONSOLE = Path(__file__).parent.parent / "data" / "mubit_console.json"
 
 
 def _pct(values: list[float], p: float) -> float | None:
@@ -75,6 +77,7 @@ def _adapter(latest: dict) -> dict:
         "total": latest.get("total"),
         # the app can't call the adapter, so its cost per line isn't measurable
         "cost_measurable": False,
+        "console": json.loads(CONSOLE.read_text()) if CONSOLE.exists() else None,
     }
 
 
