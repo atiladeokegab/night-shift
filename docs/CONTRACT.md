@@ -92,7 +92,7 @@ and refuses to start without `STORE_URL=gs://bucket/prefix`.
   marks `data/sample/`; `youtube_id` and `video_start` are there when the match has a video map.
   `embed: false` (absent otherwise) means the video's owner blocks embedding: pages show its poster and
   a link to it on YouTube, never the player, and the commentary runs on the replay's own clock.
-  `video_start` is the whole second the page starts the video at, 25 s before its first mapped moment (or 0): room for the cold open (#221).
+  `video_start` is the whole second the page starts the video at, 12 s before its first mapped moment (or 0): room for the two cold open lines (#221, #297).
   `peak_idx` (#163) is the moment "Jump to the big moment" starts at; `peak_video_start` is the video's start
   for that jump, 10 s before the first mapped moment from `peak_idx` on.
 - **Video map** (data/video/): `{youtube_id, embed?, source, moments: [{idx, video_t}]}`; `idx` is a Moment's
