@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getStats } from '../api'
 import type { Adapter, Stats } from '../types'
+import { SideBySide } from './SideBySide'
 
 interface Props {
   live: Stats | null // the latest `stats` event from the replay, newer than the first GET /stats
@@ -49,14 +50,17 @@ export function ProofPanel({ live }: Props) {
     )
   }
   return (
-    <section className="panel glass" aria-label="Proof" aria-live="polite">
-      <div className="panel-h"><h3>Proof</h3></div>
-      {body}
-      <p className="small">
-        Model first text word: time from the moment to the first word of the model's text reply, measured through
-        Mubit. Finishing the line, speech synthesis and playback are not included.
-      </p>
-    </section>
+    <>
+      <section className="panel glass" aria-label="Proof" aria-live="polite">
+        <div className="panel-h"><h3>Proof</h3></div>
+        {body}
+        <p className="small">
+          Model first text word: time from the moment to the first word of the model's text reply, measured through
+          Mubit. Finishing the line, speech synthesis and playback are not included.
+        </p>
+      </section>
+      <SideBySide />
+    </>
   )
 }
 
