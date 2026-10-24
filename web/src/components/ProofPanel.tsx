@@ -87,7 +87,7 @@ function PerMatch({ stats }: { stats: Stats }) {
     <>
       <div className="wide">
         <dt className="label">Per full replay ({n} measured)</dt>
-        <dd>{n ? 'Cost: Model + Voice, the mean' : 'Shows once a match plays start to finish'}</dd>
+        <dd>{n ? 'Mean cost: Total = Model + Voice' : 'Shows once a match plays start to finish'}</dd>
       </div>
       <Figure className="third" label="Total" value={cents(stats.cost_per_match_usd)} />
       <Figure className="third" label="Model" value={cents(stats.model_cost_per_match_usd)} />

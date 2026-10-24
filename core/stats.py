@@ -56,9 +56,9 @@ def _speaker(lines: list[dict]) -> dict:
 
 
 def _per_match(store, lines: list[dict], voice: list[dict]) -> dict:
-    """Mean spend of a full replay (one played from kick-off, #174): the model cost of every line it
-    said, cached or not, and of its answers, plus its voice characters. A part is None when any of it
-    has no known price. A record from before line_ids can't be costed and isn't counted."""
+    """Mean spend of a full replay (one played from kick-off, #174): the model cost of every line
+    it said, cached or not, and of its answers, plus its voice characters. A part is None when any
+    of it has no known price. A record from before line_ids can't be costed and isn't counted."""
     full = [r for r in store.all("replays") if "line_ids" in r]
     matches = {r["replay_id"] for r in full}
     by_id = {ln.get("line_id"): ln for ln in lines}
