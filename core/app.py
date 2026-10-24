@@ -245,6 +245,8 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
             # an insight or reply goes back with its own Stat request, not its moment's
             over = insight.said_over(line, d.load_moments)
             more = {"moments": over} if over else {}
+            if req.reason:  # the correction turn says what was wrong (#245)
+                more["reason"] = req.reason
             sent = await asyncio.to_thread(d.correct, line, req.corrected_text, **more)
         except Exception as exc:  # nothing is stored, so the page can send the fix again
             raise HTTPException(503, f"correction not sent: {exc}") from exc
@@ -257,7 +259,8 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
                 "reason": req.reason,
                 "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
                 "mubit_request_id": sent.get("mubit_request_id"),  # the correction call's (#239)
-                "reply_matched": sent["reply_matched"],
+                "correction": sent.get("correction"),  # the turn Mubit was given (#245)
+                "reply_passed": sent.get("reply_passed"),  # its reply passed the number check
                 "recorded": sent.get("recorded", False),  # sent to Mubit for training (#161)
             },
         )
