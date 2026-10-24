@@ -27,7 +27,7 @@ VERSION = 4
 OPEN = "cold open"  # the kind of the two lines before the first mapped moment (#221)
 OPENING = (  # who says each line of it and what to do: short, so even a read-back fits
     ("lead", "welcome the listener and name the match"),
-    ("analyst", f"one light line back to {NAMES['lead']}"),
+    ("analyst", "one light line back to your partner"),
 )
 OPEN_S = 15.0  # the whole cold open is spoken within this
 NAME_EVERY = 3  # a line in a stretch uses the partner's name about this often
