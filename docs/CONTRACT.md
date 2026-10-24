@@ -106,7 +106,8 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   ended, playing or paused; 404 once forgotten. A finished replay is forgotten after FORGET_S (60 s)
   with no stream open and no request naming it (stream, seen, ask, players, shots, profile, fix).
 - `GET /lines/{line_id}` → the stored Line, 404 if none (core): the live smoke checks each line it
-  streamed was stored.
+  streamed was stored. A fixed line also carries `fix`: its latest Fix, with the correction call's
+  `mubit_request_id` (#239); an unfixed line has no `fix` key.
 - `POST /lines/{line_id}/fix {corrected_text, reason?}` → Fix (core). With env `PRODUCER_TOKEN` set,
   it needs header `X-Producer-Token` equal to it (constant-time compare), else 401 and nothing is
   stored or sent to Mubit; unset (local, tests) the check is off (#232). It stores the Fix in `fixes`
