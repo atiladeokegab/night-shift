@@ -196,7 +196,7 @@ test("an answer shows its own time, and dims on the caption and in the log once 
   const later = render({ replay: { ...replay, now: 510, answers: [asked] }, caption }) // 05:40 is on screen now
   assert.match(later, /class="caption glass stale"/)
   assert.match(later, /class="qa stale"/)
-  assert.match(later, /Where are we\?<span class="at"> · at 06:12<\/span>/)
+  assert.match(later, /Where are we\?<span class="at nw"> · at 06:12<\/span>/)
 })
 
 test('Close your eyes covers the picture and leaves the player playing under it (#277)', () => {

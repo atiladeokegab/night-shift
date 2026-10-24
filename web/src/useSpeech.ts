@@ -28,10 +28,12 @@ export function useSpeech() {
   const aired = useRef<(() => void) | null>(null) // ends the answer on air, so its subtitle comes down
   // the held line's clip, fetched while the other voice is on air, so it starts as that one ends (#288)
   const fetched = useRef<{ url: string; audio: HTMLAudioElement } | null>(null)
+  const saying = useRef<{ text: string; until: number }[]>([]) // Mic on (#286): the last two lines said, and until when the mic may hear them
 
   // Stops the sound only.
   const stop = useCallback(() => {
     turn.current++
+    if (saying.current[0]?.until === Infinity) saying.current[0].until = performance.now() + 3000
     playing.current?.pause()
     playing.current = null
     if (available) window.speechSynthesis.cancel()
@@ -97,9 +99,11 @@ export function useSpeech() {
       item.start?.()
       const mine = turn.current
       const { line, voice } = item
+      saying.current = [{ text: line.text, until: Infinity }, ...saying.current.slice(0, 1)]
       const lang = voice?.lang ?? 'en-GB'
       const sound = voiceOf(item.speaker, voice?.id)
       const done = () => {
+        saying.current[0].until = performance.now() + 3000
         item.end?.()
         const next = floor.current.ended(item, performance.now())
         if (next) play(next)
@@ -176,5 +180,7 @@ export function useSpeech() {
     [on, play],
   )
 
-  return { available, on, setOn: toggle, speaking, say, sayAnswer, hush, volume, muted, setVolume }
+  const airing = useCallback(() => saying.current.filter((s) => s.until > performance.now()).map((s) => s.text), [])
+
+  return { available, on, setOn: toggle, speaking, say, sayAnswer, hush, airing, volume, muted, setVolume }
 }
