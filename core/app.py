@@ -218,8 +218,6 @@ def create_app(
     @app.post("/replays")
     async def start_replay(req: ReplayRequest, request: Request):
         d = need_deps()
-        if wait := guard.replays.hit(client_ip(request)):
-            raise too_many(wait, "You've started a lot of replays. Try again in a few minutes.")
         try:
             moments = d.load_moments(req.match_id)
         except (KeyError, FileNotFoundError) as exc:
@@ -236,11 +234,19 @@ def create_app(
         # it by about one replay's cost; check per line in run_replay if that ever matters
         off_air = await asyncio.to_thread(guard.off_air, store)
         cached = off_air or guard.busy(len(live))
+        # only a replay that makes new lines counts against the client's hourly starts; over them,
+        # the stored lines play instead, which cost nothing
+        capped = 0 if cached else guard.replays.hit(client_ip(request))
+        cached = cached or bool(capped)
         if cached:  # the lines already stored, said again: no model or voice call, nothing stored
             commentate, speak, correct = cached_commentator(store, req.match_id), None, None
             linecheck = linecheck and checked_once(linecheck)  # a stored line is checked once too
             if commentate is None and off_air:
                 raise too_many(guard.until_tomorrow(), f"{OFF_TODAY}. Try again tomorrow.")
+            if commentate is None and capped:
+                raise too_many(
+                    capped, "You've started a lot of replays. Try again in a few minutes."
+                )
             if commentate is None:
                 raise too_many(60, "Lots of people are watching. Try again in a minute.")
         record = None  # a checked line sent again, recorded: never a cached one, nor the smoke's
