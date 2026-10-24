@@ -152,10 +152,11 @@ every live page.
 
 #### The Proof panel
 
-<img src="docs/img/proof.png" alt="The Proof card: first word median 0.54 s and p95 1.34 s, cost per line $0.0019, the count of lines across all matches, and 0 fixes; the adapter: Training, Mubit is building the adapter. Under it, a note: first word is the time from the moment to the first word of the model's text reply, measured through Mubit, not counting the rest of the line, speech synthesis or playback; the adapter's cost is not measurable, because Mubit doesn't report it to the app." width="50%">
+<img src="docs/img/proof.png" alt="The Proof card, split by speaker. Lead: claude-haiku-4-5, claude-sonnet-5-5, its line count across all matches; first word median 0.54 s and p95 0.86 s, cost per line $0.0018. Analyst: claude-haiku-4-5, claude-sonnet-5-5, its line count across all matches; first word median 0.78 s and p95 2.94 s, cost per line $0.0024. Training: Your fixes Mubit trains on, Fixes 0, Next adapter 0 of 25. Adapter: Training, Mubit is building the adapter. Under it, a note: first word is the time from the moment to the first word of the model's text reply, measured through Mubit, not counting the rest of the line, speech synthesis or playback; the adapter's cost is not measurable, because Mubit doesn't report it to the app." width="50%">
 
-Live latency, cost per line, lines called, fixes and the adapter's state, computed from the store and
-the same numbers as `GET /stats` ([`web/src/components/ProofPanel.tsx`](web/src/components/ProofPanel.tsx),
+Live latency, cost per line and lines called, split by lead and analyst (#166); the fixes Mubit trains
+on and how many count toward the next adapter; and the adapter's state. All computed from the store,
+the same numbers as `GET /stats` (its `by_speaker`) ([`web/src/components/ProofPanel.tsx`](web/src/components/ProofPanel.tsx),
 [`core/stats.py`](core/stats.py)).
 
 ### Against the judging criteria
@@ -163,7 +164,7 @@ the same numbers as `GET /stats` ([`web/src/components/ProofPanel.tsx`](web/src/
 Each criterion weighs the same; one line each, with where to check it.
 
 - **Use of Mubit (a correction becomes a model update):** every call goes through one Mubit task; its recorded lines have trained [6 adapter versions](#real-numbers) so far (none passed yet), and a producer's [fix](#producer-fixes) is stored beside the line as the correction for the next version.
-- **Usefulness (a real recurring task):** a major broadcaster now describes [the Premier League only](#the-problem), and below it live audio description is voluntary and patchy; Touchline speaks the key moments of [six real matches in four sports](#the-six-matches) from their real event data.
+- **Usefulness (a real recurring task):** a major broadcaster now describes [only some Premier League games (about 109 of 380)](#the-problem), and elsewhere live audio description is voluntary and patchy; Touchline speaks the key moments of [six real matches in four sports](#the-six-matches) from their real event data.
 - **Technical execution:** a line in [0.53 s to its first word](#real-numbers) (p50), gated on the video's clock, an offline test suite (`make check`) and a live smoke test on every deploy; [architecture](docs/ARCHITECTURE.md) and [known limitations](#known-limitations).
 - **Demo:** two minutes on the live URL, scripted in [docs/demo.md](docs/demo.md); the [60-second path](#the-60-second-path) above is the short version.
 
