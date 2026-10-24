@@ -496,10 +496,10 @@ wrong and a right line for each of the six rules.
 ### Line check beside the rules
 
 The same labelled lines, lead lines only, through Line check: a keyed run of
-[`eval/linecheck_eval.py`](eval/linecheck_eval.py), recording off, on integration `b4d4cf4`. On
-unseen lines Line check caught 3 of 5 wrong lines, against 1 of 5 for the rules, and it flagged 5
-right ones. The later run `/stats` serves ([`eval/linecheck_heldout.json`](eval/linecheck_heldout.json), #317)
-also caught 3 of 5, with 3 false alarms. A Line check flag only sends the line to the producer's fix queue; it never stops the line
+[`eval/linecheck_eval.py`](eval/linecheck_eval.py), recording off: the first set on integration
+`b4d4cf4`, the held-out set as `/stats` serves it ([`eval/linecheck_heldout.json`](eval/linecheck_heldout.json), #317). On
+unseen lines Line check caught 3 of 5 wrong lines, against 1 of 5 for the rules, with 3 false alarms
+among its 6 flags. A Line check flag only sends the line to the producer's fix queue; it never stops the line
 being said. The samples are small: one catch moves these a lot.
 
 | Set | Checker | Flagged | Caught | Wrong lines |
@@ -507,7 +507,7 @@ being said. The samples are small: one catch moves these a lot.
 | First set (287 lead lines) | rules | 8 | 8 | 15 |
 | First set | Line check | 18 | 10 | 15 |
 | Held-out (288 lead lines) | rules (before #301) | 1 | 1 | 5 |
-| Held-out | Line check | 8 | 3 | 5 |
+| Held-out | Line check | 6 | 3 | 5 |
 
 ## The problem
 
