@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { getLedger, getReview, getStats, postFix, waitForExample, waitForScoreExamples } from '../api'
+import { followTraining, getLedger, getReview, getStats, postFix, timed, waitForExample } from '../api'
 import { submitFix, type Refused } from '../fix'
-import { adapterText, exampleText, scoreExampleLabel, TEACHES } from '../proof'
-import type { Fix, Ledger, LineCheckExample, ReviewItem, ScoreCheckExample, ScoreCheckStats } from '../types'
+import { adapterText, exampleText, scoreExampleLabel, TEACHES, trainingHeading } from '../proof'
+import type { Fix, Ledger, LineCheckExample, ReviewItem, ScoreCheckExample, ScoreCheckStats, TrainingState } from '../types'
 import { FixSheet, type FixPhase } from './FixSheet'
 import { Nav, type Screen } from './Nav'
 
@@ -19,6 +19,9 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
   const [training, setTraining] = useState<Training | null>(null) // the last fix's Score check examples (#400)
   const [degraded, setDegraded] = useState(false) // #401: Mubit's key unset or its last call failed
   const heading = useRef<HTMLHeadingElement>(null)
+  const following = useRef<AbortController | null>(null) // the panel's reads: aborted when it closes
+  const closeTraining = () => (following.current?.abort(), setTraining(null))
+  useEffect(() => () => following.current?.abort(), [])
 
   const load = () => {
     getLedger().then(setLedger, () => setLedger(null))
@@ -35,7 +38,6 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
     if (!fixing) return
     const { item } = fixing
     setFixing({ item, phase: 'sending' })
-    const before = (await getStats().catch(() => null))?.scorecheck ?? null
     await submitFix(
       () => postFix(item.line_id, text, reason),
       () => true,
@@ -47,14 +49,17 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
         setExample(null)
         if (TEACHES.includes(reason))
           waitForExample(fix).then((ex) => ex && setExample(ex), () => {})
-        setTraining({ fix, before, examples: [], after: null, done: false })
+        following.current?.abort()
+        const ctl = (following.current = new AbortController())
+        setTraining({ fix, state: 'pending', before: null, examples: [], after: null })
         const mine = (f: (t: Training) => Training) => setTraining((t) => (t?.fix === fix ? f(t) : t))
-        // the count after each example lands: one of the two may never come (already sent, or unlabelled)
-        const after = () => getStats().then((s) => mine((t) => ({ ...t, after: s.scorecheck ?? t.after })), () => {})
-        waitForScoreExamples(fix, (examples) => (mine((t) => ({ ...t, examples })), after()))
-          .then(() => getStats())
-          .then((s) => mine((t) => ({ ...t, after: s.scorecheck ?? null, done: true })))
-          .catch(() => mine((t) => ({ ...t, done: true })))
+        // the counts are read once the fix is saved, each giving up after 5 s: a slow /stats never holds the save
+        const count = () => getStats(timed(ctl.signal, 5_000)).then((s) => s.scorecheck ?? null, () => null)
+        count().then((before) => mine((t) => ({ ...t, before })))
+        followTraining(fix, (state, examples) => {
+          mine((t) => ({ ...t, state, examples }))
+          count().then((after) => after && mine((t) => ({ ...t, after })))
+        }, ctl.signal).then((state) => mine((t) => ({ ...t, state })))
         heading.current?.focus() // its card is gone: focus goes back to the top of the queue
       },
       // A 503 stores nothing (CONTRACT.md): the sheet stays open with the text to send again.
@@ -135,7 +140,7 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
           </p>
         )}
         {example?.line_id === fixed?.line_id && example && <p className="hint" title={example.mubit_request_id ?? undefined}>{exampleText(example)}</p>}
-        {training && <TrainingPanel training={training} />}
+        {training && <TrainingPanel training={training} onClose={closeTraining} />}
         {body}
         {ledger && <Corrections ledger={ledger} />}
       </main>
@@ -163,19 +168,26 @@ function when(item: ReviewItem): string {
 
 interface Training {
   fix: Fix
-  before: ScoreCheckStats | null // /stats `scorecheck` as the fix was sent
-  examples: ScoreCheckExample[]
-  after: ScoreCheckStats | null // and once its examples are in
-  done: boolean
+  state: TrainingState // from this fix's own receipt (#400)
+  before: ScoreCheckStats | null // /stats `scorecheck` once the fix was saved
+  examples: ScoreCheckExample[] // this fix's own, by fix_uid
+  after: ScoreCheckStats | null // and once its examples or receipt are in
 }
 
-// #400: one fix becoming Score check training data, step by step, with the ids core already has.
-// "Sent to training", never that a model was updated.
-function TrainingPanel({ training: { fix, before, examples, after, done } }: { training: Training }) {
+const OUTCOME: Partial<Record<TrainingState, string>> = {
+  pending: 'Waiting for Score check\'s receipt…',
+  none: 'No new Score check example: each was already sent, or the data can\'t label it',
+  failed: 'A Mubit call failed: nothing was sent to training',
+  unknown: 'No receipt within a minute: the send may still finish. The ledger below lists every example sent.',
+}
+
+// #400: one fix becoming Score check training data, step by step, with the ids core already has. The
+// heading stays neutral until this fix's receipt is in; never that a model was updated.
+function TrainingPanel({ training: { fix, state, before, examples, after }, onClose }: { training: Training; onClose: () => void }) {
   const count = (sc: ScoreCheckStats | null) => sc?.examples_sent.toLocaleString('en-GB') ?? '…'
   return (
     <section className="flag glass training" aria-labelledby="training-h">
-      <h2 id="training-h">Sent to training</h2>
+      <h2 id="training-h">{trainingHeading(state)}</h2>
       <ol aria-live="polite">
         <li>
           Fix saved{fix.mubit_request_id && <>: request <code>{fix.mubit_request_id}</code></>}
@@ -185,13 +197,13 @@ function TrainingPanel({ training: { fix, before, examples, after, done } }: { t
             Score check example · {scoreExampleLabel(ex, fix)} · request <code>{ex.mubit_request_id ?? 'none'}</code>
           </li>
         ))}
-        {!done && examples.length < 2 && <li>Sending Score check examples…</li>}
-        {done && !examples.length && <li>No Score check example sent for this fix</li>}
+        {OUTCOME[state] && <li>{OUTCOME[state]}</li>}
         <li>
           Score check examples: {count(before)} → {after ? count(after) : '…'}
         </li>
         <li>{adapterText(after ?? before)}</li>
       </ol>
+      <button className="btn" onClick={onClose}>Close</button>
     </section>
   )
 }

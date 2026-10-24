@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { adapterText, autonomyRows, checkText, consoleRow, earlierRows, exampleText, FALLBACK_NOTE, FLAG_NOTE, heldoutRow, linecheckRow, scoreCheckRows, scoreExampleLabel, TRAINING_LABEL, voiceRow } from './proof.ts'
+import { adapterText, autonomyRows, checkText, consoleRow, earlierRows, exampleText, FALLBACK_NOTE, FLAG_NOTE, heldoutRow, linecheckRow, scoreCheckRows, scoreExampleLabel, TRAINING_LABEL, trainingHeading, voiceRow } from './proof.ts'
 import type { ConsoleReading, HeldOut, ScoreCheckStats } from './types.ts'
 
 const all = { called: 10, first_time: 6, auto_fixed: 2, to_human: 2 }
@@ -165,4 +165,9 @@ test('the panel shows the latest Score check adapter version, else that the trai
   assert.equal(adapterText({ recorded: { ...record, version: 2 } } as unknown as ScoreCheckStats), 'Latest Score check adapter: v2')
   for (const t of [adapterText(undefined), adapterText({ recorded: { ...record, version: 2 } } as unknown as ScoreCheckStats)])
     assert.doesNotMatch(t, /updated|learns live/)
+})
+
+test("the training panel's heading claims a send only once the fix's own receipt says so (#400)", () => {
+  assert.equal(trainingHeading('sent'), 'Sent to training')
+  for (const s of ['pending', 'none', 'failed', 'unknown'] as const) assert.doesNotMatch(trainingHeading(s), /^Sent/)
 })

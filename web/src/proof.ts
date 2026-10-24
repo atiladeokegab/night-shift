@@ -1,4 +1,4 @@
-import type { Autonomy, ConsoleReading, EarlierTasks, Fix, HeldOut, LineCheck, LineCheckExample, LineCheckStats, ScoreCheckExample, ScoreCheckStats, Stats, TaskAdapter, TaskVersion, VoiceHealth } from './types'
+import type { Autonomy, ConsoleReading, EarlierTasks, Fix, HeldOut, LineCheck, LineCheckExample, LineCheckStats, ScoreCheckExample, ScoreCheckStats, Stats, TaskAdapter, TaskVersion, TrainingState, VoiceHealth } from './types'
 
 const NONE: Autonomy = { called: 0, first_time: 0, auto_fixed: 0, to_human: 0 }
 
@@ -76,6 +76,17 @@ export function exampleText(ex: LineCheckExample | null | undefined): string | n
 // training" only: never that a model was updated.
 export function scoreExampleLabel(ex: ScoreCheckExample, fix: Pick<Fix, 'corrected_text'>): string {
   return `${ex.text === fix.corrected_text ? 'Fixed text' : 'Line as said'}: ${ex.gold.replace('_', ' ')}`
+}
+
+// The panel's heading: neutral until the fix's own receipt says what was sent (#400).
+export function trainingHeading(state: TrainingState): string {
+  return {
+    pending: 'Score check: waiting for the receipt',
+    sent: 'Sent to training',
+    none: 'Not sent to training',
+    failed: 'Not sent to training: a Mubit call failed',
+    unknown: 'Training send not confirmed',
+  }[state]
 }
 
 export function adapterText(sc: ScoreCheckStats | null | undefined): string {
