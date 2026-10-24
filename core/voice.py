@@ -407,8 +407,10 @@ def voice_router(store, speaker: Speaker) -> APIRouter:
 
     @router.get("/lines/{line_id}/audio")
     async def line_audio(line_id: str, voice: str | None = None):
-        # only stored lines and answers are spoken, so the key can't read out arbitrary text
-        said = await asyncio.to_thread(lambda: store.all("lines") + store.all("answers"))
+        # only stored lines, answers and screen-note lines (#291) are spoken, so the key can't read
+        # out arbitrary text
+        kinds = ("lines", "answers", "looks")
+        said = await asyncio.to_thread(lambda: [x for k in kinds for x in store.all(k)])
         line = next((ln for ln in said if ln.get("line_id") == line_id), None)
         if line is None:
             raise HTTPException(404, f"no line {line_id!r}")

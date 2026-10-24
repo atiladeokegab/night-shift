@@ -2,13 +2,16 @@
 
 from eval import checker_eval
 
-# Today's checker on the 300 labels: 8 of 8 flags right, 8 of 15 wrong lines caught.
-MIN_PRECISION, MIN_RECALL = 0.9, 0.5
+# Today's checker on the 300 labels: 14 of 14 flags right, 14 of 15 wrong lines caught. The rules
+# were written against these misses (#293), so the held-out labels are the honest measure.
+MIN_PRECISION, MIN_RECALL = 1.0, 14 / 15
+# On the 300 held-out labels: 1 of 1 flag right, 1 of 6 caught, as integration's checker scores.
+HELDOUT_PRECISION, HELDOUT_RECALL = 1.0, 1 / 6
 
 
-def holds(out: dict) -> bool:
+def holds(out: dict, precision: float = MIN_PRECISION, recall: float = MIN_RECALL) -> bool:
     s = out["overall"]
-    return (s["precision"] or 0) >= MIN_PRECISION and (s["recall"] or 0) >= MIN_RECALL
+    return (s["precision"] or 0) >= precision and (s["recall"] or 0) >= recall
 
 
 def test_the_labels_are_the_stratified_sample_and_were_labelled():
@@ -26,6 +29,20 @@ def test_the_labels_are_the_stratified_sample_and_were_labelled():
 
 def test_todays_checker_holds_its_precision_and_recall():
     assert holds(checker_eval.evaluate(checker_eval.load()))
+
+
+def test_the_held_out_labels_are_new_lines_and_were_labelled():
+    labels = checker_eval.load(checker_eval.HELDOUT)
+    assert len(labels) == checker_eval.SIZE
+    assert {ln["label"] for ln in labels} == {"right", "wrong"}
+    assert all(ln["why"] for ln in labels if ln["label"] == "wrong")
+    keys = {(ln["match_id"], ln["moment_idx"], ln["text"]) for ln in labels}
+    assert len(keys) == len(labels) and not keys & checker_eval.labelled()
+
+
+def test_todays_checker_holds_its_held_out_precision_and_recall():
+    out = checker_eval.evaluate(checker_eval.load(checker_eval.HELDOUT))
+    assert holds(out, HELDOUT_PRECISION, HELDOUT_RECALL)
 
 
 def test_the_eval_goes_red_when_the_checker_is_broken():

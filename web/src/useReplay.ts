@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react'
 import { Refused } from './ask'
-import { askCommentator, createReplay, followReplay, getPlayers, getProfile, getShots, type StreamStatus } from './api'
+import { askCommentator, createReplay, followReplay, getPlayers, getProfile, getShots, lookAt, type StreamStatus } from './api'
 import { release, replayClock, speaks } from './gate'
 import type { Answer, Fix, Line, LineCheck, Moment, Stats } from './types'
 
@@ -259,5 +259,11 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
     return id ? getProfile(id, name, momentIdx) : null
   }, [])
 
-  return { state, start, reconnect, leave, setClock, unGate, markFixed, ask, shots, players, profile }
+  // One frame of the shared tab for the commentators (#291); false: send no more.
+  const look = useCallback(async (image: string, t: number) => {
+    const id = replayId.current
+    return id ? lookAt(id, image, t) : false
+  }, [])
+
+  return { state, start, reconnect, leave, setClock, unGate, markFixed, ask, shots, players, profile, look }
 }

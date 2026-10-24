@@ -2,6 +2,8 @@
 
     uv run python -m eval.checker_eval                  # score today's checker on the labels
     uv run python -m eval.checker_eval sample LINES     # draw the sample from a copy of lines.jsonl
+    uv run python -m eval.checker_eval heldout LINES    # draw the held-out sample (#293)
+    uv run python -m eval.checker_eval --heldout        # score the checker on the held-out labels
 
 The labels (eval/checker_labels.jsonl) were made before the checker was run on them, by a separate
 agent reading each line against its moment's data, the match header and the moments before it; the
@@ -31,6 +33,9 @@ from data.matches import list_matches, load_moments, match_header
 
 LABELS = Path(__file__).with_name("checker_labels.jsonl")
 SIZE, FLOOR, SEED = 300, 30, 219
+# drawn after the checker was tuned on LABELS' misses: a different seed, none of LABELS' lines, and
+# the analyst's lines too (#293)
+HELDOUT, HELDOUT_SEED = Path(__file__).with_name("heldout_labels.jsonl"), 293
 OMISSIONS = ("the milestone is unsaid", "the line never says how the shot ended")
 
 RULES = """\
@@ -55,22 +60,36 @@ def bundled() -> dict[str, dict]:
     return {m["match_id"]: m for m in list_matches()}
 
 
-def sample(lines_path: Path, size: int = SIZE, seed: int = SEED) -> list[dict]:
+def sample(
+    lines_path: Path,
+    size: int = SIZE,
+    seed: int = SEED,
+    analyst: bool = False,
+    skip: frozenset = frozenset(),
+) -> list[dict]:
     """Distinct lead lines (match, moment, text) with their moment in a bundled match, stratified
-    by match: each gets FLOOR lines (or all it has), the rest go by each match's share."""
+    by match: each gets FLOOR lines (or all it has), the rest go by each match's share. `analyst`
+    keeps the analyst's lines too; `skip` leaves out these (match, moment, text)."""
     matches = bundled()
     moments = {mid: {m["idx"] for m in load_moments(mid)} for mid in matches}
-    seen, pool = set(), {mid: [] for mid in matches}
+    seen, pool = set(skip), {mid: [] for mid in matches}
     for raw in lines_path.read_text().splitlines():
         ln = json.loads(raw)
         mid, idx, text = ln.get("match_id"), ln.get("moment_idx"), (ln.get("text") or "").strip()
-        if ln.get("speaker") == "analyst" or ln.get("fallback") or not text:
+        if (ln.get("speaker") == "analyst" and not analyst) or ln.get("fallback") or not text:
             continue  # a fallback is built from the data, so it is right by construction
         if mid not in matches or idx not in moments[mid] or (mid, idx, text) in seen:
             continue
         seen.add((mid, idx, text))
         keep = {"line_id": ln["line_id"], "match_id": mid, "moment_idx": idx, "text": text}
-        pool[mid].append({**keep, **({"reply": ln["reply"]} if ln.get("reply") else {})})
+        said_as = {k: ln[k] for k in ("reply", "insight", "open") if ln.get(k)}
+        pool[mid].append(
+            {
+                **keep,
+                **({"speaker": ln["speaker"]} if analyst and ln.get("speaker") else {}),
+                **said_as,
+            }
+        )
     take = {mid: min(len(p), FLOOR) for mid, p in pool.items()}
     rest = {mid: len(p) - take[mid] for mid, p in pool.items()}
     left = size - sum(take.values())
@@ -96,6 +115,8 @@ def context(line: dict, before: int = 8) -> dict:
     }
     if line.get("reply"):
         out["analyst_just_said"] = line["reply"]["heard"]
+    if line.get("insight"):  # an analyst line: the stat it was given to say
+        out["analyst_was_given"] = line["insight"]["detail"]
     return out
 
 
@@ -194,19 +215,30 @@ def load(path: Path = LABELS) -> list[dict]:
     return [json.loads(raw) for raw in path.read_text().splitlines() if raw.strip()]
 
 
+def labelled() -> frozenset:
+    """The (match, moment, text) of every line in LABELS, which the held-out sample leaves out."""
+    return frozenset((ln["match_id"], ln["moment_idx"], ln["text"]) for ln in load())
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("cmd", nargs="?", default="score", choices=["score", "sample"])
+    ap.add_argument("cmd", nargs="?", default="score", choices=["score", "sample", "heldout"])
     ap.add_argument("lines", nargs="?", type=Path, help="sample: a copy of the store's lines.jsonl")
     ap.add_argument("--json", action="store_true", help="score: the full result as JSON")
+    ap.add_argument("--heldout", action="store_true", help="score: the held-out labels")
     args = ap.parse_args(argv)
-    if args.cmd == "sample":
+    if args.cmd in ("sample", "heldout"):
         if not args.lines:
-            ap.error("sample needs a lines.jsonl")
-        for ln in sample(args.lines):
+            ap.error(f"{args.cmd} needs a lines.jsonl")
+        drawn = (
+            sample(args.lines)
+            if args.cmd == "sample"
+            else sample(args.lines, seed=HELDOUT_SEED, analyst=True, skip=labelled())
+        )
+        for ln in drawn:
             print(json.dumps({**ln, "context": context(ln)}))
         return 0
-    out = evaluate(load())
+    out = evaluate(load(HELDOUT if args.heldout else LABELS))
     print(json.dumps(out, indent=1) if args.json else report(out))
     return 0
 

@@ -168,6 +168,10 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .ctl svg { width: 16px; height: 16px; }
 .ctl.eyes-btn { width: auto; display: inline-flex; gap: 6px; padding: 0 10px; font: inherit; color: var(--fg); white-space: nowrap; }
 .ctl.eyes-btn[aria-pressed="true"] { background: var(--amber); color: var(--on-amber); }
+/* Let them watch (#291): while the tab is shared, a chip says so beside its Stop. */
+.watching { flex: none; display: inline-flex; align-items: center; gap: 4px; }
+.watching .chip { display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; height: 28px; border-radius: 9px; background: var(--amber); color: var(--on-amber); white-space: nowrap; }
+.watching .chip b { width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: fade 1.2s ease-in-out infinite alternate; }
 .controls .time { flex: none; min-width: 74px; }
 /* The scrubber: the moment track drawn under a transparent range input that takes the seeks. */
 .scrub { position: relative; flex: 1; min-width: 60px; height: 36px; display: flex; align-items: center; }

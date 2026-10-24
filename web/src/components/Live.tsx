@@ -21,6 +21,7 @@ import { FALLBACK_NOTE } from '../proof'
 import { ScoreBar } from './ScoreBar'
 import { ShotMap } from './ShotMap'
 import { VideoStage, type VideoState } from './VideoStage'
+import { Watch } from './Watch'
 
 export type VoiceStatus = 'on' | 'off' | 'unavailable'
 
@@ -58,6 +59,7 @@ interface Props {
   muted?: boolean
   onVolume?: (volume: number, muted: boolean) => void
   closed?: boolean // "Close your eyes" (#277): the picture covered; local to the page unless App holds it
+  onLook?: (image: string, t: number) => Promise<boolean> // Let them watch (#291): a frame of the shared tab
 }
 
 // The live page (#132): a bounded 16:9 video card with the controls on its bottom edge and the caption card
@@ -231,7 +233,12 @@ export function Live(props: Props) {
             </div>
             <Controls card={card} paused={paused || ended} canPlay={canPlay} onToggle={ended ? onRetry : toggle} now={replay.duration ? Math.min(replay.now, replay.duration) : replay.now} duration={replay.duration}
               marks={marks} onSeek={(t) => transport?.seek(t)} volume={volume} muted={muted} onVolume={onVolume}
-              eyes={noVideo ? undefined : { closed: covered, onToggle: onEyes }} />
+              eyes={noVideo ? undefined : { closed: covered, onToggle: onEyes }}>
+              {/* not hidden at the stream's end: the picture plays on, and the server says when it takes no more */}
+              {!noVideo && props.onLook && replay.phase === 'live' && (
+                <Watch key={replayKey} onLook={props.onLook} time={() => replay.now} />
+              )}
+            </Controls>
           </section>
           {replay.stream === 'reconnecting' && (
             <div className="banner"><div className="glass warn" role="alert"><b />Reconnecting to the replay…</div></div>
