@@ -7,7 +7,7 @@ import os
 import threading
 from pathlib import Path
 
-KINDS = ("lines", "fixes", "adapter", "answers", "voice", "replays")
+KINDS = ("lines", "fixes", "auto_fixes", "adapter", "answers", "voice", "replays")
 
 
 class Store:
@@ -18,7 +18,8 @@ class Store:
 
     def _read(self, kind: str) -> str:
         path = self.root / f"{kind}.jsonl"
-        return path.read_text() if path.exists() else ""
+        with self._lock:  # appends run on threads (#156): never read half of one
+            return path.read_text() if path.exists() else ""
 
     def _write(self, kind: str, text: str) -> None:
         with (self.root / f"{kind}.jsonl").open("a") as f:

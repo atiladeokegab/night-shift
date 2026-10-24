@@ -57,7 +57,8 @@ test('the dock chip shows a voice by its own name or its role, never a lone nati
 test('the ON AIR badge names the voice as the dock chip does', () => {
   const live = readFileSync(new URL('./components/Live.tsx', import.meta.url), 'utf8')
   assert.match(live, /const voiceLabel = voice\.chip\b/)
-  assert.match(live, /<OnAir voice=\{voice\} label=\{voiceLabel\}[ />]/)
+  assert.match(live, /const onAirLabel = [^\n]*`Lead · \$\{voiceLabel\}`/) // #153: the lead's label is the chip name
+  assert.match(live, /<OnAir voice=\{voice\} label=\{onAirLabel\}[ />]/)
 })
 
 test('a commentator error shows the calm off-air state with a Retry, never the error text', () => {
@@ -69,7 +70,7 @@ test('a commentator error shows the calm off-air state with a Retry, never the e
 test('while off air the badge reads OFF AIR, and a voice change is announced by its chip name', () => {
   const live = readFileSync(new URL('./components/Live.tsx', import.meta.url), 'utf8')
   assert.match(live, /offAir=\{!!replay\.error\}/)
-  assert.match(live, /if \(offAir\) \{[\s\S]*?className="onair glass off"[\s\S]*?OFF AIR/)
+  assert.match(live, /if \(offAir\) \{[\s\S]*?cls \+= ' off'[\s\S]*?OFF AIR/)
   const app = readFileSync(new URL('./App.tsx', import.meta.url), 'utf8')
   assert.match(app, /say\(`\$\{chipName\(v\)\} from the next line\.`\)/)
 })

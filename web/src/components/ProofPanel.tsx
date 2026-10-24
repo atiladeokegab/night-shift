@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { getStats } from '../api'
+import { getReview, getStats } from '../api'
 import type { Adapter, SpeakerStats, Stats } from '../types'
 import { SideBySide } from './SideBySide'
 import { nextAdapter } from '../proof'
@@ -14,9 +14,11 @@ interface Props {
 export function ProofPanel({ live }: Props) {
   const [fetched, setFetched] = useState<Stats | null>(null)
   const [failed, setFailed] = useState(false)
+  const [flagged, setFlagged] = useState<number | null>(null) // stored lines the number check flags (#171)
 
   useEffect(() => {
     getStats().then(setFetched, () => setFailed(true))
+    getReview().then((xs) => setFlagged(xs.length), () => {}) // no count is shown rather than a wrong one
   }, [])
 
   const stats = live ?? fetched
@@ -42,6 +44,12 @@ export function ProofPanel({ live }: Props) {
             <dd>{next.note ?? 'Your fixes Mubit trains on'}</dd>
           </div>
           <Figure label="Fixes" value={String(stats.fixes_recorded ?? 0)} />
+          {!!flagged && (
+            <div className="wide">
+              <dt className="label">To review</dt>
+              <dd><a href="#review">{flagged} flagged line{flagged === 1 ? '' : 's'} to fix</a></dd>
+            </div>
+          )}
           {stats.fixes_toward_next !== undefined && (
             <Figure label="Next adapter" value={next.value} />
           )}
