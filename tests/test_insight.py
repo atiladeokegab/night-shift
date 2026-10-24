@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 
 from agent import commentator
 from agent.commentator import FakeProvider
-from core import insight
+from core import insight, predict
 from core.app import Deps, create_app
 from core.predict import load_pack
 from core.replay import Replay, run_replay
@@ -139,12 +139,14 @@ def test_each_insight_hears_the_line_before_it_and_the_lead_replies(tmp_path):
     assert {ln["speaker"] for ln in lines if not gap(ln)} == {"lead"}
 
 
-def test_a_pack_match_cites_the_pack_and_one_without_uses_tonight_only(tmp_path):
+def test_a_pack_match_cites_the_pack_and_one_without_uses_tonight_only(tmp_path, monkeypatch):
     kobe, _ = replay(KOBE, Store(tmp_path / "kobe"))
     said = [ln["insight"] for ln in kobe if "insight" in ln]
     assert any("made 461 of 1036" in i["detail"] for i in said)  # Kobe's pre-match record
     assert {"player profile", "next to score"} <= {i["kind"] for i in said}
-    assert load_pack("football", CHELSEA) is None
+    # Chelsea has a pack (#134): take it away to see a match without one
+    assert load_pack("football", CHELSEA) is not None
+    monkeypatch.setattr(predict, "load_pack", lambda sport, match_id: None)
     chelsea, _ = replay(CHELSEA, Store(tmp_path / "chelsea"))
     said = [ln["insight"] for ln in chelsea if "insight" in ln]
     assert said and {i["kind"] for i in said} <= {"tally", "score story", "momentum"}
