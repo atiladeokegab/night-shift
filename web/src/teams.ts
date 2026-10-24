@@ -41,9 +41,15 @@ export function sides(match: Match, team: string): { ours: TeamStyle; theirs: Te
   return team === away.name ? { ours: away, theirs: home } : { ours: home, theirs: away }
 }
 
-// The two demo matches' card copy from docs/design.md ("Copy"). The design's "Highlights 4:56 · 4 key
+// Card copy: the two demo matches from docs/design.md ("Copy"), and the iconic ones by what they are
+// remembered for, with names, dates and results from data/sample/. The design's "Highlights 4:56 · 4 key
 // moments" is a mockup placeholder (data/video/ maps 15 and 32 moments), so it is left out: no unmeasured figures.
 export const CARD_COPY: Record<string, { title: string; detail: string; result: string }> = {
+  '3869685': {
+    title: 'Messi v Mbappé',
+    detail: '2022 World Cup final · Argentina v France · 18 Dec 2022',
+    result: 'Argentina 3–3 France, Argentina win 4–2 on penalties',
+  },
   '3906390': {
     title: 'Spain v England',
     detail: "2023 Women's World Cup final · Sydney · 20 Aug 2023",
@@ -53,6 +59,21 @@ export const CARD_COPY: Record<string, { title: string; detail: string; result: 
     title: 'India v Pakistan',
     detail: 'T20 World Cup · MCG, Melbourne · 23 Oct 2022',
     result: 'India won by 4 wickets, off the last ball',
+  },
+  '0020500591': {
+    title: "Kobe's 81 v Toronto",
+    detail: 'Lakers v Raptors · NBA regular season · 22 Jan 2006',
+    result: 'Lakers 122–104 Raptors, Kobe Bryant 81 points',
+  },
+  '0049700088': {
+    title: "Jordan's last shot",
+    detail: '1998 NBA Finals, Game 6 · Jazz v Bulls · 14 Jun 1998',
+    result: 'Bulls 87–86 Jazz',
+  },
+  '9558': {
+    title: 'Hamilton at Silverstone',
+    detail: '2024 British Grand Prix · 7 Jul 2024',
+    result: 'Hamilton wins by 1.5 s from Verstappen, Norris third',
   },
 }
 

@@ -11,6 +11,7 @@ from pathlib import Path
 
 SAMPLE = Path(__file__).resolve().parent / "sample"
 VIDEO = Path(__file__).resolve().parent / "video"
+VIDEO_LEAD_S = 5  # the video starts this long before its first mapped moment
 
 
 def _path(match_id: str) -> Path:
@@ -33,6 +34,7 @@ def list_matches() -> list[dict]:
         match = {"match_id": h["match_id"], "sport": h["sport"], "title": title, "sample": True}
         if vmap := video_map(h["match_id"]):
             match["youtube_id"] = vmap["youtube_id"]
+            match["video_start"] = vmap["start"]
         out.append(match)
     return out
 
@@ -42,10 +44,14 @@ def load_moments(match_id: str) -> list[dict]:
 
 
 def video_map(match_id: str) -> dict | None:
-    """data/video/<sport>-<match_id>.json: {youtube_id, source, moments: [{idx, video_t}]}."""
+    """data/video/<sport>-<match_id>.json: {youtube_id, source, moments: [{idx, video_t}]}, plus
+    `start`: the whole second the page starts the video at, just before its first mapped moment."""
     match_id = str(match_id)
     found = sorted(VIDEO.glob(f"*-{match_id}.json")) if match_id.isalnum() else []
-    return json.loads(found[0].read_text(encoding="utf-8")) if found else None
+    if not found:
+        return None
+    vmap = json.loads(found[0].read_text(encoding="utf-8"))
+    return {**vmap, "start": max(0, int(vmap["moments"][0]["video_t"]) - VIDEO_LEAD_S)}
 
 
 def match_header(match_id: str) -> dict:

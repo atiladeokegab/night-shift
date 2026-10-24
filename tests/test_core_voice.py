@@ -303,6 +303,40 @@ def test_a_raw_elevenlabs_voice_id_is_a_config_only_pick(tmp_path, monkeypatch):
     assert [voice_in(r) for r in seen] == ["onwK4e9ZLuTAKqWW03F9"]  # the second request is cached
 
 
+def test_the_deployed_picks_give_every_sport_its_own_default(tmp_path, monkeypatch):
+    # The live env: football's pick is the announcer's ElevenLabs id, which is also f1's default.
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    monkeypatch.setenv("VOICE_FOOTBALL", "gU0LNdkMOQCOrPrwtbee")
+    monkeypatch.setenv("VOICE_CRICKET", "IX4AgWzTnD6q0cNvHqvK")
+    seen = []
+    line = {"line_id": "f1", "sport": "football", "text": "Goal!"}
+    with client_for(tmp_path, upstream(seen=seen), line) as client:
+        voices = client.get("/voices").json()
+        assert client.get("/lines/f1/audio?voice=football-pick").status_code == 200
+    defaults = {v["default_for"]: v["id"] for v in voices if v["default_for"]}
+    assert defaults == {
+        "football": "football-pick",
+        "cricket": "cricket-pick",
+        "f1": "announcer",
+        "basketball": "sam",
+    }
+    assert [voice_in(r) for r in seen] == ["gU0LNdkMOQCOrPrwtbee"]
+
+
+def test_a_pick_by_another_sports_default_id_gets_its_own_entry(tmp_path, monkeypatch):
+    # docs/voice.md's own id for the pick: the announcer is already f1's default
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    monkeypatch.setenv("VOICE_FOOTBALL", "announcer")
+    seen = []
+    line = {"line_id": "f1", "sport": "football", "text": "Goal!"}
+    with client_for(tmp_path, upstream(seen=seen), line) as client:
+        voices = client.get("/voices").json()
+        assert client.get("/lines/f1/audio").status_code == 200
+    defaults = {v["default_for"]: v["id"] for v in voices if v["default_for"]}
+    assert defaults["football"] == "football-pick" and defaults["f1"] == "announcer"
+    assert [voice_in(r) for r in seen] == ["gU0LNdkMOQCOrPrwtbee"]
+
+
 def test_empty_voice_settings_from_env_example_keep_the_defaults(monkeypatch):
     from core.voice import default_voice, model_for
 

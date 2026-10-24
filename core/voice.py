@@ -112,21 +112,27 @@ def tag_for(moment: dict) -> str | None:
 
 
 def all_voices(env=os.environ) -> list[dict]:
-    """VOICES, plus `<sport>-pick` for each VOICE_<SPORT> set to a raw ElevenLabs voice id."""
+    """VOICES, plus `<sport>-pick` for each VOICE_<SPORT> set to a raw ElevenLabs voice id or to
+    another sport's default: /voices names one sport per voice, so a shared one needs its own."""
     picks = []
     for v in VOICES:
         sport = v["default_for"]
         chosen = env.get(f"VOICE_{sport.upper()}") if sport else None
-        if chosen and all(chosen not in (x["id"], x["eleven_id"]) for x in VOICES):
+        ours = next((x for x in VOICES if x["id"] == chosen), None)
+        if chosen and (ours is None or ours["default_for"] not in (None, sport)):
             label = f"{sport.title()} pick"
-            picks.append({**v, "id": f"{sport}-pick", "label": label, "eleven_id": chosen})
+            eleven_id = ours["eleven_id"] if ours else chosen
+            picks.append({**v, "id": f"{sport}-pick", "label": label, "eleven_id": eleven_id})
     return VOICES + picks
 
 
 def default_voice(sport: str | None, env=os.environ) -> dict:
     chosen = env.get(f"VOICE_{str(sport).upper()}")
-    return next((v for v in all_voices(env) if chosen in (v["id"], v["eleven_id"])), None) or next(
-        (v for v in VOICES if v["default_for"] == sport), VOICES[0]
+    voices = all_voices(env)
+    return (
+        next((v for v in voices if v["id"] == f"{sport}-pick"), None)
+        or next((v for v in voices if v["id"] == chosen), None)
+        or next((v for v in VOICES if v["default_for"] == sport), VOICES[0])
     )
 
 

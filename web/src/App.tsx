@@ -4,11 +4,13 @@ import { listMatches, listVoices, postFix } from './api'
 import { About } from './components/About'
 import type { FixPhase } from './components/FixSheet'
 import { FixSheet } from './components/FixSheet'
+import { submitFix } from './fix'
 import { Live, type VoiceStatus } from './components/Live'
 import type { Screen } from './components/Nav'
 import { Picker } from './components/Picker'
 import type { VideoState } from './components/VideoStage'
 import { VoiceSheet } from './components/VoiceSheet'
+import { Wall } from './components/Wall'
 import { defaultVoice, voiceName } from './teams'
 import { SPORTS, type Line, type Match, type Sport, type Voice } from './types'
 import { useReplay } from './useReplay'
@@ -17,7 +19,7 @@ import { useSpeech } from './useSpeech'
 const TOAST_MS = 2400
 
 export default function App() {
-  const [screen, setScreen] = useState<Screen>('picker')
+  const [screen, setScreen] = useState<Screen>('wall')
   const [matches, setMatches] = useState<Match[] | null>(null)
   const [loadFailed, setLoadFailed] = useState(false)
   const [current, setCurrent] = useState<{ match: Match; speed: number; key: number; switching: boolean } | null>(null)
@@ -45,6 +47,17 @@ export default function App() {
   }, [voice])
   const sayLine = useCallback((line: Line) => speech.say(line, voiceNow.current), [speech])
   const replay = useReplay(sayLine, speech.hush)
+  const { unGate } = replay
+  // A video that can't play here for good says so, and the commentary goes on on the replay's clock.
+  const onVideo = useCallback(
+    (state: VideoState) => {
+      setVideo(state)
+      if (state === 'unavailable') unGate()
+    },
+    [unGate],
+  )
+  // Bumped on every start and leave: an answer from an older replay (a slow fix POST) is ignored.
+  const session = useRef(0)
 
   const load = useCallback(() => {
     listMatches()
@@ -67,6 +80,7 @@ export default function App() {
   }
 
   const start = (match: Match, speed: number, switching = false) => {
+    session.current++
     speech.hush()
     setFixing(null)
     setVoiceSheet(false)
@@ -74,7 +88,7 @@ export default function App() {
     setCurrent((prev) => ({ match, speed, key: (prev?.key ?? 0) + 1, switching }))
     setScreen('live')
     // A match with a highlights video holds its commentary for the player (A-6.4@2).
-    replay.start(match.match_id, speed, !!match.youtube_id)
+    replay.start(match.match_id, speed, !!match.youtube_id, match.video_start)
   }
 
   // One tap starts the other sport's first match at the same speed; the whole page follows it.
@@ -84,12 +98,22 @@ export default function App() {
     if (next && current) start(next, current.speed, true)
   }
 
+  // A-6.5: one tap from the stage opens the wall's next match; the old one's commentary stops at once
+  // (start() hushes the voice, and replay.start() drops every event from the replaced run).
+  const next = () => {
+    if (!matches?.length || !current) return
+    const i = matches.findIndex((m) => m.match_id === current.match.match_id)
+    const m = matches[(i + 1) % matches.length]
+    start(m, m.youtube_id ? 1 : current.speed)
+  }
+
   const go = (to: Screen) => {
     if (to === 'live') {
       if (current) setScreen('live')
       else if (matches?.[0]) start(matches[0], matches[0].youtube_id ? 1 : 4)
       return
     }
+    session.current++
     replay.leave()
     speech.hush()
     setCurrent(null)
@@ -101,15 +125,20 @@ export default function App() {
   const sendFix = async (text: string, reason: string) => {
     if (!fixing) return
     const line = fixing.line
+    const sent = session.current
+    const mine = (f: { line: Line } | null) => f?.line.line_id === line.line_id
     setFixing({ line, phase: 'sending' })
-    try {
-      replay.markFixed(await postFix(line.line_id, text, reason))
-      setFixing(null)
-      say('Fix sent. Kept beside the original.')
-    } catch {
+    await submitFix(
+      () => postFix(line.line_id, text, reason),
+      () => session.current === sent,
+      (fix) => {
+        replay.markFixed(fix)
+        setFixing((f) => (mine(f) ? null : f))
+        say('Fix sent. Kept beside the original.')
+      },
       // A 503 stores nothing (CONTRACT.md), so the sheet stays open with the text to send again.
-      setFixing((f) => (f && f.line.line_id === line.line_id ? { line, phase: 'error' } : f))
-    }
+      () => setFixing((f) => (mine(f) ? { line, phase: 'error' } : f)),
+    )
   }
 
   const sports = SPORTS.filter((s) => matches?.some((m) => m.sport === s))
@@ -127,9 +156,10 @@ export default function App() {
           sports={sports}
           voice={{ status: voiceStatus, name: voiceName(voice), speaking: speech.speaking }}
           video={video}
-          onVideo={setVideo}
+          onVideo={onVideo}
           onClock={replay.setClock}
           onSport={switchSport}
+          onNext={(matches?.length ?? 0) > 1 ? next : null}
           onVoiceSheet={() => setVoiceSheet(true)}
           onFix={(line) => setFixing({ line, phase: 'edit' })}
           onRetry={() => start(current.match, current.speed)}
@@ -138,6 +168,18 @@ export default function App() {
         />
       ) : screen === 'about' ? (
         <About onGo={go} />
+      ) : screen === 'wall' ? (
+        <Wall
+          matches={matches}
+          error={loadFailed}
+          onRetry={() => {
+            setLoadFailed(false)
+            setMatches(null)
+            load()
+          }}
+          onOpen={(m) => start(m, m.youtube_id ? 1 : 4)}
+          onGo={go}
+        />
       ) : (
         <Picker
           matches={matches}

@@ -67,13 +67,20 @@ function F1({ moment }: { moment: Moment | null }) {
       <span className="clock num">{s && 'lap' in s ? `Lap ${s.lap}/${s.laps}` : 'Lap 0'}</span>
       {top.length > 0 && <span className="sep" />}
       {top.map((p) => (
-        <span key={p.pos} className="team num">
-          P{p.pos} {p.driver}
-          {p.gap && p.gap !== 'leader' && <span className="period">{p.gap}</span>}
+        <span key={p.driver} className="team num">
+          {p.pos === null ? 'PIT' : `P${p.pos}`} {p.driver}
+          {p.gap && p.gap !== 'leader' && <span className="period">{shortGap(p.gap)}</span>}
         </span>
       ))}
     </>
   )
+}
+
+// The feed's gaps read aloud ("1.5 seconds", "in the pit lane"); the score bar shows them short.
+function shortGap(gap: string): string {
+  const s = /^([\d.]+) seconds?$/.exec(gap)
+  if (s) return `+${s[1]}s`
+  return gap === 'in the pit lane' ? 'pit lane' : gap
 }
 
 function Team({ team }: { team: TeamStyle }) {
