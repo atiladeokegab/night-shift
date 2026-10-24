@@ -126,9 +126,10 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   For a match with a video map, only mapped moments are called, the `moment` and `line` events carry
   `video_t` (seconds), and they are sent as soon as each line is ready rather than paced by `speed`:
   the page shows and speaks each line when the player reaches `video_t`.
-  `linecheck` (#298): after a live replay's checked lead moment line is out (not a fallback, a
-  fix said again or a cached replay), Line check (agent/linecheck.py, the seeded request exactly)
-  gives it a second opinion off its path, and the stored row is published:
+  `linecheck` (#298): after a replay's checked lead moment line is out (not a fallback or a fix
+  said again), Line check (agent/linecheck.py, the seeded request exactly) gives it a second
+  opinion off its path, and the stored row is published. A cached replay's stored line is checked
+  only if it has no row yet, so once ever (#297):
   `{line_id, match_id, moment_idx, labels, wrong, model, tokens_in, tokens_out, mubit_request_id,
   created_at}`. `labels` is `{score, leader, player_total, event}`, each `ok`, `wrong` or
   `not_said`, or null when the reply wasn't one canonical line; `wrong` lists the fields called
