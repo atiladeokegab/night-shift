@@ -85,7 +85,7 @@ export function LineLog({ lines, late, fixes, checks = {}, examples = {}, moment
             const mine = names(said(l), followed, roster)
             const firstWord = l.first_word_ms != null // undefined or null: only the whole reply was timed
             const ms = l.first_word_ms ?? l.latency_ms
-            const took = `${(ms / 1000).toFixed(2)} s`
+            const took = ms >= 5 ? `${(ms / 1000).toFixed(2)} s` : '' // untimed or under 5 ms (offline): never "0.00 s"
             const check = checkText(checks[l.line_id])
             const example = fix ? exampleText(examples[l.line_id]) : null
             return (
@@ -104,8 +104,12 @@ export function LineLog({ lines, late, fixes, checks = {}, examples = {}, moment
                     ? <span className="num">From an earlier replay</span> // a jump (#163) never called it, so no timing
                     : l.fixed
                       ? <span className="num">Not called</span> // a producer's fix (#232): no model, so no timing
-                      : <span className="num" title={`${firstWord ? 'model first text word' : 'model reply'} ${took}`}>{took}</span>}
-                  {l.served_by && <span className="pill served" title="Served by: the model Mubit's reply said answered">{l.served_by}</span>}
+                      : took && <span className="num" title={`${firstWord ? 'model first text word' : 'model reply'} ${took}`}>{took}</span>}
+                  {/* #314: what "checks itself" means, on the line it checked */}
+                  {(l as Line & { checked?: boolean }).checked && !check && !fix && !l.fixed && (
+                    <span className="pill checked" title="Score, leader and key numbers checked against the match data before it was spoken">✓ Checked</span>
+                  )}
+                  {l.served_by && <span className="pill served" title={`Served by ${l.served_by}, the model Mubit's reply said answered`}>Via Mubit</span>}
                   {mine && <span className="pill follow">{shortName(followed!)}</span>}
                   {fix && <span className="pill fixed">Fixed</span>}
                   {check && <span className={`pill check${checks[l.line_id].wrong.length ? ' flag' : ''}`}

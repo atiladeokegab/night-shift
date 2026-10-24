@@ -23,6 +23,8 @@ export function Wall({ matches, error, onRetry, onOpen, onJump, onGo }: Props) {
   const [stats, setStats] = useState<Stats | null>(null)
   useEffect(() => { getStats().then(setStats, () => {}) }, []) // no cost figure is better than a stuck page
   const perMatch = stats?.cost_per_match_usd
+  // #314: one first action for a cold visitor, a match whose highlights play under the commentary
+  const first = matches?.find((m) => embeds(m)) ?? matches?.[0]
   let body
   if (error) {
     body = (
@@ -53,6 +55,12 @@ export function Wall({ matches, error, onRetry, onOpen, onJump, onGo }: Props) {
         <p className="status-line" style={{ maxWidth: '65ch', color: 'var(--fg)', fontSize: '1.15rem' }}>
           Most matches have no audio description. A blind or low-vision fan following one gets no description.
         </p>
+        {first && (
+          <p className="hero-go">
+            <button className="btn primary" onClick={() => onOpen(first)}>▶ Hear a match called</button>
+            <span>Sound on. Or pick any match below.</span>
+          </p>
+        )}
         {/* #206's pitch, word for word */}
         <p className="status-line" style={{ maxWidth: '65ch' }}>
           Touchline describes the matches a platform streams with nobody describing them. It checks the score, the
@@ -134,7 +142,7 @@ function Tile({ match, onOpen, onJump }: { match: Match; onOpen: (m: Match) => v
         <span className="label">{SPORT_NAMES[match.sport]}{note && ` · ${note}`}</span>
         <span className="tile-title">{title}</span>
         {detail && <span className="tile-detail">{phrases(detail)}</span>}
-        <span className="tile-cta">{phrases(`${blocked ? 'Commentary only' : coverage(match)} · Tap to hear it called →`)}</span>
+        <span className="tile-cta">{phrases(`${blocked ? 'Commentary only' : coverage(match)} · Hear it called, sound on →`)}</span>
       </span>
     </button>
     {/* A sibling, not inside the button: a link can't sit inside another control. */}

@@ -189,7 +189,7 @@ export function Live(props: Props) {
     <div className="live">
       <Nav current="live" onGo={onGo}>
           <div className="pickbar glass">
-            <button className="btn back" aria-label="Back to the wall" onClick={() => onGo('wall')}>←<span> Wall</span></button>
+            <button className="btn back" aria-label="Back to all matches" onClick={() => onGo('wall')}>←<span> All matches</span></button>
             <div className="seg" role="group" aria-label="Sport">
               {sports.map((s) => (
                 <button key={s} aria-pressed={match.sport === s} disabled={busy} onClick={() => s !== match.sport && onSport(s)}>
@@ -352,7 +352,8 @@ function OnAir({ voice, label, offAir, onOpen }: { voice: Props['voice']; label:
     )
   } else {
     if (voice.speaking) cls += ' on'
-    body = <><span className="rec" /><span className="lbl">ON AIR</span><span className="bars" aria-hidden><span /><span /><span /><span /></span><span className="who">{voice.fellBack ? FALLBACK_NOTE : label}</span></>
+    body = <><span className="rec" /><span className="lbl">ON AIR</span><span className="bars" aria-hidden><span /><span /><span /><span /></span>{/* #314: the pill is short on a phone; the full reason is its title and the Proof card's voice row */}
+      {voice.fellBack ? <span className="who" title={FALLBACK_NOTE}>Device voice</span> : <span className="who">{label}</span>}</>
   }
   const status = <span className="st" role={offAir || voice.status === 'on' ? 'status' : undefined}>{body}</span>
   if (!onOpen) return <span className={cls}>{status}</span>
