@@ -366,6 +366,16 @@ def test_a_pick_is_labelled_by_voice_label_else_as_the_sports_pick(monkeypatch):
     assert labels["football-pick"] == "Football pick"
 
 
+def test_every_default_shows_its_voices_own_name_and_f1_reads_as_football(monkeypatch):
+    from core.voice import all_voices
+
+    monkeypatch.delenv("VOICE_LABEL_FOOTBALL", raising=False)
+    monkeypatch.setenv("VOICE_FOOTBALL", "announcer")
+    labels = {v["id"]: v["label"] for v in all_voices()}
+    assert labels["sam"] == "Sam, Engaging Game Narrator"  # whole on the page: no "Voice: American"
+    assert labels["announcer"] == labels["football-pick"] == "British Football Announcer"
+
+
 def test_a_pick_by_another_sports_default_id_gets_its_own_entry(tmp_path, monkeypatch):
     # docs/voice.md's own id for the pick: the announcer is already f1's default
     monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
