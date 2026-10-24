@@ -278,3 +278,16 @@ def test_no_analyst_opener_repeats_within_a_match(tmp_path):
         assert sum(o == ("right", "jim", "and") for o in openers) == 1
         asked = [q["messages"][0]["content"] for q in stat_calls(fake)]
         assert any("never open with: right jim and" in q for q in asked)
+
+
+def test_a_fix_on_the_kickoff_welcome_is_never_said_as_the_first_call(tmp_path):
+    # a kickoff open is said over the first moment, so its lines carry that moment's idx (#232)
+    store = Store(tmp_path)
+    lines, _, _ = replay(CRICKET, store)
+    welcome = next(ln for ln in lines if "open" in ln)
+    first = load_moments(CRICKET)[0]["idx"]
+    assert welcome["moment_idx"] == first and welcome["open"]["kickoff"]
+    store.append("fixes", {"line_id": welcome["line_id"], "corrected_text": "Welcome, fixed."})
+    again, _, _ = replay(CRICKET, store)
+    call = next(ln for ln in again if "open" not in ln and ln["moment_idx"] == first)
+    assert not call.get("fixed") and "Welcome, fixed." not in [ln["text"] for ln in again]
