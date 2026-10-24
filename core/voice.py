@@ -144,24 +144,21 @@ def _goal_stakes(m: dict) -> str | None:
 
 def intensity(moment: dict) -> str:
     """How big a moment is: the tag its call gets, and for a football goal the game's state; a stat
-    line carries its moment's (#378)."""
+    line is always calm, whatever it follows (the lead's call, over #378's shared lift)."""
     if moment.get("type") == "Stat":
-        return (moment.get("detail") or {}).get("intensity", "calm")
+        return "calm"
     return _goal_stakes(moment) or {"[shouting]": "high", "[excited]": "medium"}.get(
         _call_tag(moment), "calm"
     )
 
 
-# How the pair sounds at each intensity: one tag for both voices, so they share a pitch and tone
-# like two people in one booth (#378); a big moment lifts them together.
-PAIR_TAG = {"high": "[excited]", "medium": "[warmly]", "calm": None}  # routine reads plain
 # eleven_v3 takes stability at 0 (creative), 0.5 (natural) or 1 (robust) only
 STABILITY = {"high": 0.0, "medium": 0.5, "calm": 0.5}
 
 
 def tag_for(moment: dict) -> str | None:
-    if moment.get("type") == "Stat":  # a stat line or comeback: its moment's intensity, by speaker
-        return PAIR_TAG[intensity(moment)]
+    if moment.get("type") == "Stat":  # a stat line or comeback reads plain, whatever it follows
+        return None
     tag = _call_tag(moment)
     return None if tag == "[shouting]" and intensity(moment) == "medium" else tag  # not a big one
 
