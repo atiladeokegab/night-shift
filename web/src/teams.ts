@@ -67,6 +67,19 @@ export function cricketScore(match: Match, moment: Moment | null, moments: Momen
 // remembered for, with names, dates and results from data/sample/. The design's "Highlights 4:56 · 4 key
 // moments" is a mockup placeholder (data/video/ maps 15 and 32 moments), so it is left out: no unmeasured figures.
 export const CARD_COPY: Record<string, { title: string; detail: string; result: string; crest?: string; note?: string }> = {
+  // The whole matches (#246): no video, so every key moment is called, kick-off to the final whistle
+  '7457': {
+    title: 'Orlando Pride v North Carolina Courage',
+    detail: 'NWSL · 24 May 2018',
+    result: 'Orlando 3–4 North Carolina, the winner an 89th-minute own goal',
+    note: 'No described broadcast',
+  },
+  '1515217': {
+    title: 'Netherlands v Nepal',
+    detail: "Women's T20 World Cup Qualifier · 22 Jan 2026",
+    result: 'Netherlands won by 2 runs; Nepal needed 13 off the last over',
+    note: 'No described broadcast',
+  },
   '3869685': {
     title: 'Messi v Mbappé',
     detail: '2022 World Cup final · Argentina v France · 18 Dec 2022',
@@ -155,8 +168,11 @@ export function defaultVoice(voices: Voice[], sport: Sport): Voice | null {
   return voices.find((v) => v.default_for === sport) ?? voices[0] ?? null
 }
 
-// The wall by sport; within one, the long tail (a card with a note) before the famous replays
+// What a replay calls (#246): with no video every key moment; with one only the moments the highlights show
+export const coverage = (m: Match): string => (m.youtube_id ? 'Highlights, synced to video' : 'Whole match, every key moment')
+
+// The wall: the whole matches first, then the long tail (a card with a note), then the famous replays; by sport within each
 export function wallOrder(matches: Match[]): Match[] {
-  const rank = (m: Match) => SPORTS.indexOf(m.sport) * 2 + (CARD_COPY[m.match_id]?.note ? 0 : 1)
+  const rank = (m: Match) => (m.youtube_id ? 20 : 0) + (CARD_COPY[m.match_id]?.note ? 0 : 10) + SPORTS.indexOf(m.sport)
   return [...matches].sort((a, b) => rank(a) - rank(b))
 }
