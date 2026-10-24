@@ -111,3 +111,21 @@ def test_the_stats_route_and_the_replays_stats_event_give_the_same_counts(tmp_pa
     counts = {"called": 6, "first_time": 4, "auto_fixed": 1, "to_human": 1}
     assert route["autonomy"] == event["autonomy"] == counts
     assert route["autonomy_by_match"] == event["autonomy_by_match"] == {KOBE: counts}
+
+
+WORSE = "Ninety-nine for Bryant!"  # wrong too, and not the first try
+
+
+def test_the_queued_try_is_the_retrys_text_under_the_retrys_line_id(tmp_path):
+    store = Store(tmp_path)
+    said = replay(store, KOBE, {2: [WRONG, WORSE]})
+    queued = review.queue(store, Deps(list_matches, load_moments, lambda m, h: None))
+    assert [(q["line_id"], q["text"]) for q in queued] == [(said[2]["line_id"], WORSE)]
+
+
+def test_two_failed_tries_at_one_moment_stay_two_queue_entries(tmp_path):
+    store = Store(tmp_path)
+    replay(store, KOBE, {2: [WRONG]})
+    replay(store, KOBE, {2: [WORSE]})  # the same fallback said, a different try behind it
+    queued = review.queue(store, Deps(list_matches, load_moments, lambda m, h: None))
+    assert [q["text"] for q in queued] == [WORSE, WRONG]
