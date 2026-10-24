@@ -31,7 +31,7 @@ Most matches in most sports are played with nobody calling them: grassroots and 
 - Sports beyond football, cricket, basketball and F1, or any sport without real event data
 - Our own fine-tuning or model hosting: Mubit trains the model
 - Any claim that our model beats the big one: it matches it, at lower cost
-- Unsourced statistics in the pitch; betting, odds or predictions
+- Unsourced statistics in the pitch; betting or betting odds (predictions from pre-match records plus the match so far are in scope, #118)
 
 ## Owner
 Atilade (lead)
