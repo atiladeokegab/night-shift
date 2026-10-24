@@ -68,7 +68,7 @@ class Tap:
 
     def call(self, request: dict) -> dict:
         client = getattr(self.inner, "client", None)
-        if client is None:
+        if not hasattr(getattr(client, "messages", None), "stream"):
             reply = self.inner.call(request)
             self.on_text(" ".join(b["text"] for b in reply["content"] if b["type"] == "text"))
             return reply
@@ -122,6 +122,7 @@ async def speak(ask, inner, question: str, past: list[dict], lines: list[dict]):
             put("end")
 
     task = asyncio.create_task(asyncio.to_thread(work))
+    task.add_done_callback(lambda t: t.cancelled() or t.exception())  # read: never unretrieved
     buf, said, words_left, tooled, failed = "", [], commentator.ANSWER_WORDS, False, False
     while not failed:
         kind, value = await pieces.get()
@@ -151,12 +152,12 @@ async def speak(ask, inner, question: str, past: list[dict], lines: list[dict]):
             break
     if said:
         return
+    # nothing was said: no text event we know, a failed sentence or call, a tool round. Ask's own
+    # path answers, so the fan is never left in silence
     try:
-        await task
+        safe = await asyncio.to_thread(insight.checked_answer, ask, question, past, lines)
     except Exception:  # the calm off-air line, never the provider's error
-        yield OFF_AIR
-        return
-    safe = await asyncio.to_thread(insight.checked_answer, ask, question, past, lines)
+        safe = None
     yield safe["text"] if safe else OFF_AIR
 
 

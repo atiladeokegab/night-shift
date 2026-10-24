@@ -158,8 +158,8 @@ def test_off_air_the_agent_says_so_calmly(tmp_path, monkeypatch):
 class SlowClient:
     """The Anthropic SDK's streaming shape: (delay, text) pieces, each after its delay."""
 
-    def __init__(self, pieces):
-        self.pieces, self.messages = pieces, self
+    def __init__(self, pieces, kind="text"):
+        self.pieces, self.kind, self.messages = pieces, kind, self
 
     def stream(self, **request):
         return self
@@ -173,7 +173,7 @@ class SlowClient:
     def __iter__(self):
         for delay, text in self.pieces:
             time.sleep(delay)
-            yield SimpleNamespace(type="text", text=text)
+            yield SimpleNamespace(type=self.kind, text=text)
 
     def get_final_message(self):
         text = "".join(t for _, t in self.pieces)
@@ -238,3 +238,16 @@ def test_the_question_said_back_is_not_spoken():
         ]
     )
     assert asyncio.run(sentences(inner)) == ["Well, Player1 scored for the Reds."]
+
+
+def test_a_stream_with_no_text_event_we_know_still_answers(monkeypatch):
+    monkeypatch.setattr(converse.commentator, "unrecorded_provider", FakeProvider)
+    inner = SimpleNamespace(client=SlowClient([(0, "Player1 scored.")], kind="something_new"))
+    assert asyncio.run(sentences(inner)) == ["So far, Reds 1, Blues 0."]
+
+
+def test_a_provider_that_cannot_stream_still_answers(monkeypatch):
+    fake = FakeProvider()
+    inner = SimpleNamespace(client=object(), call=fake.call)
+    monkeypatch.setattr(converse.commentator, "unrecorded_provider", lambda: fake)
+    assert asyncio.run(sentences(inner)) == ["So far, Reds 1, Blues 0."]
