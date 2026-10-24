@@ -24,14 +24,14 @@ Open three tabs:
 Check `/health` says ok.
 
 **Warm both voices.** A library voice that hasn't spoken for a while can fail its first line: in the
-headless check, the first cricket audio returned 503 and then 200 on retry. On the wall tab:
+headless check, the first cricket audio returned 503 and then 200 on retry.
 
-1. Tap India v Pakistan and wait until Raju speaks one line, then tap ← Wall.
-2. Tap Spain v England and wait until the first line is spoken, then tap ← Wall. Skip this if the
+1. From a terminal, with the ElevenLabs key in the environment, run `uv run python -m core.voice`. It
+   speaks a short line in every voice, the sport picks included, and prints FAILED for any that fail.
+2. Still do the taps, which prove the voices play in the browser. On the wall tab, tap India v
+   Pakistan and wait until Raju speaks one line, then tap ← Wall.
+3. Tap Spain v England and wait until the first line is spoken, then tap ← Wall. Skip this if the
    Stage tab's cue already played a line aloud.
-
-Once #83 is merged, `uv run python -m core.voice` (with the ElevenLabs key in the environment) warms
-both voices from a terminal too. Still do the taps: they prove the voices play in the browser.
 
 While the wall is open, read the proof panel's numbers and the adapter's state once, so the spoken
 ones match the screen.
