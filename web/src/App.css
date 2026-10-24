@@ -263,6 +263,8 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .ask :is(input, textarea):focus { outline: none; border-color: var(--amber); box-shadow: 0 0 0 4px rgba(255, 181, 71, .15); }
 .ask :is(input, textarea):disabled { opacity: .6; }
 .ask .btn.sm { height: 38px; gap: 6px; }
+/* #186: "Where are we?", the press a blind fan makes most, a full-width row above the Ask box */
+.where { width: 100%; margin-bottom: 8px; }
 .log .qa { padding: 12px 8px; border-radius: 10px; border-top-color: transparent; background: rgba(255, 255, 255, .06); }
 .log .qa + li { border-top-color: transparent; }
 .log .qa .when { color: var(--fg); }

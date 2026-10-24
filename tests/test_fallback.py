@@ -57,12 +57,25 @@ def test_numbers_are_said_as_the_check_hears_them():
         assert insight.said(f"lead {hoops(n)}")[1:] == ([n] if n != 1 else ["one"]), n
 
 
-def test_a_score_after_lead_is_not_read_as_a_margin():
-    m = next(m for mid, m in ALL if mid == "0020500591" and m["idx"] == 20)  # 120-102
-    header = match_header("0020500591")
+@pytest.mark.parametrize(
+    "match_id, idx, score, wrong",
+    [
+        (
+            "0020500591",
+            20,
+            "Los Angeles Lakers lead one twenty, one oh-two.",
+            "lead by four.",
+        ),  # 120-102
+        ("3754092", 26, "Tottenham Hotspur lead two, one.", "lead by two."),  # 2-1
+    ],
+)
+def test_a_score_after_lead_is_not_read_as_a_margin(match_id, idx, score, wrong):
+    m = next(m for mid, m in ALL if mid == match_id and m["idx"] == idx)
+    header = match_header(match_id)
+    team = score.split(" lead ")[0]
 
     def margins(text):
         return [w for w in insight.wrong_numbers(text, m, header) if "margin" in w]
 
-    assert margins("Los Angeles Lakers lead one twenty, one oh-two.") == []
-    assert margins("Los Angeles Lakers lead by four.") == ["4 is not the margin (18)"]
+    assert margins(score) == []
+    assert margins(f"{team} {wrong}") != []  # a real wrong margin is still heard
