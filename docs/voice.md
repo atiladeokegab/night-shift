@@ -20,11 +20,11 @@ The tag goes into the text sent to ElevenLabs and nowhere else. The stored line,
 
 A v3 request takes 2-3 s warm and 11-15 s cold. Lines for a video-mapped match are created well ahead of the picture, so the server starts each line's audio as soon as the line exists and keeps it in memory. The page's `GET /lines/{id}/audio` then serves audio that is already made.
 
-1. Try `eleven_v3` with the moment's tag. If it fails, retry it once, as long as it can still finish 1.5 s before the moment.
+1. Try `eleven_v3` with the moment's tag. A line made before its moment gets one v3 call of at least 7 s, even if that runs past the moment: a v3 line a little late beats a flat one on time. A line spoken as it arrives may retry v3 once, as long as it can still finish 1.5 s before the moment.
 2. Otherwise use `eleven_flash_v2_5` without the tag (about 0.3 s warm).
 3. If that also fails, the route answers 503 and the page falls back to browser speech.
 
-A line's moment is due at the replay's start plus its `video_t`. A line with no video time is spoken as soon as it arrives, so v3 gets 4 s. At most 3 requests run at once.
+A line's moment is due at the replay's start plus its `video_t`, less the video's start, which is 10 s before its first mapped moment so the first line has time for v3. A line with no video time is spoken as soon as it arrives, so v3 gets 4 s. At most 3 requests run at once.
 
 Measured on 2026-10-23 on Kohli v Pakistan (32 lines, first 12 fetched): all 12 were voiced by v3, and each was ready before its video time. The first was ready at 1.6 s for a moment at 9 s.
 

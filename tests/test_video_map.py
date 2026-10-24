@@ -123,14 +123,15 @@ def test_demo_replay_streams_each_mapped_moment_once(tmp_path, path):
     assert [(ln["line_id"], ln["video_t"]) for ln in lines] == expected
 
 
-def test_each_video_starts_5_s_before_its_first_mapped_moment():
-    # Kobe's first call is 490 s into the highlights: the page starts the video at 485 s, not 0.
+def test_each_video_starts_10_s_before_its_first_mapped_moment():
+    # Kobe's first call is 490 s into the highlights: the page starts the video at 480 s, not 0.
+    # 10 s, not 5: the first line is ready ~2 s in, and v3 needs 2-3 s more (#57).
     assert {m["match_id"]: m.get("video_start") for m in list_matches()} == {
-        "3906390": 98,
-        "1298150": 4,
-        "3869685": 68,
-        "0049700088": 363,
-        "0020500591": 485,
+        "3906390": 93,
+        "1298150": 0,
+        "3869685": 63,
+        "0049700088": 358,
+        "0020500591": 480,
         "9558": 0,
     }
 
