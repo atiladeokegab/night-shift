@@ -552,8 +552,8 @@ The commentator's tools and the shot map read per-match stats packs ([`data/pack
 
 | What | Count | Runs |
 |---|---|---|
-| Python tests: the number check, replay timing, the store, Mubit and ElevenLabs calls against fakes, the deploy script | 736 | `make check`, offline; and in `make smoke` |
-| Web unit tests: the live page, the Proof card, Fix, Ask, captions | 83 | `npm test` in `web/` |
+| Python tests: the number check, replay timing, the store, Mubit and ElevenLabs calls against fakes, the deploy script | 754 | `make check`, offline; and in `make smoke` |
+| Web unit tests: the live page, the Proof card, Fix, Ask, captions | 89 | `npm test` in `web/` |
 | Offline smoke: every sample match replayed end to end through the real server with a fake model | 7 matches | `make smoke`; in CI on every PR into `integration` ([`.github/workflows/smoke.yml`](.github/workflows/smoke.yml)), which also builds the container and imports the app inside it |
 | Live smoke on the real URL: one replay streams moments and lines, and the service's store grows by the lines it streamed | 1 replay | after every deploy, in [`scripts/deploy.sh`](scripts/deploy.sh) (`BASE_URL=<url> python -m core.smoke`) |
 | Accessibility: no serious axe violation on the home or live page, 44 px targets, a match started and a question asked by keyboard alone | 1 spec | by hand, `npx playwright test` in `web/` (needs a browser) |
@@ -575,6 +575,11 @@ make smoke   # offline: replays every sample match with a fake model, no keys ne
 make check   # lint and the test suite, offline
 make dev     # the server on localhost; export MUBIT_API_KEY for real commentary (make dev doesn't read .env)
 ```
+
+Recording: [`.env.example`](.env.example) and the deploy set `MUBIT_RECORD=off`, so those calls train
+nothing. The code itself records unless it says `off` ([`agent/commentator.py`](agent/commentator.py)),
+and `make dev` doesn't read .env: export `MUBIT_RECORD=off` to keep your calls out of training, or
+`MUBIT_RECORD=on` to record them.
 
 ## Data and video
 
