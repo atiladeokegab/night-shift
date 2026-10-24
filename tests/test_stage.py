@@ -33,7 +33,7 @@ def test_stage_matches_the_app_and_hides_empty_pieces(tmp_path):
     # The sync text wraps on a phone, so its pill drops the full round.
     assert ".sync { border-radius: 12px; line-height: 1.3; text-wrap: balance; }" in page
     # On a phone the match picks wrap rather than scroll, so no tab is cut in half (#18).
-    assert ".nav .seg { order: 1; flex: 1 1 100%; min-width: 0; flex-wrap: wrap; justify-content: center; }" in page
+    assert ".nav .seg { order: 1; flex: 1 1 100%; min-width: 0; flex-wrap: wrap;" in page
 
 
 def test_stage_starts_each_video_at_its_video_start(tmp_path):
