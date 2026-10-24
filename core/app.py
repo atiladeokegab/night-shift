@@ -4,6 +4,7 @@ commentator come from data/ and agent/ (#13) through `Deps`, so tests inject the
 import asyncio
 import json
 import logging
+import time
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -24,6 +25,7 @@ from core.voice import Speaker, voice_router
 
 log = logging.getLogger("night_shift.app")
 REJOIN_S = 10.0  # a replay with no open stream this long is stopped: its lines cost model calls
+FORGET_S = 60.0  # a finished replay is forgotten once nobody streams or touches it this long
 
 WEB = Path(__file__).resolve().parent.parent / "web" / "dist"
 
@@ -124,6 +126,7 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
         task.add_done_callback(tasks.discard)
         running[replay.id] = task
         task.add_done_callback(lambda _: running.pop(replay.id, None))
+        task.add_done_callback(lambda _: forget_later(replay))
         stop_later(replay)  # in case no stream ever opens
         return {"replay_id": replay.id}
 
@@ -131,6 +134,28 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
         if replay.stopping:
             replay.stopping.cancel()
         replay.stopping = asyncio.get_running_loop().call_later(REJOIN_S, abandon, replay)
+
+    def forget_later(replay: Replay) -> None:
+        playing = max(0.0, (replay.ends_at or 0.0) - time.monotonic())  # a video still to watch
+        asyncio.get_running_loop().call_later(playing + REJOIN_S + FORGET_S, forget, replay)
+
+    def forget(replay: Replay) -> None:
+        """Drop a finished replay's events from memory once nobody streams it and no viewer has
+        touched it for FORGET_S: a paused page's heartbeat (POST .../seen) keeps it for Ask."""
+        idle = time.monotonic() - replay.seen
+        if replay.listeners or idle < FORGET_S:
+            wait = FORGET_S if replay.listeners else FORGET_S - idle
+            asyncio.get_running_loop().call_later(wait, forget, replay)
+        else:
+            replays.pop(replay.id, None)
+
+    def viewed(replay_id: str) -> Replay:
+        """The replay a viewer's request names, marked as still watched."""
+        replay = replays.get(replay_id)
+        if replay is None:
+            raise HTTPException(404, f"no replay {replay_id!r}")
+        replay.seen = time.monotonic()
+        return replay
 
     def abandon(replay: Replay) -> None:
         """Stop a replay nobody follows, and its voice jobs, so they free the 3 shared slots."""
@@ -143,9 +168,7 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
 
     @app.get("/replays/{replay_id}/stream")
     async def stream(replay_id: str):
-        replay = replays.get(replay_id)
-        if replay is None:
-            raise HTTPException(404, f"no replay {replay_id!r}")
+        replay = viewed(replay_id)
 
         async def sse():
             replay.listeners += 1
@@ -157,10 +180,16 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
                 yield "event: end\ndata: {}\n\n"
             finally:  # the client went away: a reconnect within REJOIN_S keeps the replay going
                 replay.listeners -= 1
+                replay.seen = time.monotonic()
                 if not replay.listeners:
                     stop_later(replay)
 
         return StreamingResponse(sse(), media_type="text/event-stream")
+
+    @app.post("/replays/{replay_id}/seen", status_code=204)
+    def seen(replay_id: str) -> None:
+        """The page's heartbeat while it shows the replay, paused or not, once its stream ends."""
+        viewed(replay_id)
 
     @app.get("/lines/{line_id}")
     def get_line(line_id: str):
@@ -172,7 +201,8 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
     @app.post("/lines/{line_id}/fix")
     async def fix_line(line_id: str, req: FixRequest):
         d = need_deps()
-        line = next((ln for ln in store.all("lines") if ln.get("line_id") == line_id), None)
+        lines = await asyncio.to_thread(store.all, "lines")
+        line = next((ln for ln in lines if ln.get("line_id") == line_id), None)
         if line is None:
             raise HTTPException(404, f"no line {line_id!r}")
         if d.correct is None:
@@ -184,7 +214,8 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
             sent = await asyncio.to_thread(d.correct, line, req.corrected_text, **more)
         except Exception as exc:  # nothing is stored, so the page can send the fix again
             raise HTTPException(503, f"correction not sent: {exc}") from exc
-        fix = store.append(
+        fix = await asyncio.to_thread(
+            store.append,
             "fixes",
             {
                 "line_id": line_id,
@@ -196,20 +227,18 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
                 "recorded": sent.get("recorded", False),  # sent to Mubit for training (#161)
             },
         )
-        for replay in replays.values():
+        for replay in list(replays.values()):  # a replay may start during the awaits below
             if any(
                 e["data"].get("line_id") == line_id for e in replay.events if e["event"] == "line"
             ):
                 await replay.publish("fixed", fix)
-                await replay.publish("stats", stats(store))
+                await replay.publish("stats", await asyncio.to_thread(stats, store))
         return fix
 
     @app.post("/replays/{replay_id}/ask")
     async def ask(replay_id: str, req: AskRequest):
         d = need_deps()
-        replay = replays.get(replay_id)
-        if replay is None:
-            raise HTTPException(404, f"no replay {replay_id!r}")
+        replay = viewed(replay_id)
         if replay_id in asking:
             raise HTTPException(409, "a question is already in flight")
         past, lines = asked_so_far(replay, d.load_moments(replay.match_id), req.moment_idx)
@@ -233,7 +262,9 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
                 "off_air": True,
             }
         else:
-            reply = store.append("answers", {**said, "replay_id": replay_id})
+            reply = await asyncio.to_thread(
+                store.append, "answers", {**said, "replay_id": replay_id}
+            )
         await replay.publish("answer", reply)
         return reply
 
@@ -242,9 +273,7 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
         """A player's shot map: pre-match shots plus tonight's up to the moment on screen, never
         past the last moment sent, so a later shot never shows. No LLM: it works off air."""
         d = need_deps()
-        replay = replays.get(replay_id)
-        if replay is None:
-            raise HTTPException(404, f"no replay {replay_id!r}")
+        replay = viewed(replay_id)
         past, _ = asked_so_far(replay, d.load_moments(replay.match_id), moment_idx)
         if not past:
             raise HTTPException(409, "nothing has happened yet")
@@ -259,9 +288,7 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
     def pack_so_far(replay_id: str, moment_idx: int | None) -> tuple[dict, list[dict]]:
         """The replay's pack and its moments up to the one on screen, cut like the shot map's."""
         d = need_deps()
-        replay = replays.get(replay_id)
-        if replay is None:
-            raise HTTPException(404, f"no replay {replay_id!r}")
+        replay = viewed(replay_id)
         moments = d.load_moments(replay.match_id)
         pack = load_pack(moments[0]["sport"], replay.match_id) if moments else None
         if pack is None:
