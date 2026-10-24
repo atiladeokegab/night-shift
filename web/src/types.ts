@@ -91,6 +91,21 @@ export interface Stats {
   voice_cost_per_match_usd?: number | null
 }
 
+// GET /review (#171): a stored lead line the number check flags, with its moment, for the producer to fix.
+export interface ReviewItem {
+  line_id: string
+  match_id: string
+  match: string // the match's title
+  sport: Sport
+  moment_idx: number
+  clock: string | null
+  period: number | null
+  score: string
+  play: string
+  text: string
+  wrong: string[] // what the number check found, e.g. "58 is not in the moment"
+}
+
 export interface SpeakerStats {
   model: string // the models seen, comma-separated
   lines: number

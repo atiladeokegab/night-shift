@@ -6,7 +6,7 @@ const REASONS = ['Wrong fact', 'Wrong player', 'Wrong score', 'Tone', 'Other']
 export type FixPhase = 'edit' | 'sending' | 'error'
 
 interface Props {
-  line: Line
+  line: Pick<Line, 'text'> // a replay's line, or a Review card's (#171)
   phase: FixPhase
   onSend: (text: string, reason: string) => void
   onCancel: () => void

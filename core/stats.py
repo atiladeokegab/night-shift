@@ -106,6 +106,7 @@ def stats(store) -> dict:
         "fixes_recorded": len(recorded),
         # fixes recorded since the latest adapter record: the corrections toward the next one
         "fixes_toward_next": sum(f.get("created_at", "") > since for f in recorded),
+        "fixes_auto": len(store.all("auto_fixes")),  # the number check's own (#162), not a person's
         "voice_chars": sum(v.get("chars", 0) for v in voice),
         **_per_match(store, lines, voice),
     }
