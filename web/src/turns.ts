@@ -35,52 +35,50 @@ export interface Turn {
   fill?: boolean // a line in a quiet stretch (#297): any other line cuts it, so a moment is never late
 }
 
-// The floor: one voice at a time. A line by the same speaker cuts off the one before it, so the voice
-// never falls behind the match; a line never cuts off the other speaker unless it is a big moment; and
-// only a decisive moment cuts off an answer (`onCut` hears which). A line that may not cut in waits (the newest only) for the turn on air
-// to end. A viewer's answer waits for a gap (#139): the commentary goes on until the line on air ends
-// with no big moment due (`bigDue`), then the answer takes the floor. While the viewer talks and their
-// answer waits, no fill line starts (#297): it is dropped, so the booth answers next. Times are in ms on one clock.
+// The floor: one voice at a time, and no turn ever cuts another mid-line, a viewer's answer included. Turns wait
+// in order for the one on air to end; a big moment goes ahead of the routine ones waiting. A viewer's answer waits
+// for a gap (#139): the commentary goes on until the line on air ends with no big moment due (`bigDue`), then the
+// answer takes the floor. While the viewer talks and their answer waits, no fill line starts (#297).
+// Times are in ms on one clock.
 export class Floor<T extends Turn> {
   private on: T | null = null
-  private held: { item: T; due: number } | null = null
+  private held: { item: T; due: number }[] = []
   private asked: T | null = null // the answer waiting for a gap
   private quietUntil = 0 // the viewer is talking: no fill line before this
   bigDue: () => boolean = () => false
   onCut: (answer: T) => void = () => {}
 
-  // A turn due at `now`: true to say it at once, false when it waits for the one on air (or a gap).
+  // A turn due at `now`: true to say it at once, false when it waits. No turn ever cuts another mid-line:
+  // everything waits its turn, in order. A big moment goes first and drops the routine turns still waiting
+  // (they would delay it); a fill line waits for nothing and is dropped when another turn is due.
   take(item: T, now: number): boolean {
     if (item.answer) {
       this.asked = item
       return this.gap() === item
     }
     if (item.fill && (this.asked || now < this.quietUntil)) return false
-    const on = this.on
-    // A turn is cut off only by its own speaker's next line or by a fill line's replacement; a big moment waits
-    // for the turn on air to end (never mid-word), and is not dropped as stale.
-    const waits = !!on && (on.answer ? !item.decisive : item.big || (on.speaker !== item.speaker && !(on.fill && !item.fill)))
-    if (waits) {
-      if (!this.held?.item.big || item.big) this.held = { item, due: now }
+    if (this.on) {
+      if (item.fill) return false
+      this.held = this.held.filter((h) => !h.item.fill && (!item.big || h.item.big))
+      this.held.push({ item, due: now })
       return false
     }
-    if (on?.answer) this.onCut(on)
     this.on = item
-    this.held = null
     return true
   }
 
-  // `item` finished at `now`: the held turn to say next, unless it would start more than HOLD_MAX_MS late.
+  // `item` finished at `now`: the next waiting turn to say, skipping routine ones that went stale (HOLD_MAX_MS).
   ended(item: T, now: number): T | null {
     if (this.on !== item) return null
-    const held = this.held
     this.on = null
     const answer = this.gap()
-    if (answer) return answer // the held line waits for the answer now
-    this.held = null
-    if (!held || (!held.item.big && now - held.due > HOLD_MAX_MS)) return null
-    this.on = held.item
-    return held.item
+    if (answer) return answer // the held lines wait for the answer now
+    const i = this.held.findIndex((h) => h.item.big || now - h.due <= HOLD_MAX_MS)
+    const next = this.held[i]
+    this.held = i < 0 ? [] : this.held.slice(i + 1)
+    if (!next) return null
+    this.on = next.item
+    return next.item
   }
 
   // The waiting answer, once nothing is on air and no big moment is due; it holds the floor from here.
@@ -100,7 +98,7 @@ export class Floor<T extends Turn> {
 
   clear() {
     this.on = null
-    this.held = null
+    this.held = []
     this.asked = null
     this.quietUntil = 0
   }
