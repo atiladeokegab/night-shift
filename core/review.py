@@ -5,6 +5,8 @@ the model's failed try and the reasons the check gave when it was said (#204). E
 is a line said before today's check, which today's check fails: marked `later_check` (#220)."""
 
 import json
+import threading
+import weakref
 
 from core import insight
 
@@ -14,6 +16,12 @@ UNSAID = "the milestone is unsaid"  # leaving a milestone out is not a wrong num
 # appended, so only new lines are checked. shortcut: grows with the store (about 1 KB a line,
 # 6k lines on 24 Oct); cleared on a deploy, which is also when the checker changes.
 _checked: dict[str, dict | None] = {}
+# Each store's last queue, by what it was made from: a poll with nothing new written is answered
+# from it, and pollers arriving mid-build wait for that build (eight pages each building it held
+# the one CPU for 57 s, 24 Oct)
+_queued: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()  # store: (stamps, queue)
+_queued_lock = threading.Lock()
+READS = ("lines", "fixes", "linechecks")
 
 
 def _key(line: dict) -> tuple:
@@ -25,6 +33,15 @@ def _group(entry: dict) -> tuple:
 
 
 def queue(store, deps) -> list[dict]:
+    with _queued_lock:
+        stamps = (deps, *(store._stamp(kind) for kind in READS))
+        made = _queued.get(store)
+        if made is None or made[0] != stamps:
+            made = _queued[store] = (stamps, _queue(store, deps))
+        return made[1]
+
+
+def _queue(store, deps) -> list[dict]:
     """One card per mistake, newest first (#227): the distinct (match, moment, text) lines whose
     check gives the same reasons at the same moment are one entry, the newest line's, with `lines`
     (how many) and `others` (the older wordings, newest first). A fix on any line of a mistake

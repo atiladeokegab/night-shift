@@ -97,6 +97,9 @@ def send(ex: dict, provider) -> dict:
         kind = "error"
     return {
         "id": ex["id"],
+        "match_id": ex["match_id"],  # the line it was, for the ledger (core/ledger.py)
+        "idx": ex["idx"],
+        "text": ex["text"],
         "kind": kind,
         "gold": ex["gold"],
         "mubit_request_id": ids[-1] if ids else None,

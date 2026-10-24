@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { getReview, getStats } from '../api'
 import type { Autonomy, SpeakerStats, Stats } from '../types'
 import { SideBySide } from './SideBySide'
-import { adapterRows, autonomyRows, consoleRow, FLAG_NOTE, heldoutRow, linecheckRow, TRAINING_LABEL, voiceRow } from '../proof'
+import { autonomyRows, earlierRows, FLAG_NOTE, heldoutRow, linecheckRow, scoreCheckRows, TRAINING_LABEL, voiceRow } from '../proof'
 
 interface Props {
   live: Stats | null // the latest `stats` event from the replay, newer than the first GET /stats
@@ -32,11 +32,10 @@ export function ProofPanel({ live, matchId, fellBack = false }: Props) {
   else if (!stats) body = <p className="hint" role="status">Loading stats…</p>
   else {
     const empty = stats.lines === 0
-    const adapter = stats.adapter
-    const tasks = adapterRows(stats.adapters, stats.scorecheck)
+    const tasks = scoreCheckRows(stats.scorecheck)
+    const earlier = earlierRows(stats.earlier_tasks)
     const voice = voiceRow(live?.voice ?? fetched?.voice, fellBack)
     const heldout = heldoutRow(stats.linecheck?.heldout)
-    const mubit = consoleRow(adapter?.console)
     // the lead's calls (Haiku) and the analyst's stat lines (Sonnet) apart, so neither skews the other
     const groups: [string, SpeakerStats][] = stats.by_speaker
       ? [['Lead', stats.by_speaker.lead], ['Analyst', stats.by_speaker.analyst]]
@@ -78,13 +77,20 @@ export function ProofPanel({ live, matchId, fellBack = false }: Props) {
               {heldout && <dd className="small">{FLAG_NOTE}</dd>}
             </div>
           )}
-          {/* the one task trained on Mubit (#321): its version as recorded from the console, its examples, held-out scores */}
+          {/* the one task trained on Mubit (#321, #363): its version as recorded from the console, its examples, held-out scores */}
           {!!tasks.length && (
             <div className="wide">
               <dt className="label">Mubit: Score check</dt>
               {tasks.map((row) => <dd key={row}>{row}</dd>)}
-              {/* the console's own counts, read by hand on a stated day (#317): never live */}
-              {mubit && <dd className="small">{mubit}</dd>}
+              {/* the commentary tasks from before Score check, folded away (#363); the console reading is dated, never live */}
+              {!!earlier.length && (
+                <dd className="small">
+                  <details>
+                    <summary>Earlier tasks</summary>
+                    {earlier.map((row) => <div key={row}>{row}</div>)}
+                  </details>
+                </dd>
+              )}
             </div>
           )}
         </dl>
@@ -95,7 +101,7 @@ export function ProofPanel({ live, matchId, fellBack = false }: Props) {
   return (
     <>
       <section className="panel glass" aria-label="Proof">
-        <div className="panel-h"><h3>Proof</h3></div>
+        <div className="panel-h"><h2>Proof</h2></div>
         {body}
         <p className="small">
           First time: the call passed the number check. Auto-fixed: it failed, and the retry passed. To a human:
@@ -104,7 +110,7 @@ export function ProofPanel({ live, matchId, fellBack = false }: Props) {
           Mubit. Finishing the line, speech synthesis and playback are not included.
           Per full replay: a replay from the first moment to the last, at list prices. Model: the tokens of
           every line it said, cached or not; Voice: its speech characters.
-          {stats?.adapter && !stats.adapter.cost_measurable && " Adapter cost: not measurable; Mubit doesn't report it to the app."}
+          {stats?.earlier_tasks && !stats.earlier_tasks.adapter.cost_measurable && " Adapter cost: not measurable; Mubit doesn't report it to the app."}
         </p>
       </section>
       <SideBySide />

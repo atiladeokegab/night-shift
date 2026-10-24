@@ -29,7 +29,7 @@ export function ProfileCard({ name, replayKey, momentIdx, load, onShots, onUnfol
       <div className="panel-h">
         <div>
           <span className="label">Following</span>
-          <h3>{name}</h3>
+          <h2>{name}</h2>
           {p && typeof p === 'object' && p.team && <span className="hint">{p.team}</span>}
         </div>
         <button className="btn sm" onClick={onUnfollow}>Unfollow</button>

@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { adapterRows, autonomyRows, checkText, consoleRow, exampleText, FALLBACK_NOTE, FLAG_NOTE, heldoutRow, linecheckRow, TRAINING_LABEL, voiceRow } from './proof.ts'
-import type { ConsoleReading, HeldOut } from './types.ts'
+import { autonomyRows, checkText, consoleRow, earlierRows, exampleText, FALLBACK_NOTE, FLAG_NOTE, heldoutRow, linecheckRow, scoreCheckRows, TRAINING_LABEL, voiceRow } from './proof.ts'
+import type { ConsoleReading, HeldOut, ScoreCheckStats } from './types.ts'
 
 const all = { called: 10, first_time: 6, auto_fixed: 2, to_human: 2 }
 const kobe = { called: 6, first_time: 3, auto_fixed: 1, to_human: 2 }
@@ -22,17 +22,43 @@ test('a match with no calls yet counts zeros; no match, only all matches; no cou
 
 const record = { state: 'testing' as const, version: null, score: null, target: null, passed: null, kept: null, recorded_at: '2026-10-24T16:00:00+00:00' }
 
-test("Score check is the card's one Mubit task, saying only what its latest record says", () => {
-  const rows = adapterRows({
-    commentary: { ...record, version: 1, score: 82, passed: true },
-    line_check: { ...record, state: 'collecting', kept: 0 },
-  })
-  assert.deepEqual(rows, ['Score check: no version recorded yet'])
-  assert.deepEqual(adapterRows({ score_check: { ...record, state: 'collecting', kept: 0 } }), ['Score check: collecting, 0 kept'])
+// /stats' Score check block (#363), as live on 24 Oct with nothing yet read off the console
+const block: ScoreCheckStats = {
+  examples_sent: 2101,
+  by_source: { answer_key: 2101, auto_fixed: 0, human: 0 },
+  from_fixes_by_kind: {},
+  held_out: { 'Claude Sonnet 5.5 via Mubit, unrecorded': { agree: 74, scored: 74, unparsed: 0, recorded_at: '2026-10-24T20:09:20+00:00' } },
+  next_training: 'after 01:00 UK',
+  recorded: null,
+}
+
+test("Score check is the card's one Mubit block: examples by source, the held-out baseline, its version and the next training (#363)", () => {
+  assert.deepEqual(scoreCheckRows(block), [
+    'Score check: no version recorded yet',
+    'Examples sent: 2,101 (2,101 from the answer key, 0 auto-fixed, 0 by a person)',
+    'Held-out (lines never sent): Claude Sonnet 5.5 via Mubit, unrecorded, 74 of 74 match the data',
+    'Next training: after 01:00 UK',
+  ])
+  assert.deepEqual(scoreCheckRows({ ...block, recorded: { ...record, state: 'collecting', kept: 0 } })[0], 'Score check: collecting, 0 kept')
+  for (const row of scoreCheckRows(block)) assert.doesNotMatch(row, /serves|passed|updated|Collecting/i)
+})
+
+test("the commentary tasks fold into one earlier-tasks list, still in their own words (#363)", () => {
+  const earlier = {
+    adapter: { state: 'collecting' as const, summary: 'Collecting: no adapter version recorded.', kept: null, agree: null, total: null, cost_measurable: false, console: null },
+    adapters: { commentary: { ...record, state: 'collecting' as const }, where_are_we: { ...record, version: 1, score: 55.8, target: 95, passed: false } },
+  }
+  assert.deepEqual(earlierRows(earlier), [
+    'Commentary: Collecting: no adapter version recorded.',
+    'where are we: v1, 55.8%, below 95% target',
+  ])
+  const c: ConsoleReading = JSON.parse(readFileSync(new URL('../../data/mubit_console.json', import.meta.url), 'utf8'))
+  assert.equal(earlierRows({ ...earlier, adapter: { ...earlier.adapter, console: c } })[1], consoleRow(c))
+  assert.deepEqual(earlierRows(undefined), [])
 })
 
 test("a failed gate in the console's words; a ready version with no verdict never reads as passed", () => {
-  const sc = (a: Partial<typeof record>) => adapterRows({ score_check: { ...record, ...a } })[0]
+  const sc = (a: Partial<typeof record>) => scoreCheckRows({ ...block, recorded: { ...record, ...a } })[0]
   assert.equal(sc({ version: 1, score: 55.8, target: 95, passed: false }), 'Score check: v1, 55.8%, below 95% target')
   // a failed verdict the score doesn't explain stays "Failed": no score, a score at the target, a 0 target
   const failed = { version: 1, passed: false, target: 95 }
@@ -43,8 +69,8 @@ test("a failed gate in the console's words; a ready version with no verdict neve
   assert.equal(sc({ state: 'collecting' }), 'Score check: collecting')
 })
 
-test('before core reports adapters, no rows', () => {
-  assert.deepEqual(adapterRows(undefined), [])
+test('before core reports Score check, no rows', () => {
+  assert.deepEqual(scoreCheckRows(undefined), [])
 })
 
 test('the fix counts are headed as training data, never a bare "Training" that reads as under way', () => {
@@ -84,16 +110,19 @@ test("Score check's row keeps its earlier version, where it was read, and its ex
   const v1 = { version: 1, version_id: 'ad_1', score: 88.5, target: 95, passed: false, recorded_at: null, source: null }
   const v2 = { ...v1, version: 2, version_id: 'ad_2', score: 96, passed: true }
   const sc = { ...record, version: 2, version_id: 'ad_2', score: 96, target: 95, passed: true, state: 'passed' as const, source: 'Mubit console', versions: [v1, v2] }
-  const rows = adapterRows({ score_check: sc }, {
-    seeded: 150,
-    from_fixes: 2,
+  const rows = scoreCheckRows({
+    ...block,
+    examples_sent: 152,
+    by_source: { answer_key: 150, auto_fixed: 0, human: 2 },
     from_fixes_by_kind: { corrected: 2 },
     held_out: { 'Claude Sonnet 5.5 via API': { agree: 70, scored: 74, unparsed: 0, recorded_at: null } },
+    recorded: sc,
   })
   assert.deepEqual(rows, [
     'Score check: v2 (ad_2), 96%, Passed · before: v1, 88.5%, below 95% target · Mubit console, 2026-10-24 16:00 UTC',
-    'Score check examples sent: 150 seeded, 2 from fixes (2 corrected)',
-    'Score check held-out (lines never sent): Claude Sonnet 5.5 via API, 70 of 74 match the data',
+    'Examples sent: 152 (150 from the answer key, 0 auto-fixed, 2 by a person: 2 corrected)',
+    'Held-out (lines never sent): Claude Sonnet 5.5 via API, 70 of 74 match the data',
+    'Next training: after 01:00 UK',
   ])
   for (const row of rows) assert.doesNotMatch(row, /serves|learns live|updated/)
 })

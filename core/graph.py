@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import json
 import logging
+import shutil
+import tempfile
 import threading
 import time
 from pathlib import Path
@@ -22,8 +24,10 @@ from core.predict import PACKS
 
 log = logging.getLogger("touchline.graph")
 SAMPLE = Path(__file__).resolve().parent.parent / "data" / "sample"
+STORE = Path(__file__).resolve().parent.parent / "data" / "graph"  # scripts/build_graph.py
 
 _db = None  # the connection once loaded; None means the JSON path
+_kv = None  # the on-disk store of every team and player of each sample competition
 _lock = threading.Lock()  # one query at a time on the one embedded connection
 
 
@@ -144,6 +148,7 @@ def start() -> float | None:
         except Exception as exc:  # no engine, no wheel, bad data: Follow a player reads the JSON
             log.warning("graph off, Follow a player reads the packs: %s", type(exc).__name__)
             return None
+        _open_store()
         took = time.perf_counter() - t
         log.info("graph loaded in %.2f s", took)
         return took
@@ -210,3 +215,130 @@ def library(sport: str, match_id: str, name: str) -> list[dict]:
         {"p": RecordID("player", [sport, name]), "m": RecordID("match", str(match_id))},
     )
     return found or []
+
+
+# --- the competition store: data/graph on disk, read by the contract functions below -------------
+
+
+def _open_store(path: Path = STORE) -> None:
+    """Open data/graph. surrealkv writes to its directory even to read, and the image's is not
+    writable by the app user, so it opens a copy under tmp; a failure leaves the contract off."""
+    global _kv
+    try:
+        from surrealdb import Surreal
+
+        work = Path(tempfile.mkdtemp(prefix="graph-")) / "db"
+        shutil.copytree(path, work)
+        _kv = Surreal(f"surrealkv://{work}")
+        _kv.connect()
+        _kv.use("touchline", "follow")
+    except Exception as exc:
+        _kv = None
+        log.warning("competition graph off, callers read the packs: %s", type(exc).__name__)
+
+
+def _rows(sql: str, params: dict) -> list[dict] | None:
+    if _kv is None:
+        return None
+    try:
+        with _lock:
+            return _kv.query(sql, params)
+    except Exception as exc:
+        log.warning("graph query failed, reading the packs: %s", type(exc).__name__)
+        return None
+
+
+def _result(f: dict, team: str) -> dict:
+    home = f["home"] == team
+    mine, theirs = (f["hg"], f["ag"]) if home else (f["ag"], f["hg"])
+    return {
+        "date": f["start"][:10],
+        "opponent": f["away"] if home else f["home"],
+        "home": home,
+        "score": f"{mine}-{theirs}",
+        "result": "W" if mine > theirs else "L" if mine < theirs else "D",
+    }
+
+
+FIXTURES = """SELECT * FROM fixture WHERE sport = $s AND start < $b
+  AND (home = $t OR away = $t) {more} ORDER BY start DESC LIMIT $n"""
+
+
+def team_form(sport: str, team: str, before: str, n: int = 5) -> list[dict]:
+    """The team's last `n` matches before `before`, newest first, score as the team's own."""
+    found = _rows(FIXTURES.format(more=""), {"s": sport, "t": team, "b": before, "n": n})
+    return [_result(f, team) for f in found or []]
+
+
+def head_to_head(sport: str, a: str, b: str, before: str, n: int = 5) -> list[dict]:
+    """The last `n` meetings of a and b before `before`, newest first, seen from a."""
+    sql = FIXTURES.format(more="AND (home = $o OR away = $o)")
+    found = _rows(sql, {"s": sport, "t": a, "o": b, "b": before, "n": n})
+    return [_result(f, a) for f in found or []]
+
+
+APPEARANCES = (
+    "SELECT * FROM appearance WHERE sport = $s AND {who} = $w AND start < $b ORDER BY start"
+)
+LEAD = {"football": "goals", "basketball": "points", "cricket": "runs", "f1": "points"}
+
+
+def _sum(apps: list[dict]) -> dict:
+    out: dict = {}
+    for a in apps:
+        for k, v in a["totals"].items():
+            out[k] = round(out.get(k, 0) + v, 2)
+    return out
+
+
+def _latest(apps: list[dict]) -> list[dict]:
+    """The appearances in the newest competition-season of the list (oldest first)."""
+    last = apps[-1]
+    return [
+        a for a in apps if (a["competition"], a["season"]) == (last["competition"], last["season"])
+    ]
+
+
+def player_season(sport: str, name: str, before: str) -> dict | None:
+    """The player's newest competition-season before `before`: team, matches and summed totals."""
+    apps = _rows(APPEARANCES.format(who="player"), {"s": sport, "w": name, "b": before})
+    if not apps:
+        return None
+    mine = _latest(apps)
+    return {
+        "team": mine[-1]["team"],
+        "competition": mine[-1]["competition"],
+        "season": mine[-1]["season"],
+        "matches": len(mine),
+        "totals": _sum(mine),
+    }
+
+
+def squad(sport: str, team: str, before: str) -> list[dict]:
+    """Who played for the team in its newest competition-season before `before`, best first."""
+    apps = _rows(APPEARANCES.format(who="team"), {"s": sport, "w": team, "b": before})
+    if not apps:
+        return []
+    by: dict[str, list[dict]] = {}
+    for a in _latest(apps):
+        by.setdefault(a["player"], []).append(a)
+    lead = LEAD.get(sport, "points")
+    ranked = sorted(by.items(), key=lambda kv: (-_sum(kv[1]).get(lead, 0), -len(kv[1]), kv[0]))
+    return [
+        {"name": n, "matches": len(a), "headline": f"{_sum(a).get(lead, 0):g} {lead} in {len(a)}"}
+        for n, a in ranked
+    ]
+
+
+def teams(sport: str) -> list[dict]:
+    """Every team in the store with its competition, season and match count."""
+    found = _rows("SELECT * FROM fixture WHERE sport = $s", {"s": sport})
+    count: dict[tuple, int] = {}
+    for f in found or []:
+        for side in (f["home"], f["away"]):
+            key = (side, f["competition"], f["season"])
+            count[key] = count.get(key, 0) + 1
+    return [
+        {"team": t, "competition": c, "season": s, "matches": m}
+        for (t, c, s), m in sorted(count.items())
+    ]

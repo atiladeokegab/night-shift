@@ -103,7 +103,7 @@ code, with its recorded checks and the producers' fixes. Beside the rules (#298)
 line; stored replays are checked once as they play (its count is `linecheck` on [`/stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats)). Its
 flags go to the producer's fix queue ([how well it works](#line-check-beside-the-rules)).
 [`data/side_by_side.json`](data/side_by_side.json) still holds an earlier hand-copied read, best
-55.8%, and `/stats`'s `adapter` still says "Collecting", from a record made at 13:04 UTC.
+55.8%, and `/stats`'s `earlier_tasks.adapter` still says "Collecting", from a record made at 13:04 UTC.
 
 The corrections waiting, from the live [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats) on 24 October 2026 at 19:37 UTC:
 67 recorded for training, the team's, from the number-check fix list; only a fix whose recorded
@@ -244,6 +244,16 @@ then offers "Hear it again" ([`core/app.py`](core/app.py) `ask`, [`agent/ask.md`
 [`web/src/turns.ts`](web/src/turns.ts), [`tests/test_core_ask.py`](tests/test_core_ask.py)). Answers
 go through Mubit unrecorded: they have their own prompt.
 
+**Talk (#380):** the Talk button pauses the match and the speaking queue and opens a natural
+conversation with the commentator (an ElevenLabs agent: its own turn-taking and interruptions). The
+agent's custom LLM is [`core/converse.py`](core/converse.py) `POST /converse/v1/chat/completions`,
+which answers each turn through the same checked Ask path (Claude via Mubit, unrecorded), from the
+match cut at the moment the talk began. When the fan goes quiet for 12 s, or presses Resume or Escape,
+the match resumes where it paused. Where it can't start (no mic, no agent, off air) Ask is still there.
+Setup, keyed, once: `ELEVENLABS_API_KEY=... CONVERSE_LLM_SECRET=<random> uv run python
+scripts/converse_agent.py --url https://<service>/converse/v1`, then deploy with `CONVERSE_AGENT_ID`
+and `CONVERSE_LLM_SECRET` set ([`tests/test_converse.py`](tests/test_converse.py)).
+
 **By voice (#145):** hold the mic button, or the space bar, and
 speak; the browser's own speech recognition fills the box and sends it. The answer is held until the
 current line ends and no big moment is due, then spoken
@@ -383,7 +393,7 @@ subscription tier, $0.08 per 1,000 characters for `eleven_v3`; pay-as-you-go is 
 the six scores 58.3% against a 95% target ([the six](#correction-loop-with-evidence)). No adapter
 serves or has passed, and we make no claim that one matches the big model.
 [`data/side_by_side.json`](data/side_by_side.json) holds an earlier hand-copied read, best 55.8%,
-and `/stats`'s `adapter` a record from 13:04 UTC that says "Collecting", both recorded with
+and `/stats`'s `earlier_tasks.adapter` a record from 13:04 UTC that says "Collecting", both recorded with
 [`eval/record_adapter.py`](eval/record_adapter.py); neither reports an agreement result.
 
 ## How well the check works
@@ -645,7 +655,10 @@ JSON lines on Cloud Storage, and streams moments and lines to the browser over s
 The commentator's tools and the shot map read per-match stats packs ([`data/packs/`](data/packs)).
 Follow a player reads the same packs as a graph in embedded SurrealDB (players, teams, matches and
 seasons, loaded in memory at startup in about a second), which also answers "Also in our library":
-the player's other matches and teammates. If the graph fails, it reads the packs.
+the player's other matches and teammates. A second, on-disk SurrealDB store (`data/graph/`, built by
+`scripts/build_graph.py`) holds every team and player of the four football competition-seasons we
+sample (612 matches), cut at kickoff; basketball, cricket and F1 are not in it yet. If the graph
+fails, it reads the packs.
 
 **At scale (a plan, not built).**
 

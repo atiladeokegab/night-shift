@@ -93,8 +93,6 @@ export interface Stats {
   tokens_in: number
   tokens_out: number
   cost_per_line_usd?: number | null
-  adapter?: Adapter | null // the commentary task's
-  adapters?: Record<string, TaskAdapter> // #209: each Mubit task's latest record, by task
   by_speaker?: { lead: SpeakerStats; analyst: SpeakerStats } // #161: Haiku's calls apart from Sonnet's stat lines
   fixes_recorded?: number // fixes Mubit recorded for training; `fixes` counts every stored fix
   fixes_toward_next?: number // recorded fixes since the latest adapter record (#161)
@@ -109,14 +107,23 @@ export interface Stats {
   autonomy_by_match?: Record<string, Autonomy>
   linecheck?: LineCheckStats // #298
   scorecheck?: ScoreCheckStats // #321
+  earlier_tasks?: EarlierTasks // #363
+}
+
+// #363: the commentary tasks trained before Score check: commentary's summary and each other task's latest record
+export interface EarlierTasks {
+  adapter: Adapter
+  adapters: Record<string, TaskAdapter> // #209: by task, never score_check
 }
 
 // #321: Score check's examples sent to Mubit, and each model's latest score on its frozen held-out lines
 export interface ScoreCheckStats {
-  seeded: number
-  from_fixes: number
+  examples_sent: number
+  by_source: { answer_key: number; auto_fixed: number; human: number } // #363
   from_fixes_by_kind: Record<string, number>
   held_out: Record<string, { agree: number; scored: number; unparsed: number; recorded_at: string | null }> // by model
+  next_training: string // #363, e.g. "after 01:00 UK"
+  recorded: TaskAdapter | null // #363: the last version read off the console by hand; null until then
 }
 
 // #298: Line check's second opinion on live lead lines; every flag is on a line the rules check passed
@@ -282,4 +289,42 @@ export interface Voice {
   same_as?: string // the id of the entry with the same ElevenLabs voice: a sport's pick that repeats it
   analyst_for?: Sport[] // the sports whose analyst lines this voice reads (core/voice.py analyst_voice)
   browser?: boolean
+}
+
+// GET /ledger: one correction sent to Mubit, with the session and request to find it in the console.
+export interface LedgerRow {
+  at: string | null
+  task: 'Score check' | 'Commentator'
+  source: string // "answer key", "human" or "auto-fixed"
+  match: string | null
+  idx: number | null
+  text: string | null
+  score: string | null // the data's score at the moment
+  wrong: string[] // what the number check finds wrong in the line
+  session: string | null
+  request_id: string | null
+  link: string | null // Mubit's console, once its URL is known
+}
+
+export interface Ledger {
+  sent: number // examples sent to Score check
+  rows: LedgerRow[] // the newest 50 corrections
+}
+
+// GET /teams/{sport}/{match_id} (#375): the graph's view of both sides before the match; sections may be empty.
+export interface TeamGame {
+  date: string
+  opponent: string
+  home: boolean
+  score: string
+  result: string // W, D, L, or another code a sport uses
+}
+export interface TeamInfo {
+  team: string
+  form: TeamGame[]
+  squad: { name: string; matches: number; headline: string }[]
+}
+export interface Teams {
+  teams: TeamInfo[]
+  head_to_head: TeamGame[]
 }

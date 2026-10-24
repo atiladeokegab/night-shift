@@ -7,7 +7,7 @@ import { demoMatches, demoStats, streamDemo } from './demo'
 import { offAir, Refused, refused } from './ask'
 import { playersUrl, type Player, type Profile } from './follow'
 import type { Shots } from './shots'
-import type { Answer, Fix, Line, LineCheck, LineCheckExample, Match, Moment, ReviewItem, Stats, StreamEvent, Voice } from './types'
+import type { Answer, Fix, Line, LineCheck, Ledger, LineCheckExample, Match, Moment, ReviewItem, Stats, StreamEvent, Teams, Voice } from './types'
 
 export const isDemo = new URLSearchParams(window.location.search).has('demo')
 
@@ -27,6 +27,13 @@ export async function getStats(): Promise<Stats> {
   if (isDemo) return demoStats()
   const res = await fetch('/stats')
   if (!res.ok) throw new Error(`GET /stats failed (${res.status})`)
+  return res.json()
+}
+
+export async function getTeams(sport: string, matchId: string): Promise<Teams> {
+  if (isDemo) return { teams: [], head_to_head: [] }
+  const res = await fetch(`/teams/${encodeURIComponent(sport)}/${encodeURIComponent(matchId)}`)
+  if (!res.ok) throw new Error(`GET /teams failed (${res.status})`)
   return res.json()
 }
 
@@ -136,6 +143,14 @@ export async function getReview(): Promise<ReviewItem[]> {
   if (isDemo) return []
   const res = await fetch('/review')
   if (!res.ok) throw new Error(`GET /review failed (${res.status})`)
+  return res.json()
+}
+
+// GET /ledger: every correction sent to Mubit. The demo has no store, so none.
+export async function getLedger(): Promise<Ledger> {
+  if (isDemo) return { sent: 0, rows: [] }
+  const res = await fetch('/ledger')
+  if (!res.ok) throw new Error(`GET /ledger failed (${res.status})`)
   return res.json()
 }
 
