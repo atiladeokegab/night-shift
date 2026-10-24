@@ -277,3 +277,19 @@ def test_a_held_out_match_or_no_recorder_sends_nothing(monkeypatch):
     monkeypatch.setattr("agent.commentator._trainer", None)
     line = {"line_id": "r", "match_id": KOBE, "moment_idx": 6, "text": RIGHT}
     assert linecheck.teach(line) is None  # FakeProvider records nothing: no example
+
+
+def test_the_eval_scores_line_check_beside_the_rules_offline(tmp_path, capsys):
+    from eval import checker_eval, linecheck_eval
+
+    labels = [x for x in checker_eval.load() if not x.get("reply")][:6]
+    out = linecheck_eval.compare(labels, Says(dumps(_labels(score="wrong"))))
+    model, rules = out["line_check"]["overall"], out["rules"]["overall"]
+    assert model["lines"] == rules["lines"] == 6 and out["errors"] == 0
+    assert model["tp"] + model["fp"] == 6  # it flagged every line, so every line counts as a flag
+    path = tmp_path / "held_out.jsonl"
+    path.write_text("\n".join(json.dumps(x) for x in labels))
+    assert linecheck_eval.main(["--dry", str(path)], env={}) == 0
+    shown = capsys.readouterr().out
+    assert "| Rules check | 6 |" in shown and "| Line check | 6 |" in shown
+    assert linecheck_eval.main([], env={}) == 2  # no key: never a call
