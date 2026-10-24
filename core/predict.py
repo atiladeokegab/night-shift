@@ -218,7 +218,7 @@ def _shots_profile(pack: dict, so_far: list[dict], name: str) -> str:
         now = f"; {made} of {len(here)} tonight" if here else ""
         lines.append(
             f"- {z}: {pre}before tonight ({c['made']} of {c['att']}){now}; "
-            f"chance now, both combined: {_pct(rate)}"
+            f"chance the next one from here goes in, both combined: {_pct(rate)}"
         )
     made = sum(t["made"] for t in mine)
     tonight = f"Tonight so far: {made} of {len(mine)} {what}"
@@ -227,7 +227,7 @@ def _shots_profile(pack: dict, so_far: list[dict], name: str) -> str:
     chance = (
         "Chance a shot goes in (xG-based)"
         if football
-        else "Chance now, before tonight and tonight combined"
+        else "Chance the next shot goes in (season and tonight blended)"
     )
     lines.append(f"{tonight}. {chance}: {_pct(_rate(pack, p, mine))}.")
     return "\n".join(lines)

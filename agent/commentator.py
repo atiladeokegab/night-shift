@@ -22,11 +22,15 @@ AGENT = Path(__file__).resolve().parent
 SYSTEM = (AGENT / "prompt.md").read_text(encoding="utf-8")
 MESSAGE = (AGENT / "message.md").read_text(encoding="utf-8")
 ASK = (AGENT / "ask.md").read_text(encoding="utf-8")
+ANALYST = (AGENT / "analyst.md").read_text(encoding="utf-8")
 TOOLS = json.loads((AGENT / "tools.json").read_text(encoding="utf-8"))
 # Ask only: Mubit fingerprints the tools, so a new one in every line would split the lines' task
 ASK_TOOLS = TOOLS + json.loads((AGENT / "ask_tools.json").read_text(encoding="utf-8"))
 TOOL_CHOICE = {"type": "auto"}
 MODEL = "claude-haiku-4-5"
+ANALYST_MODEL = (
+    "claude-sonnet-5-5"  # the stat lines, unrecorded: Haiku slipped on their facts in probe 7
+)
 MAX_TOKENS = 100
 MUBIT_URL = "https://api.mubit.ai/anthropic"
 log = logging.getLogger(__name__)
@@ -109,8 +113,10 @@ def render_message(header: dict, past: list[dict]) -> str:
 
 
 def build_request(header: dict, past: list[dict]) -> dict:
-    """The exact production request for the last moment in `past`."""
-    return {
+    """The exact production request for the last moment in `past`. A Stat moment (an insight or
+    reply, core/insight.py) gets the analyst's own prompt and no tools: it is never recorded, so
+    the frozen prompt and tools the lines train on stay one task."""
+    request = {
         "model": MODEL,
         "max_tokens": MAX_TOKENS,
         "system": SYSTEM,
@@ -119,6 +125,15 @@ def build_request(header: dict, past: list[dict]) -> dict:
         "metadata": {"user_id": session_id(header["sport"], header["match_id"])},
         "messages": [{"role": "user", "content": render_message(header, past)}],
     }
+    if past[-1]["type"] == "Stat":
+        request["system"] = ANALYST
+        # unrecorded, so its model is free to differ from the lines' (one Mubit task)
+        request["model"] = os.environ.get("ANALYST_MODEL") or ANALYST_MODEL
+        del request["tools"], request["tool_choice"]
+        if request["model"] == "claude-sonnet-5-5":
+            # its lowest thinking setting, so thinking can't eat MAX_TOKENS; other models 400 on it
+            request["thinking"] = {"type": "between_tools"}
+    return request
 
 
 def run_tool(name: str, args: dict, header: dict, past: list[dict]) -> str:
@@ -162,6 +177,7 @@ _PREAMBLE = re.compile(
 # A stray grade word the model put before the line: "BAD Manenti with a boundary!".
 _STRAY = re.compile(r"^BAD\s+(?=[A-Z])")
 MAX_WORDS = 20
+ANALYST_WORDS = 25  # a stat line needs room for its numbers
 
 # The model questioning its input instead of calling the moment: "There's a discrepancy here ...".
 _META = re.compile(
@@ -205,7 +221,7 @@ def commentate(
         header = match_header(moment["match_id"])
     moments = [*history, moment]
     try:
-        return line_for(header, moments, len(history), provider or default_provider())
+        return line_for(header, moments, len(history), provider or provider_for(moment))
     except NoLine:
         return None  # the replay skips the moment
 
@@ -222,12 +238,13 @@ def correct(
 
         header = header or match_header(line["match_id"])
         moments = moments if moments is not None else load_moments(line["match_id"])
-    request = build_request(header, [m for m in moments if m["idx"] <= line["moment_idx"]])
+    past = [m for m in moments if m["idx"] <= line["moment_idx"]]
+    request = build_request(header, past)
     request["messages"] += [
         {"role": "assistant", "content": line["text"]},
         {"role": "user", "content": CORRECTION.format(text=corrected_text)},
     ]
-    reply = (provider or default_provider()).call(request)
+    reply = (provider or provider_for(past[-1])).call(request)
     # the echo, not a spoken line: untrimmed, so a correction over 20 words can still match
     said = " ".join(b["text"] for b in reply["content"] if b["type"] == "text").split()
     return {
@@ -256,6 +273,11 @@ def default_provider():
 _unrecorded = None
 
 
+def provider_for(moment: dict):
+    """The analyst's Stat lines go unrecorded, like Ask; every moment's line is recorded."""
+    return unrecorded_provider() if moment["type"] == "Stat" else default_provider()
+
+
 def unrecorded_provider():
     """Mubit with recording off when MUBIT_API_KEY is set, else FakeProvider; made once per process.
     An answer has its own system prompt: recorded, it would split the one task the lines train."""
@@ -272,8 +294,10 @@ def line_for(header: dict, moments: list[dict], idx: int, provider) -> dict:
     """One Line for moments[idx], with at most one tool round."""
     past = moments[: idx + 1]  # never anything later than this moment
     start = time.monotonic()
-    reply, replies, tool_calls, offset = _call(provider, build_request(header, past), header, past)
-    text = spoken(" ".join(b["text"] for b in reply["content"] if b["type"] == "text"))
+    request = build_request(header, past)
+    reply, replies, tool_calls, offset = _call(provider, request, header, past)
+    limit = ANALYST_WORDS if past[-1]["type"] == "Stat" else MAX_WORDS
+    text = spoken(" ".join(b["text"] for b in reply["content"] if b["type"] == "text"), limit)
     if not text:  # a tool-only or preamble-only reply: no line beats a blank or a wrong one
         raise NoLine(f"no commentary for moment {past[-1]['idx']}")
     first = reply.get("first_word_ms")
@@ -283,7 +307,7 @@ def line_for(header: dict, moments: list[dict], idx: int, provider) -> dict:
         "match_id": header["match_id"],
         "moment_idx": past[-1]["idx"],
         "text": text,
-        "model": MODEL,
+        "model": request["model"],
         "latency_ms": round((time.monotonic() - start) * 1000),
         "first_word_ms": round(offset + first) if first is not None else None,
         "tokens_in": sum(r["usage"]["input_tokens"] for r in replies),

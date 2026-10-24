@@ -1,7 +1,7 @@
 """Proof-panel numbers, computed from the store only."""
 
 # USD per 1M tokens (input, output), list price
-PRICES = {"claude-haiku-4-5": (1.00, 5.00)}
+PRICES = {"claude-haiku-4-5": (1.00, 5.00), "claude-sonnet-5-5": (2.00, 10.00)}
 # Mubit's minimum kept examples before it trains the adapter
 ADAPTER_NEEDED = 25
 
