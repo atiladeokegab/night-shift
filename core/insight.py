@@ -1158,6 +1158,24 @@ def _false_lead(text: str, m: dict, header: dict) -> list[str]:
     return [f"{header[s]} do not lead" for s in sorted(claims) if s != leader(m)]
 
 
+def _flipped_lead(text: str, m: dict, header: dict) -> list[str]:
+    """A leader's score said last: "Lakers lead eighty-eight to ninety-five" at 95-88 (#407).
+    The check above took it, both numbers being in the moment; the leader's comes first."""
+    s = m["score"]
+    _, names = _sides(header)
+    wrong = []
+    for sentence in re.split(r"(?<=[.!?])\s+", text):
+        if sentence.rstrip().endswith("?"):
+            continue
+        for hit in re.finditer(rf"\b(?:{names}){LEADS}", sentence, re.I):
+            words = said(re.split(r"[.!?;]", sentence[hit.end() :])[0])
+            nums = [w for w in words if isinstance(w, float)]
+            for a, b in zip(nums, nums[1:], strict=False):
+                if a < b and sorted((a, b)) == sorted((s["home"], s["away"])):
+                    wrong.append(f"{a:g} to {b:g} puts the leader's score last: say {b:g}-{a:g}")
+    return wrong
+
+
 MARGIN = (  # "Bulls down three", "Utah up by five", "the Jazz lead by two"; not "lead 86-85"
     r"\s+(?:(?:are|is|now|still)\s+)*(?:down|up|leads?|trails?|ahead|behind)\s+(?:by\s+)?"
     r"(\d+|[a-z]+(?:-[a-z]+)?)\b(?!\s*[-–]\s*\w|\s+(?:to|seconds?|minutes?|left)\b)"
@@ -1238,7 +1256,11 @@ def wrong_numbers(
         _wrong_clock(words, m) + _wrong_streak(text, m, past, header) + _wrong_span(words, m, past)
     )
     if "home" in s and header:
-        wrong += _false_lead(text, m, header) + _wrong_margin(text, m, header)
+        wrong += (
+            _false_lead(text, m, header)
+            + _wrong_margin(text, m, header)
+            + _flipped_lead(text, m, header)
+        )
         if m.get("sport") == "football":
             wrong += _wrong_score(text, m)
     if "milestone" in d and not set(numbers(d["milestone"])) & set(numbers(text)):

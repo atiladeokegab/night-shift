@@ -13,12 +13,12 @@ export function TeamFacts({ data }: { data: Teams }) {
     <>
       {data.teams.map((t) => (
         <section key={t.team} aria-labelledby={`team-${t.team.replace(/\W/g, '')}`}>
-          <h4 id={`team-${t.team.replace(/\W/g, '')}`}>{t.team}</h4>
+          <h3 id={`team-${t.team.replace(/\W/g, '')}`}>{t.team}</h3>
           <p>{formLine(t.team, t.form)}</p>
           {t.form.length > 0 && <ul>{t.form.map((g) => <li key={g.date + g.opponent}>{gameLine(g)}</li>)}</ul>}
           {t.squad.length > 0 && (
             <>
-              <h5>Squad</h5>
+              <h4>Squad</h4>
               <ul>{t.squad.map((p) => <li key={p.name}>{p.name}: {p.headline}</li>)}</ul>
             </>
           )}
@@ -26,7 +26,7 @@ export function TeamFacts({ data }: { data: Teams }) {
       ))}
       {a && b && (
         <section aria-labelledby="team-h2h">
-          <h4 id="team-h2h">Head to head</h4>
+          <h3 id="team-h2h">Head to head</h3>
           {data.head_to_head.length
             ? <ul>{data.head_to_head.map((g) => <li key={g.date + g.opponent}>{a.team}: {gameLine(g)}</li>)}</ul>
             : <p>{a.team} and {b.team} have no earlier meetings on record.</p>}
@@ -47,7 +47,7 @@ export function TeamPanel({ sport, matchId }: { sport: string; matchId: string }
   const data = got?.key === key ? got.data : null
   return (
     <section className="panel glass teams" aria-label="Teams">
-      <div className="panel-h"><h3 id="teams-h" tabIndex={-1}>Teams</h3></div>
+      <div className="panel-h"><h2 id="teams-h" tabIndex={-1}>Teams</h2></div>
       {!data ? <p className="hint" role="status">Loading teams…</p>
         : data === 'error' ? <p className="err-text" role="alert">Couldn't load the teams.</p>
         : <TeamFacts data={data} />}
