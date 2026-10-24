@@ -113,7 +113,8 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
 - System prompt `agent/prompt.md`, never templated. User message from one frozen template
   `agent/message.md` carrying the sport, the moment, its score and recent play.
 - Tools `agent/tools.json`, sport-neutral: `get_score`, `get_player`, `get_recent_play`;
-  `tool_choice: auto`; at most one tool round per line. Output: plain text, at most 20 words.
+  `tool_choice: auto`; at most one tool round per line. Output: plain text, at most 20 words. Line
+  requests carry exactly these three: Mubit fingerprints the tools, so another would split the task.
 - Every model call goes through Mubit (`https://api.mubit.ai/anthropic`), model `claude-haiku-4-5`;
   one session per match in `metadata.user_id = "match-<sport>-<id>"`; no browser calls to Mubit.
   `FakeProvider` offline.
@@ -125,8 +126,15 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
 - Answer (`agent.commentator.answer`): the request for the moment on screen with the system prompt
   `agent/ask.md`, the last five lines said and the viewer's question (whitespace collapsed, quoted as a JSON
   string, so it cannot forge a field) appended to the user message;
-  same model, tools and session; at most 30 words. Sent with `x-middleware-record: off`: its own
+  same model and session; at most 30 words. Sent with `x-middleware-record: off`: its own
   system prompt would otherwise split the one Mubit task the lines train.
+- Ask-only tools (`agent/ask_tools.json`, appended to the line tools for answers only), answered by
+  `core/predict.py` from the match's pre-match pack (`data/packs/`) and the moments up to the one on
+  screen, never a later one: `get_player_profile(name)` (pre-match totals and zone rates, or cricket
+  batting by phase and bowling, each with tonight's counts and a Beta-binomial blend; "small sample"
+  when n < 10) and `get_next_score_odds()` (per team, among players seen so far and not substituted
+  off: share of attempts times make rate, or xG per shot in football; sums to 1 per team). A match
+  with no pack answers "No pre-match record for this event."
 
 ## Check
 
