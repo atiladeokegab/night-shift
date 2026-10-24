@@ -60,6 +60,7 @@ export function ProofPanel({ live }: Props) {
         <p className="small">
           First word: time from the moment to the first word of the model's text reply, measured through
           Mubit. Finishing the line, speech synthesis and playback are not included.
+          Per match: a replay played start to finish, its tokens and voice characters at list price.
           {stats?.adapter && !stats.adapter.cost_measurable && " Adapter cost: not measurable; Mubit doesn't report it to the app."}
         </p>
       </section>
