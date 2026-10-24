@@ -74,13 +74,15 @@ function crest(x: number, y: number, team: TeamStyle): string {
 const cache = new Map<string, string>()
 
 // The card's artwork for a match: the stadium (pitch markings for football and cricket only; the design
-// has no art for basketball or f1 yet) and both teams' crests where the match has two sides.
-export function cardArt(sport: string, home: TeamStyle, away: TeamStyle): string {
-  const key = `${sport}:${home.code}:${away.code}`
+// has no art for basketball or f1 yet) and the crests, both sides' or a lone one (an f1 driver's). The
+// crests are their own svg, placed by App.css: inside the stadium's slice a tall card cropped them.
+export function cardArt(sport: string, home: TeamStyle, away: TeamStyle | null): string {
+  const key = `${sport}:${home.code}:${away?.code}`
   if (!cache.has(key)) {
     const id = sport === 'football' ? 'cf' : 'cc'
-    const crests = sport === 'f1' ? '' : SHADE + crest(478, 150, home) + crest(618, 150, away)
-    cache.set(key, stadium(id + sport, 800, 500, sport, sport === 'football' ? 11 : 23, crests))
+    const crests = away ? crest(0, 0, home) + crest(140, 0, away) : crest(140, 0, home)
+    cache.set(key, stadium(id + sport, 800, 500, sport, sport === 'football' ? 11 : 23, '')
+      + `<svg class="crests" viewBox="0 0 260 162" aria-hidden="true">${SHADE}${crests}</svg>`)
   }
   return cache.get(key)!
 }

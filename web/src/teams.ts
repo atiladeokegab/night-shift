@@ -7,6 +7,7 @@ const KNOWN: [string, string, string, string][] = [
   ['England', 'ENG', '#F4F4F4', '#1B2A5A'],
   ['India', 'IND', '#2F7DE1', '#FFFFFF'],
   ['Pakistan', 'PAK', '#0F8A4C', '#FFFFFF'],
+  ['Hamilton', 'HAM', '#00A19C', '#FFFFFF'], // Mercedes teal, 2024
 ]
 const OTHER: [string, string][] = [['#C9D2E3', '#0E1524'], ['#8FA3C7', '#0E1524']]
 
@@ -44,7 +45,7 @@ export function sides(match: Match, team: string): { ours: TeamStyle; theirs: Te
 // Card copy: the two demo matches from docs/design.md ("Copy"), and the iconic ones by what they are
 // remembered for, with names, dates and results from data/sample/. The design's "Highlights 4:56 · 4 key
 // moments" is a mockup placeholder (data/video/ maps 15 and 32 moments), so it is left out: no unmeasured figures.
-export const CARD_COPY: Record<string, { title: string; detail: string; result: string }> = {
+export const CARD_COPY: Record<string, { title: string; detail: string; result: string; crest?: string }> = {
   '3869685': {
     title: 'Messi v Mbappé',
     detail: '2022 World Cup final · Argentina v France · 18 Dec 2022',
@@ -73,7 +74,8 @@ export const CARD_COPY: Record<string, { title: string; detail: string; result: 
   '9558': {
     title: 'Hamilton at Silverstone',
     detail: '2024 British Grand Prix · 7 Jul 2024',
-    result: 'Hamilton wins by 1.5 s from Verstappen, Norris third',
+    result: 'Hamilton wins by 1.5\u00a0s from Verstappen, Norris third',
+    crest: 'Hamilton', // a race has no sides: the card shows the driver it is remembered for
   },
 }
 
