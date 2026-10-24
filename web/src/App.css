@@ -241,7 +241,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .log .text { min-width: 0; font-size: .92rem; line-height: 1.45; }
 .log .orig { color: var(--muted); text-decoration: line-through; font-size: .82rem; margin-top: 4px; }
 .log .meta-l .chip { padding: 3px 6px; font-size: .6rem; }
-.log .meta-l { grid-column: 2; display: flex; gap: 8px; align-items: center; font-size: .72rem; color: var(--muted); }
+.log .meta-l { grid-column: 2; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; font-size: .72rem; color: var(--muted); }
 .log .fixed .text > span:first-child { color: var(--fix); }
 .log .late .text > span:first-child { color: var(--muted); text-decoration: line-through; }
 .log .btn.sm { grid-column: 3; grid-row: 1; }
