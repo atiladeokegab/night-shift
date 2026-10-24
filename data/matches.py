@@ -156,6 +156,8 @@ if __name__ == "__main__":
     _bundle("football", "3754092", bridge)  # Chelsea 2-2 Tottenham, 2016: Leicester win the league
     final = next(m for m in feed.statsbomb_matches(43, 106) if m["match_id"] == 3869685)
     _bundle("football", "3869685", final)  # 2022 World Cup final, Messi v Mbappé
+    wsl = next(m for m in feed.statsbomb_matches(37, 281) if m["match_id"] == 3913122)
+    _bundle("football", "3913122", wsl)  # Brighton 3-2 Bristol City, WSL 2024: the long tail, a 94th-minute winner
     _bundle("cricket", "1298150")  # India v Pakistan, T20 World Cup 2022
     finals = {"competition": "NBA Finals", "stage": "Game 6", "date": "1998-06-14"}
     _bundle("basketball", "0049700088", finals)  # Jordan's last shot as a Bull
