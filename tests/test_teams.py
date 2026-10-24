@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from core import graph, teams
 from core.app import Deps, create_app
 from core.store import Store
-from data.matches import list_matches, load_moments
+from data.matches import list_matches, load_moments, match_header
 
 GAME = {"date": "2016-04-20", "opponent": "Everton", "home": True, "score": "2-1", "result": "W"}
 PLAYER = {"name": "Eden Hazard", "matches": 21, "headline": "9 goals in 21"}
@@ -99,3 +99,22 @@ def test_one_of_a_stat_is_singular():
     assert graph._headline(1, "runs", 1) == "1 run in 1"
     assert graph._headline(0, "goals", 4) == "0 goals in 4"
     assert graph._headline(3, "goals", 4) == "3 goals in 4"
+
+
+def test_a_teams_first_match_on_record_says_so():
+    graph.start()
+    assert (
+        graph.first_match("football", "Orlando Pride", "2018-05-24")
+        == "This is Orlando Pride's first match on record"
+    )
+    assert (
+        graph.first_match("football", "North Carolina Courage", "2018-05-24") is None
+    )  # has earlier games
+    assert graph.first_match("football", "Nobody FC", "2018-05-24") is None  # never in the store
+    body = teams.build("football", match_header("7457"))
+    orlando, courage = body["teams"]
+    assert (
+        orlando["note"] == "This is Orlando Pride's first match on record"
+        and orlando["squad"] == []
+    )
+    assert courage["note"] is None

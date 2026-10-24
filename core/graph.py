@@ -311,6 +311,20 @@ def head_to_head(sport: str, a: str, b: str, before: str, n: int = 5) -> list[di
     return [_result(f, a) for f in found or []]
 
 
+def first_match(sport: str, team: str, before: str) -> str | None:
+    """The "first match on record" note when the store has the team only from `before` on."""
+    if (cut := _utc(before)) is None:
+        return None
+    found = _rows(FIXTURES.format(more=""), {"s": sport, "t": team, "b": cut, "n": 1})
+    if found != []:  # off, failed, or there is an earlier game
+        return None
+    anywhere = _rows(
+        "SELECT * FROM fixture WHERE sport = $s AND (home = $t OR away = $t) LIMIT 1",
+        {"s": sport, "t": team},
+    )
+    return f"This is {team}'s first match on record" if anywhere else None
+
+
 APPEARANCES = "SELECT * FROM appearance WHERE sport = $s AND {who} = $w"
 LEAD = {"football": "goals", "basketball": "points", "cricket": "runs", "f1": "points"}
 
