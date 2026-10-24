@@ -93,8 +93,6 @@ export interface Stats {
   tokens_in: number
   tokens_out: number
   cost_per_line_usd?: number | null
-  adapter?: Adapter | null // the commentary task's
-  adapters?: Record<string, TaskAdapter> // #209: each Mubit task's latest record, by task
   by_speaker?: { lead: SpeakerStats; analyst: SpeakerStats } // #161: Haiku's calls apart from Sonnet's stat lines
   fixes_recorded?: number // fixes Mubit recorded for training; `fixes` counts every stored fix
   fixes_toward_next?: number // recorded fixes since the latest adapter record (#161)
@@ -109,14 +107,23 @@ export interface Stats {
   autonomy_by_match?: Record<string, Autonomy>
   linecheck?: LineCheckStats // #298
   scorecheck?: ScoreCheckStats // #321
+  earlier_tasks?: EarlierTasks // #363
+}
+
+// #363: the commentary tasks trained before Score check: commentary's summary and each other task's latest record
+export interface EarlierTasks {
+  adapter: Adapter
+  adapters: Record<string, TaskAdapter> // #209: by task, never score_check
 }
 
 // #321: Score check's examples sent to Mubit, and each model's latest score on its frozen held-out lines
 export interface ScoreCheckStats {
-  seeded: number
-  from_fixes: number
+  examples_sent: number
+  by_source: { answer_key: number; auto_fixed: number; human: number } // #363
   from_fixes_by_kind: Record<string, number>
   held_out: Record<string, { agree: number; scored: number; unparsed: number; recorded_at: string | null }> // by model
+  next_training: string // #363, e.g. "after 01:00 UK"
+  recorded: TaskAdapter | null // #363: the last version read off the console by hand; null until then
 }
 
 // #298: Line check's second opinion on live lead lines; every flag is on a line the rules check passed

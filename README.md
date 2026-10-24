@@ -99,7 +99,7 @@ code, with its recorded checks and the producers' fixes. Beside the rules (#298)
 line; stored replays are checked once as they play (its count is `linecheck` on [`/stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats)). Its
 flags go to the producer's fix queue ([how well it works](#line-check-beside-the-rules)).
 [`data/side_by_side.json`](data/side_by_side.json) still holds an earlier hand-copied read, best
-55.8%, and `/stats`'s `adapter` still says "Collecting", from a record made at 13:04 UTC.
+55.8%, and `/stats`'s `earlier_tasks.adapter` still says "Collecting", from a record made at 13:04 UTC.
 
 The corrections waiting, from the live [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats) on 24 October 2026 at 19:37 UTC:
 67 recorded for training, the team's, from the number-check fix list; only a fix whose recorded
@@ -379,7 +379,7 @@ subscription tier, $0.08 per 1,000 characters for `eleven_v3`; pay-as-you-go is 
 the six scores 58.3% against a 95% target ([the six](#correction-loop-with-evidence)). No adapter
 serves or has passed, and we make no claim that one matches the big model.
 [`data/side_by_side.json`](data/side_by_side.json) holds an earlier hand-copied read, best 55.8%,
-and `/stats`'s `adapter` a record from 13:04 UTC that says "Collecting", both recorded with
+and `/stats`'s `earlier_tasks.adapter` a record from 13:04 UTC that says "Collecting", both recorded with
 [`eval/record_adapter.py`](eval/record_adapter.py); neither reports an agreement result.
 
 ## How well the check works

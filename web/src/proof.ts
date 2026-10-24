@@ -1,4 +1,4 @@
-import type { Autonomy, ConsoleReading, HeldOut, LineCheck, LineCheckExample, LineCheckStats, ScoreCheckStats, Stats, TaskAdapter, TaskVersion, VoiceHealth } from './types'
+import type { Autonomy, ConsoleReading, EarlierTasks, HeldOut, LineCheck, LineCheckExample, LineCheckStats, ScoreCheckStats, Stats, TaskAdapter, TaskVersion, VoiceHealth } from './types'
 
 const NONE: Autonomy = { called: 0, first_time: 0, auto_fixed: 0, to_human: 0 }
 
@@ -71,23 +71,34 @@ export function exampleText(ex: LineCheckExample | null | undefined): string | n
   return `Sent to Mubit as a Line check example${request} · kind ${ex.kind.replace('_', ' ')}`
 }
 
-// Score check is the one task trained on Mubit (#321): the commentary tasks are not on the card.
-const TASKS: [string, string][] = [['score_check', 'Score check']]
+// Score check, the one task trained on Mubit (#321, #363): its version as read off the console, in the
+// console's words ("Score check: v1, 82%, Passed", "v1, 55.8%, below 95% target"; none yet reads "no
+// version recorded yet"), the examples sent by source, each held-out score and the next training.
+// None before core reports `scorecheck`.
+export function scoreCheckRows(sc: ScoreCheckStats | undefined): string[] {
+  if (!sc) return []
+  const recorded = sc.recorded ?? undefined
+  const n = (x: number) => x.toLocaleString('en-GB')
+  const kinds = Object.entries(sc.from_fixes_by_kind).map(([kind, k]) => `${k} ${kind}`)
+  const { answer_key, auto_fixed, human } = sc.by_source
+  return [
+    `Score check: ${adapterRow(recorded)}${history(recorded)}`,
+    `Examples sent: ${n(sc.examples_sent)} (${n(answer_key)} from the answer key, ${n(auto_fixed)} auto-fixed, ${n(human)} by a person${kinds.length ? `: ${kinds.join(', ')}` : ''})`,
+    ...Object.entries(sc.held_out).map(([what, e]) => `Held-out (lines never sent): ${what}, ${e.agree} of ${e.scored} match the data`),
+    `Next training: ${sc.next_training}`,
+  ]
+}
 
-// The Proof card's row per Mubit task (#209) in the console's words, e.g. "Score check: v1, 82%, Passed"
-// or "v1, 55.8%, below 95% target", from only what the task's latest record says. No record reads
-// "no version recorded yet"; a version without Mubit's verdict, "verdict not recorded".
-// None before core reports `adapters`.
-// Score check (#321) adds its earlier versions, where each was read, its examples by source and each
-// held-out score, e.g. "Score check held-out (lines never sent): Claude via API, 70 of 74 match the data".
-export function adapterRows(adapters: Record<string, TaskAdapter> | undefined, sc?: ScoreCheckStats): string[] {
-  if (!adapters) return []
-  const rows = TASKS.map(([task, label]) => `${label}: ${adapterRow(adapters[task])}${history(adapters[task])}`)
-  if (!sc) return rows
-  const kinds = Object.entries(sc.from_fixes_by_kind).map(([kind, n]) => `${n} ${kind}`)
-  rows.push(`Score check examples sent: ${sc.seeded} seeded, ${sc.from_fixes} from fixes${kinds.length ? ` (${kinds.join(', ')})` : ''}`)
-  for (const [what, e] of Object.entries(sc.held_out)) rows.push(`Score check held-out (lines never sent): ${what}, ${e.agree} of ${e.scored} match the data`)
-  return rows
+// The commentary tasks trained before Score check (#363), folded away on the card, never deleted:
+// commentary's summary, the console reading and each other task's latest record.
+export function earlierRows(et: EarlierTasks | undefined): string[] {
+  if (!et) return []
+  const others = Object.entries(et.adapters).filter(([task]) => task !== 'commentary')
+  return [
+    `Commentary: ${et.adapter.summary}`,
+    consoleRow(et.adapter.console),
+    ...others.map(([task, a]) => `${task.replace(/_/g, ' ')}: ${adapterRow(a)}`),
+  ].filter((row): row is string => row !== null)
 }
 
 function verdictOf(a: Pick<TaskAdapter, 'score' | 'target' | 'passed'>, testing: boolean): string | null {
