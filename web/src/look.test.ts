@@ -88,6 +88,24 @@ test('the server taking no more frames stops the sharing; a slow send skips fram
   assert.equal(most, 1)
 })
 
+test('a page gone while Chrome asked: the share ends as it is accepted, and no frame is sent', async () => {
+  const f = fakes()
+  let accept: () => void = () => {}
+  const asking = new Promise<void>((r) => (accept = r))
+  const media = { getDisplayMedia: async () => (await asking, f.stream) } as unknown as MediaDevices
+  let alive = true
+  let ended = 0
+  const sent: string[] = []
+  const shared = watch(media, async (i) => (sent.push(i), true), () => ended++, f.make, 10, () => alive)
+  alive = false // Watch unmounts with the prompt open
+  accept()
+  await shared
+  await tick(40)
+  assert.equal(f.track.stopped, true)
+  assert.equal(ended, 1)
+  assert.deepEqual(sent, [])
+})
+
 test('no frame before the picture has a size; the viewer saying no throws, and nothing is sent', async () => {
   const f = fakes({ w: 0, h: 0 })
   const sent: string[] = []

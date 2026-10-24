@@ -28,7 +28,8 @@ export function grab(video: Frame, canvas: HTMLCanvasElement): string | null {
 // (the replay is over), and a send still in flight skips the next frame. Throws if the viewer says no.
 // The returned stop ends the sharing; `onEnd` runs once, however it ends.
 export async function watch(media: Media, send: (image: string) => Promise<boolean>, onEnd: () => void,
-  make: (tag: 'video' | 'canvas') => HTMLElement = (tag) => document.createElement(tag), every = EVERY_MS): Promise<() => void> {
+  make: (tag: 'video' | 'canvas') => HTMLElement = (tag) => document.createElement(tag), every = EVERY_MS,
+  alive: () => boolean = () => true): Promise<() => void> {
   const stream = await media.getDisplayMedia(SHARE)
   const video = make('video') as HTMLVideoElement
   const canvas = make('canvas') as HTMLCanvasElement
@@ -63,6 +64,7 @@ export async function watch(media: Media, send: (image: string) => Promise<boole
     stop()
     return stop
   }
+  if (!alive()) stop() // the page went while Chrome asked: the share ends at once, no frame sent
   if (!over) {
     timer = setInterval(() => void tick(), every)
     void tick()

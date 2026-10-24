@@ -16,7 +16,14 @@ export function Watch({ onLook, time, media = globalThis.navigator?.mediaDevices
   useEffect(() => {
     now.current = time
   }, [time])
-  useEffect(() => () => stop.current?.(), []) // a new replay or page: sharing ends with it
+  const alive = useRef(true)
+  useEffect(() => {
+    alive.current = true
+    return () => { // a new replay or page: sharing ends with it, even one Chrome is still asking about
+      alive.current = false
+      stop.current?.()
+    }
+  }, [])
   if (!canWatch(media) || state === 'done') return null
 
   const start = async () => {
@@ -32,7 +39,7 @@ export function Watch({ onLook, time, media = globalThis.navigator?.mediaDevices
         ended = true
         stop.current = null
         setState(refused ? 'done' : 'off')
-      })
+      }, undefined, undefined, () => alive.current)
       if (!ended) {
         stop.current = end
         setState('on')
