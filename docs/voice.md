@@ -28,7 +28,7 @@ A line's moment is due at the replay's start plus its `video_t`. A line with no 
 
 Measured on 2026-10-23 on Kohli v Pakistan (32 lines, first 12 fetched): all 12 were voiced by v3, and each was ready before its video time. The first was ready at 1.6 s for a moment at 9 s.
 
-Run `uv run python -m core.voice` before the demo. It speaks one line in every voice on both models, so no demo line pays for a cold start.
+Run `uv run python -m core.voice` before the demo. It speaks one line in every voice, the sport picks included, on both models and any `VOICE_MODEL_<SPORT>`, so no demo line pays for a cold start. It reads the `VOICE_*` settings from the environment, and from `.env` for any the environment leaves unset; nothing else is read from `.env`, so `ELEVENLABS_API_KEY` must be in the environment. Nothing runs it at service start or deploy.
 
 ## Voices
 
