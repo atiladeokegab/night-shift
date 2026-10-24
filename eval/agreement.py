@@ -8,9 +8,11 @@ The adapter is tested only when it can be: the latest adapter record in the stor
 MUBIT_API_KEY is set. Otherwise this prints "not tested: <reason>" and calls nothing. Both models
 run with recording off, so held-out moments never become training examples.
 
-Per moment the two lines agree when both exist, neither is late, the adapter names the same players
-from the match as the big model, and it states no number that neither the big model's line nor the
-moment has. An empty, skipped or late line on either side is a disagreement.
+The headline is strict agreement, a lower bound: a moment counts only when both lines exist, neither
+is late, and they are the same words once lowercased, stripped of punctuation, with number words as
+digits ("Two-nil!" and "2 nil"). Two rounds of review showed word-list fact matching lets
+contradictions through, so it never scores. Under the headline, the fact checker lists possible
+disagreements (different numbers, players, names or outcome terms) for the lines that don't match.
 """
 
 from __future__ import annotations
@@ -29,27 +31,49 @@ from core.store import open_store
 from scripts.replay_matches import FOOTBALL, pick
 
 LATE_MS = 1500  # A-3.3's p95 bound on the first word
+HEADLINE = "strict agreement (lower bound)"
+HEADLINE_NOTE = (
+    "counts only lines that state the same thing in the same words; true agreement is at least this"
+)
+
+_DIGITS = {
+    w: str(i)
+    for i, w in enumerate(
+        "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen "
+        "fifteen sixteen seventeen eighteen nineteen".split()
+    )
+} | {
+    w: str(10 * i)
+    for i, w in enumerate("_ _ twenty thirty forty fifty sixty seventy eighty ninety".split())
+    if w != "_"
+}
 
 
-def _fold(text: str) -> str:
-    return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode().lower()
+_TOKEN = re.compile(
+    r"(?:(?<!\d)[+-])?(?:\d{1,3}(?:,\d{3})+(?!\d)|\d+)(?:\.\d+)*"  # a number: sign, 1,000s, decimal
+    r"|(?:(?<!\d)[+-])?(?<![\w.])\.\d+"  # a number with a leading decimal point: ".5"
+    r"|[^\W\d_]+"  # a run of letters
+    r"|(?<=\d)\s*[/:](?=\s*\d)|[%$£€]"  # marks that change a number: "3/4", "1:30", "50%", "$5"
+)
 
 
-def _names(text: str, cast: set[str]) -> set[str]:
-    """The players the line names, each matched by surname."""
-    words = set(re.findall(r"[a-z]+", _fold(text)))
-    return {n for n in cast if set(_fold(n).split()[-1:]) <= words}
+def _word(token: str) -> str:
+    token = re.sub(r"^([+-]?)\.", r"\g<1>0.", token.replace(",", "").strip())
+    return {"%": "percent"}.get(token) or _DIGITS.get(token, token)
 
 
-def _numbers(text: str) -> set[str]:
-    return set(re.findall(r"\d+(?:\.\d+)?", text))
+def normalise(text: str) -> str:
+    """Lowercased, punctuation stripped, number words as digits, whitespace collapsed; no more.
+
+    A number keeps its sign (a Unicode minus is "-") and decimal point; ".5" is "0.5" and "1,000" is
+    "1000". So "+2" and "-2", "1.5" and "1-5", ".5" and "5" differ. A dash between numbers ("1-0")
+    and brackets are punctuation; "/", ":", "%" and currency signs are kept. Letters and numbers are
+    separate words even when they touch ("delta+2s" is "delta +2 s", "1st" is "1 st")."""
+    return " ".join(_word(t) for t in _TOKEN.findall(text.lower().replace("\u2212", "-")))
 
 
-def disagreement(
-    moment: dict, big: dict | None, adapter: dict | None, cast: set[str] | None = None
-) -> str | None:
-    """Why the adapter's line disagrees with the big model's, or None when they agree. `cast` is
-    every player in the match, so naming the wrong one counts; the moment's players by default."""
+def _unusable(big: dict | None, adapter: dict | None) -> str | None:
+    """Why a pair can't agree at all: a skipped, empty or late line on either side."""
     for side, line in (("big model", big), ("adapter", adapter)):
         if line is None:
             return f"{side} skipped"
@@ -59,13 +83,181 @@ def disagreement(
         ms = line.get("latency_ms") if ms is None else ms
         if ms is not None and ms > LATE_MS:
             return f"{side} late ({ms} ms)"
+    return None
+
+
+def strict(big: dict | None, adapter: dict | None) -> str | None:
+    """None when the two lines strictly agree (the headline); otherwise why not."""
+    if why := _unusable(big, adapter):
+        return why
+    said, want = normalise(adapter["text"]), normalise(big["text"])
+    if not said or not want:  # "!!!" and "???" say nothing, so they can't agree
+        return "no words to compare"
+    return None if said == want else "different words"
+
+
+def _fold(text: str) -> str:
+    return unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode().lower()
+
+
+# Outcome terms, longest first so "not out" and "own goal" win over "out" and "goal". A negation
+# just before a term ("doesn't score", "no goal") makes it "not <term>".
+OUTCOMES = {
+    "not out": r"not out",
+    "run out": r"run out",
+    "own goal": r"own goal",
+    "no-ball": r"no[- ]ball",
+    "free hit": r"free hit",
+    "free throw": r"free throws?",
+    "lights out": r"lights out",
+    "safety car": r"safety car",
+    "red flag": r"red flag",
+    "flag": r"chequered flag|checkered flag",
+    "last lap": r"last lap",
+    "yellow card": r"yellow card|booked",
+    "red card": r"red card|sent off",
+    "three": r"three[- ]pointer|from three|from deep",
+    "pit": r"pit stop|pits|pitted|pitting",
+    "goal": r"goals?|scores?|scored|scoring|nets|netted",
+    "miss": r"miss|misses|missed|off target|over the bar",
+    "saved": r"save|saves|saved",
+    "woodwork": r"post|crossbar|woodwork",
+    "wide": r"wide|wides",
+    "lbw": r"lbw",
+    "caught": r"caught",
+    "bowled": r"bowled",
+    "stumped": r"stumped",
+    "wicket": r"wickets?",
+    "out": r"out",
+    "six": r"six|sixes",
+    "four": r"four|fours|boundary",
+    "overtake": r"overtakes?|overtaken|overtaking",
+    "lead": r"leads?|lead change|ahead",
+    "win": r"wins?|won|winner|champions?",
+    "penalty": r"penalty|penalties|spot kick",
+    "dunk": r"dunks?|slams?",
+    "steal": r"steals?|stolen",
+    "block": r"blocks?|blocked",
+    "foul": r"fouls?|fouled",
+    "substitution": r"substitut\w*|comes on|replaces",
+    "injury": r"injur\w*",
+    "offside": r"offside",
+    "rain": r"rain\w*|wet",
+    "final": r"buzzer|final whistle|full time",
+}
+_OUTCOME = re.compile(
+    r"\b(?:" + "|".join(f"(?P<t{i}>{p})" for i, p in enumerate(OUTCOMES.values())) + r")\b"
+)
+_TERMS = list(OUTCOMES)
+_NEGATED = re.compile(r"(?:\bnot|\bno|\bnever|n't)\s+(?:\w+\s+)?$")
+
+
+def _outcomes(text: str) -> set[str]:
+    folded, found = _fold(text), set()
+    for m in _OUTCOME.finditer(folded):
+        term = _TERMS[int(m.lastgroup[1:])]
+        found.add(
+            f"not {term}" if term != "not out" and _NEGATED.search(folded[: m.start()]) else term
+        )
+    return found
+
+
+# Score words, so "one nil" and "two nil" differ. Three, four and six are left to the outcome terms.
+_NUMBER_WORDS = {
+    w: i
+    for i, w in enumerate(
+        "zero one two _ _ five _ seven eight nine ten eleven twelve thirteen fourteen fifteen "
+        "sixteen seventeen eighteen nineteen twenty".split()
+    )
+    if w != "_"
+} | {"nil": 0, "nought": 0}
+_NUMBER = re.compile(r"\d+(?:\.\d+)?|\b(?:" + "|".join(_NUMBER_WORDS) + r")\b")
+
+
+def _numbers(text: str) -> list[str]:
+    return [str(_NUMBER_WORDS.get(n, n)) for n in _NUMBER.findall(_fold(text))]
+
+
+# Capitalised words that start a sentence without naming anyone or anything.
+_COMMON = set(
+    "a an and but he her his i in is it it's its just look no not now oh on over she so that "
+    "that's the their there they this what what's wow yes".split()
+)
+
+
+def _others(text: str, cast: set[str]) -> list[str]:
+    """The other names the line uses (teams, places, anyone outside the cast), folded, in order of
+    first mention: its capitalised words, less the cast's names, common sentence starts, outcome
+    terms and score words."""
+    plain = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
+    for name in sorted(cast, key=len, reverse=True):
+        plain = re.sub(rf"\b{re.escape(_fold(name))}\b", " ", plain, flags=re.I)
+    for name in cast:
+        plain = re.sub(rf"\b{re.escape(_fold(name).split()[-1])}\b", " ", plain, flags=re.I)
+    order: list[str] = []
+    for word in re.findall(r"[A-Za-z][\w']*", plain):
+        low = word.lower()
+        if word[0].isupper() and low not in order and low not in _COMMON | set(_NUMBER_WORDS):
+            if not _OUTCOME.fullmatch(low):
+                order.append(low)
+    return order
+
+
+def _names(text: str, cast: set[str]) -> list[str] | None:
+    """The players the line names, in order of first mention: a full name, or a surname only one
+    player has. None when a surname could be more than one player."""
+    folded, found, taken = _fold(text), [], []
+    for name in sorted(cast, key=len, reverse=True):
+        for m in re.finditer(rf"\b{re.escape(_fold(name))}\b", folded):
+            if not any(m.start() in r for r in taken):
+                found.append((m.start(), name))
+                taken.append(range(m.start(), m.end()))
+    surnames: dict[str, list[str]] = {}
+    for name in cast:
+        surnames.setdefault(_fold(name).split()[-1], []).append(name)
+    for surname, names in surnames.items():
+        for m in re.finditer(rf"\b{re.escape(surname)}\b", folded):
+            if any(m.start() in r for r in taken):
+                continue
+            if len(names) > 1:
+                return None
+            found.append((m.start(), names[0]))
+    order: list[str] = []
+    for _, name in sorted(found):
+        if name not in order:
+            order.append(name)
+    return order
+
+
+def possible_disagreement(
+    moment: dict, big: dict | None, adapter: dict | None, cast: set[str] | None = None
+) -> str | None:
+    """Diagnostics only, never the score: a factual difference between the two lines (numbers,
+    players, other names, outcome terms), or None when it finds none, which proves nothing.
+    `cast` is every player in the match, so naming the wrong one shows; the moment's by default."""
+    if why := _unusable(big, adapter):
+        return why
+    said, want = adapter["text"], big["text"]
+    if _numbers(said) != _numbers(want):
+        return f"numbers {_numbers(said)}, big model {_numbers(want)}"
     cast = cast or set(moment.get("players", {}).values())
-    said, want = _names(adapter["text"], cast), _names(big["text"], cast)
-    if said != want:
-        return f"names {sorted(said)}, big model {sorted(want)}"
-    known = _numbers(big["text"]) | _numbers(json.dumps([moment.get("score"), moment.get("clock")]))
-    if extra := _numbers(adapter["text"]) - known:
-        return f"states {sorted(extra)}"
+    names, wanted = _names(said, cast), _names(want, cast)
+    if names is None or wanted is None:
+        return "a surname that could be more than one player"
+    if names != wanted:
+        return f"names {names}, big model {wanted}"
+    # Any other name the adapter adds must be the big model's or the moment's own team, and the
+    # names both use must come in the same order ("Argentina lead France", not "France lead ...").
+    others, wanted = _others(said, cast), _others(want, cast)
+    team = _fold(moment.get("team") or "").split()
+    if unknown := [w for w in others if w not in wanted and w not in team]:
+        return f"names {unknown} the big model doesn't use"
+    if [w for w in others if w in wanted] != [w for w in wanted if w in others]:
+        return f"names in the order {others}, big model {wanted}"
+    if not _outcomes(want):
+        return "no outcome to compare"
+    if _outcomes(said) != _outcomes(want):
+        return f"outcome {sorted(_outcomes(said))}, big model {sorted(_outcomes(want))}"
     return None
 
 
@@ -102,8 +294,9 @@ def _line(header: dict, moments: list[dict], idx: int, provider) -> dict | None:
 
 
 def compare(matches, big, adapter, per_match: int = 10) -> dict:
-    """matches: (header, moments) pairs. Each picked moment is called by both providers."""
-    agree, misses = 0, []
+    """matches: (header, moments) pairs. Each picked moment is called by both providers. `agree`
+    counts strict agreement; `possible_disagreements` is what the fact checker finds in the rest."""
+    agree, total, misses = 0, 0, []
     for header, moments in matches:
         by_idx = {m["idx"]: m for m in moments}
         cast = {name for m in moments for name in m.get("players", {}).values()}
@@ -111,12 +304,12 @@ def compare(matches, big, adapter, per_match: int = 10) -> dict:
         for idx in pick(moments, per_match):
             ours = _line(header, moments, at[idx], big)
             theirs = _line(header, moments, at[idx], adapter)
-            why = disagreement(by_idx[idx], ours, theirs, cast)
-            if why is None:
+            total += 1
+            if strict(ours, theirs) is None:
                 agree += 1
-            else:
+            elif why := possible_disagreement(by_idx[idx], ours, theirs, cast):
                 misses.append({"match_id": header["match_id"], "idx": idx, "why": why})
-    return {"agree": agree, "total": agree + len(misses), "disagreements": misses}
+    return {"agree": agree, "total": total, "possible_disagreements": misses}
 
 
 def held_out_matches(football: int, cricket: int):
@@ -156,9 +349,10 @@ def main(argv=None, env=os.environ) -> dict:
     adapter = Model(MubitProvider(env["MUBIT_API_KEY"], record=False), env["MUBIT_ADAPTER_MODEL"])
     matches = held_out_matches(a.football, a.cricket)
     report = compare(matches, big, adapter, a.per_match)
-    for miss in report["disagreements"]:
-        print(f"  disagree {miss['match_id']} #{miss['idx']}: {miss['why']}")
-    print(f"agreement: {report['agree']} of {report['total']} moments")
+    print(f"{HEADLINE}: {report['agree']} of {report['total']} moments ({HEADLINE_NOTE})")
+    print(f"possible disagreements: {len(report['possible_disagreements'])}")
+    for miss in report["possible_disagreements"]:
+        print(f"  {miss['match_id']} #{miss['idx']}: {miss['why']}")
     return {"tested": True, **report}
 
 
