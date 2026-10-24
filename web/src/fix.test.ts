@@ -38,9 +38,9 @@ test('a failed fix in the same session keeps the sheet open with its error', asy
 })
 
 test("a fix the number check refused hands the sheet the check's reasons (#232)", async () => {
-  const seen: string[][] = []
-  const refused = Object.assign(new Error('422'), { wrong: ['58 is not in the moment'] })
-  await submitFix(() => Promise.reject(refused), () => true, () => {}, (wrong) => seen.push(wrong))
-  await submitFix(() => Promise.reject(new Error('503')), () => true, () => {}, (wrong) => seen.push(wrong))
-  assert.deepEqual(seen, [['58 is not in the moment'], []])
+  const seen: unknown[] = []
+  const refused = Object.assign(new Error('422'), { status: 422, wrong: ['58 is not in the moment'] })
+  await submitFix(() => Promise.reject(refused), () => true, () => {}, (why) => seen.push(why))
+  await submitFix(() => Promise.reject(new Error('503')), () => true, () => {}, (why) => seen.push(why))
+  assert.deepEqual(seen, [{ status: 422, wrong: ['58 is not in the moment'] }, { status: 0, wrong: [] }])
 })

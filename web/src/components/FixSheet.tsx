@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Line } from '../types'
 import { useSheetFocus } from '../focus'
+import { setProducerToken } from '../api'
+import type { Refused } from '../fix'
 
 const REASONS = ['Wrong fact', 'Wrong player', 'Wrong score', 'Tone', 'Other']
 
@@ -9,14 +11,16 @@ export type FixPhase = 'edit' | 'sending' | 'error'
 interface Props {
   line: Pick<Line, 'text'> // a replay's line, or a Review card's (#171)
   phase: FixPhase
-  wrong?: string[] // the number check's reasons for refusing the fix (#232)
+  refused?: Refused // why the last send was not saved (#232)
   onSend: (text: string, reason: string) => void
   onCancel: () => void
 }
 
 // The producer fix (docs/design.md "Fix sheet"; POST /lines/{id}/fix, A-4.1). On a failed send the
 // sheet stays open with the producer's text, so it can be sent again: a 503 stores nothing.
-export function FixSheet({ line, phase, wrong = [], onSend, onCancel }: Props) {
+export function FixSheet({ line, phase, refused, onSend, onCancel }: Props) {
+  const [token, setToken] = useState('')
+  const askToken = phase === 'error' && refused?.status === 401 // asked once: then kept (api.ts)
   const [text, setText] = useState(line.text)
   const unchanged = !text.trim() || text.trim() === line.text.trim() // nothing to send yet
   const [reason, setReason] = useState(REASONS[0])
@@ -56,15 +60,28 @@ export function FixSheet({ line, phase, wrong = [], onSend, onCancel }: Props) {
             ))}
           </div>
         </div>
+        {askToken && (
+          <div className="field">
+            <label className="label" htmlFor="fix-token">Producer token</label>
+            <input id="fix-token" type="password" autoComplete="off" value={token} disabled={sending}
+              onChange={(e) => setToken(e.target.value)} />
+          </div>
+        )}
         {phase === 'error' && (
           <p className="err-text" role="alert">
-            {wrong.length
-              ? `Not saved: the match data says otherwise (${wrong.join('; ')}). Edit the line and send again.`
-              : 'Fix not saved. Check the connection and send again.'}
+            {askToken
+              ? 'Producer token needed. Enter it and send again.'
+              : refused?.wrong.length
+                ? `Not saved: the match data says otherwise (${refused.wrong.join('; ')}). Edit the line and send again.`
+                : 'Fix not saved. Check the connection and send again.'}
           </p>
         )}
         <div className="actions">
-          <button className="btn primary" disabled={sending || unchanged} onClick={() => onSend(text.trim(), reason)}>
+          <button className="btn primary" disabled={sending || unchanged || (askToken && !token.trim())}
+            onClick={() => {
+              if (askToken) setProducerToken(token.trim())
+              onSend(text.trim(), reason)
+            }}>
             {sending ? <><span className="spin sm" />Sending fix…</> : 'Send fix'}
           </button>
           <span className="spacer" />

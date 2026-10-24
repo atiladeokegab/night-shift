@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { getReview, postFix } from '../api'
-import { submitFix } from '../fix'
+import { submitFix, type Refused } from '../fix'
 import type { ReviewItem } from '../types'
 import { FixSheet, type FixPhase } from './FixSheet'
 import { Nav, type Screen } from './Nav'
@@ -10,7 +10,7 @@ import { Nav, type Screen } from './Nav'
 export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
   const [items, setItems] = useState<ReviewItem[] | null>(null)
   const [failed, setFailed] = useState(false)
-  const [fixing, setFixing] = useState<{ item: ReviewItem; phase: FixPhase; wrong?: string[] } | null>(null)
+  const [fixing, setFixing] = useState<{ item: ReviewItem; phase: FixPhase; refused?: Refused } | null>(null)
   const [said, setSaid] = useState('')
   const heading = useRef<HTMLHeadingElement>(null)
 
@@ -35,7 +35,7 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
         heading.current?.focus() // its card is gone: focus goes back to the top of the queue
       },
       // A 503 stores nothing (CONTRACT.md): the sheet stays open with the text to send again.
-      (wrong) => setFixing({ item, phase: 'error', wrong }),
+      (refused) => setFixing({ item, phase: 'error', refused }),
     )
   }
 
@@ -108,7 +108,7 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
         {body}
       </main>
       {fixing && (
-        <FixSheet key={fixing.item.line_id} line={fixing.item} phase={fixing.phase} wrong={fixing.wrong} onSend={send}
+        <FixSheet key={fixing.item.line_id} line={fixing.item} phase={fixing.phase} refused={fixing.refused} onSend={send}
           onCancel={() => setFixing(null)} />
       )}
     </div>

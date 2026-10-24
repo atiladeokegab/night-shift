@@ -65,6 +65,8 @@ export interface Line {
   video_t?: number // A-6.4@2: shown and spoken when the player reaches it (#47)
   speaker?: 'lead' | 'analyst' // #130: the moment's call, or a stat line between moments; none is the lead
   history?: boolean // #163: said in an earlier replay, before a jump's moment: shown, never spoken
+  fixed?: boolean // #232: said in a producer's fixed words, not called; `fix_id` is the line it fixed
+  fix_id?: string
 }
 
 // GET /stats and the `stats` SSE event (CONTRACT.md); percentiles are null until there is a line.

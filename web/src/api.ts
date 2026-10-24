@@ -121,11 +121,30 @@ export async function getReview(): Promise<ReviewItem[]> {
   return res.json()
 }
 
+// The producer token (#232): asked once, on the first 401, and kept in this browser.
+const TOKEN = 'producer-token'
+let sessionToken = ''
+export function setProducerToken(token: string): void {
+  try {
+    localStorage.setItem(TOKEN, token)
+  } catch {
+    // storage blocked: the fix is still sent with it below this once
+  }
+  sessionToken = token
+}
+function producerToken(): string {
+  try {
+    return localStorage.getItem(TOKEN) ?? sessionToken
+  } catch {
+    return sessionToken
+  }
+}
+
 export async function postFix(lineId: string, correctedText: string, reason: string): Promise<Fix> {
   if (isDemo) throw new FixError(503) // the demo has no server to keep a fix
   const res = await fetch(`/lines/${encodeURIComponent(lineId)}/fix`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-Producer-Token': producerToken() },
     body: JSON.stringify({ corrected_text: correctedText, reason }),
   })
   if (!res.ok) {
