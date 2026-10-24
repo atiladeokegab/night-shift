@@ -182,7 +182,10 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   model_cost_per_match_usd, voice_cost_per_match_usd, fixes_auto, spoken_from_fix, autonomy, autonomy_by_match}` (core). The `stats` SSE event carries the same object.
   - `by_speaker: {lead, analyst}`, each `{model, lines, first_word_ms_p50, first_word_ms_p95,
     cost_per_line_usd}`: the lead's calls and the analyst's stat lines apart (a line with no
-    `speaker` is the lead's).
+    `speaker` is the lead's). The lead's also has `audio_first_ms_p50`, `audio_first_ms_p95` and
+    `audio_lines` (#233): ms from its moment's publish to its audio ready on the server, over the
+    `audio_lines` lead lines voiced when the replay stored them; both percentiles are null when
+    `audio_lines` is 0.
   - `fixes_recorded: int`: fixes with `recorded: true`; `fixes` counts every stored fix.
   - `fixes_auto: int`: the `auto_fixes` records, fixes the number check sent itself (reason
     `auto: number check`): a lead line's rejected first try, corrected to its accepted retry (#162).
