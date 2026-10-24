@@ -49,19 +49,26 @@ and never said (an answer becomes the off-air line).
 
 Mubit's versions of our commentator, copied from Mubit's console into
 [`data/side_by_side.json`](data/side_by_side.json), and the corrections waiting for the next one, from the live [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats) on
-24 October 2026 at 15:23 UTC:
+24 October 2026 at 16:04 UTC:
 
 | Mubit version | Trained on | Score on Mubit's test | Passed |
 |---|---|---|---|
 | Versions 1 to 6 | Our recorded commentary lines | Best 55.8% | No, none of the 6 |
-| Next version | 66 corrections recorded for training, the team's, from the number-check fix list (`fixes_toward_next`: 66, `adapter.needed`: 25), plus 8 corrections the number check sent itself (`fixes_auto`) | Training (`adapter.status`) | Not yet |
+| Next version | 66 corrections recorded for training, the team's, from the number-check fix list (`fixes_toward_next`: 66, `adapter.needed`: 25), plus 23 corrections the number check sent itself (`fixes_auto`) | Training (`adapter.status`) | Not yet |
 
-<!-- CORRECTION LOOP PLACEHOLDER: one row per Mubit version (trained on, score, passed), copied
-from Mubit's console (Adapters) with the date read. Replace the "Versions 1 to 6" row. -->
+How the check left the lead's calls, from the same read (`autonomy`, `autonomy_by_match`). These
+count only calls made since the check started marking lines; older stored lines aren't in them.
 
-<!-- AUTONOMY PLACEHOLDER (#204): once #204 merges, the counts from /stats, per match and overall:
-lines called, passed first time, auto-fixed (the retry passed), sent to a producer (the retry
-failed and the data line was spoken). State the time of the /stats read. -->
+| Match | Called | Passed first time | Fixed itself (the retry passed) | Sent to a producer (the data line was said) |
+|---|---|---|---|---|
+| All seven | 342 | 324 | 14 | 4 |
+| Messi v Mbappé | 227 | 215 | 9 | 3 |
+| India v Pakistan | 31 | 30 | 1 | 0 |
+| Brighton v Bristol City | 21 | 20 | 1 | 0 |
+| Battle of the Bridge | 20 | 20 | 0 | 0 |
+| Kobe's 81 v Toronto | 20 | 19 | 1 | 0 |
+| Jordan's last shot as a Bull | 18 | 15 | 2 | 1 |
+| Verstappen, P17 to P1 | 5 | 5 | 0 | 0 |
 
 **Why a correction is a follow-up turn.** Mubit has no feedback API: it learns from the calls it
 records. So a correction is sent, on purpose, as the next turn of the wrong line's own call, in the
@@ -69,6 +76,11 @@ same task and session: the original request, the line the model said, then "Prod
 Reply with exactly this line: …" with the corrected line. Mubit records that call, so the corrected
 line is training data for the next version ([`agent/commentator.py`](agent/commentator.py)
 `correct`, [`tests/test_core_fix.py`](tests/test_core_fix.py)).
+
+**What a correction teaches, and its limit.** The recorded example holds the moment's own request
+and ends on the corrected line, but its last turn asks for that line word for word, so a version
+trained on it may learn to repeat an instruction rather than to make the right call. We can't yet
+say which: no version trained on corrections has been tested.
 
 ---
 
@@ -216,8 +228,8 @@ Each criterion weighs the same; one line each, with where to check it.
 
 - **Use of Mubit (a correction becomes a model update):** every call goes through one Mubit task; its recorded lines have trained [6 adapter versions](#real-numbers) so far (none passed yet), and a producer's [fix](#producer-fixes) is stored beside the line as the correction for the next version: 66 corrections recorded for training so far, the team's, from the number-check fix list.
 - **Usefulness (a real recurring task):** a major broadcaster now describes [only some Premier League games (about 109 of 380)](#the-problem), and elsewhere live audio description is voluntary and patchy; Touchline speaks the key moments of [seven real matches in four sports](#the-seven-matches) from their real event data.
-- **Technical execution:** a line in [545 ms to its first word](#real-numbers) (median), gated on the video's clock, an offline test suite (`make check`) and a live smoke test on every deploy; [architecture](docs/ARCHITECTURE.md) and [known limitations](#known-limitations).
-- **Demo:** two minutes on the live URL, scripted in [docs/demo.md](docs/demo.md); the [60-second path](#the-60-second-path) above is the short version.
+- **Technical execution:** a line in [546 ms to its first word](#real-numbers) (median), gated on the video's clock, an offline test suite (`make check`) and a live smoke test on every deploy; [architecture](docs/ARCHITECTURE.md) and [known limitations](#known-limitations).
+- **Demo:** about 2:45 on the live URL, opening on the WSL match nobody described, scripted in [docs/demo.md](docs/demo.md); the [60-second path](#the-60-second-path) above is the short version.
 
 ## The product: where this goes
 
@@ -240,36 +252,36 @@ Each criterion weighs the same; one line each, with where to check it.
 ## Real numbers
 
 Read once from the live service's [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats)
-on 24 October 2026 at 15:23 UTC, adapter status included; every number below comes from that one
+on 24 October 2026 at 16:04 UTC, adapter status included; every number below comes from that one
 read, and they move as people use the site. Moment lines are `claude-haiku-4-5` calls, recorded;
 since #142 the analyst's stat lines and the lead's replies to it are `claude-sonnet-5-5`, unrecorded.
 The totals count both, each priced at its own model's rate, and `by_speaker` splits them.
 
 | | Big model via Mubit (all lines) | Our trained commentator (Mubit adapter) |
 |---|---|---|
-| Lines called | 6,305 (6,446 Mubit calls, counted by their request ids) | none: not callable by the app |
-| First word of the model's text, p50 / p95 | 545 ms / 1,446 ms | not measured |
-| Full line, p50 / p95 | 902 ms / 1,837 ms | not measured |
+| Lines called | 6,774 (6,930 Mubit calls, counted by their request ids) | none: not callable by the app |
+| First word of the model's text, p50 / p95 | 546 ms / 1,413 ms | not measured |
+| Full line, p50 / p95 | 903 ms / 1,795 ms | not measured |
 | Cost per line | $0.0019 | not reported by Mubit |
-| Tokens per line, in / out | about 1,600 / 31 (10,090,212 / 198,448 over 6,305 lines) | not measured |
-| Corrections | 66 recorded for training, all 66 counted toward the next adapter version: the team's, from the number-check fix list; and 8 the number check made itself (`fixes_auto`) | |
+| Tokens per line, in / out | about 1,600 / 31 (10,873,899 / 211,912 over 6,774 lines) | not measured |
+| Corrections | 66 recorded for training, all 66 counted toward the next adapter version: the team's, from the number-check fix list; and 23 the number check made itself (`fixes_auto`) | |
 
 Split by speaker (`by_speaker`, same read):
 
 | | Lines | First word, p50 / p95 | Cost per line |
 |---|---|---|---|
-| Lead (Haiku moment lines, Sonnet replies) | 5,391 | 538 ms / 919 ms | $0.0018 |
-| Analyst (stat lines; Haiku before #142, Sonnet since) | 914 | 892 ms / 3,615 ms | $0.0025 |
+| Lead (Haiku moment lines, Sonnet replies) | 5,850 | 541 ms / 919 ms | $0.0018 |
+| Analyst (stat lines; Haiku before #142, Sonnet since) | 924 | 896 ms / 3,620 ms | $0.0025 |
 
-The overall p95 (1,446 ms) is above the lead's (919 ms) because the analyst's lines are slower.
+The overall p95 (1,413 ms) is above the lead's (919 ms) because the analyst's lines are slower.
 
 "First word" is the time from the moment to the first word of the model's text reply, not the audio:
 speech synthesis and playback come after it.
 
-**One match, voice included: $0.38 on average.** `/stats` measures every full replay on the live
+**One match, voice included: $0.37 on average.** `/stats` measures every full replay on the live
 site (one played from kick-off): the model cost of every line it said and every answer, plus its
-voice characters, at list prices. Over the 13 full replays it has measured, that is $0.09 of model
-and $0.29 of voice a match (`cost_per_match_usd`, `model_cost_per_match_usd` and
+voice characters, at list prices. Over the 23 full replays it has measured, that is $0.09 of model
+and $0.28 of voice a match (`cost_per_match_usd`, `model_cost_per_match_usd` and
 `voice_cost_per_match_usd`; [`core/stats.py`](core/stats.py) `_per_match`,
 [`tests/test_match_cost.py`](tests/test_match_cost.py)). An earlier figure, $0.70, was one keyed run
 of Kobe's 81 highlights alone: 60 lines, all 60 spoken, $0.15 of model and $0.54 of voice (6,909
@@ -280,7 +292,7 @@ subscription tier, $0.08 per 1,000 characters for `eleven_v3`; pay-as-you-go is 
 **The adapter, exactly as it stands.** Mubit has trained 6 adapter versions on our task's recorded lines. All 6 are "not
 ready": none has passed Mubit's test yet, and the best scored 55.8% on Mubit's test. That is the record in [`data/side_by_side.json`](data/side_by_side.json), copied by hand from
 Mubit's console on 24 October 2026. We make no claim that the adapter matches the big model until a
-result shows it. `/stats` reports the adapter's status as `training` (at 15:23 UTC), recorded from
+result shows it. `/stats` reports the adapter's status as `training` (at 16:04 UTC), recorded from
 the console with [`eval/record_adapter.py`](eval/record_adapter.py); it reports no agreement result,
 because no version has passed.
 
@@ -371,9 +383,9 @@ a £4,000 audio-description project at Wrexham, including four years of running 
 
 A model can describe the rest, if it speaks while the moment is still on screen and costs little
 enough to run for every match. Touchline's model costs $0.0019 a line, with the voice not included,
-and has the first word of its text out in 545 ms and the full line in 902 ms (medians from the live
+and has the first word of its text out in 546 ms and the full line in 903 ms (medians from the live
 site's [`/stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats) on 24 October 2026 at
-15:23 UTC).
+16:04 UTC).
 
 **Who it's for:** fans who can't see the screen. **Who pays:** rights holders, leagues, clubs and
 streaming platforms, for the long tail of matches they stream with no describer.
@@ -484,6 +496,9 @@ The commentator's tools and the shot map read per-match stats packs ([`data/pack
 - **The Proof card counts the moment lines only.** The analyst's lines and Ask answers are
   number-checked too ([`core/insight.py`](core/insight.py) `Gaps.line`, `checked_answer`), but
   aren't in `/stats`'s called, auto-fixed and sent-to-a-human counts.
+- **Anyone can post a fix.** `POST /lines/{id}/fix` has no sign-in, and until
+  [#240](https://github.com/atiladeokegab/night-shift/pull/240) merges a fix is stored and sent to
+  Mubit without a number check ([`core/app.py`](core/app.py) `fix_line`).
 - **One instance.** The service runs with `--max-instances 1` ([`scripts/deploy.sh`](scripts/deploy.sh)):
   replays and voice clips live in that process's memory
   ([`core/replay.py`](core/replay.py), [`core/voice.py`](core/voice.py)).
