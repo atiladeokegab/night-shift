@@ -5,9 +5,11 @@ call as any line, so the Mubit task stays one task. Insight lines are kept in th
 by later replays of the same match."""
 
 import itertools
+import logging
 import math
 import random
 import re
+import uuid
 from collections import Counter
 
 from agent.packs import phase
@@ -15,6 +17,8 @@ from core import predict
 from core.fallback import fallback_text  # noqa: F401  checked() says it; tests import it here
 from core.voice import NAMES, intensity
 from data.matches import CLUB_SUFFIX
+
+log = logging.getLogger(__name__)
 
 WORDS_PER_S = 2.7  # a line has likely finished speaking after its words at this rate
 PAUSE_S = 2.0  # then this breath before the next line of the cold open
@@ -354,6 +358,7 @@ class Gaps:
         self.turn = 0
         self.opens = 0
         self.focus: str | None = None  # the player a quiet stretch's conversation is about (#378)
+        self.skip: str | None = None  # a kind whose line was just dropped: the slot goes to another
         self.focused: set[str] = set()  # players already talked about this replay
         self.asked = None  # what the lead's last comeback asked the analyst about
         self.calls = 0
@@ -430,16 +435,28 @@ class Gaps:
             return None
         if first:
             self.focus = None
-        facts = [d for d in _profiles(pack, past) if d not in self.used]
-        by = {n: [d for d in facts if d.startswith(n + " ")] for n in pack["players"]}
-        if self.focus is None:
-            self.focus = next(
-                (n for n, ds in by.items() if len(ds) >= 2 and n not in self.focused), None
+        # every kind's facts that name the player, so a stretch has enough to stay on them
+        pool = [
+            (kind, d)
+            for kind, make in (
+                ("player profile", _profiles),
+                ("tally", _tallies),
+                ("next to score", _odds),
             )
-            self.focused.add(self.focus or "")
+            for d in make(pack, past)
+            if d not in self.used and kind != self.skip
+        ]
+        by = {
+            n: [(k, d) for k, d in pool if d.startswith(n + " ") or f" {n} " in d]
+            for n in pack["players"]
+        }
+        if self.focus is None:
+            fresh = {n: fs for n, fs in by.items() if len(fs) >= 2 and n not in self.focused}
+            self.focus = max(fresh, key=lambda n: len(fresh[n]), default="")  # the longest talk
+            self.focused.add(self.focus)
         if self.focus and by.get(self.focus):
-            return "player profile", by[self.focus][0]
-        self.focus = None
+            return by[self.focus][0]
+        self.focus = ""  # out of facts: the rest of the stretch rotates, it never moves to another
         return None
 
     def peek(self, past: list[dict], first: bool = False) -> tuple[str, str] | None:
@@ -537,13 +554,19 @@ class Gaps:
             ):
                 said_as["next"] = topic[0]
         if ln is None:
-            failed = False  # a try had a wrong number or a used opener
+            failed = outage = False  # a try had a wrong number or a used opener; the model raised
             for retry in (False, True):
                 if self.calls >= MAX_CALLS:
                     return None
                 self.calls += 1
                 # the same seam as every line: only moments up to the one followed reach the model
-                said = commentate(stat_moment(m, said_as, reply), list(past))
+                try:
+                    said = commentate(stat_moment(m, said_as, reply), list(past))
+                except Exception as exc:  # a model outage ends this line, not the moment (#378)
+                    log.warning(
+                        "stat line after %s failed: %s: %s", m["idx"], type(exc).__name__, exc
+                    )
+                    said, outage = None, True
                 if said and said.get("text"):  # the checks below see what is said
                     said = {
                         **said,
@@ -568,6 +591,10 @@ class Gaps:
                         break  # a ball line falls back below
                     if retry:
                         self.overran = not fits
+                        log.warning(
+                            "stat line after %s dropped: wrong=%s echo=%s fits=%s stale=%s",
+                            m["idx"], not right, bool(echo), fits, stale,
+                        )  # fmt: skip
                         return None
                     if stale:
                         said_as = {**said_as, "never open with": " ".join(opener(said["text"]))}
@@ -576,9 +603,34 @@ class Gaps:
                     failed = True
                     continue
                 if reply or retry or self.calls >= MAX_CALLS:
-                    return None
+                    log.warning("stat line after %s: the model gave no line", m["idx"])
+                    # the analyst's turn is the fact itself, so an outage leaves the booth talking;
+                    # its numbers are the data's, so it passes the number check by construction
+                    text = (
+                        None
+                        if reply or not outage or said_as["kind"] in (OPEN, "orientation")
+                        else cut(said_as["detail"], int(room(video_t, end)))
+                    )
+                    if not text or self.wrong(text, stat_moment(m, said_as, reply), past):
+                        return None
+                    said = {
+                        "line_id": uuid.uuid4().hex,
+                        "sport": m.get("sport"),
+                        "match_id": self.match_id,
+                        "moment_idx": m["idx"],
+                        "text": text,
+                        "model": None,
+                        "served_by": None,
+                        "fallback": True,
+                        "checked": True,
+                    }
+                    break
                 self.used.add(said_as["detail"])  # dropped: the next kind gets this slot, once
-                picked = self.next_stat(past)
+                self.skip = said_as["kind"]
+                try:
+                    picked = self.next_stat(past)
+                finally:
+                    self.skip = None
                 if not picked:
                     return None
                 said_as = {**said_as, "kind": picked[0], "detail": picked[1]}
@@ -1158,6 +1210,24 @@ def _false_lead(text: str, m: dict, header: dict) -> list[str]:
     return [f"{header[s]} do not lead" for s in sorted(claims) if s != leader(m)]
 
 
+def _flipped_lead(text: str, m: dict, header: dict) -> list[str]:
+    """A leader's score said last: "Lakers lead eighty-eight to ninety-five" at 95-88 (#407).
+    The check above took it, both numbers being in the moment; the leader's comes first."""
+    s = m["score"]
+    _, names = _sides(header)
+    wrong = []
+    for sentence in re.split(r"(?<=[.!?])\s+", text):
+        if sentence.rstrip().endswith("?"):
+            continue
+        for hit in re.finditer(rf"\b(?:{names}){LEADS}", sentence, re.I):
+            words = said(re.split(r"[.!?;]", sentence[hit.end() :])[0])
+            nums = [w for w in words if isinstance(w, float)]
+            for a, b in zip(nums, nums[1:], strict=False):
+                if a < b and sorted((a, b)) == sorted((s["home"], s["away"])):
+                    wrong.append(f"{a:g} to {b:g} puts the leader's score last: say {b:g}-{a:g}")
+    return wrong
+
+
 MARGIN = (  # "Bulls down three", "Utah up by five", "the Jazz lead by two"; not "lead 86-85"
     r"\s+(?:(?:are|is|now|still)\s+)*(?:down|up|leads?|trails?|ahead|behind)\s+(?:by\s+)?"
     r"(\d+|[a-z]+(?:-[a-z]+)?)\b(?!\s*[-–]\s*\w|\s+(?:to|seconds?|minutes?|left)\b)"
@@ -1238,7 +1308,11 @@ def wrong_numbers(
         _wrong_clock(words, m) + _wrong_streak(text, m, past, header) + _wrong_span(words, m, past)
     )
     if "home" in s and header:
-        wrong += _false_lead(text, m, header) + _wrong_margin(text, m, header)
+        wrong += (
+            _false_lead(text, m, header)
+            + _wrong_margin(text, m, header)
+            + _flipped_lead(text, m, header)
+        )
         if m.get("sport") == "football":
             wrong += _wrong_score(text, m)
     if "milestone" in d and not set(numbers(d["milestone"])) & set(numbers(text)):
@@ -1662,6 +1736,21 @@ LEAD_MOVED = re.compile(
     re.I,
 )
 MAY_MOVE = re.compile(r"\b(?:to|could|would|can|will|might|may|should|if)\s+(?:\w+\s+)?$", re.I)
+LEAD_CLAUSE = re.compile(
+    r"[.!?,;:]|\b(?:but|however|although|"
+    r"though|whereas|while|yet|and)\b",
+    re.I,
+)
+LEAD_NEGATED = re.compile(
+    r"\b(?:never|not|no longer|cannot|can't|couldn't|didn't|doesn't|don't|won't|wouldn't|"
+    r"shouldn't|isn't|aren't|wasn't|weren't|hasn't|haven't|hadn't)\b(?:\s+\w+){0,2}\s*$",
+    re.I,
+)
+LEAD_NOT_ONLY = re.compile(r"\bnot\s+only(?:\s+\w+){0,2}\s*$", re.I)
+LEAD_HISTORY = re.compile(
+    r"\b(?:earlier|previously|before|prior(?:ly)?|last\s+(?:time|play|possession|quarter|period))\b",
+    re.I,
+)
 NOW_IN = r"\b(?:we're|we are|it's|it is|deep|now|already)\s+(?:\w+\s+)?(?:in|into)\s+the\s+"
 
 
@@ -1758,7 +1847,22 @@ def wrong_lead_move(text: str, past: list[dict]) -> list[str]:
     (#389), the free throws before it, not the steal. "Could extend their lead" is fine."""
     if len(past) < 2 or past[-1].get("score") is None or past[-1]["score"] != past[-2].get("score"):
         return []
-    if not any(not MAY_MOVE.search(text[: hit.start()]) for hit in LEAD_MOVED.finditer(text)):
+    for hit in LEAD_MOVED.finditer(text):
+        start, end = 0, len(text)
+        for boundary in LEAD_CLAUSE.finditer(text):
+            if boundary.end() <= hit.start():
+                start = boundary.end()
+            elif boundary.start() >= hit.end():
+                end = boundary.start()
+                break
+        before = text[start : hit.start()]
+        clause = text[start:end]
+        if MAY_MOVE.search(before) or LEAD_HISTORY.search(clause):
+            continue
+        if LEAD_NEGATED.search(before) and not LEAD_NOT_ONLY.search(before):
+            continue
+        break
+    else:
         return []
     m = past[-1]
     lead = (m.get("detail") or {}).get("lead")

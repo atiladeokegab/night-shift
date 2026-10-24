@@ -103,7 +103,12 @@ and refuses to start without `STORE_URL=gs://bucket/prefix`.
 
 Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not configured.
 
-- `GET /health` → `{status: "ok"}` (core)
+- `GET /health` → `{status: "ok", mubit: "ok"|"degraded", mubit_reason}` (core, #401): `degraded`
+  when `MUBIT_API_KEY` is unset (`mubit_reason: "MUBIT_API_KEY unset"`, also warned at startup) or the
+  last Mubit call in this process failed (its status and error type, e.g. `"503 engine_unavailable"`,
+  or the exception type when Mubit never answered) until a call succeeds; `mubit_reason` is null when
+  `ok`. Read from the last call, never probed. `GET /stats` carries the same two fields, and the
+  review page then shows "Mubit unavailable: lines use the fallback".
 - `GET /matches` → `[Match]` (core over data/)
 - `GET /matches/{id}/start?at=<idx>` → `{video_start}` (core, #188): the second the video starts at for
   a replay with `start_idx: idx`, as `peak_video_start` is for the peak; null without a video.
@@ -237,7 +242,8 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   latency_ms_p50, latency_ms_p95, tokens_in, tokens_out, cost_per_line_usd, by_speaker,
   fixes_recorded, fixes_toward_next, voice_chars, matches_measured, cost_per_match_usd,
   model_cost_per_match_usd, voice_cost_per_match_usd, fixes_auto_sent, spoken_from_fix, autonomy,
-  autonomy_by_match, linecheck, scorecheck, earlier_tasks, budget}` (core). The `stats` SSE event carries the same object, without `budget`.
+  autonomy_by_match, linecheck, scorecheck, earlier_tasks, budget, mubit, mubit_reason}` (core;
+  `mubit` and `mubit_reason` as `GET /health`'s, GET /stats only). The `stats` SSE event carries the same object, without `budget`.
   - `budget: {daily_budget_usd, spent_today_usd, off_air}` (#244): the cap (null when off), the
     model and voice spend of lines, answers and Line checks created today (UTC), and whether it
     is past the cap.

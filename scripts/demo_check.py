@@ -59,7 +59,7 @@ def check(base_url: str, within: float = FIRST_LINE_S, transport=None) -> list[t
 
         def health():
             r = client.get("/health")
-            return r.status_code == 200 and r.json() == {"status": "ok"}, r.text[:80]
+            return r.status_code == 200 and r.json().get("status") == "ok", r.text[:120]
 
         def replay():
             got["line"], took = first_line(client, within)

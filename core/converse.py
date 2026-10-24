@@ -7,6 +7,7 @@ conversation started."""
 import asyncio
 import hmac
 import json
+import logging
 import os
 import re
 import secrets
@@ -22,6 +23,7 @@ from core import insight
 from core.guard import OFF_TODAY, client_ip
 from core.replay import OFF_AIR
 
+log = logging.getLogger("touchline.converse")
 SIGNED_URL = "https://api.elevenlabs.io/v1/convai/conversation/get-signed-url"
 CTX_TTL_S = 30 * 60  # a conversation's context lives this long after it is minted
 MAX_TURNS = 40  # model calls one conversation may make
@@ -103,6 +105,35 @@ def checked(text: str, question: str, past: list[dict], lines: list[dict]) -> bo
     )
 
 
+def fail(reason: str, exc: BaseException) -> None:
+    """One line per error: what failed and its type, never the key, the prompt or the message."""
+    log.warning("converse: %s: %s", reason, type(exc).__name__)
+
+
+def safe_line(past: list[dict]) -> str:
+    """The status line from the data alone, as Ask falls back to; the off-air line without it."""
+    from agent.status import fallback_text
+    from data.matches import match_header
+
+    try:
+        return fallback_text(match_header(past[-1]["match_id"]), past[-1])
+    except Exception as exc:
+        fail("status line", exc)
+        return OFF_AIR
+
+
+def counted(ask, record):
+    """`ask` that hands each answer it makes (a model call's cost) to `record`."""
+
+    def call(*args, **kwargs):
+        made = ask(*args, **kwargs)
+        if made:
+            record(made)
+        return made
+
+    return call
+
+
 async def speak(ask, inner, question: str, past: list[dict], lines: list[dict]):
     """The answer's sentences, each as soon as the model has written it and Ask's checks pass it.
     A sentence that fails stops the answer there; if nothing was said yet (or a tool was used, so
@@ -122,7 +153,9 @@ async def speak(ask, inner, question: str, past: list[dict], lines: list[dict]):
             put("end")
 
     task = asyncio.create_task(asyncio.to_thread(work))
-    task.add_done_callback(lambda t: t.cancelled() or t.exception())  # read: never unretrieved
+    task.add_done_callback(
+        lambda t: t.cancelled() or t.exception() and fail("model call", t.exception())
+    )
     buf, said, words_left, tooled, failed = "", [], commentator.ANSWER_WORDS, False, False
     while not failed:
         kind, value = await pieces.get()
@@ -140,6 +173,7 @@ async def speak(ask, inner, question: str, past: list[dict], lines: list[dict]):
             if not heard or ABOUT_VIEWER.match(heard):
                 continue
             if not checked(heard, question, past, lines):
+                log.warning("converse: a sentence failed the number check")
                 failed = True
                 break
             words_left -= len(heard.split())
@@ -156,9 +190,11 @@ async def speak(ask, inner, question: str, past: list[dict], lines: list[dict]):
     # path answers, so the fan is never left in silence
     try:
         safe = await asyncio.to_thread(insight.checked_answer, ask, question, past, lines)
-    except Exception:  # the calm off-air line, never the provider's error
-        safe = None
-    yield safe["text"] if safe else OFF_AIR
+    except Exception as exc:  # the status line, never the provider's error
+        fail("answer", exc)
+        yield safe_line(past)
+        return
+    yield safe["text"] if safe else safe_line(past)
 
 
 def chunk(cid: str, delta: dict, finish: str | None = None) -> str:
@@ -224,6 +260,7 @@ def converse_router(*, need_deps, viewed, asked_so_far, guard, store, env=os.env
         try:
             url = await signed_url(agent, key)
         except (httpx.HTTPError, KeyError) as exc:
+            fail("signed url", exc)
             raise HTTPException(502, "conversation could not start") from exc
         now = time.monotonic()
         for ctx in [c for c, v in contexts.items() if v["expires"] < now]:
@@ -234,6 +271,7 @@ def converse_router(*, need_deps, viewed, asked_so_far, guard, store, env=os.env
             "moment_idx": past[-1]["idx"],
             "expires": now + CTX_TTL_S,
             "turns": 0,
+            "ip": client_ip(request),  # every turn counts against this client's ask limit
         }
         return {"signed_url": url, "ctx": ctx}
 
@@ -259,40 +297,41 @@ def converse_router(*, need_deps, viewed, asked_so_far, guard, store, env=os.env
         replay = viewed(held["replay_id"])
         past, lines = asked_so_far(replay, d.load_moments(replay.match_id), held["moment_idx"])
         question = question_of(messages)
-        if question and body.get("stream", True) and d.ask:
-            if await asyncio.to_thread(guard.off_air, store):
-                return StreamingResponse(sse(OFF_TODAY), media_type="text/event-stream")
-            said = speak(d.ask, commentator.unrecorded_provider(), question, past, lines)
-            return StreamingResponse(sse_of(said), media_type="text/event-stream")
-        text = OFF_AIR
-        if question:
-            try:
-                if await asyncio.to_thread(guard.off_air, store):
-                    text = OFF_TODAY
-                elif d.ask and (
-                    said := await asyncio.to_thread(
-                        insight.checked_answer, d.ask, question, past, lines
-                    )
-                ):
-                    text = said["text"]
-            except Exception:  # the calm off-air line, never the provider's error
-                pass
+
+        def respond(text: str):
+            if body.get("stream", True):
+                return StreamingResponse(sse(text), media_type="text/event-stream")
+            message = {"role": "assistant", "content": text}
+            choice = {"index": 0, "message": message, "finish_reason": "stop"}
+            return JSONResponse(
+                {
+                    "id": f"chatcmpl-{uuid.uuid4().hex}",
+                    "object": "chat.completion",
+                    "created": int(time.time()),
+                    "model": "touchline",
+                    "choices": [choice],
+                }
+            )
+
+        if not question or not d.ask:
+            return respond(OFF_AIR)
+        if await asyncio.to_thread(guard.off_air, store):
+            return respond(OFF_TODAY)
+        if guard.asks.hit(held["ip"]):
+            return respond("That's a lot of questions. Try again in a few minutes.")
+
+        def record(made: dict) -> None:  # as Ask stores its answer: its tokens count in spent_today
+            store.append("answers", {**made, "replay_id": held["replay_id"]})
+
+        ask = counted(d.ask, record)
         if body.get("stream", True):
-            return StreamingResponse(sse(text), media_type="text/event-stream")
-        return JSONResponse(
-            {
-                "id": f"chatcmpl-{uuid.uuid4().hex}",
-                "object": "chat.completion",
-                "created": int(time.time()),
-                "model": "touchline",
-                "choices": [
-                    {
-                        "index": 0,
-                        "message": {"role": "assistant", "content": text},
-                        "finish_reason": "stop",
-                    }
-                ],
-            }
-        )
+            said = speak(ask, commentator.unrecorded_provider(), question, past, lines)
+            return StreamingResponse(sse_of(said), media_type="text/event-stream")
+        try:
+            said = await asyncio.to_thread(insight.checked_answer, ask, question, past, lines)
+        except Exception as exc:  # the status line, never the provider's error
+            fail("answer", exc)
+            return respond(safe_line(past))
+        return respond(said["text"] if said else safe_line(past))
 
     return router

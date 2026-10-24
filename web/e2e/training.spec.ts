@@ -46,3 +46,24 @@ test('a fix on the review page shows its Score check examples sent to training',
   const { violations } = await new AxeBuilder({ page }).include('.training').withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()
   expect(violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id)).toEqual([])
 })
+
+// Live has fixes whose line as said was already sent: one example only. Its count shows at once, not
+// after the minute the page waits for a second.
+test('a fix that sends one Score check example shows the count as it lands', async ({ page }) => {
+  let fixed = false
+  await page.route('**/review', (r) => r.fulfill({ json: fixed ? [] : [item] }))
+  await page.route('**/ledger', (r) => r.fulfill({ json: { sent: 0, rows: [] } }))
+  await page.route('**/stats', (r) => r.fulfill({ json: { scorecheck: scorecheck(fixed ? 2161 : 2160) } }))
+  await page.route('**/lines/l1/fix', (r) => ((fixed = true), r.fulfill({ json: fix })))
+  await page.route('**/lines/l1', (r) => r.fulfill({ json: { ...item, fix, scorecheck_examples: fixed ? examples.slice(1) : [] } }))
+
+  await page.goto('/#review')
+  await page.locator('.flag .btn.primary').click()
+  await page.locator('#fix-text').fill(FIXED)
+  await page.getByRole('button', { name: 'Send fix' }).click()
+
+  const panel = page.getByRole('region', { name: 'Sent to training' })
+  await expect(panel).toContainText('Fixed text: ok · request req_fixed')
+  await expect(panel).toContainText('Score check examples: 2,160 → 2,161', { timeout: 10_000 })
+  await expect(panel).not.toContainText(/NaN|undefined|Line as said/)
+})

@@ -17,10 +17,12 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
   const [example, setExample] = useState<LineCheckExample | null>(null) // the Line check example it sent (#305)
   const [ledger, setLedger] = useState<Ledger | null>(null)
   const [training, setTraining] = useState<Training | null>(null) // the last fix's Score check examples (#400)
+  const [degraded, setDegraded] = useState(false) // #401: Mubit's key unset or its last call failed
   const heading = useRef<HTMLHeadingElement>(null)
 
   const load = () => {
     getLedger().then(setLedger, () => setLedger(null))
+    getStats().then((s) => setDegraded(s.mubit === 'degraded'), () => {})
     return getReview().then(setItems, () => setFailed(true))
   }
   useEffect(() => void load(), [])
@@ -47,7 +49,9 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
           waitForExample(fix).then((ex) => ex && setExample(ex), () => {})
         setTraining({ fix, before, examples: [], after: null, done: false })
         const mine = (f: (t: Training) => Training) => setTraining((t) => (t?.fix === fix ? f(t) : t))
-        waitForScoreExamples(fix, (examples) => mine((t) => ({ ...t, examples })))
+        // the count after each example lands: one of the two may never come (already sent, or unlabelled)
+        const after = () => getStats().then((s) => mine((t) => ({ ...t, after: s.scorecheck ?? t.after })), () => {})
+        waitForScoreExamples(fix, (examples) => (mine((t) => ({ ...t, examples })), after()))
           .then(() => getStats())
           .then((s) => mine((t) => ({ ...t, after: s.scorecheck ?? null, done: true })))
           .catch(() => mine((t) => ({ ...t, done: true })))
@@ -123,6 +127,7 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
           The number check found these stored lines saying a number their moment's data doesn't. Fix each by hand: a
           fix that passes the number check goes back through Mubit, which records it as training data.
         </p>
+        {degraded && <p className="hint" role="status">Mubit unavailable: lines use the fallback</p>}
         {said && <p className="hint" role="status">{said}</p>}
         {fixed?.mubit_request_id && (
           <p className="hint">
@@ -183,7 +188,7 @@ function TrainingPanel({ training: { fix, before, examples, after, done } }: { t
         {!done && examples.length < 2 && <li>Sending Score check examples…</li>}
         {done && !examples.length && <li>No Score check example sent for this fix</li>}
         <li>
-          Score check examples: {count(before)} → {done ? count(after) : '…'}
+          Score check examples: {count(before)} → {after ? count(after) : '…'}
         </li>
         <li>{adapterText(after ?? before)}</li>
       </ol>

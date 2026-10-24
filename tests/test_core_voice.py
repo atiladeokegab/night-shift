@@ -1252,5 +1252,5 @@ def test_a_football_goal_is_as_big_as_the_game_state_makes_it():
     assert intensity(goal(1, 1)) == "high"  # an equaliser
     assert intensity(goal(1, 0)) == "high"  # the go-ahead
     assert intensity(goal(2, 0, "85:00")) == "high"  # late, still a game
-    assert intensity(goal(4, 0)) == "medium" and tag_for(goal(4, 0)) == "[warmly]"
+    assert intensity(goal(4, 0)) == "medium" and tag_for(goal(4, 0)) is None
     assert tag_for(goal(1, 1)) == "[shouting]"

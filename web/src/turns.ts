@@ -65,7 +65,7 @@ export class Floor<T extends Turn> {
       const on = this.on
       if (on.answer ? item.decisive : item.big && !on.big) {
         if (on.answer) this.onCut(on)
-        this.held = this.held.filter((h) => h.item.big)
+        this.held = on.answer ? [] : this.held.filter((h) => h.item.big)
         this.cut = on
         this.on = item
         return true

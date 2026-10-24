@@ -3,7 +3,9 @@ producer's fix) and every auto-fix, newest first, each naming the Mubit session 
 in so it can be found in Mubit's console. Built from the store's own records (scorecheck_examples,
 auto_fixes): nothing new is written. "Sent", never "kept": only the console says what Mubit kept."""
 
+import threading
 import time
+from weakref import WeakKeyDictionary
 
 from agent.commentator import _score, session_id
 from core import insight
@@ -17,7 +19,8 @@ SOURCES = {"seed": "answer key", "fix": "human"}
 SHOWN = 50  # the newest rows, all the review page shows
 TTL_S = 30.0  # a built ledger is served this long: a poller costs nothing
 
-_cache: dict[int, tuple[float, dict]] = {}  # per store: when built, what
+_cache = WeakKeyDictionary()  # per store: when built, what
+_cache_lock = threading.Lock()
 
 # Seeded examples sent before a row named its line (planted ones too), by example id. Ids are
 # content hashes, so a found one never changes. shortcut: rebuilt (about 6 s on 6k lines) while a
@@ -28,12 +31,13 @@ _seeded_at = -1
 
 def cached(store, deps) -> dict:
     """The ledger, built at most once per TTL_S per store."""
-    now = time.monotonic()
-    at, got = _cache.get(id(store), (None, None))
-    if at is None or now - at >= TTL_S:
-        got = ledger(store, deps)
-        _cache[id(store)] = now, got
-    return got
+    with _cache_lock:
+        now = time.monotonic()
+        at, got = _cache.get(store, (None, None))
+        if at is None or now - at >= TTL_S:
+            got = ledger(store, deps)
+            _cache[store] = now, got
+        return got
 
 
 def ledger(store, deps) -> dict:
@@ -47,8 +51,10 @@ def ledger(store, deps) -> dict:
     )[:SHOWN]
     lines = store.all("lines")
     by_id = {ln["line_id"]: ln for ln in lines}
-    # an auto-fix's first try is never stored: its kept retry, said as the fix, names the moment
-    by_text = {ln["text"]: ln for ln in lines if ln.get("retried") and ln.get("text")}
+    by_text: dict[str, list[dict]] = {}
+    for ln in lines:
+        if ln.get("retried") and ln.get("text"):
+            by_text.setdefault(ln["text"], []).append(ln)
     old = [r["id"] for sc, r in picks if sc and not r.get("text") and not r.get("line_id")]
     seeded(lines, old)
     titles = {m["match_id"]: m["title"] for m in deps.list_matches()}
@@ -99,7 +105,17 @@ def ledger(store, deps) -> dict:
             x.update(kind=r.get("kind"), gold=r.get("gold"))
             x["session"] = f"score-check-{x['match_id']}-{x['idx']}" if x["text"] else None
         else:
-            ln = by_text.get(r.get("corrected_text"))
+            # The rejected line is the auto-fix's identity. Older rows may lack it in the store;
+            # corrected text is safe only when every matching retry names the same moment.
+            ln = by_id.get(r.get("line_id"))
+            if ln is None:
+                candidates = by_text.get(r.get("corrected_text"), [])
+                identities = {
+                    (candidate.get("match_id"), candidate.get("moment_idx", candidate.get("idx")))
+                    for candidate in candidates
+                }
+                if candidates and len(identities) == 1:
+                    ln = candidates[0]
             x = row(r, ln, None, task="Commentator", source="auto-fixed")
             x.update(fixed=r.get("corrected_text"), recorded=r.get("recorded", False))
             # the check's reasons, as the correction turn gave them (rows since #245 keep it)
