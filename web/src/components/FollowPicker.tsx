@@ -32,7 +32,7 @@ export function FollowPicker({ replayKey, momentIdx, load, onFollow }: Props) {
   }
   return (
     <section className="panel glass follow" aria-label="Follow a player">
-      <div className="panel-h"><h3>Follow</h3></div>
+      <div className="panel-h"><h2>Follow</h2></div>
       <form className="ask" onSubmit={(e) => { e.preventDefault(); if (hits[0]) pick(hits[0].name) }}>
         <label className="sr-only" htmlFor="follow-q">Follow a player</label>
         <input id="follow-q" value={query} autoComplete="off" enterKeyHint="go" placeholder="Follow a player…"

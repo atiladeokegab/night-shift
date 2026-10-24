@@ -243,7 +243,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .panel.lines { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .panel.lines .log { max-height: calc(100svh - var(--nav-h) - 180px); } /* the Lines card fits the sidebar's window, Proof peeks below */
 .panel-h { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
-.panel h3 { margin: 0; font: 600 1.05rem/1 var(--display); letter-spacing: -.01em; }
+.panel h2 { margin: 0; font: 600 1.05rem/1 var(--display); letter-spacing: -.01em; }
 .panel .hint { margin: 0; color: var(--muted); font-size: .85rem; }
 .log { list-style: none; margin: 0 -6px; padding: 0 6px 28px; display: grid; gap: 4px; overflow: auto; min-height: 0; scrollbar-width: thin;
   -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 20px), transparent); mask-image: linear-gradient(180deg, #000 calc(100% - 20px), transparent); }

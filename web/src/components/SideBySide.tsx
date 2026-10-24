@@ -13,7 +13,7 @@ export function SideBySide() {
   return (
     <section className="panel glass" aria-label="Big model vs ours" style={{ marginTop: 16 }}>
       <div className="panel-h">
-        <h3>Big model vs ours</h3>
+        <h2>Big model vs ours</h2>
         <span className="badge">Recorded</span>
       </div>
       {!view.paired && (

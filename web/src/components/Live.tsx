@@ -303,7 +303,7 @@ export function Live(props: Props) {
           {mapped && (
             <div className="pane" role="tabpanel" id="pane-shots" aria-labelledby="tab-shots" data-on={tab === 'shots'}>
               <section className="panel glass shots-card" aria-label="Shot map">
-                <h3>Shot map</h3>
+                <h2>Shot map</h2>
                 {mapFor ? <button className="btn sm" onClick={() => openMap(mapFor)}>Shot map · {mapFor}</button>
                   : <p className="hint">Opens with the first shot on screen.</p>}
               </section>
