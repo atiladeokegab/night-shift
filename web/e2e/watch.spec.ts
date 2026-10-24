@@ -1,13 +1,13 @@
 import { expect, test } from '@playwright/test'
 import { FAKE_YT } from './fakeYT'
 
-// Let them watch (#291) in a real Chrome: the tab is really shared (the flag accepts Chrome's prompt) and its
-// frames really drawn, scaled and sent; offline, the server's note is none. A fake YouTube player stands in.
+// Let them watch (#291) in a real Chrome: our code's frames really drawn, scaled and sent; offline, the
+// server's note is none. Chrome's share prompt is not ours to test, so getDisplayMedia gives a moving 1280x720
+// canvas's stream, as a shared tab would. A fake YouTube player stands in.
 
 const KOBE = /^Basketball ?Kobe's 81/
 
-// Chrome's new headless mode (channel chromium): the headless shell cannot share a tab
-test.use({ channel: 'chromium', launchOptions: { args: ['--auto-accept-this-tab-capture', '--autoplay-policy=no-user-gesture-required'] } })
+test.use({ launchOptions: { args: ['--autoplay-policy=no-user-gesture-required'] } })
 
 test('Let them watch shares the tab, sends a 512 px JPEG every 4 s, and Stop ends it at once', async ({ page }) => {
   await page.route('https://www.youtube.com/iframe_api', (r) => r.fulfill({ contentType: 'text/javascript', body: FAKE_YT }))
@@ -23,6 +23,19 @@ test('Let them watch shares the tab, sends a 512 px JPEG every 4 s, and Stop end
     frame.status = res.status()
     await r.fulfill({ response: res })
   })
+  await page.addInitScript(() => {
+    navigator.mediaDevices.getDisplayMedia = async (options) => {
+      Object.assign(window, { shareAsked: options })
+      const canvas = Object.assign(document.createElement('canvas'), { width: 1280, height: 720 })
+      const g = canvas.getContext('2d')!
+      let n = 0
+      setInterval(() => {
+        g.fillStyle = `hsl(${(n += 7) % 360} 60% 40%)`
+        g.fillRect(0, 0, 1280, 720)
+      }, 100)
+      return canvas.captureStream(10)
+    }
+  })
   await page.goto('/')
   await page.getByRole('button', { name: KOBE }).click()
 
@@ -30,6 +43,7 @@ test('Let them watch shares the tab, sends a 512 px JPEG every 4 s, and Stop end
   await expect(page.locator('.watching .chip')).toHaveText("They're watching")
   await expect(page.getByRole('status').filter({ hasText: "They're watching the screen" })).toBeAttached()
   await expect.poll(() => frames.length, { timeout: 15_000 }).toBeGreaterThanOrEqual(2)
+  expect(await page.evaluate(() => (window as unknown as { shareAsked: object }).shareAsked)).toMatchObject({ preferCurrentTab: true })
 
   const [first, second] = frames
   const size = await page.evaluate(async (b64) => {
@@ -39,7 +53,7 @@ test('Let them watch shares the tab, sends a 512 px JPEG every 4 s, and Stop end
     return [img.naturalWidth, img.naturalHeight]
   }, first.image)
   expect(size[0]).toBe(512)
-  expect(size[1]).toBeGreaterThan(200) // the tab's own shape, scaled
+  expect(size[1]).toBe(288) // the shared picture's own shape, scaled
   expect(typeof first.t).toBe('number')
   expect(second.at - first.at).toBeGreaterThan(3500)
   expect(first.status).toBe(200)
