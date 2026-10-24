@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 
 from agent import commentator
 from agent.commentator import FakeProvider
-from core import insight, predict
+from core import insight, predict, smoke
 from core.app import Deps, create_app
 from core.predict import load_pack
 from core.replay import Replay, run_replay
@@ -430,3 +430,29 @@ def test_a_fix_on_an_insight_or_reply_goes_back_with_its_own_request(tmp_path):
             assert ("\nEvent: Stat, " in q[0]["content"]) == bool(gap(ln))
             if gap(ln):
                 assert f"Partner just said: {gap(ln)['heard']}" in q[0]["content"]
+
+
+def test_the_live_smoke_passes_on_a_replay_that_reuses_stored_insight_lines(tmp_path, monkeypatch):
+    # #149: the deployed smoke match already has stored insight lines; a replay streams them again
+    # without storing them twice, so the store grows by fewer lines than were streamed
+    monkeypatch.delenv("ELEVENLABS_API_KEY", raising=False)
+    calls = functools.partial(commentator.commentate, provider=FakeProvider())
+    app = create_app(store=Store(tmp_path), deps=Deps(list_matches, load_moments, calls, video_map))
+    monkeypatch.setattr(smoke.httpx, "Client", lambda **_: TestClient(app))
+    assert smoke.live("http://testserver") == 0
+    assert smoke.live("http://testserver") == 0  # its insight lines come from the store
+
+
+def test_the_live_smoke_fails_when_a_streamed_line_never_reached_the_store(tmp_path, monkeypatch):
+    class Lossy(Store):  # every line append is lost
+        def _write(self, kind, text):
+            if kind != "lines":
+                super()._write(kind, text)
+
+    monkeypatch.delenv("ELEVENLABS_API_KEY", raising=False)
+    calls = functools.partial(commentator.commentate, provider=FakeProvider())
+    app = create_app(store=Lossy(tmp_path), deps=Deps(list_matches, load_moments, calls, video_map))
+    monkeypatch.setattr(smoke.httpx, "Client", lambda **_: TestClient(app))
+    with pytest.raises(AssertionError, match="not in store"):
+        smoke.live("http://testserver")
+    assert TestClient(app).get("/lines/nope").status_code == 404

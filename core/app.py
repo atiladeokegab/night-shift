@@ -157,6 +157,13 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
 
         return StreamingResponse(sse(), media_type="text/event-stream")
 
+    @app.get("/lines/{line_id}")
+    def get_line(line_id: str):
+        line = next((ln for ln in store.all("lines") if ln.get("line_id") == line_id), None)
+        if line is None:
+            raise HTTPException(404, f"no line {line_id!r}")
+        return line
+
     @app.post("/lines/{line_id}/fix")
     async def fix_line(line_id: str, req: FixRequest):
         d = need_deps()
