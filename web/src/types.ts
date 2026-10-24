@@ -89,6 +89,18 @@ export interface Stats {
   cost_per_match_usd?: number | null
   model_cost_per_match_usd?: number | null
   voice_cost_per_match_usd?: number | null
+  // #204: the lead's calls by how the number check left them, over every match and per match_id
+  autonomy?: Autonomy
+  autonomy_by_match?: Record<string, Autonomy>
+}
+
+// called = first_time + auto_fixed + to_human: passed the check, fixed by the retry, or the retry failed
+// too, so the line built from the match data was said and the try waits in Review for a person
+export interface Autonomy {
+  called: number
+  first_time: number
+  auto_fixed: number
+  to_human: number
 }
 
 // GET /review (#171): a stored lead line the number check flags, with its moment, for the producer to fix.

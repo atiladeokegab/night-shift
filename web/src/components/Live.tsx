@@ -260,7 +260,7 @@ export function Live(props: Props) {
               answers={replay.answers} onAsk={moment ? (q) => onAsk(q, moment.idx) : null} shooter={null} onShots={openMap} followed={followed} roster={roster} onUnfollow={() => setFollow(null)} voiced={voiced} />
           </div>
           <div className="pane" role="tabpanel" id="pane-proof" aria-labelledby="tab-proof" data-on={tab === 'proof'}>
-            <ProofPanel live={replay.stats} />
+            <ProofPanel live={replay.stats} matchId={match.match_id} />
           </div>
           {mapped && (
             <div className="pane" role="tabpanel" id="pane-shots" aria-labelledby="tab-shots" data-on={tab === 'shots'}>

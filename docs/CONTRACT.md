@@ -158,7 +158,7 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
 - `GET /stats` → `{lines, fixes, mubit_requests, first_word_ms_p50, first_word_ms_p95,
   latency_ms_p50, latency_ms_p95, tokens_in, tokens_out, cost_per_line_usd, adapter, by_speaker,
   fixes_recorded, fixes_toward_next, voice_chars, matches_measured, cost_per_match_usd,
-  model_cost_per_match_usd, voice_cost_per_match_usd, fixes_auto}` (core). The `stats` SSE event carries the same object.
+  model_cost_per_match_usd, voice_cost_per_match_usd, fixes_auto, autonomy, autonomy_by_match}` (core). The `stats` SSE event carries the same object.
   - `by_speaker: {lead, analyst}`, each `{model, lines, first_word_ms_p50, first_word_ms_p95,
     cost_per_line_usd}`: the lead's calls and the analyst's stat lines apart (a line with no
     `speaker` is the lead's).
@@ -166,6 +166,13 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   - `fixes_auto: int`: the `auto_fixes` records, fixes the number check sent itself (reason
     `auto: number check`): a lead line's rejected first try, corrected to its accepted retry (#162).
     Stored apart from `fixes`, so never in `fixes`, `fixes_recorded` or the review queue's fixed lines.
+  - `autonomy: {called, first_time, auto_fixed, to_human}` (#204): the lead's moment calls the
+    number check saw (stored `checked: true`; not the analyst's lines, the lead's replies to them, or
+    any line stored before the flag) by how the check left them: passed first
+    time; `auto_fixed`, the retry passed (stored `retried: true`); `to_human`, the retry failed too, so the fallback was
+    said and the line is stored `fallback: true` with the failed try as `tried` and the check's
+    reasons as `wrong`, which the review queue lists. The four always sum: `called` is the rest's
+    total. `autonomy_by_match: {match_id: the same}`.
   - `fixes_toward_next: int`: recorded fixes since the latest `adapter` record (all of them before one).
   - `voice_chars: int`: characters in every `voice` record.
   - `cost_per_match_usd: number | null`: the mean full replay's spend, `model_cost_per_match_usd`

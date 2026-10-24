@@ -81,3 +81,14 @@ test('the WSL match leads the football list with its quiet note; the rest keep t
   assert.deepEqual(ids.map((x) => x.match_id), ['3913122', '3869685', '3754092', '1298150'])
   assert.equal(CARD_COPY['3913122'].note, 'No described broadcast')
 })
+
+test("the home page says #206's name, hook and pitch, and never the claims we can't make", () => {
+  const wall = readFileSync(new URL('./components/Wall.tsx', import.meta.url), 'utf8').replace(/\s+/g, ' ')
+  for (const said of [
+    'Touchline: the describer that checks itself',
+    'The match nobody described',
+    "Touchline describes the matches a platform streams with nobody describing them. It checks every number before it speaks, fixes what it can itself, sends the rest to a producer, and every fix trains that platform's own describer in Mubit.",
+    'replays, as if live',
+  ]) assert.ok(wall.includes(said), said)
+  assert.doesNotMatch(wall, /checks every fact|a million matches/i)
+})

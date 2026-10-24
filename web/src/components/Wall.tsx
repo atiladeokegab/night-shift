@@ -42,8 +42,14 @@ export function Wall({ matches, error, onRetry, onOpen, onJump, onGo }: Props) {
     <div className="page">
       <Nav current="wall" onGo={onGo} />
       <main className="wrap">
-        <p className="eyebrow">Audio description for live sport</p>
-        <h1>For the matches no human describer covers</h1>
+        <p className="eyebrow">Touchline: the describer that checks itself</p>
+        <h1>The match nobody described</h1>
+        {/* #206's pitch, word for word */}
+        <p className="status-line" style={{ maxWidth: '65ch' }}>
+          Touchline describes the matches a platform streams with nobody describing them. It checks every number before
+          it speaks, fixes what it can itself, sends the rest to a producer, and every fix trains that platform's own
+          describer in Mubit. The matches below are replays, as if live.
+        </p>
         {body}
         {/* --muted: .foot's --faint is 3.77:1 at 13 px, under WCAG AA (#154); App.css is #153's until it merges */}
         <p className="foot" style={{ color: 'var(--muted)' }}>
