@@ -2,6 +2,8 @@
 
 <img src="docs/banner.svg" alt="Banner: the word Touchline. in amber over a drawn night stadium with floodlights and a green pitch, the tagline The describer that checks itself, and a red ON AIR pill." width="100%">
 
+<sub><b>Touchline: the describer that checks itself.</b> For the match nobody described.</sub>
+
 <br>
 
 [![Python](https://img.shields.io/badge/python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org)
@@ -14,11 +16,16 @@
 
 ### The match nobody described
 
-Touchline describes the matches a platform streams with nobody describing them. It checks every number before it speaks, fixes what it can itself, sends the rest to a producer, and every fix trains that platform's own describer in Mubit.
+Touchline describes the matches a platform streams with nobody describing them. It checks every number in the lead's calls before it speaks (the analyst's stat lines are checked from [#224](https://github.com/atiladeokegab/night-shift/pull/224) on), fixes what it can itself, sends the rest to a producer, and every fix trains that platform's own describer in Mubit.
 
 What you hear are **replays, as if live**: real matches' event data played back over their broadcast highlights, each line called at its moment as if the match were on now. Sky Sports now describes [about 109 Premier League games a season](#the-problem) aloud, and none below the top flight.
 
-[**Try it live**](https://night-shift-5zvig7nbvq-ew.a.run.app) · [**Correction loop**](#correction-loop-with-evidence) · [**For judges**](#for-judges) · [**Real numbers**](#real-numbers) · [**Architecture**](docs/ARCHITECTURE.md) · [**Known limitations**](#known-limitations) · [**Run it**](#run-it) · [**Demo script**](docs/demo.md)
+<!-- DEMO GIF SLOT (build-140): the demo GIF, full width, with a one-line caption under it. -->
+
+<!-- CHECK NUMBERS SLOT (#219): "How well the check works": the number check measured on labelled
+lines (how many, how many wrong ones it caught, how many right ones it flagged), with the date read. -->
+
+[**Try it live**](https://night-shift-5zvig7nbvq-ew.a.run.app) · [**Correction loop**](#correction-loop-with-evidence) · [**For judges**](#for-judges) · [**Real numbers**](#real-numbers) · [**Architecture**](docs/ARCHITECTURE.md) · [**Known limitations**](#known-limitations) · [**Checks**](#checks) · [**Run it**](#run-it) · [**Demo script**](docs/demo.md)
 
 <img src="docs/img/live.png" alt="The live page calling the 1998 NBA Finals Game 6, Michael Jordan's last shot as a Bull. Above the video card, the sport bar with Wall, the four sports, Voice: Sam and Next match. On the video card, the score bug JAZ 70-70 BUL, 08:05, Q4, an ON AIR pill naming Sam, and playback controls along the bottom. Under the card, the docked caption, marked ANALYST and 08:05 3 POINTS: Level at 70, and the numbers say there's a 44% chance Michael Jordan scores Chicago's next basket. That's the best single option on the floor. On the right, the Lines card, newest first, all at 08:05: at the top the analyst's prediction line, the same as the caption; below it the analyst's stat line, Kukoc came in shooting 46 percent this season, 481 of 1044 over 94 games. Chicago needed that, with the game all square.; and below that the lead's call, Kukoc from deep! Toni Kukoc with the three from twenty-five feet, and it's tied at seventy! Each line has a Fix button and its model first-text-word time. Below, the Proof card." width="100%">
 
@@ -336,9 +343,9 @@ producer fixes go into the same task as corrections. That smaller model is what 
 3. **Real traffic only.** [`scripts/replay_matches.py`](scripts/replay_matches.py) replays distinct
    real football and cricket matches, never padded or repeated calls. Held-out matches and the demo
    matches are never replayed, so the trained model is judged only on matches it never saw.
-4. **The demo key trains nothing.** The live site runs on a teammate's lent Mubit key with recording
+4. **The demo key trains nothing.** The live site runs on a separate demo Mubit key with recording
    off (`MUBIT_RECORD=off` in [`scripts/deploy.sh`](scripts/deploy.sh)); training traffic comes from
-   the replay script on the owner's key. If the lent key runs out, the commentator moves to the
+   the replay script on the owner's key. If the demo key runs out, the commentator moves to the
    owner's key, which records. Ask answers and side-by-side runs are always unrecorded.
 5. **A producer's fix is recorded to Mubit for training.** A fix is stored beside the original line
    and sent as the next turn of that line's request on the owner's key (`MUBIT_FALLBACK_KEY`) with
@@ -357,6 +364,36 @@ producer fixes go into the same task as corrections. That smaller model is what 
 
 The full picture, with a C4 container diagram of what runs now and a second, plan-only diagram for
 scale: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+```mermaid
+flowchart LR
+    data[("Match event data and stats packs<br/>data/sample, data/packs")]
+    subgraph run["Cloud Run: one FastAPI service, core/"]
+        replay["Replay loop<br/>core/replay.py"]
+        agent["Commentator agent<br/>agent/commentator.py"]
+        check{"Number check<br/>core/insight.py"}
+        store[("Store: lines and fixes<br/>core/store.py")]
+        voice["Voice<br/>core/voice.py"]
+        stats["GET /stats<br/>core/stats.py"]
+    end
+    mubit["Mubit<br/>Claude calls, recording, adapter training"]
+    eleven["ElevenLabs<br/>eleven_v3"]
+    gcs[("Cloud Storage")]
+    page["Browser: the React page, web/<br/>video, captions, Lines, Proof, Fix, Ask"]
+
+    data --> replay --> agent
+    agent <-->|"one call per line"| mubit
+    agent --> check
+    check -->|"passes, or a line built from the data after a failed retry"| store
+    check -.->|"a retry that passed: the automatic correction"| mubit
+    store --> voice <--> eleven
+    store -->|"SSE: moments and lines"| page
+    voice -->|"audio"| page
+    page -->|"a producer's fix"| store
+    store -.->|"each fix, recorded for training"| mubit
+    store --- gcs
+    stats --> page
+```
 
 **Now.** One Cloud Run service: a FastAPI match server ([`core/`](core)) that also serves the React
 page ([`web/`](web)). It replays a match's event feed, asks the commentator agent
@@ -403,6 +440,24 @@ The commentator's tools and the shot map read per-match stats packs ([`data/pack
   browser, so they run by hand. Real Mubit and ElevenLabs calls are checked only by the smoke test
   after each deploy.
 
+## Checks
+
+| What | Count | Runs |
+|---|---|---|
+| Python tests: the number check, replay timing, the store, Mubit and ElevenLabs calls against fakes, the deploy script | 648 | `make check`, offline; and in `make smoke` |
+| Web unit tests: the live page, the Proof card, Fix, Ask, captions | 82 | `npm test` in `web/` |
+| Offline smoke: every sample match replayed end to end through the real server with a fake model | 7 matches | `make smoke`; in CI on every PR into `integration` ([`.github/workflows/smoke.yml`](.github/workflows/smoke.yml)), which also builds the container and imports the app inside it |
+| Live smoke on the real URL: one replay streams moments and lines, and the service's store grows by the lines it streamed | 1 replay | after every deploy, in [`scripts/deploy.sh`](scripts/deploy.sh) (`BASE_URL=<url> python -m core.smoke`) |
+| Accessibility: no serious axe violation on the home or live page, 44 px targets, a match started and a question asked by keyboard alone | 1 spec | by hand, `npx playwright test` in `web/` (needs a browser) |
+
+One command runs lint, the format check, every Python test and the offline smoke:
+
+```bash
+make smoke
+```
+
+The web tests are `cd web && npm ci && npm test`. Counts are from 24 October 2026.
+
 ## Run it
 
 Needs [uv](https://docs.astral.sh/uv/) and `make`.
@@ -410,7 +465,7 @@ Needs [uv](https://docs.astral.sh/uv/) and `make`.
 ```bash
 make smoke   # offline: replays every sample match with a fake model, no keys needed
 make check   # lint and the test suite, offline
-make dev     # the server on localhost; set MUBIT_API_KEY in .env for real commentary
+make dev     # the server on localhost; export MUBIT_API_KEY for real commentary (make dev doesn't read .env)
 ```
 
 ## Data and video
