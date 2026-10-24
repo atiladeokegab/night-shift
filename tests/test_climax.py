@@ -233,7 +233,8 @@ WRONG_80, RIGHT_80 = JUDGED[4][2], JUDGED[4][3]
 def test_a_rejected_first_try_is_corrected_once_to_the_kept_line(tmp_path):
     sent, store = auto_fixed(tmp_path, [WRONG_80, RIGHT_80])
     assert sent == [(WRONG_80, RIGHT_80)]
-    [fix] = store.all("fixes")
+    [fix] = store.all("auto_fixes")
+    assert store.all("fixes") == []  # the review queue reads `fixes` as the people's
     assert (
         fix["reason"] == "auto: number check" and fix["auto"] and fix["corrected_text"] == RIGHT_80
     )
@@ -243,20 +244,20 @@ def test_a_rejected_first_try_is_corrected_once_to_the_kept_line(tmp_path):
 
 def test_a_fallback_is_never_sent_as_a_correction(tmp_path):
     sent, store = auto_fixed(tmp_path, [WRONG_80, WRONG_80])
-    assert sent == [] and store.all("fixes") == []
+    assert sent == [] and store.all("auto_fixes") == []
     assert store.all("lines")[0]["fallback"]
 
 
 def test_a_line_right_first_time_sends_no_correction(tmp_path):
     sent, store = auto_fixed(tmp_path, [RIGHT_80])
-    assert sent == [] and store.all("fixes") == []
+    assert sent == [] and store.all("auto_fixes") == []
 
 
 def test_an_auto_fix_is_counted_apart_from_the_peoples(tmp_path):
     _, store = auto_fixed(tmp_path, [WRONG_80, RIGHT_80])
     s = stats(store)
     assert s["fixes_auto"] == 1 and s["fixes_recorded"] == 0 and s["fixes_toward_next"] == 0
-    # the producer's fix-list corrections in prod (no `auto` key) stay "your fixes"
+    # the producer's fix-list corrections in prod stay "your fixes"
     fix = {"reason": "fix list: wrong number", "recorded": True, "created_at": "2026-10-24T12"}
     store.append("fixes", fix)
     s = stats(store)

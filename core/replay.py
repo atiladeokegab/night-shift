@@ -83,7 +83,7 @@ async def auto_fix(store, correct, rejected: dict, kept: dict) -> None:
         return
     await asyncio.to_thread(
         store.append,
-        "fixes",
+        "auto_fixes",  # never in `fixes`: those are the people's, and the review queue's "fixed"
         {
             "line_id": rejected["line_id"],
             "corrected_text": kept["text"],

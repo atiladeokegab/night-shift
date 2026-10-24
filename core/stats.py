@@ -85,8 +85,7 @@ def stats(store) -> dict:
     lead = [ln for ln in lines if ln.get("speaker") != "analyst"]
     since = (store.all("adapter") or [{}])[-1].get("created_at", "")
     # only a fix Mubit recorded for training counts; one stored before #161 carries no flag
-    # an auto fix is the number check's (#162), not a person's: `fixes_auto`, never "your fixes"
-    recorded = [f for f in fixes if f.get("recorded") is True and not f.get("auto")]
+    recorded = [f for f in fixes if f.get("recorded") is True]
     first = [ln["first_word_ms"] for ln in lines if ln.get("first_word_ms") is not None]
     total = [ln["latency_ms"] for ln in lines if ln.get("latency_ms") is not None]
     voice = store.all("voice")
@@ -107,7 +106,7 @@ def stats(store) -> dict:
         "fixes_recorded": len(recorded),
         # fixes recorded since the latest adapter record: the corrections toward the next one
         "fixes_toward_next": sum(f.get("created_at", "") > since for f in recorded),
-        "fixes_auto": sum(bool(f.get("auto")) for f in fixes),
+        "fixes_auto": len(store.all("auto_fixes")),  # the number check's own (#162), not a person's
         "voice_chars": sum(v.get("chars", 0) for v in voice),
         **_per_match(store, lines, voice),
     }
