@@ -24,6 +24,7 @@ PEAKS = {
     "3869685": 59,  # the World Cup final shoot-out
     "3754092": 37,  # Hazard's equaliser
     "3913122": 33,  # the 82nd-minute equaliser, then the 94th-minute winner
+    "7457": 37,  # Orlando's 82nd-minute equaliser, then the 89th-minute own goal
     "9636": 12,  # Verstappen into P1
 }
 
@@ -209,6 +210,8 @@ if __name__ == "__main__":
     _bundle("football", "3869685", final)  # 2022 World Cup final, Messi v Mbappé
     wsl = next(m for m in feed.statsbomb_matches(37, 281) if m["match_id"] == 3913122)
     _bundle("football", "3913122", wsl)  # Brighton 3-2 Bristol City, WSL 2024: the long tail
+    nwsl = next(m for m in feed.statsbomb_matches(49, 3) if m["match_id"] == 7457)
+    _bundle("football", "7457", nwsl)  # Orlando 3-4 North Carolina, NWSL 2018: called whole
     _bundle("cricket", "1298150")  # India v Pakistan, T20 World Cup 2022
     finals = {"competition": "NBA Finals", "stage": "Game 6", "date": "1998-06-14"}
     _bundle("basketball", "0049700088", finals)  # Jordan's last shot as a Bull

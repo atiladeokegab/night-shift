@@ -1,11 +1,18 @@
-"""The long tail (#189): a Women's Super League match, bundled and mapped like the famous ones."""
+"""The long tail (#189): a Women's Super League match, bundled and mapped like the famous ones;
+and (#246) an NWSL match with no video, called whole."""
+
+from fastapi.testclient import TestClient
 
 from agent import feed
 from core import insight
+from core.app import Deps, create_app
 from core.predict import load_pack
+from core.smoke import read_stream
+from core.store import Store
 from data.matches import PEAKS, list_matches, load_moments, match_header, video_map
 
 WSL = "3913122"  # Brighton 3-2 Bristol City, 21 Jan 2024
+NWSL = "7457"  # Orlando Pride 3-4 North Carolina Courage, 24 May 2018
 
 
 def test_the_wsl_match_loads_with_its_five_goals_and_late_winner():
@@ -75,3 +82,44 @@ def test_the_spoken_lead_and_where_say_the_club_not_its_wfc_suffix():
     stated = [str(m["detail"].get(k, "")) for m in moments for k in ("lead", "where")]
     assert not any("WFC" in s for s in stated)
     assert any("Bristol City's" in s for s in stated)
+
+
+def test_the_nwsl_match_is_whole_seven_goals_and_a_late_own_goal_winner():
+    header, moments = match_header(NWSL), load_moments(NWSL)
+    assert (header["home"], header["away"], header["competition"], header["date"]) == (
+        "Orlando Pride",
+        "North Carolina Courage",
+        "NWSL",
+        "2018-05-24",
+    )
+    goals = [
+        (m["idx"], m["clock"], m["score"]["home"], m["score"]["away"])
+        for m in moments
+        if m["outcome"] in ("Goal", "Own goal")
+    ]
+    assert goals[-2:] == [(38, "82:12", 3, 3), (41, "89:13", 3, 4)] and len(goals) == 7
+    match = next(m for m in list_matches() if m["match_id"] == NWSL)
+    assert "youtube_id" not in match and video_map(NWSL) is None  # no highlights limit the calls
+    assert ("football", NWSL) in feed.DEMO and load_pack("football", NWSL)["players"]
+
+
+def test_a_whole_match_calls_every_moment_from_kick_off_to_full_time(tmp_path):
+    called = []
+
+    def commentate(moment, history):
+        called.append(moment["idx"])
+        return {
+            "line_id": f"n-{moment['idx']}",
+            "match_id": NWSL,
+            "moment_idx": moment["idx"],
+            "text": "Call.",
+        }
+
+    deps = Deps(list_matches, load_moments, commentate, video_map)
+    with TestClient(create_app(Store(tmp_path), deps)) as client:
+        rid = client.post("/replays", json={"match_id": NWSL, "speed": 1e6}).json()["replay_id"]
+        events = read_stream(client, rid)
+    # each in order (the check may ask again for a moment), none left out: no video map skips one
+    assert list(dict.fromkeys(called)) == [m["idx"] for m in load_moments(NWSL)]
+    assert [n for n, _ in events].count("moment") == len(load_moments(NWSL))
+    assert events[-1][0] == "end" and "error" not in [n for n, _ in events]
