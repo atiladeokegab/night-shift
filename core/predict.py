@@ -293,3 +293,105 @@ def profile_text(pack: dict, moments: list, idx: int, name: str) -> str:
     if pack["sport"] == "f1":
         return _f1_profile(pack, name)
     return _shots_profile(pack, so_far, name)
+
+
+def players(pack: dict, moments: list) -> list[dict]:
+    """Everyone in the match so far (#140): anyone `moments` name, the latest first, then the rest
+    of the pack's roster by games played. A name the pack lacks is kept, with no team or record."""
+    folded = {_fold(n): n for n in pack["players"]}
+    named = []
+    for m in reversed(moments):
+        named += m["players"].values()
+        named += [t["driver"] for t in (m.get("score") or {}).get("top") or []]  # F1's top five
+    named = [folded.get(_fold(n), n) for n in named if n]
+    roster = sorted(pack["players"], key=lambda n: (-pack["players"][n].get("games", 0), n))
+    out = []
+    for n in dict.fromkeys(named + roster):
+        p = pack["players"].get(n)
+        out.append({"name": n, "team": p and p["team"], "record": bool(p), "named": n in named})
+    return out
+
+
+def _zones(shots: list[dict]) -> list[dict]:
+    zones: dict[str, dict] = {}
+    for t in shots:
+        z = zones.setdefault(t["zone"], {"zone": t["zone"], "attempts": 0, "made": 0})
+        z["attempts"] += 1
+        z["made"] += bool(t["made"])
+    return sorted(zones.values(), key=lambda z: -z["attempts"])
+
+
+def _phases(balls: list[dict], name: str) -> dict:
+    out = {}
+    for ph in ("powerplay", "middle", "death"):
+        here = [t for t in balls if t["batter"] == name and t["phase"] == ph]
+        out[ph] = {
+            "balls": len(here),
+            "runs": sum(t["runs"] for t in here),
+            "outs": sum(t["out"] == name for t in here),
+        }
+    return out
+
+
+def profile(pack: dict, moments: list, idx: int, name: str) -> dict:
+    """get_player_profile as data, for the follow card (#140): the record before tonight and tonight
+    up to moments[idx], never a later moment. `name` is the pack's own (find() first); a player the
+    pack lacks gets `before: None`. `n` is the pre-match sample: attempts, balls or races."""
+    so_far = _so_far(pack, moments, idx)
+    p = pack["players"].get(name)
+    sport, before = pack["sport"], None
+    if sport == "cricket":
+        bowled = [t for t in so_far if t["bowler"] == name]
+        tonight = {
+            "batting": _phases(so_far, name),
+            "bowling": {
+                "balls": len(bowled),
+                "runs": sum(t["runs"] for t in bowled),
+                "wickets": sum(bool(t["out"]) for t in bowled),
+            },
+        }
+        if p:
+            empty = {"balls": 0, "runs": 0, "outs": 0}
+            bat = {ph: {**empty, **p["batting"].get(ph, {})} for ph in tonight["batting"]}
+            before = {
+                "games": p["games"],
+                "batting": {ph: {k: b[k] for k in empty} for ph, b in bat.items()},
+                "bowling": p["bowling"],
+            }
+            n = sum(b["balls"] for b in bat.values()) + p["bowling"]["balls"]
+    elif sport == "f1":
+        laps = {}  # the latest place each lap, while the driver shows in the top five
+        for m in moments[: idx + 1]:
+            for t in (m.get("score") or {}).get("top") or []:
+                if t["driver"] == name:
+                    laps[m["score"]["lap"]] = t["pos"]
+        tonight = {"laps": [{"lap": lap, "pos": pos} for lap, pos in laps.items()]}
+        if p:
+            keys = ("games", "wins", "finishes", "avg_finish", "avg_gained")
+            before, n = {k: p[k] for k in keys}, p["games"]
+    else:
+        mine = [t for t in so_far if t["player"] == name]
+        tonight = {"attempts": len(mine), "made": sum(bool(t["made"]) for t in mine)}
+        tonight["zones"] = _zones(mine)
+        if p:
+            before = {"games": p["games"], "attempts": p["attempts"], "made": p["made"]}
+            before["zones"] = [
+                {"zone": z, "attempts": c["att"], "made": c["made"]}
+                for z, c in sorted(p["zones"].items(), key=lambda z: -z[1]["att"])
+            ]
+            n = p["attempts"]
+        if sport == "football":
+            tonight["xg"] = round(sum(t["xg"] for t in mine), 2)
+            if p:
+                before["xg"] = p["xg"]
+    return {
+        "player": name,
+        "team": p and p["team"],
+        "sport": sport,
+        "window": pack["window"],
+        "before": before,
+        "tonight": tonight,
+        "n": n if p else 0,
+        "small_sample": not p or n < SMALL,
+        "text": profile_text(pack, moments, idx, name),
+    }
