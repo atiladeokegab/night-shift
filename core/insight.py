@@ -1021,13 +1021,14 @@ def checked(commentate, moment: dict, history: list[dict]) -> dict | None:
         header = match_header(moment["match_id"])
     except KeyError:  # not a bundled match: nothing to build a line from, so it is not checked
         return line
-    if not wrong_numbers(line["text"], moment, header, history):
+    if not (first := wrong_numbers(line["text"], moment, header, history)):
         return {**line, "checked": True}
     again = commentate(moment, history)
     if again and again.get("text"):
         if not (wrong := wrong_numbers(again["text"], moment, header, history)):
             # the replay corrects the recorded first try with it
-            return {**again, "rejected": line, "retried": True, "checked": True}
+            rejected = {**line, "wrong": first}  # the auto-fix tells the model why (#245)
+            return {**again, "rejected": rejected, "retried": True, "checked": True}
     else:  # nothing usable the second time: the first try is the one the producer fixes
         again, wrong = line, wrong_numbers(line["text"], moment, header, history)
     tried = {"tried": again["text"], "wrong": wrong, "checked": True}

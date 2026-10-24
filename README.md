@@ -43,6 +43,21 @@ margin, the players' counts and, in football, what kind of event it was ([`core/
 A line that fails is tried once more. If the retry passes, the failed try is sent to Mubit as a
 correction, with no person involved; if it fails too, a line built from the match data is spoken
 instead. A producer fixes the rest from the page, and each fix goes to Mubit the same way.
+A correction is the next turn of the line's own call, so only the messages change, never the
+prompt, tools or model. It says what was wrong and gives the facts, and the commentator writes
+the fixed line itself. A correction is recorded only after an unrecorded try passes the number
+check. If the recorded reply still fails, it is marked and does not count toward the next version.
+The turn for a fix to Jordan's layup at 86-85 (Jazz v Bulls, 1998 NBA Finals Game 6), after
+the wrong line:
+
+```text
+Producer correction: Wrong leader
+The facts at this moment. Score: Utah Jazz 86, Chicago Bulls 85. Leader: Utah Jazz lead 86-85. Player total: Michael Jordan, 43 points tonight.
+The producer's line: Jordan drives and lays it in, his 43rd! Utah still lead 86-85.
+Say your line again, corrected: the line alone, at most 20 words.
+```
+
+Each fix stores this turn as `correction`, with `reply_passed`.
 The analyst's stat lines, the lead's replies to them and Ask answers get the same number check,
 against the stat and the match so far: a wrong number is tried once more, then the line is dropped
 and never said (an answer becomes the off-air line).
@@ -72,18 +87,19 @@ count only calls made since the check started marking lines; older stored lines 
 
 **Why a correction is a follow-up turn.** Mubit has no feedback API: it learns from the calls it
 records. So a correction is sent, on purpose, as the next turn of the wrong line's own call, in the
-same task and session: the original request, the line the model said, then "Producer correction.
-Reply with exactly this line: …" with the corrected line. Mubit records that call, so the corrected
-line is training data for the next version ([`agent/commentator.py`](agent/commentator.py)
+same task and session: the original request, the line the model said, then the correction turn
+above (the reason, the facts, the producer's line). Mubit records the commentator's corrected
+reply, so it is training data for the next version ([`agent/commentator.py`](agent/commentator.py)
 `correct`, [`tests/test_core_fix.py`](tests/test_core_fix.py)).
 
-**What a correction teaches, and its limit.** The recorded example holds the moment's own request
-and ends on the corrected line, but its last turn asks for that line word for word, so a version
-trained on it may learn to repeat an instruction rather than to make the right call. We can't yet
-say which: no version trained on corrections has been tested.
+**What a correction teaches, and its limit.** The recorded example holds the moment's own request,
+a wrong call, what was wrong with it and the right call, written by the model itself. Fixes made
+before #245 asked for the producer's line word for word instead. We can't yet say what a version
+trained on either learns: no version trained on corrections has been tested.
 
 **Anatomy of a fix.** One real correction from the review queue to Mubit. The fix stores the
-correction call's Mubit request id, and `GET /lines/{line_id}` returns it under `fix`.
+correction call's Mubit request id and the exact correction turn, and `GET /lines/{line_id}`
+returns them under `fix`.
 
 Read 24 Oct 2026 from one real fix (Bulls v Jazz 1998, the Jordan layup).
 
@@ -92,6 +108,8 @@ Read 24 Oct 2026 from one real fix (Bulls v Jazz 1998, the Jordan layup).
 | The wrong line | The model said "Jordan with the driving layup! Chicago Bulls take the lead, 85-86!" Utah led 86-85. The number check caught it before air: a safe line built from the data was spoken instead ("Michael Jordan with the driving layup. Utah Jazz lead eighty-six, eighty-five."), and the line went to the fix queue |
 | The checker's reason | "Chicago Bulls do not lead" |
 | The producer's fix | "Michael Jordan with the driving layup, forty-three for him! Utah still lead, eighty-six to eighty-five." (reason: Wrong score) |
+| What Mubit was given (`fix.correction`, #245) | Not in this fix: it predates #245 |
+| The commentator's corrected reply, and whether it passed the number check (`fix.reply_passed`) | Not in this fix: it predates #245 |
 | Mubit request id | `mreq_01a16eb90c9076f0b88abe5089b47e1e` |
 | Recorded for training | Yes: `recorded: true`, and the model's reply matched the fix |
 | What the next replay said | At 16:23:09 UTC, five seconds after the fix, the producer's line, marked fixed, with no model call (line `3ccce616bff14206bd6b3c8126343b88`) |
