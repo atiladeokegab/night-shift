@@ -1,7 +1,7 @@
 [project]
 name = "night-shift"
 version = "0.1.0"
-description = "Night Shift: a live AI commentator whose calls and fixes train a model through Mubit."
+description = "Touchline: the describer that checks itself. Replays described as if live; producer fixes train a Mubit adapter."
 requires-python = ">=3.12"
 dependencies = [
     "anthropic>=0.40",

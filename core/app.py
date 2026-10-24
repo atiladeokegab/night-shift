@@ -1,9 +1,11 @@
 """The app factory: every route of the spine. The match catalogue, the Moment loader and the
-commentator come from data/ and agent/ (#13) through `Deps`, so tests inject their own."""
+commentator come from data/ and agent/ through `Deps`, so tests inject their own."""
 
 import asyncio
+import hmac
 import json
 import logging
+import os
 import re
 import time
 import uuid
@@ -12,7 +14,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
@@ -24,7 +26,7 @@ from core.stats import stats
 from core.store import open_store
 from core.voice import Speaker, voice_router
 
-log = logging.getLogger("night_shift.app")
+log = logging.getLogger("touchline.app")
 REJOIN_S = 10.0  # a replay with no open stream this long is stopped: its lines cost model calls
 FORGET_S = 60.0  # a finished replay is forgotten once nobody streams or touches it this long
 
@@ -43,7 +45,8 @@ class Deps:
 
 
 def default_deps() -> Deps:
-    """Wire #13's loaders and commentator; None until they land, and the replay routes say 503."""
+    """Wire the loaders and the commentator; None if agent/ or data/ fail to import, and the replay
+    routes say 503."""
     try:
         from agent.commentator import answer, commentate, correct
         from agent.status import status
@@ -62,7 +65,7 @@ class ReplayRequest(BaseModel):
 
 class FixRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
-    corrected_text: str = Field(min_length=1)
+    corrected_text: str = Field(min_length=1, max_length=200)
     reason: str = ""
 
 
@@ -96,7 +99,7 @@ def asked_so_far(replay: Replay, moments: list[dict], on_screen: int | None):
 
 
 def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> FastAPI:
-    app = FastAPI(title="Night Shift")
+    app = FastAPI(title="Touchline")
     store = store or open_store()
     deps = deps or default_deps()
     replays: dict[str, Replay] = {}
@@ -217,10 +220,17 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
         line = next((ln for ln in store.all("lines") if ln.get("line_id") == line_id), None)
         if line is None:
             raise HTTPException(404, f"no line {line_id!r}")
-        return line
+        # its latest fix, Mubit request id included: one correction traced end to end (#239)
+        fix = next((f for f in reversed(store.all("fixes")) if f.get("line_id") == line_id), None)
+        return {**line, "fix": fix} if fix else line
 
     @app.post("/lines/{line_id}/fix")
-    async def fix_line(line_id: str, req: FixRequest):
+    async def fix_line(line_id: str, req: FixRequest, x_producer_token: str = Header(default="")):
+        # a fix trains Mubit and is spoken on later replays (#232): a producer's only, once the
+        # deploy sets PRODUCER_TOKEN; unset (local, tests) it is open
+        token = os.environ.get("PRODUCER_TOKEN", "")
+        if token and not hmac.compare_digest(x_producer_token.encode(), token.encode()):
+            raise HTTPException(401, "producer token needed")
         d = need_deps()
         lines = await asyncio.to_thread(store.all, "lines")
         line = next((ln for ln in lines if ln.get("line_id") == line_id), None)
@@ -228,6 +238,9 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
             raise HTTPException(404, f"no line {line_id!r}")
         if d.correct is None:
             raise HTTPException(503, "commentator not configured")
+        # a fix is spoken on the next replay (#232) and trains Mubit: never one the data contradicts
+        if wrong := await asyncio.to_thread(review.wrong, line, req.corrected_text, d):
+            raise HTTPException(422, {"wrong": wrong})
         try:
             # an insight or reply goes back with its own Stat request, not its moment's
             over = insight.said_over(line, d.load_moments)
@@ -243,7 +256,7 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
                 "corrected_text": req.corrected_text,
                 "reason": req.reason,
                 "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
-                "mubit_request_id": sent["mubit_request_id"],
+                "mubit_request_id": sent.get("mubit_request_id"),  # the correction call's (#239)
                 "reply_matched": sent["reply_matched"],
                 "recorded": sent.get("recorded", False),  # sent to Mubit for training (#161)
             },

@@ -64,7 +64,7 @@ def test_voice_vars_come_from_env_or_dotenv_and_no_key_rides_along(tmp_path):
     assert set(env_vars(deployed)) == {
         "MODE=cloud",
         "STORE_URL=gs://p-state/night-shift",
-        "MUBIT_RECORD=off",  # a lent key: its app trains on none of our lines
+        "MUBIT_RECORD=off",  # the demo key: its app trains on none of these lines
         "VOICE_CRICKET=viraj",  # from .env
         "VOICE_FOOTBALL=gU0LNdkMOQCOrPrwtbee",  # the environment wins over .env
         "VOICE_MODEL_BASKETBALL=eleven_v3",
