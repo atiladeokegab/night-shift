@@ -234,6 +234,19 @@ def default_provider():
     return _provider
 
 
+_unrecorded = None
+
+
+def unrecorded_provider():
+    """Mubit with recording off when MUBIT_API_KEY is set, else FakeProvider; made once per process.
+    An answer has its own system prompt: recorded, it would split the one task the lines train."""
+    global _unrecorded
+    if _unrecorded is None:
+        key = os.environ.get("MUBIT_API_KEY")
+        _unrecorded = MubitProvider(key, record=False) if key else FakeProvider()
+    return _unrecorded
+
+
 def line_for(header: dict, moments: list[dict], idx: int, provider) -> dict:
     """One Line for moments[idx], with at most one tool round."""
     past = moments[: idx + 1]  # never anything later than this moment
@@ -278,7 +291,7 @@ def answer(
     heard = "\n".join(f"- {ln['text']}" for ln in lines[-5:]) or "- none yet"
     request["messages"][0]["content"] += "\n" + QUESTION.format(lines=heard, question=question)
     start = time.monotonic()
-    reply, replies, tool_calls, _ = _call(provider or default_provider(), request, header, past)
+    reply, replies, tool_calls, _ = _call(provider or unrecorded_provider(), request, header, past)
     said = " ".join(b["text"] for b in reply["content"] if b["type"] == "text")
     text = spoken(said, ANSWER_WORDS)
     if not text:

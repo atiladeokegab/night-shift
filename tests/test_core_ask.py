@@ -8,6 +8,7 @@ from functools import partial
 import httpx
 from fastapi.testclient import TestClient
 
+from agent import commentator
 from agent.commentator import FakeProvider, answer
 from core.app import Deps, asked_so_far, create_app
 from core.replay import OFF_AIR, Replay
@@ -79,6 +80,21 @@ def test_a_final_score_question_mid_match_gets_the_score_so_far(tmp_path):
     assert store.all("answers") == [said] and said["replay_id"] == rid
     assert ("answer", said) in events
     assert audio.status_code == 503  # found and spoken like a line; this test has no voice key
+
+
+def test_answers_go_through_mubit_with_recording_off(monkeypatch):
+    made = []
+
+    class Mubit(FakeProvider):
+        def __init__(self, key, record=True):
+            super().__init__()
+            made.append(record)
+
+    monkeypatch.setattr(commentator, "MubitProvider", Mubit)
+    monkeypatch.setattr(commentator, "_unrecorded", None)
+    monkeypatch.setenv("MUBIT_API_KEY", "test-key")
+    said = answer("Who leads?", MOMENTS[:2], [], HEADER)
+    assert made == [False] and said["text"] == "So far, Reds 1, Blues 0."
 
 
 def test_the_window_never_runs_past_what_the_replay_has_sent():

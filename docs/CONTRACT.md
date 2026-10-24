@@ -124,7 +124,8 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
 - The commentator sees only moments up to the current one; a later event never reaches the model.
 - Answer (`agent.commentator.answer`): the request for the moment on screen with the system prompt
   `agent/ask.md`, the last five lines said and the viewer's question appended to the user message;
-  same model, tools and session; at most 30 words.
+  same model, tools and session; at most 30 words. Sent with `x-middleware-record: off`: its own
+  system prompt would otherwise split the one Mubit task the lines train.
 
 ## Check
 
