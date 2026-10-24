@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import type { Match, Moment, Sport } from './types.ts'
-import { CARD_COPY, chipName, coverage, commentatorName, cricketScore, sheetName, sheetVoices, voiceName, wallOrder } from './teams.ts'
+import { CARD_COPY, chipName, coverage, hasTeams, commentatorName, cricketScore, sheetName, sheetVoices, voiceName, wallOrder } from './teams.ts'
 
 const voice = (label: string) => ({ id: 'v', label, lang: 'en-GB', default_for: null })
 
@@ -96,4 +96,15 @@ test("the home page says #206's name, hook and pitch, and never the claims we ca
     'A full replay, mostly highlights, costs', // #257 review: never price a highlights replay as a whole match
   ]) assert.ok(wall.includes(said), said)
   assert.doesNotMatch(wall, /checks every fact|a million matches/i)
+})
+
+test('the Teams tab is for sports with sides: absent for F1, present for the rest', () => {
+  assert.equal(hasTeams('f1'), false)
+  for (const sport of ['football', 'basketball', 'cricket'] as Sport[]) assert.equal(hasTeams(sport), true, sport)
+})
+
+test('Live offers the Teams tab and its T shortcut only through hasTeams', () => {
+  const live = readFileSync(new URL('./components/Live.tsx', import.meta.url), 'utf8')
+  assert.match(live, /teamsOn && <button role="tab" id="tab-teams"/)
+  assert.match(live, /!teamsOn \|\| e\.key\.toLowerCase\(\) !== 't'/)
 })
