@@ -63,13 +63,16 @@ def load_moments(match_id: str) -> list[dict]:
 
 def _stated(header: dict, moments: list[dict]) -> list[dict]:
     """Each moment with the numbers a climax line gets wrong said outright in its detail: a cricket
-    chase's state (or its result) and a basketball shooter's points milestone. Built from each
-    moment's own score and the ones before it, so no later moment leaks in."""
+    chase's state (or its result), who leads a home/away game, and a basketball shooter's points
+    milestone. Built from each moment's own score and the ones before it, so no later moment
+    leaks in."""
     best: dict[str, int] = {}
     for m in moments:
         s, d = m["score"], m["detail"]
         if m["sport"] == "football" and "x" in m and "y" in m:
             d["where"] = _where(header, m)
+        if "home" in s:  # without it a basket that cuts the lead is heard as taking it
+            d["lead"] = _lead(header, m)
         if m["sport"] == "cricket" and "target" in s and "balls_left" in d:
             d["chase"] = _chase(header, m)
         pts, who = d.get("player_points"), (m["players"] or {}).get("shooter")
@@ -107,6 +110,24 @@ def _where(header: dict, m: dict) -> str:
     if x < 60:
         return f"in {own}'s own half"
     return f"on the {'left' if left else 'right'} wing" if wide else f"in {other}'s half"
+
+
+def leader(m: dict) -> str | None:
+    """Who leads after a home/away moment, "home", "away" or None when level; a shootout decides
+    once the goals are level."""
+    s, so = m["score"], m["detail"].get("shootout")
+    h, a = (so["home"], so["away"]) if so and s["home"] == s["away"] else (s["home"], s["away"])
+    return "home" if h > a else "away" if a > h else None
+
+
+def _lead(header: dict, m: dict) -> str:
+    s, so = m["score"], m["detail"].get("shootout")
+    shootout = " the shootout" if so and s["home"] == s["away"] else ""
+    h, a = (so["home"], so["away"]) if shootout else (s["home"], s["away"])
+    side = leader(m)
+    if side is None:
+        return f"level at {h}-{a}" + (" in the shootout" if shootout else "")
+    return f"{header[side]} lead{shootout} {max(h, a)}-{min(h, a)}"
 
 
 def _chase(header: dict, m: dict) -> str:
