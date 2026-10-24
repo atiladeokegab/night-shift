@@ -288,21 +288,26 @@ def _gender(sport: str, team: str, cut: str) -> str | None:
     return last[0].get("gender") if last else None
 
 
-def team_form(sport: str, team: str, before: str, n: int = 5) -> list[dict]:
-    """The team's last `n` matches before `before`, newest first, score as the team's own."""
+def team_form(
+    sport: str, team: str, before: str, n: int = 5, gender: str | None = None
+) -> list[dict]:
+    """The team's last `n` matches before `before`, newest first, score as the team's own. `gender`
+    ("male"/"female") says which side a shared team name means; else the latest match's."""
     if (cut := _utc(before)) is None:
         return []
-    g = _gender(sport, team, cut)
+    g = gender or _gender(sport, team, cut)
     more, extra = (GENDERED, {"g": g}) if g else ("", {})
     found = _rows(FIXTURES.format(more=more), {"s": sport, "t": team, "b": cut, "n": n, **extra})
     return [_result(f, team) for f in found or []]
 
 
-def head_to_head(sport: str, a: str, b: str, before: str, n: int = 5) -> list[dict]:
+def head_to_head(
+    sport: str, a: str, b: str, before: str, n: int = 5, gender: str | None = None
+) -> list[dict]:
     """The last `n` meetings of a and b before `before`, newest first, seen from a."""
     if (cut := _utc(before)) is None:
         return []
-    g = _gender(sport, a, cut)
+    g = gender or _gender(sport, a, cut)
     sql = FIXTURES.format(more="AND (home = $o OR away = $o)" + (GENDERED if g else ""))
     found = _rows(sql, {"s": sport, "t": a, "o": b, "b": cut, "n": n, **({"g": g} if g else {})})
     return [_result(f, a) for f in found or []]
@@ -368,9 +373,11 @@ def player_season(sport: str, name: str, before: str) -> dict | None:
     }
 
 
-def squad(sport: str, team: str, before: str) -> list[dict]:
+def squad(sport: str, team: str, before: str, gender: str | None = None) -> list[dict]:
     """Who played for the team in its newest competition-season before `before`, best first."""
     apps = _games(sport, "team", team, before)
+    if apps and gender:
+        apps = [a for a in apps if a["gender"] == gender]
     if not apps:
         return []
     by: dict[str, list[dict]] = {}
