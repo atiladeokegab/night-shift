@@ -105,11 +105,14 @@ export function followReplay(
 }
 
 // POST /lines/{id}/fix. A 503 means the Mubit call failed and nothing was stored, so it can be sent again.
+// A 422 with `wrong` means the number check refused the fix (#232): nothing stored, edit and send again.
 export class FixError extends Error {
   status: number
-  constructor(status: number) {
+  wrong: string[]
+  constructor(status: number, wrong: string[] = []) {
     super(`POST /lines/{id}/fix failed (${status})`)
     this.status = status
+    this.wrong = wrong
   }
 }
 
@@ -121,14 +124,36 @@ export async function getReview(): Promise<ReviewItem[]> {
   return res.json()
 }
 
+// The producer token (#232): asked once, on the first 401, and kept in this browser.
+const TOKEN = 'producer-token'
+let sessionToken = ''
+export function setProducerToken(token: string): void {
+  try {
+    localStorage.setItem(TOKEN, token)
+  } catch {
+    // storage blocked: the fix is still sent with it below this once
+  }
+  sessionToken = token
+}
+function producerToken(): string {
+  try {
+    return localStorage.getItem(TOKEN) ?? sessionToken
+  } catch {
+    return sessionToken
+  }
+}
+
 export async function postFix(lineId: string, correctedText: string, reason: string): Promise<Fix> {
   if (isDemo) throw new FixError(503) // the demo has no server to keep a fix
   const res = await fetch(`/lines/${encodeURIComponent(lineId)}/fix`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-Producer-Token': producerToken() },
     body: JSON.stringify({ corrected_text: correctedText, reason }),
   })
-  if (!res.ok) throw new FixError(res.status)
+  if (!res.ok) {
+    const detail = res.status === 422 ? (await res.json().catch(() => null))?.detail : null
+    throw new FixError(res.status, Array.isArray(detail?.wrong) ? detail.wrong : [])
+  }
   return res.json()
 }
 

@@ -66,6 +66,14 @@ def queue(store, deps) -> list[dict]:
     return list(groups.values())
 
 
+def wrong(line: dict, text: str, deps) -> list[str]:
+    """What the check finds wrong with `text` said in `line`'s place, at its moment (#232): a
+    producer's fix that contradicts the data is never stored or sent for training."""
+    keep = {k: v for k, v in line.items() if k not in ("tried", "wrong")}
+    entry = _entry({**keep, "text": text}, {}, deps)
+    return entry["wrong"] if entry else []
+
+
 def _entry(line: dict, matches: dict, deps) -> dict | None:
     """The line's queue entry, or None when its numbers match its moment."""
     from agent.commentator import _score

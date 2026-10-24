@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { autonomyRows, nextAdapter } from './proof.ts'
+import { adapterGood, adapterRows, autonomyRows, nextAdapter } from './proof.ts'
 
 test('under the target, the figure counts toward it', () => {
   assert.deepEqual(nextAdapter(12, 25), { value: '12 of 25', note: null })
@@ -28,4 +28,44 @@ test('a match with no calls yet counts zeros; no match, only all matches; no cou
   assert.deepEqual(autonomyRows({ autonomy: all, autonomy_by_match: {} }, '9636'), [['This match', none], ['All matches', all]])
   assert.deepEqual(autonomyRows({ autonomy: all }, null), [['All matches', all]])
   assert.deepEqual(autonomyRows({}, '9636'), [])
+})
+
+const record = { status: 'ready' as const, version: null, score: null, target: null, passed: null, kept: null, recorded_at: '2026-10-24T16:00:00+00:00' }
+
+test("one row per Mubit task, saying only what its latest record says", () => {
+  const rows = adapterRows({
+    line_check: { ...record, version: 1, score: 82, passed: true },
+    where_are_we: { ...record, status: 'training', kept: 0 },
+  })
+  assert.deepEqual(rows, ['Commentary: not recorded', 'Where are we?: training, 0 kept', 'Line check: v1, 82%, Passed'])
+})
+
+test("a failed gate in the console's words; a ready version with no verdict never reads as passed", () => {
+  assert.deepEqual(
+    adapterRows({ where_are_we: { ...record, version: 1, score: 55.8, target: 95, passed: false } })[1],
+    'Where are we?: v1, 55.8%, below 95% target',
+  )
+  // a failed verdict the score doesn't explain stays "Failed": no score, a score at the target, a 0 target
+  const failed = { ...record, version: 1, passed: false, target: 95 }
+  assert.equal(adapterRows({ line_check: { ...failed, score: null } })[2], 'Line check: v1, Failed')
+  assert.equal(adapterRows({ line_check: { ...failed, score: 95 } })[2], 'Line check: v1, 95%, Failed')
+  assert.equal(adapterRows({ line_check: { ...failed, score: 0, target: 0 } })[2], 'Line check: v1, 0%, Failed')
+  assert.deepEqual(adapterRows({ commentary: { ...record, version: 2, passed: false } })[0], 'Commentary: v2, Failed')
+  assert.deepEqual(adapterRows({ commentary: { ...record, version: 3, score: 64.5 } })[0], 'Commentary: v3, 64.5%, verdict not recorded')
+  assert.deepEqual(adapterRows({ commentary: { ...record, status: 'not_trained' } })[0], 'Commentary: not trained')
+})
+
+test('before core reports adapters, no rows', () => {
+  assert.deepEqual(adapterRows(undefined), [])
+})
+
+test('the Adapter row is green only for a ready commentary adapter the gate did not fail', () => {
+  const ready = { status: 'ready' as const, kept: 31, needed: 25, agree: 23, total: 25, cost_measurable: false }
+  assert.equal(adapterGood({ adapter: ready }), true) // before per-task records: as before
+  assert.equal(adapterGood({ adapter: ready, adapters: { commentary: { ...record, passed: true } } }), true)
+  assert.equal(adapterGood({ adapter: ready, adapters: { commentary: { ...record, passed: null } } }), true)
+  assert.equal(adapterGood({ adapter: ready, adapters: { commentary: { ...record, passed: false } } }), false)
+  assert.equal(adapterGood({ adapter: { ...ready, status: 'training' } }), false)
+  // another task's failed gate isn't commentary's
+  assert.equal(adapterGood({ adapter: ready, adapters: { line_check: { ...record, passed: false } } }), true)
 })

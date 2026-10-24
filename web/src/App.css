@@ -277,7 +277,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .stats dd { margin: 0; font: 600 1.45rem/1 var(--display); letter-spacing: -.02em; }
 .stats .wide { grid-column: 1 / -1; padding-top: 14px; border-top: 1px solid var(--line); }
 .stats .cap { grid-column: 1 / 3; margin-bottom: -8px; } /* "First word" over Median and P95 */
-.stats .cap.side { grid-column: 3; } /* "Cost" over Per line */
+.stats .cap.cost { grid-column: 3; } /* "Cost" over Per line; not .side, the sticky sidebar */
 .stats > .two { grid-column: span 2; } /* "Ready to train" on one line */
 .stats .wide dd { font: 500 .95rem/1.4 var(--body); letter-spacing: 0; }
 .stats .wide dd.good::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--live); margin-right: 8px; vertical-align: 1px; }
@@ -398,7 +398,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   .stats > div, .stats > .two { grid-column: span 3; }
   .stats > .third { grid-column: span 2; }
   .stats .cap { grid-column: 1 / 5; }
-  .stats .cap.side { grid-column: 5 / -1; }
+  .stats .cap.cost { grid-column: 5 / -1; }
   .voices { grid-template-columns: 1fr; }
   .sheet { --pad: 20px; max-height: calc(100svh - 16px); }
   .scrim { place-items: end center; padding: 8px; }

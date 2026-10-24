@@ -65,6 +65,8 @@ export interface Line {
   video_t?: number // A-6.4@2: shown and spoken when the player reaches it (#47)
   speaker?: 'lead' | 'analyst' // #130: the moment's call, or a stat line between moments; none is the lead
   history?: boolean // #163: said in an earlier replay, before a jump's moment: shown, never spoken
+  fixed?: boolean // #232: said in a producer's fixed words, not called; `fix_id` is the line it fixed
+  fix_id?: string
 }
 
 // GET /stats and the `stats` SSE event (CONTRACT.md); percentiles are null until there is a line.
@@ -80,10 +82,12 @@ export interface Stats {
   tokens_in: number
   tokens_out: number
   cost_per_line_usd?: number | null
-  adapter?: Adapter | null
+  adapter?: Adapter | null // the commentary task's
+  adapters?: Record<string, TaskAdapter> // #209: each Mubit task's latest record, by task
   by_speaker?: { lead: SpeakerStats; analyst: SpeakerStats } // #161: Haiku's calls apart from Sonnet's stat lines
   fixes_recorded?: number // fixes Mubit recorded for training; `fixes` counts every stored fix
   fixes_toward_next?: number // recorded fixes since the latest adapter record (#161)
+  spoken_from_fix?: number // lines a replay said in a producer's fixed words, not the model's (#232)
   // #174: a full replay's mean spend over matches_measured of them; null when it can't be measured
   matches_measured?: number
   cost_per_match_usd?: number | null
@@ -136,6 +140,17 @@ export interface Adapter {
   agree: number | null
   total: number | null
   cost_measurable: boolean
+}
+
+// One Mubit task's latest adapter record (#209), as the lead read it off Mubit's console; null where it didn't say.
+export interface TaskAdapter {
+  status: 'not_trained' | 'training' | 'ready'
+  version: number | null
+  score: number | null // "matched N% of the provider model's answers", 0 to 100
+  target: number | null // the console's target for score, e.g. 95
+  passed: boolean | null // Mubit's gate: Passed or Failed
+  kept: number | null // Mubit's kept examples from the console, never requests sent
+  recorded_at: string | null
 }
 
 // POST /lines/{line_id}/fix's answer and the `fixed` SSE event (CONTRACT.md).
