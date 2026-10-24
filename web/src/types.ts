@@ -348,6 +348,7 @@ export interface TeamInfo {
   team: string
   form: TeamGame[]
   squad: { name: string; matches: number; headline: string }[]
+  note?: string | null // "This is X's first match on record" when there is no earlier game
 }
 export interface Teams {
   teams: TeamInfo[]

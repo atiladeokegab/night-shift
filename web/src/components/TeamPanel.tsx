@@ -7,14 +7,14 @@ import type { Teams } from '../types'
 // as of the match's start. Headings and lists, every line short enough to say aloud.
 export function TeamFacts({ data }: { data: Teams }) {
   const [a, b] = data.teams
-  const none = !data.teams.some((t) => t.form.length || t.squad.length) && !data.head_to_head.length
+  const none = !data.teams.some((t) => t.form.length || t.squad.length || t.note) && !data.head_to_head.length
   if (none) return <p className="hint">No team facts for this match.</p>
   return (
     <>
       {data.teams.map((t) => (
         <section key={t.team} aria-labelledby={`team-${t.team.replace(/\W/g, '')}`}>
           <h3 id={`team-${t.team.replace(/\W/g, '')}`}>{t.team}</h3>
-          <p>{formLine(t.team, t.form)}</p>
+          <p>{!t.form.length && t.note ? t.note : formLine(t.team, t.form)}</p>
           {t.form.length > 0 && <ul>{t.form.map((g) => <li key={g.date + g.opponent}>{gameLine(g)}</li>)}</ul>}
           {t.squad.length > 0 && (
             <>

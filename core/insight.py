@@ -1271,6 +1271,9 @@ def _swapped_teams(text: str, m: dict, header: dict) -> list[str]:
             a = toks[j - 1] if j >= 1 and isinstance(toks[j - 1], float) else None
             if a is None and j >= 2 and toks[j - 1] == "to":
                 a = toks[j - 2] if isinstance(toks[j - 2], float) else None
+            other = "away" if one[t] == "home" else "home"
+            if any(one.get(w) == other for w in toks[:j]):  # "Orlando trails 2-3 to the Courage"
+                continue
             if isinstance(b, float) and a is not None and a != b:
                 mine = s[one[t]]
                 if (a, b) == (s["away" if one[t] == "home" else "home"], mine) and a != mine:
