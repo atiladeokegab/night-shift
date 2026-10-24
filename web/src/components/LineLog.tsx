@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { answeredAt, isStale, withAnswers } from '../ask'
 import { names, shortName } from '../follow'
-import { MicButton } from './MicButton'
+import { MicButton, MicOn, type Mic } from './MicButton'
 import { clockText } from '../moment'
 import { WHERE } from '../quiet'
 import type { Answer, Fix, Line, Moment } from '../types'
@@ -22,6 +22,7 @@ interface Props {
   voiced?: boolean // #170: an answer is spoken, so a screen reader hears only that it is ready
   roster?: string[] // everyone in the match, so a shared surname needs the full name
   onUnfollow?: () => void
+  mic?: Mic // Mic on (#286)
 }
 
 // The Lines card (docs/design.md): every line so far, newest first, with its clock, its speaker, the model's
@@ -34,7 +35,7 @@ function count(lines: Line[]): string {
   return [called && `${called} called`, earlier && `${earlier} earlier`].filter(Boolean).join(' · ')
 }
 
-export function LineLog({ lines, late, fixes, moments, onFix, answers, interrupted = [], onHear, onAsk, shooter, onShots, followed, roster, onUnfollow, voiced }: Props) {
+export function LineLog({ lines, late, fixes, moments, onFix, answers, interrupted = [], onHear, onAsk, shooter, onShots, followed, roster, onUnfollow, voiced, mic }: Props) {
   const said = (l: Line) => fixes[l.line_id]?.corrected_text ?? l.text
   const theirs = followed ? lines.filter((l) => names(said(l), followed, roster)).length : 0
   return (
@@ -43,7 +44,7 @@ export function LineLog({ lines, late, fixes, moments, onFix, answers, interrupt
         <h3>Lines</h3>
         <span className="label">{count(lines)}</span>
       </div>
-      <AskBox onAsk={onAsk} />
+      <AskBox onAsk={onAsk} mic={mic} />
       {followed && (
         <div className="following">
           <span>Following <b>{followed}</b> · {theirs} {theirs === 1 ? 'line' : 'lines'}</span>
@@ -116,9 +117,11 @@ export function LineLog({ lines, late, fixes, moments, onFix, answers, interrupt
 
 // "Ask the commentator" (#117): text in, or by voice (#139), one question at a time; the answer lands in
 // the log and is spoken. "Where are we?" (#186) is one press, or the W key while no field has focus.
-function AskBox({ onAsk }: { onAsk: Props['onAsk'] }) {
+// Mic on (#286) listens hands-free; hold-to-talk stands down meanwhile.
+function AskBox({ onAsk, mic }: { onAsk: Props['onAsk']; mic?: Mic }) {
   const [question, setQuestion] = useState('')
   const [asking, setAsking] = useState(false)
+  const [handsFree, setHandsFree] = useState(false)
   const [hint, setHint] = useState('') // the mic's one-line hint: denied, or nothing heard
   const send = async (e: FormEvent) => {
     e.preventDefault()
@@ -135,6 +138,8 @@ function AskBox({ onAsk }: { onAsk: Props['onAsk'] }) {
       setAsking(false)
     }
   }
+  const voice = { onHeard: (t: string) => (setHint(''), setQuestion(t)), onSend: (t: string) => (setQuestion(t), void ask(t)),
+    onHint: (h: string) => (setQuestion(''), setHint(h)) }
   const latest = useRef(ask) // the window's key handler asks with the newest state
   useEffect(() => {
     latest.current = ask
@@ -161,12 +166,12 @@ function AskBox({ onAsk }: { onAsk: Props['onAsk'] }) {
         <textarea id="ask-q" rows={1} value={question} maxLength={200} readOnly={asking} disabled={!onAsk} autoComplete="off" enterKeyHint="send"
           placeholder={!onAsk ? 'Ask once play starts' : hint || 'Ask the commentator…'} onChange={(e) => setQuestion(e.target.value.replace(/\n/g, ' '))}
           onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && (e.preventDefault(), e.currentTarget.form?.requestSubmit())} />
-        <MicButton disabled={!onAsk || asking} onHeard={(t) => (setHint(''), setQuestion(t))} onSend={(t) => (setQuestion(t), void ask(t))}
-          onHint={(h) => (setQuestion(''), setHint(h))} />
+        <MicButton disabled={!onAsk || asking || handsFree} {...voice} />
         <button className="btn sm primary" disabled={!onAsk || asking || !question.trim()}>
           {asking ? <><span className="spin sm" />Asking…</> : 'Ask'}
         </button>
       </form>
+      <MicOn on={handsFree} onToggle={setHandsFree} mic={mic} disabled={!onAsk || asking} {...voice} />
     </>
   )
 }

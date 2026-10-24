@@ -13,6 +13,7 @@ import { Caption } from './Caption'
 import { Controls } from './Controls'
 import { FollowPicker } from './FollowPicker'
 import { LineLog } from './LineLog'
+import type { Mic } from './MicButton'
 import { Nav, type Screen } from './Nav'
 import { ProfileCard } from './ProfileCard'
 import { ProofPanel } from './ProofPanel'
@@ -37,6 +38,7 @@ interface Props {
   onVoiceSheet: () => void
   onFix: (line: Line) => void
   onAsk: (question: string, momentIdx: number) => Promise<void>
+  mic?: Mic // Mic on (#286): what the page is saying, and the hush for a barge-in
   interrupted?: string[] // answers a decisive moment cut off
   onHear?: (answer: Answer) => void
   onShots: (name: string, momentIdx: number) => Promise<Shots | null>
@@ -281,7 +283,7 @@ export function Live(props: Props) {
           </div>
           <div className="pane lines-pane" role="tabpanel" id="pane-lines" aria-labelledby="tab-lines" data-on={tab === 'lines'}>
             <LineLog lines={shown.lines} late={replay.late} fixes={replay.fixes} moments={shown.moments} onFix={onFix}
-              answers={replay.answers} interrupted={props.interrupted} onHear={props.onHear} onAsk={moment ? (q) => onAsk(q, moment.idx) : null} shooter={null} onShots={openMap} followed={followed} roster={roster} onUnfollow={() => setFollow(null)} voiced={voiced} />
+              answers={replay.answers} interrupted={props.interrupted} onHear={props.onHear} onAsk={moment ? (q) => onAsk(q, moment.idx) : null} shooter={null} onShots={openMap} followed={followed} roster={roster} onUnfollow={() => setFollow(null)} voiced={voiced} mic={props.mic} />
           </div>
           <div className="pane" role="tabpanel" id="pane-proof" aria-labelledby="tab-proof" data-on={tab === 'proof'}>
             <ProofPanel live={replay.stats} matchId={match.match_id} />

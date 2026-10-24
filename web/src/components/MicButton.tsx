@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { listen, recognizer } from '../voice'
+import { listen, listenAlways, recognizer } from '../voice'
 
 interface Props {
   disabled: boolean
@@ -9,6 +9,13 @@ interface Props {
 }
 
 const make = recognizer()
+
+const icon = (
+  <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+    <rect x="5.5" y="1.5" width="5" height="8.5" rx="2.5" fill="none" stroke="currentColor" strokeWidth="1.4" />
+    <path d="M3 8a5 5 0 0 0 10 0M8 13v2" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+  </svg>
+)
 
 // Ask by voice (#139): hold the mic (or the space bar while no field has focus) and talk; letting go, or a
 // final result, sends what was heard through the Ask box. Hidden where the browser has no speech recognition.
@@ -71,10 +78,48 @@ export function MicButton({ disabled, onHeard, onSend, onHint }: Props) {
         press()
       }}
       onPointerUp={letGo} onPointerCancel={letGo} onContextMenu={(e) => e.preventDefault()}>
-      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-        <rect x="5.5" y="1.5" width="5" height="8.5" rx="2.5" fill="none" stroke="currentColor" strokeWidth="1.4" />
-        <path d="M3 8a5 5 0 0 0 10 0M8 13v2" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-      </svg>
+      {icon}
     </button>
+  )
+}
+
+export interface Mic {
+  airing: () => string | null // what the page is saying, or said under 3 s ago
+  duck: () => void // hushes the commentary: the viewer is talking
+}
+
+interface OnProps extends Props {
+  on: boolean
+  onToggle: (on: boolean) => void
+  mic?: Mic
+}
+
+// Mic on (#286): one press and the page listens until it is pressed again, so the viewer talks to Touchline
+// whenever they like. Their voice hushes the commentary at once; the finished sentence is asked as a typed
+// question is, and the commentary carries on. Hidden where the browser has no speech recognition.
+export function MicOn({ on, onToggle, mic, disabled, onHeard, onSend, onHint }: OnProps) {
+  const latest = useRef({ disabled, mic, onHeard, onSend, onHint, onToggle })
+  useEffect(() => {
+    latest.current = { disabled, mic, onHeard, onSend, onHint, onToggle }
+  })
+  useEffect(() => {
+    if (!on || !make) return
+    const now = () => latest.current
+    return listenAlways(make, {
+      barge: () => now().mic?.duck(),
+      heard: (t) => now().disabled || now().onHeard(t),
+      done: (t) => (now().disabled ? now().onHeard('') : now().onSend(t)), // one question at a time
+      hint: (h) => (now().onToggle(false), now().onHint(h)),
+    }, () => now().mic?.airing() ?? null)
+  }, [on])
+
+  if (!make) return null
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+      <button type="button" className={`btn sm${on ? ' primary' : ''}`} aria-pressed={on} onClick={() => onToggle(!on)}>
+        {icon}Mic on
+      </button>
+      <p className="hint" aria-live="polite">{on ? 'Listening' : 'Talk any time'} · headphones work best</p>
+    </div>
   )
 }
