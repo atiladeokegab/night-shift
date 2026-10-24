@@ -28,6 +28,7 @@ from core.predict import load_pack, shot_points
 from core.replay import OFF_AIR, Replay, run_replay
 from core.stats import stats
 from core.store import open_store
+from core.teams import router as teams_router
 from core.voice import Speaker, voice_of, voice_router
 
 log = logging.getLogger("touchline.app")
@@ -654,6 +655,7 @@ def create_app(
         if await asyncio.to_thread(guard.off_air, store):
             raise HTTPException(503, "voice off air for today")
 
+    app.include_router(teams_router)
     app.include_router(voice_router(store, speaker), dependencies=[Depends(voice_on)])
     # the built page (web/, #18) at /, mounted last so every API route above wins
     if WEB.is_dir():
