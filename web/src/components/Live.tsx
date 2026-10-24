@@ -289,12 +289,13 @@ function fullTime(replay: ReplayState, video: VideoState): boolean {
   return video !== 'ok' || !replay.duration || replay.now >= replay.duration - 2
 }
 
-// "CHE 2–2 TOT" from the last moment on screen; a race or an innings has no such line, so the card's result.
+// "CHE 2–2 TOT" (or "ARG 3–3 FRA · pens 4–2") from the last moment on screen; a race or an innings has no such line, so the card's result.
 function finalScore(match: Match, last: ReplayState['moments'][number] | undefined): string {
   const s = last?.score
   if (s && 'home' in s) {
     const [home, away] = matchTeams(match)
-    return `${home.code} ${s.home}–${s.away} ${away.code}`
+    const pens = last?.detail.shootout as { home: number; away: number } | undefined
+    return `${home.code} ${s.home}–${s.away} ${away.code}${pens ? ` · pens ${pens.home}–${pens.away}` : ''}`
   }
   return CARD_COPY[match.match_id]?.result ?? ''
 }

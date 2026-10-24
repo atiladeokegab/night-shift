@@ -134,6 +134,13 @@ test('ON AIR names the speaker on air: the lead by the chosen voice, the analyst
   assert.match(render({ replay: analyst }), /class="who">Analyst · George</)
 })
 
+test('a final settled on penalties says the shoot-out at full time', () => {
+  const final: Match = { match_id: '3869685', sport: 'football', title: "Argentina v France, FIFA World Cup Final" }
+  const last = { ...moment(68, 1600, '125:58'), sport: 'football' as const, type: 'Full time', score: { home: 3, away: 3 }, detail: { shootout: { home: 4, away: 2 } } }
+  const html = render({ match: final, replay: { ...replay, moments: [last], lines: [], ended: true, now: 1670 }, onNext: noop })
+  assert.match(html, /<p class="cap-text">Full time · ARG 3–3 FRA · pens 4–2<\/p>/)
+})
+
 test('at full time the picture offers Watch again and Next match; not before the picture gets there (#153)', () => {
   const over = { ...replay, ended: true, now: 1670 }
   const html = render({ replay: over, onNext: noop })
