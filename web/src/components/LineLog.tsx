@@ -13,6 +13,8 @@ interface Props {
   moments: Moment[]
   onFix: (line: Line) => void
   answers: Answer[] // newest first
+  interrupted?: string[] // answers a decisive moment cut off: marked, with "Hear it again"
+  onHear?: (answer: Answer) => void
   onAsk: ((question: string) => Promise<void>) | null // null until a moment is on screen
   shooter: string | null // the latest shooter on screen, in a sport with a shot map (#120)
   onShots: (name: string) => void
@@ -32,7 +34,7 @@ function count(lines: Line[]): string {
   return [called && `${called} called`, earlier && `${earlier} earlier`].filter(Boolean).join(' · ')
 }
 
-export function LineLog({ lines, late, fixes, moments, onFix, answers, onAsk, shooter, onShots, followed, roster, onUnfollow, voiced }: Props) {
+export function LineLog({ lines, late, fixes, moments, onFix, answers, interrupted = [], onHear, onAsk, shooter, onShots, followed, roster, onUnfollow, voiced }: Props) {
   const said = (l: Line) => fixes[l.line_id]?.corrected_text ?? l.text
   const theirs = followed ? lines.filter((l) => names(said(l), followed, roster)).length : 0
   return (
@@ -64,6 +66,12 @@ export function LineLog({ lines, late, fixes, moments, onFix, answers, onAsk, sh
                     <div className="q">{a.question}{at && <span className="at"> · {at}</span>}</div>
                     <span>{a.text}</span>
                   </div>
+                  {interrupted.includes(a.line_id) && (
+                    <>
+                      {onHear && <button className="btn sm" onClick={() => onHear(a)}>Hear it again</button>}
+                      <div className="meta-l"><span className="pill late">Interrupted</span></div>
+                    </>
+                  )}
                 </li>
               )
             }

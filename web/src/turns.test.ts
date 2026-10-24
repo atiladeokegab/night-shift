@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { airAnswer, bigSoon, Floor, HOLD_MAX_MS, isBig, loudness, voiceOf, type Caption, type Turn } from './turns.ts'
+import { airAnswer, bigSoon, Floor, HOLD_MAX_MS, isBig, isDecisive, loudness, voiceOf, type Caption, type Turn } from './turns.ts'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 type Said = Turn & { id: string }
@@ -141,4 +141,28 @@ test('the commentary plays at the chosen volume, kept between 0 and 1, and muted
   assert.equal(loudness(-1, false), 0)
   assert.equal(loudness(Number.NaN, false), 0)
   assert.equal(loudness(0.8, true), 0)
+})
+
+test('a decisive moment stops the answer on air and is said first', () => {
+  const floor = new Floor<Said>()
+  const cut: string[] = []
+  floor.onCut = (a) => cut.push(a.id)
+  const answer: Said = { id: 'answer', speaker: 'analyst', answer: true }
+  assert.equal(floor.take(answer, 0), true)
+  assert.equal(floor.take(lead('basket', true), 500), false) // a big moment that decides nothing still waits
+  const goal: Said = { id: 'goal', speaker: 'lead', big: true, decisive: true }
+  assert.equal(floor.take(goal, 1000), true) // said at once
+  assert.deepEqual(cut, ['answer']) // the answer is stopped
+  assert.equal(floor.ended(answer, 1100), null) // and its end hands the floor to nothing
+  assert.equal(floor.take(analyst('stat'), 1200), false) // the goal holds the floor
+  assert.equal(floor.ended(goal, 3000)?.id, 'stat')
+  assert.deepEqual(cut, ['answer'])
+})
+
+test('a goal, a wicket, a lead change and the final whistle are decisive; a basket or a six is not', () => {
+  assert.equal(isDecisive({ type: 'Shot', outcome: 'Goal' }), true)
+  assert.equal(isDecisive({ type: 'Own Goal Against', outcome: 'Own goal' }), true)
+  for (const type of ['Wicket', 'Lead change', 'Full time', 'End of game']) assert.equal(isDecisive({ type, outcome: '' }), true, type)
+  for (const type of ['Field goal', 'Six', 'Overtake', 'Shot']) assert.equal(isDecisive({ type, outcome: 'Saved' }), false, type)
+  assert.equal(isDecisive(undefined), false)
 })

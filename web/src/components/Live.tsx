@@ -3,7 +3,7 @@ import { answeredAt, isStale } from '../ask'
 import { clockText, momentTag } from '../moment'
 import { embeds, posterUrl, setPlaying, showNoVideoCaption, shownCaption, watchUrl, type Transport } from '../player'
 import type { Caption as CaptionData } from '../turns'
-import { SPORT_NAMES, type Line, type Match, type Sport } from '../types'
+import { SPORT_NAMES, type Answer, type Line, type Match, type Sport } from '../types'
 import { onScreen, type Clock, type ReplayState } from '../useReplay'
 import type { Player, Profile } from '../follow'
 import { latestShooter, MAPPED, pickedFor, type Picked, type Shots } from '../shots'
@@ -36,6 +36,8 @@ interface Props {
   onVoiceSheet: () => void
   onFix: (line: Line) => void
   onAsk: (question: string, momentIdx: number) => Promise<void>
+  interrupted?: string[] // answers a decisive moment cut off
+  onHear?: (answer: Answer) => void
   onShots: (name: string, momentIdx: number) => Promise<Shots | null>
   onPlayers: (at: number) => Promise<Player[]> // #140: everyone in the match so far
   onProfile: (name: string, momentIdx: number) => Promise<Profile | null>
@@ -259,7 +261,7 @@ export function Live(props: Props) {
           </div>
           <div className="pane lines-pane" role="tabpanel" id="pane-lines" aria-labelledby="tab-lines" data-on={tab === 'lines'}>
             <LineLog lines={shown.lines} late={replay.late} fixes={replay.fixes} moments={shown.moments} onFix={onFix}
-              answers={replay.answers} onAsk={moment ? (q) => onAsk(q, moment.idx) : null} shooter={null} onShots={openMap} followed={followed} roster={roster} onUnfollow={() => setFollow(null)} voiced={voiced} />
+              answers={replay.answers} interrupted={props.interrupted} onHear={props.onHear} onAsk={moment ? (q) => onAsk(q, moment.idx) : null} shooter={null} onShots={openMap} followed={followed} roster={roster} onUnfollow={() => setFollow(null)} voiced={voiced} />
           </div>
           <div className="pane" role="tabpanel" id="pane-proof" aria-labelledby="tab-proof" data-on={tab === 'proof'}>
             <ProofPanel live={replay.stats} matchId={match.match_id} />
