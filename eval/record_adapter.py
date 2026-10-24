@@ -3,8 +3,13 @@ panel show it. Writes to the store the server uses: STORE_DIR locally, or MODE=c
 
     uv run python -m eval.record_adapter --status ready --kept 31 --agree 23 --total 25
     uv run python -m eval.record_adapter --task where_are_we --status ready --kept 0 \
-        --version 1 --score 55.8 --target 95 --failed
+        --version 1 --version-id <as the console shows it> --score 55.8 --target 95 --failed
 
+    uv run python -m eval.record_adapter --task score_check --status ready --version 2 \
+        --version-id <as the console shows it> --score 96.1 --target 95 --passed \
+        --source "Mubit console, Adapters > History"
+
+A verdict (--passed or --failed) needs the --version and --version-id it is about.
 --task defaults to commentary. Each task keeps its own records; /stats shows each task's latest.
 
 On a deployed service, copy the service's adapter records down, append, and copy them back
@@ -24,8 +29,9 @@ from datetime import UTC, datetime
 
 from core.store import open_store
 
-# the Mubit tasks: the lead's commentary (prompt.md), "Where are we?" (#194), the Line check (#209)
-TASKS = ["commentary", "where_are_we", "line_check"]
+# the Mubit tasks: the lead's commentary (prompt.md), "Where are we?" (#194), the Line check (#209),
+# Score check (#321)
+TASKS = ["commentary", "where_are_we", "line_check", "score_check"]
 
 
 def main(argv=None, env=os.environ) -> dict:
@@ -36,6 +42,10 @@ def main(argv=None, env=os.environ) -> dict:
     p.add_argument("--agree", type=int, help="moments where the adapter agreed with the big model")
     p.add_argument("--total", type=int, help="held-out moments compared")
     p.add_argument("--version", type=int, help="the adapter version Mubit's console shows")
+    p.add_argument("--version-id", help="the version's ID exactly as Mubit's console shows it")
+    p.add_argument(
+        "--source", default="Mubit console", help="where it was read, e.g. 'Mubit console, History'"
+    )
     p.add_argument("--score", type=float, help="matched N%% of the provider model's answers")
     p.add_argument("--target", type=float, help="the console's target for --score, e.g. 95")
     gate = p.add_mutually_exclusive_group()
@@ -48,10 +58,10 @@ def main(argv=None, env=os.environ) -> dict:
         p.error("--kept can't be negative")
     if a.total is not None and not 0 <= a.agree <= a.total:
         p.error("need 0 <= --agree <= --total")
+    if a.passed is not None and (a.version is None or not a.version_id):
+        p.error("--passed and --failed need the --version and --version-id they are about")
     if a.version is not None and a.version < 1:
         p.error("--version starts at 1")
-    if a.passed and a.version is None:
-        p.error("--passed needs the --version the console shows as passed")
     if a.score is not None and not 0 <= a.score <= 100:
         p.error("need 0 <= --score <= 100")
     if a.target is not None and not 0 <= a.target <= 100:
@@ -63,9 +73,11 @@ def main(argv=None, env=os.environ) -> dict:
         "agree": a.agree,
         "total": a.total,
         "version": a.version,
+        "version_id": a.version_id,
         "score": a.score,
         "target": a.target,
         "passed": a.passed,
+        "source": a.source,
         "created_at": datetime.now(UTC).isoformat(),
     }
     open_store(env).append("adapter", record)

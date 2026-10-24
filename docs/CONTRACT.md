@@ -221,7 +221,7 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   latency_ms_p50, latency_ms_p95, tokens_in, tokens_out, cost_per_line_usd, adapter, by_speaker,
   fixes_recorded, fixes_toward_next, voice_chars, matches_measured, cost_per_match_usd,
   model_cost_per_match_usd, voice_cost_per_match_usd, fixes_auto_sent, spoken_from_fix, autonomy,
-  autonomy_by_match, linecheck, budget}` (core). The `stats` SSE event carries the same object, without `budget`.
+  autonomy_by_match, linecheck, scorecheck, budget}` (core). The `stats` SSE event carries the same object, without `budget`.
   - `budget: {daily_budget_usd, spent_today_usd, off_air}` (#244): the cap (null when off), the
     model and voice spend of lines, answers and Line checks created today (UTC), and whether it
     is past the cap.
@@ -250,6 +250,11 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
     neither the result nor the note below. The Proof card's Checker model row says it in counts, e.g. "held-out: caught 3 of 5 wrong lines (rules: 1 of 5),
     3 false alarms", never as a percentage. A flag only sends a line to the fix queue; it never
     unsays it.
+  - `scorecheck: {seeded, from_fixes, from_fixes_by_kind, held_out: {[what]: {agree, scored,
+    unparsed, recorded_at}}}` (#321): Score check (agent/scorecheck.py) examples sent to Mubit
+    (`scorecheck_examples` rows), by `eval/seed_scorecheck.py --go` or by a producer's fix (the
+    same reasons as Line check, once per line), and each model's latest score on the frozen
+    held-out lines (`scorecheck_evals`, written by `--score FILE --record WHAT`).
   - `by_speaker: {lead, analyst}`, each `{model, served_by, lines, first_word_ms_p50,
     first_word_ms_p95, cost_per_line_usd}`: the lead's calls and the analyst's stat lines apart (a
     line with no `speaker` is the lead's). `served_by` (#250): the lines' `served_by` values,
@@ -308,15 +313,21 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
     `console` (#317) is `data/mubit_console.json`, Mubit's console overview read by hand at
     `read_at`: `{source, read_at, how, tasks, adapters, serving, target, listed: {[name]: {status,
     examples, quality}}}` (keyed by name: the `stats` event carries no brackets), or `null` without the file. It is a dated reading, never live data, and
-    changes only when someone reads the console again and commits it. The Proof card's Adapter row
+    changes only when someone reads the console again and commits it. The Proof card's Score check block
     shows it as "Mubit console, 24 Oct 19:15 UTC: 8 tasks, 7 adapters, 0 serving; best 58.3% of a
     95% target".
-  - `adapters: {[task]: {state, version: int|null, score: number|null, target: number|null,
-    passed: bool|null, kept: int|null, recorded_at}}`: each Mubit task's latest `adapter` record
-    (#209), keyed `commentary`, `where_are_we` or `line_check`; a task with no record is absent.
+  - `adapters: {[task]: {state, version: int|null, version_id: str|null, score: number|null,
+    target: number|null, passed: bool|null, kept: int|null, recorded_at, source: str|null,
+    versions: [{version, version_id, score, target, passed, recorded_at, source}]}}`: each Mubit
+    task's latest `adapter` record (#209), keyed `commentary`, `where_are_we`, `line_check` or
+    `score_check`; a task with no record is absent. `versions` (#321) is every version the task's
+    records name, oldest first, each as its latest record says it.
     `score` is the console's "matched N% of the provider model's answers", `target` its target (e.g.
-    95) and `passed` its gate; `kept` is the console's kept examples, never requests. Each field is only what
+    95) and `passed` its gate, null unless a version is recorded (the recorder refuses a verdict
+    without `--version` and `--version-id`); `kept` is the console's kept examples, never requests. Each field is only what
     `python -m eval.record_adapter --task ...` recorded from the console; null where it didn't say.
+    Score check is the one task trained on Mubit: the Proof card shows only its row, examples and
+    held-out scores (#321).
 
 ## Agent
 

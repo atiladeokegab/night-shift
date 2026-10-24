@@ -46,7 +46,8 @@ def _by_task(store) -> dict[str, dict]:
 
 def _state(r: dict) -> tuple[str, str]:
     """What the latest record says, and only that: "passed" only when Mubit's gate was recorded as
-    passed, "testing" once a version, score or failed gate is recorded, else "collecting"."""
+    passed for a recorded version, "testing" once a version, score or failed gate is recorded,
+    else "collecting"."""
     try:
         when = datetime.fromisoformat(r["created_at"]).astimezone(UTC)
         as_of = f", as of {when:%-d %b %Y %H:%M} UTC"
@@ -81,19 +82,53 @@ def _adapter(latest: dict) -> dict:
     }
 
 
-def _adapters(by_task: dict[str, dict]) -> dict:
+def _versions(records: list[dict], task: str) -> list[dict]:
+    """Each version the task's records name, oldest first, as its latest record says it (#321)."""
+    by = {}
+    for r in records:
+        if r.get("task", "commentary") == task and r.get("version") is not None:
+            by[r["version"]] = {
+                k: r.get(k) for k in ("version", "version_id", "score", "target", "passed")
+            } | {"recorded_at": r.get("created_at"), "source": r.get("source")}
+    return [by[v] for v in sorted(by)]
+
+
+def _adapters(by_task: dict[str, dict], records: list[dict]) -> dict:
     # only what a record says: a field the console reading left out stays None, never inferred
     return {
         task: {
             "state": _state(r)[0],
             "version": r.get("version"),
+            "version_id": r.get("version_id"),
             "score": r.get("score"),
             "target": r.get("target"),
-            "passed": r.get("passed"),
+            # a verdict with no version says nothing about any adapter (#321 review)
+            "passed": r.get("passed") if r.get("version") is not None else None,
             "kept": r.get("kept"),
             "recorded_at": r.get("created_at"),
+            "source": r.get("source"),
+            "versions": _versions(records, task),
         }
         for task, r in by_task.items()
+    }
+
+
+def _scorecheck(store) -> dict:
+    """Score check (#321): the examples sent to Mubit, seeded or from a producer's fix, and each
+    model's latest score on the frozen held-out lines (eval/seed_scorecheck.py --score --record)."""
+    sent = store.all("scorecheck_examples")
+    fixes = [r for r in sent if r.get("source") == "fix"]
+    held = {e["what"]: e for e in store.all("scorecheck_evals")}
+    return {
+        "seeded": sum(r.get("source") == "seed" for r in sent),
+        "from_fixes": len(fixes),
+        "from_fixes_by_kind": dict(Counter(r["kind"] for r in fixes)),
+        # keyed by model: an SSE event's JSON carries no "[" (tests/test_core_voice.py)
+        "held_out": {
+            what: {k: e.get(k) for k in ("agree", "scored", "unparsed")}
+            | {"recorded_at": e.get("created_at")}
+            for what, e in held.items()
+        },
     }
 
 
@@ -218,7 +253,7 @@ def stats(store) -> dict:
         "tokens_out": sum(ln.get("tokens_out", 0) for ln in lines),
         "cost_per_line_usd": sum(costs) / len(costs) if costs else None,
         "adapter": _adapter(commentary),  # the commentary task's, as before per-task records
-        "adapters": _adapters(adapters),
+        "adapters": _adapters(adapters, store.all("adapter")),
         "by_speaker": {"lead": _speaker(lead) | _heard(lead, voice), "analyst": _speaker(analyst)},
         "fixes_recorded": len(recorded),
         # recorded since commentary's latest adapter record: the corrections toward the next one
@@ -234,5 +269,6 @@ def stats(store) -> dict:
         "autonomy": _autonomy(calls),
         "autonomy_by_match": {m: _autonomy(c) for m, c in by_match.items()},
         "linecheck": _linecheck(store),
+        "scorecheck": _scorecheck(store),
         **_per_match(store, lines, voice),
     }

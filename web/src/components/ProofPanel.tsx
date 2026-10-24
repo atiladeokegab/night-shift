@@ -1,8 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { getReview, getStats } from '../api'
-import type { Adapter, Autonomy, SpeakerStats, Stats } from '../types'
+import type { Autonomy, SpeakerStats, Stats } from '../types'
 import { SideBySide } from './SideBySide'
-import { adapterGood, adapterRows, autonomyRows, consoleRow, FLAG_NOTE, heldoutRow, linecheckRow, TRAINING_LABEL, voiceRow } from '../proof'
+import { adapterRows, autonomyRows, consoleRow, FLAG_NOTE, heldoutRow, linecheckRow, TRAINING_LABEL, voiceRow } from '../proof'
 
 interface Props {
   live: Stats | null // the latest `stats` event from the replay, newer than the first GET /stats
@@ -33,7 +33,7 @@ export function ProofPanel({ live, matchId, fellBack = false }: Props) {
   else {
     const empty = stats.lines === 0
     const adapter = stats.adapter
-    const tasks = adapterRows(stats.adapters)
+    const tasks = adapterRows(stats.adapters, stats.scorecheck)
     const voice = voiceRow(live?.voice ?? fetched?.voice, fellBack)
     const heldout = heldoutRow(stats.linecheck?.heldout)
     const mubit = consoleRow(adapter?.console)
@@ -78,20 +78,13 @@ export function ProofPanel({ live, matchId, fellBack = false }: Props) {
               {heldout && <dd className="small">{FLAG_NOTE}</dd>}
             </div>
           )}
-          {stats.fixes_toward_next !== undefined && (
-            <Figure className="two" label="Since adapter record" value={String(stats.fixes_toward_next)} />
-          )}
-          <div className="wide">
-            <dt className="label">Adapter</dt>
-            <dd className={adapterGood(stats) ? 'good' : undefined}>{adapterText(adapter)}</dd>
-            {/* the console's own counts, read by hand on a stated day (#317): never live */}
-            {mubit && <dd className="small">{mubit}</dd>}
-          </div>
-          {/* each Mubit task's latest version, as recorded from Mubit's console (#209) */}
+          {/* the one task trained on Mubit (#321): its version as recorded from the console, its examples, held-out scores */}
           {!!tasks.length && (
             <div className="wide">
-              <dt className="label">Mubit tasks</dt>
+              <dt className="label">Mubit: Score check</dt>
               {tasks.map((row) => <dd key={row}>{row}</dd>)}
+              {/* the console's own counts, read by hand on a stated day (#317): never live */}
+              {mubit && <dd className="small">{mubit}</dd>}
             </div>
           )}
         </dl>
@@ -183,11 +176,6 @@ function Figure({ label, value, className }: { label: ReactNode; value: string; 
       <dd className="num">{value}</dd>
     </div>
   )
-}
-
-// The adapter as its latest record says it, in core's words; "–" until core reports the adapter.
-function adapterText(adapter?: Adapter | null): string {
-  return adapter?.summary ?? '–'
 }
 
 function seconds(ms: number | null): string {

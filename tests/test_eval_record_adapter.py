@@ -52,6 +52,8 @@ def test_each_task_keeps_its_own_latest_record_and_adapter_stays_commentary(tmp_
             "ready",
             "--version",
             "1",
+            "--version-id",
+            "lc_1",
             "--score",
             "82",
             "--passed",
@@ -59,20 +61,22 @@ def test_each_task_keeps_its_own_latest_record_and_adapter_stays_commentary(tmp_
         env,
     )
     main(
-        ["--task", "where_are_we", "--status", "ready", "--version", "2", "--score", "55.8"]
-        + ["--target", "95", "--failed", "--kept", "0"],
+        ["--task", "where_are_we", "--status", "ready", "--version", "2", "--version-id", "w_2"]
+        + ["--score", "55.8", "--target", "95", "--failed", "--kept", "0"],
         env,
     )
     s = stats(store)
     line_check = s["adapters"]["line_check"]
     assert line_check["recorded_at"] == store.all("adapter")[-2]["created_at"]
-    assert {k: v for k, v in line_check.items() if k != "recorded_at"} == {
+    assert {k: v for k, v in line_check.items() if k not in ("recorded_at", "versions")} == {
         "state": "passed",  # Mubit's gate was recorded as passed
         "version": 1,
+        "version_id": "lc_1",
         "score": 82.0,
         "target": None,
         "passed": True,
         "kept": None,  # the latest record didn't say: not carried over from the one before
+        "source": "Mubit console",
     }
     where = s["adapters"]["where_are_we"]
     assert (where["version"], where["score"], where["target"], where["passed"]) == (
@@ -103,11 +107,41 @@ def test_a_task_with_no_record_is_absent_not_guessed(tmp_path):
         ["--status", "ready", "--score", "101"],
         ["--status", "ready", "--score", "-1"],
         ["--status", "ready", "--passed", "--failed"],
-        ["--status", "ready", "--passed"],  # a pass names its version
         ["--status", "ready", "--target", "101"],
+        # a verdict names its version, by number and console ID (#321 review)
+        ["--task", "score_check", "--status", "ready", "--passed"],
+        ["--task", "score_check", "--status", "ready", "--version", "1", "--passed"],
+        ["--task", "score_check", "--status", "ready", "--version-id", "ad_1", "--failed"],
+        ["--task", "score_check", "--status", "ready", "--version", "1", "--version-id", ""]
+        + ["--passed"],
     ],
 )
 def test_bad_task_results_are_refused_and_nothing_is_written(tmp_path, args):
     with pytest.raises(SystemExit):
         main(args, {"STORE_DIR": str(tmp_path)})
     assert Store(tmp_path).all("adapter") == []
+
+
+def test_each_version_stays_on_record_with_its_id_and_source(tmp_path):
+    """v1 then v2 of Score check (#321): both shown, each as its latest record says it."""
+    env = {"STORE_DIR": str(tmp_path)}
+    v1 = ["--task", "score_check", "--status", "ready", "--version", "1", "--version-id", "ad_1"]
+    main([*v1, "--score", "88", "--target", "95", "--failed"], env)
+    main([*v1, "--score", "88.5", "--target", "95", "--failed"], env)  # a re-read replaces it
+    main(
+        ["--task", "score_check", "--status", "ready", "--version", "2", "--version-id", "ad_2"]
+        + ["--score", "96", "--target", "95", "--passed", "--source", "Mubit console, History"],
+        env,
+    )
+    sc = stats(Store(tmp_path))["adapters"]["score_check"]
+    assert (sc["version"], sc["version_id"], sc["source"]) == (2, "ad_2", "Mubit console, History")
+    v = [(x["version"], x["version_id"], x["score"], x["passed"]) for x in sc["versions"]]
+    assert v == [(1, "ad_1", 88.5, False), (2, "ad_2", 96.0, True)]
+
+
+def test_a_pass_with_no_version_is_never_shown_as_passed(tmp_path):
+    """A record from before the recorder's check (#321 review): no version, so no pass to show."""
+    store = Store(tmp_path)
+    store.append("adapter", {"task": "score_check", "status": "ready", "passed": True})
+    sc = stats(store)["adapters"]["score_check"]
+    assert (sc["state"], sc["passed"], sc["versions"]) == ("collecting", None, [])
