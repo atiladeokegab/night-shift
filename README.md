@@ -50,11 +50,11 @@ Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026. Track: Own
 | [The six matches](#the-six-matches) | Live | [`GET /matches`](https://night-shift-5zvig7nbvq-ew.a.run.app/matches), [`agent/feed.py`](agent/feed.py) |
 | [Two commentators: lead and analyst](#two-commentators-lead-and-analyst) | Live; analyst lines saying the stat itself in progress (#142) | [`core/insight.py`](core/insight.py), [`core/replay.py`](core/replay.py) |
 | [Ask, by typing](#ask-by-typing-or-by-voice) | Live | [`POST /replays/{id}/ask`](core/app.py), [`agent/ask.md`](agent/ask.md) |
-| [Ask, by voice](#ask-by-typing-or-by-voice) | Merged (#145); live with the next deploy | [`web/src/voice.ts`](web/src/voice.ts), [`web/src/components/MicButton.tsx`](web/src/components/MicButton.tsx), [`web/src/voice.test.ts`](web/src/voice.test.ts) |
+| [Ask, by voice](#ask-by-typing-or-by-voice) | Live (#145) | [`web/src/voice.ts`](web/src/voice.ts), [`web/src/components/MicButton.tsx`](web/src/components/MicButton.tsx), [`web/src/voice.test.ts`](web/src/voice.test.ts) |
 | [Follow a player: shot map](#follow-a-player) | Live | [`GET /replays/{id}/players/{name}/shots`](core/app.py), [`web/src/components/ShotMap.tsx`](web/src/components/ShotMap.tsx) |
 | [Follow a player: picker and profile card](#follow-a-player) | In progress (#140) | |
 | [Producer fixes](#producer-fixes) | Live | [`POST /lines/{id}/fix`](core/app.py), [`tests/test_core_fix.py`](tests/test_core_fix.py) |
-| [Big model vs ours](#big-model-vs-ours) | Recorded and merged (#144, #147); the panel isn't on the live page yet | [`data/side_by_side.json`](data/side_by_side.json), [`eval/side_by_side.py`](eval/side_by_side.py) |
+| [Big model vs ours](#big-model-vs-ours) | Recorded and merged (#144, #147); the panel isn't on any page until its hook-up lands after #146 | [`data/side_by_side.json`](data/side_by_side.json), [`eval/side_by_side.py`](eval/side_by_side.py) |
 | [The Proof panel](#the-proof-panel) | Live | [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats), [`core/stats.py`](core/stats.py) |
 | Live screen layout: the video in a card, Lines and Proof beside it, playback controls | In progress (#132) | |
 
@@ -99,7 +99,7 @@ and answer take over the caption, and nothing cuts the answer off ([`core/app.py
 [`web/src/turns.ts`](web/src/turns.ts), [`tests/test_core_ask.py`](tests/test_core_ask.py)). Answers
 go through Mubit unrecorded: they have their own prompt.
 
-**By voice (merged in #145, live with the next deploy):** hold the mic button, or the space bar, and
+**By voice (#145):** hold the mic button, or the space bar, and
 speak; the browser's own speech recognition fills the box and sends it. The answer is held until the
 current line ends and no big moment is due, then spoken
 ([`web/src/voice.ts`](web/src/voice.ts), [`web/src/turns.ts`](web/src/turns.ts), [`web/src/turns.test.ts`](web/src/turns.test.ts)).
@@ -134,8 +134,8 @@ training), recorded through Mubit with recording off, with each line's latency a
 those lines stand as the baseline ours must match, and the panel says why there is no line of ours:
 Mubit serves an adapter only once a version passes, and only in its console's Try models, never to
 the app by API. The panel that shows it
-([`web/src/components/SideBySide.tsx`](web/src/components/SideBySide.tsx)) is merged but not yet on
-the live page.
+([`web/src/components/SideBySide.tsx`](web/src/components/SideBySide.tsx)) is merged but isn't shown on
+any page until its hook-up lands after #146.
 
 #### The Proof panel
 
@@ -176,11 +176,11 @@ Read from the live service's [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.
 
 | | Big model (`claude-haiku-4-5` via Mubit) | Our trained commentator (Mubit adapter) |
 |---|---|---|
-| Lines called | 4,268 (4,383 Mubit calls, counted by their request ids) | none: not callable by the app |
+| Lines called | live count in `lines` at [`/stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats); each line's Mubit calls are counted by their request ids (`mubit_requests`) | none: not callable by the app |
 | First word of the model's text, p50 / p95 | 532 ms / 745 ms | not measured |
 | Full line, p50 / p95 | 876 ms / 1,109 ms | not measured |
 | Cost per line | $0.0018 | not reported by Mubit |
-| Tokens per line, in / out | about 1,649 / 29 (7,037,032 / 123,321 over 4,268 lines) | not measured |
+| Tokens per line, in / out | about 1,649 / 29 | not measured |
 | Producer fixes | 0 so far; the first is made in the demo | |
 
 "First word" is from the moment to the first word of the model's text reply, not the audio:
