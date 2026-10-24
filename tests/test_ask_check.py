@@ -169,6 +169,10 @@ HE_WRONG = [
     ("", "Messi was brilliant. He hasn't scored yet, though.", "Lionel Messi has scored 1 so far"),
     ("Has Mbappé scored?", "He is yet to score.", "Kylian Mbappé has scored 2 so far"),
     (ASKED, "He's still yet to score!", "Lionel Messi has scored 1 so far"),
+    # any case, and the claim is the real player's (Prometheus on #264)
+    ("how did messi score?", "He has not scored yet.", "Lionel Messi has scored 1 so far"),
+    ("HOW DID KYLIAN MBAPPÉ SCORE?", "He hasn't scored yet.", "Kylian Mbappé has scored 2 so far"),
+    ("", "No goal for ángel di maría yet.", "Ángel Di María has scored 1 so far"),
 ]
 HE_RIGHT = [
     (ASKED, "Lautaro Martínez went close. He hasn't scored yet."),  # the answer's name wins
@@ -177,6 +181,7 @@ HE_RIGHT = [
     (ASKED, "Then he hasn't scored in extra time."),
     ("Has Montiel scored?", "He hasn't scored yet."),
     ("Where are we?", "He hasn't scored yet."),  # no one named: no one to check
+    ("Messi scored; has lautaro martínez scored?", "He hasn't scored yet."),
 ]
 
 

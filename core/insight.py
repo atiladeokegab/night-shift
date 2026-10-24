@@ -1136,7 +1136,7 @@ def wrong_claims(text: str, past: list[dict], question: str = "") -> list[str]:
         return sorted(
             (hit.start(), name)
             for name in names
-            for hit in re.finditer(rf"\b{re.escape(said[name])}\b", words)
+            for hit in re.finditer(rf"\b{re.escape(said[name])}\b", words, re.I)  # "messi"
         )
 
     everyone, asked, offset = named_in(text), named_in(question), 0
@@ -1150,7 +1150,11 @@ def wrong_claims(text: str, past: list[dict], question: str = "") -> list[str]:
             after = re.match(r"\s+(?:yet\s+)?for\s+", clause[hit.end() :])
             rest = clause[hit.end() + after.end() :] if after else ""
             for_whom = next(
-                (n for n in names if re.match(rf"(?:{re.escape(n)}|{re.escape(said[n])})\b", rest)),
+                (
+                    n
+                    for n in names
+                    if re.match(rf"(?:{re.escape(n)}|{re.escape(said[n])})\b", rest, re.I)
+                ),
                 None,
             )
             # "He hasn't scored": the player named last in the answer, else in the question
