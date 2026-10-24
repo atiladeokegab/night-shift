@@ -86,7 +86,9 @@ def test_voices_lists_one_default_per_sport(tmp_path):
     with client_for(tmp_path, upstream()) as client:
         voices = client.get("/voices").json()
     assert {v["default_for"] for v in voices} >= {"cricket", "football"}
-    assert all(set(v) == {"id", "label", "default_for", "lang"} for v in voices)  # no same_as
+    assert all(set(v) <= {"id", "label", "default_for", "lang", "analyst_for"} for v in voices)
+    analysts = {s: v["id"] for v in voices for s in v.get("analyst_for", [])}  # ANALYST_FOR
+    assert analysts == {"cricket": "george", "football": "sam", "basketball": "george", "f1": "sam"}
     lang = {v["default_for"]: v["lang"] for v in voices}
     assert lang["cricket"] == "en-IN" and lang["football"] == "en-GB"
     assert lang["basketball"] == "en-US"  # Sam, the American play-by-play pick

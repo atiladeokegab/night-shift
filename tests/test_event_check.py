@@ -81,6 +81,12 @@ def test_other_sports_are_not_checked():
     assert insight.wrong_event("Kobe makes it 120-102!", kobe) == []
 
 
+def test_the_leads_reply_over_a_stat_recalls_a_goal_and_passes():
+    stat = insight.stat_moment(moment(FINAL, 9), {"heard": "Two goals in 36 minutes."}, reply=True)
+    assert stat["type"] == "Stat"
+    assert insight.wrong_event("Di María makes it two!", stat) == []
+
+
 def test_a_wrong_event_is_said_again_once_then_built_from_the_moment():
     m, past = moment(FINAL, 63), load_moments(FINAL)[:63]
     said = iter([HEARD[3][1], HEARD[3][2]])

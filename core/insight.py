@@ -689,7 +689,7 @@ ENDED = re.compile(
 
 def wrong_event(text: str, m: dict) -> list[str]:
     """What a football line says happened that the moment's type and outcome deny; [] if nothing."""
-    if m.get("sport") != "football":
+    if m.get("sport") != "football" or m.get("type") == "Stat":  # a reply over a stat recalls play
         return []
     d, s = m.get("detail") or {}, m.get("score") or {}
     goal = m.get("type") == "Shot" and m.get("outcome") == "Goal"

@@ -257,6 +257,8 @@ export default function App() {
   const sports = SPORTS.filter((s) => matches?.some((m) => m.sport === s))
   const voiceUsable = speech.available || voices.some((v) => !v.browser)
   const voiceStatus: VoiceStatus = !voiceUsable ? 'unavailable' : speech.on ? 'on' : 'off'
+  // Who reads the analyst's lines: the server's voice for the sport, or the browser's own speech.
+  const analyst = voice?.browser ? chipName(voice) : chipName(voices.find((v) => sport && v.analyst_for?.includes(sport)) ?? null)
 
   return (
     <>
@@ -268,7 +270,7 @@ export default function App() {
           replayKey={current.key}
           switching={current.switching}
           sports={sports}
-          voice={{ status: voiceStatus, chip: chipName(voice), speaking: speech.speaking }}
+          voice={{ status: voiceStatus, chip: chipName(voice), speaking: speech.speaking, analyst }}
           video={video}
           onVideo={onVideo}
           onClock={replay.setClock}
