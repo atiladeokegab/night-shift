@@ -130,3 +130,35 @@ def test_wrong_twice_at_105_41_says_the_data_and_never_publishes_the_wrong_line(
     assert reply["text"].startswith("Extra time, 105 minutes played.")
     assert "Lionel Messi after 22 minutes" in reply["text"]
     assert [a["text"] for a in store.all("answers")] == [reply["text"]]
+
+
+# "he" in an Ask answer is the player named last in the answer, else in the question
+HE_WRONG = [
+    (ASKED, "He hasn't scored yet.", "Lionel Messi has scored 1 so far"),
+    ("", "Messi was brilliant. He hasn't scored yet, though.", "Lionel Messi has scored 1 so far"),
+    ("Has Mbappé scored?", "He is yet to score.", "Kylian Mbappé has scored 2 so far"),
+    (ASKED, "He's still yet to score!", "Lionel Messi has scored 1 so far"),
+]
+HE_RIGHT = [
+    (ASKED, "Lautaro Martínez went close. He hasn't scored yet."),  # the answer's name wins
+    (ASKED, "He hasn't scored since his penalty."),
+    (ASKED, "He hasn't scored again."),
+    (ASKED, "Then he hasn't scored in extra time."),
+    ("Has Montiel scored?", "He hasn't scored yet."),
+    ("Where are we?", "He hasn't scored yet."),  # no one named: no one to check
+]
+
+
+def test_he_hasnt_scored_is_the_player_named_last_in_the_answer_or_question():
+    past, _ = past_at_105_41()
+    for question, text, reason in HE_WRONG:
+        assert wrong_claims(text, past, question) == [reason], text
+    for question, text in HE_RIGHT:
+        assert wrong_claims(text, past, question) == [], text
+
+
+def test_a_he_answer_is_retried_with_the_question_s_player():
+    past, lines = past_at_105_41()
+    ask, asked = model("He hasn't scored yet.", RIGHT)
+    assert checked_answer(ask, ASKED, past, lines)["text"] == RIGHT
+    assert "Lionel Messi has scored 1 so far" in asked[1]
