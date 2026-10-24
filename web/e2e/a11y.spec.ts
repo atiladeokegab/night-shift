@@ -43,16 +43,25 @@ const smallTargets = (page: Page) => page.evaluate(() => {
   for (const el of document.querySelectorAll<HTMLElement>('button, a[href], input, select, textarea, [role=tab]')) {
     const r = el.getBoundingClientRect()
     if (!r.width || !r.height || el.closest('.sr-only, p, [aria-hidden=true]') || getComputedStyle(el).visibility === 'hidden') continue
-    const cx = r.left + r.width / 2, cy = r.top + r.height / 2
-    let where = ''
-    const miss = [0, 1, 2, 3, 4, 5, 6, 7].map((i) => (i * Math.PI) / 4).find((a) => {
-      const x = cx + Math.cos(a) * 21.5, y = cy + Math.sin(a) * 21.5
-      if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) return false // off screen: hit testing can't see it
-      const hit = document.elementFromPoint(x, y)
-      where = `at ${Math.round((a * 180) / Math.PI)}° hits ${hit ? `${hit.tagName.toLowerCase()}.${hit.className}` : 'nothing'}`
-      return !hit || !(el === hit || el.contains(hit) || (el.labels?.length && [...el.labels].some((l) => l.contains(hit))))
-    })
-    if (miss) out.push(`${el.tagName.toLowerCase()} "${el.getAttribute('aria-label') ?? el.textContent?.trim().slice(0, 30)}" ${Math.round(r.width)}x${Math.round(r.height)} ${where}`)
+    const mine = (hit: Element | null) => !!hit && (el === hit || el.contains(hit) || !!el.labels?.length && [...el.labels].some((l) => l.contains(hit)))
+    const circleMiss = (cx: number, cy: number) => {
+      for (let i = 0; i < 8; i++) {
+        const a = (i * Math.PI) / 4, x = cx + Math.cos(a) * 21.5, y = cy + Math.sin(a) * 21.5
+        if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) continue // off screen: hit testing can't see it
+        const hit = document.elementFromPoint(x, y)
+        if (!mine(hit)) return `at ${i * 45}° hits ${hit ? `${hit.tagName.toLowerCase()}.${hit.className}` : 'nothing'}`
+      }
+      return ''
+    }
+    // A hit area may reach further one way than the other: failing a circle on the box, try one on the region that takes the tap.
+    let miss = circleMiss(r.left + r.width / 2, r.top + r.height / 2)
+    if (miss) {
+      let [x0, y0, x1, y1] = [r.right, r.bottom, r.left, r.top]
+      for (let x = r.left - 30; x <= r.right + 30; x += 2) for (let y = r.top - 30; y <= r.bottom + 30; y += 2)
+        if (x >= 0 && y >= 0 && x <= innerWidth && y <= innerHeight && mine(document.elementFromPoint(x, y))) [x0, y0, x1, y1] = [Math.min(x0, x), Math.min(y0, y), Math.max(x1, x), Math.max(y1, y)]
+      if (x0 < x1 && !circleMiss((x0 + x1) / 2, (y0 + y1) / 2)) miss = ''
+    }
+    if (miss) out.push(`${el.tagName.toLowerCase()} "${el.getAttribute('aria-label') ?? el.textContent?.trim().slice(0, 30)}" ${Math.round(r.width)}x${Math.round(r.height)} ${miss}`)
   }
   return out
 })

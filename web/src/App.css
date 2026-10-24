@@ -506,6 +506,9 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   .seg button { height: 44px; }
   .controls { padding-block: 0; }
   .ctl { width: 44px; height: 44px; }
+  /* On the live page the links wrap 10 px under the wordmark: its hit area reaches up, theirs down, so they don't overlap. */
+  .live .wordmark::after { inset: -14px min(0px, calc(50% - 22px)) auto; height: 44px; }
+  .live .links button::after { inset: 0 min(0px, calc(50% - 22px)) auto; height: 44px; }
 }
 /* Review (#171): one card per stored line the number check flags */
 .review .lede { max-width: 720px; margin: -16px 0 24px; color: var(--muted); }
