@@ -22,7 +22,8 @@ class Says:
         content = self.contents.pop(0)
         if isinstance(content, str):
             content = [{"type": "text", "text": content}]
-        return {"content": content, "usage": {"input_tokens": 1, "output_tokens": 1}, "request_id": "r"}
+        usage = {"input_tokens": 1, "output_tokens": 1}
+        return {"content": content, "usage": usage, "request_id": "r"}
 
 
 def said_to(match_id: str, idx: int, *replies) -> dict:
@@ -38,8 +39,8 @@ def test_an_answer_drops_the_question_said_back():
 
 def test_a_first_person_decline_is_said_not_dropped():
     # #332: "I don't ..." went as preamble, leaving nothing, and the viewer heard off air
-    said = said_to("7457", 30, "I don't see Megan Rapinoe in this match. The Courage lead three-two.")
-    assert said["text"] == "I don't see Megan Rapinoe in this match. The Courage lead three-two."
+    decline = "I don't see Megan Rapinoe in this match. The Courage lead three-two."
+    assert said_to("7457", 30, decline)["text"] == decline
     later = said_to("3754092", 26, "I can't tell you what comes later, but Spurs lead two-one.")
     assert later["text"] == "I can't tell you what comes later, but Spurs lead two-one."
 
