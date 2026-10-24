@@ -115,10 +115,10 @@ test('a question waits in the caption header without its prefix; the line on scr
   assert.match(html, new RegExp(`<p class="cap-text">${EARLY}</p>`))
 })
 
-test('an answer shows under its question with the moment it was asked at, and the match is named', () => {
+test('an answer shows under its question with the time it was asked at, and the match is named', () => {
   const answered = { ...replay, answers: [{ line_id: 'a1', moment_idx: 3, question: 'Who scores next?', text: 'Kobe, on this form.' }] }
   const html = render({ replay: answered, caption: { kind: 'answer', text: 'Kobe, on this form.', speaker: 'analyst' } })
-  assert.match(html, /<span class="chip analyst">Analyst<\/span><span class="tag">06:12 · [^<]+<\/span><span class="cap-side cap-title">Kobe&#x27;s 81 v Toronto<\/span><\/div><p class="cap-asks">A viewer asks: Who scores next\?<\/p><p class="cap-text">Kobe, on this form\.<\/p>/)
+  assert.match(html, /<span class="chip analyst">Analyst<\/span><span class="tag">at 06:12<\/span><span class="cap-side cap-title">Kobe&#x27;s 81 v Toronto<\/span><\/div><p class="cap-asks">A viewer asks: Who scores next\?<\/p><p class="cap-text">Kobe, on this form\.<\/p>/)
 })
 
 test('an off-air answer is a calm state with the Analyst chip, never a headline (#153)', () => {
@@ -184,4 +184,16 @@ test('a replay the server turned away (#244) says why, and an Ask it turned away
   const answered = { ...replay, answers: [{ line_id: 'a1', moment_idx: 3, question: 'Who?', text: notice, off_air: true, notice }] }
   const html = render({ replay: answered, caption: { kind: 'answer', text: notice, speaker: 'analyst' } })
   assert.match(html, /<p class="cap-state">Commentator is off air for today<\/p>/)
+})
+
+test("an answer shows its own time, and dims on the caption and in the log once a later moment is on screen", () => {
+  const asked = { line_id: 'a1', moment_idx: 3, question: 'Where are we?', text: 'Sixty-three to sixty-nine, Raptors lead.' }
+  const caption = { kind: 'answer' as const, text: asked.text, speaker: 'analyst' as const }
+  const fresh = render({ replay: { ...replay, answers: [asked] }, caption })
+  assert.match(fresh, /at 06:12/)
+  assert.doesNotMatch(fresh, /stale/)
+  const later = render({ replay: { ...replay, now: 510, answers: [asked] }, caption }) // 05:40 is on screen now
+  assert.match(later, /class="caption glass stale"/)
+  assert.match(later, /class="qa stale"/)
+  assert.match(later, /Where are we\?<span class="at"> · at 06:12<\/span>/)
 })

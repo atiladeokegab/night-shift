@@ -1073,16 +1073,104 @@ def wrong_answer(answer: dict, question: str, past: list[dict], lines: list[dict
     return [f"{n:g} is not in the match so far" for n in numbers(answer["text"]) if n not in given]
 
 
+# "Messi hasn't scored yet" with his penalty in (#236). Not one with a time window, "hasn't scored
+# since the 81st minute", "no goal for Messi in extra time", nor "again", "from open play" or "was
+# not the only goal"; "in this final" is caught
+NOT_SCORED = re.compile(
+    r"\b(?:hasn't|has not|hadn't|had not|yet to|still to|not|never|no)\s+"
+    r"(?:(?!only\b)\w+\s+){0,2}?(?:scor\w*|goals?|netted|found the net)\b"
+    r"(?!\s+(?:again|from open play|(?:for\s+\w+(?:\s+\w+)?\s+)?(?:yet\s+)?(?:since"
+    r"|in\s+(?:the\s+)?(?:extra[- ]time|(?:first|second) half|(?:penalty )?shootout)))\b)",
+    re.I,
+)
+# a goal said to have happened: "his second", "Mbappé's brace", "completes a hat-trick"; never
+# "one away from a hat-trick"
+NTH = re.compile(
+    r"\bhis (first|second|third|fourth)\b(?=\s*(?:goal|of\b|[.!?,]|$))"
+    r"|(?:\bhis|['’]s)\s+(brace|hat[- ]trick)\b"
+    r"|\b(?:scor\w*|got|gets|complet\w*|grabs?|grabbed|nets?|netted)\s+(?:a|his)\s+"
+    r"(brace|hat[- ]trick)\b",
+    re.I,
+)
+NTH_GOAL = {"first": 1, "second": 2, "third": 3, "fourth": 4, "brace": 2}
+HALVES_SAID = {"second half": 2, "first half of extra time": 3, "second half of extra time": 4}
+NOW_IN = r"\b(?:we're|we are|it's|it is|deep|now|already)\s+(?:\w+\s+)?(?:in|into)\s+the\s+"
+
+
+def _named_before(named: list[tuple[int, str]], at: int) -> str | None:
+    """The player named last before `at`, whose claim it is: "Messi scored, but Di María hasn't"."""
+    return next((name for start, name in reversed(named) if start < at), None)
+
+
+def wrong_claims(text: str, past: list[dict]) -> list[str]:
+    """What a football answer says that the numbers check can't see: a player's goals so far, each
+    claim tied to the player named last before it, and that the match is now in a half it hasn't
+    reached ("we're deep in the second half of extra time" at 105:41; never "in the second half
+    they need to come out stronger")."""
+    from agent.commentator import goals_so_far
+
+    m = past[-1]
+    if m.get("sport") != "football":
+        return []
+    wrong = [
+        f"the match has not reached the {part}"
+        for part, period in HALVES_SAID.items()
+        if period > m.get("period", period) and re.search(rf"{NOW_IN}{part}\b", text, re.I)
+    ]
+    goals = Counter(p["players"].get("shooter") for p in goals_so_far(past) if p.get("players"))
+    names = {n for p in past for n in (p.get("players") or {}).values() if isinstance(n, str)}
+    surnames = Counter(n.split()[-1] for n in names)
+    said = {n: n if surnames[n.split()[-1]] > 1 else n.split()[-1] for n in names}  # two Martínez
+    for clause in re.split(r"(?<=[.!?;])\s+", text):  # a clause each: "Messi; Mbappé's brace"
+        named = sorted(
+            (hit.start(), name)
+            for name in names
+            for hit in re.finditer(rf"\b{re.escape(said[name])}\b", clause)
+        )
+
+        for hit in NOT_SCORED.finditer(clause):
+            # "No goal for Messi yet": with no one named before it, the player it is "for"
+            after = re.match(r"\s+for\s+", clause[hit.end() :])
+            at = hit.end() + after.end() if after else -1
+            for_whom = next((name for start, name in named if start == at), None)
+            if (name := _named_before(named, hit.start()) or for_whom) and goals[name]:
+                wrong.append(f"{name} has scored {goals[name]} so far")
+        for hit in NTH.finditer(clause):
+            n = NTH_GOAL.get(next(g for g in hit.groups() if g).lower(), 3)
+            if (name := _named_before(named, hit.start())) and n > goals[name]:
+                wrong.append(f"{name} has scored {goals[name]} so far, not {n}")
+    return wrong
+
+
 def checked_answer(ask, question: str, past: list[dict], lines: list[dict]) -> dict | None:
-    """An Ask answer whose numbers match what it was given: asked again once when one doesn't, then
-    None (the calm off-air line), so a viewer never hears an unchecked number."""
+    """An Ask answer whose numbers (wrong_answer) and goals and half (wrong_claims) match what it
+    was given: asked again once with the reasons when they don't, then the status from the data
+    and the goals so far (#236), so a viewer never hears an unchecked answer. None, the calm
+    off-air line, when the model gives nothing or the match has no data to say instead."""
+    from agent.commentator import goals_so_far
+    from agent.status import fallback_text as status_text
+    from data.matches import match_header
+
+    wrong: list[str] = []
     for retry in (False, True):
-        answer = ask(question, past, lines)
+        answer = ask(question, past, lines, **({"wrong": wrong} if retry else {}))
         if answer is None:
             return None
-        if not wrong_answer(answer, question, past, lines):
+        wrong = wrong_answer(answer, question, past, lines) + wrong_claims(answer["text"], past)
+        if not wrong:
             return {**answer, "checked": True, **({"retried": True} if retry else {})}
-    return None
+    try:
+        text = status_text(match_header(past[-1]["match_id"]), past[-1])
+    except KeyError:
+        return None
+    goals = [
+        f"{p['players'].get('shooter')} after {int(p['clock'].split(':')[0])} minutes"
+        for p in goals_so_far(past)
+        if p.get("players")
+    ]
+    text += f" Goals: {'; '.join(goals)}." if goals else ""
+    tried = {"tried": answer["text"], "wrong": wrong, "checked": True}
+    return {**answer, "text": text, "fallback": True, **tried}
 
 
 def stat_moment(m: dict, said_as: dict, reply: bool) -> dict:

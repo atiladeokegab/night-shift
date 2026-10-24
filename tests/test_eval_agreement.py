@@ -61,7 +61,7 @@ CAST = {
 }
 
 
-# Every counterexample from Prometheus's reviews of #75 and #77, exactly as written: none may count
+# Every counterexample found in review, exactly as written: none may count
 # as agreement under the headline, nor lowercased.
 REVIEWED = [
     ("Messi! Argentina lead 1-0!", "Messi! Argentina trail 0-1!"),
@@ -131,17 +131,17 @@ def test_the_same_number_written_differently_strictly_agrees(big, adapter):
     assert strict(line(big), line(adapter)) is None
 
 
-# Prometheus's confirm of 201abf6: normalising must not make these the same.
+# Normalising must not make these the same.
 @pytest.mark.parametrize(
     "big, adapter, why",
     [
         ("Hamilton leads by +2 seconds!", "Hamilton leads by -2 seconds!", "different words"),
         ("!!!", "???", "no words to compare"),
         ("Verstappen wins by 1.5 seconds!", "Verstappen wins by 1-5 seconds!", "different words"),
-        # Prometheus, at 48c4559: a number touching a letter keeps its sign and decimal point.
+        # A number touching a letter keeps its sign and decimal point.
         ("Hamilton delta+2s", "Hamilton delta-2s", "different words"),
         ("Over1.5", "Over1-5", "different words"),
-        # Prometheus, at 1876768, and the sweep after it: every number shape keeps what it means.
+        # Every number shape keeps what it means.
         (".5 seconds", "5 seconds", "different words"),
         ("Bottas -.5 seconds", "Bottas .5 seconds", "different words"),
         ("India 3/4", "India 3-4", "different words"),
@@ -191,7 +191,7 @@ def test_the_fact_checker_finds_nothing_in_the_same_facts_in_other_words(big, ad
     assert possible_disagreement(GOAL, line(big), line(adapter), CAST) is None
 
 
-# Prometheus's after-merge finding on #75: each pair contradicts itself, and each once scored as
+# Each pair contradicts itself, and each once scored as
 # agreement. Score order, outcome, negation, who did what, and which of two Smiths.
 CONTRADICTIONS = [
     ("Messi! 1-0 Argentina!", "Messi! 0-1 Argentina!"),
@@ -214,7 +214,7 @@ CONTRADICTIONS = [
     ("Chris Smith takes the wicket!", "Alex Smith takes the wicket!"),
     ("Smith takes the wicket!", "Smith takes the wicket!"),
     ("Hamilton pits!", "Hamilton wins!"),
-    # Prometheus's three left over at 80c50ea: score words, team roles, an invented scorer.
+    # Score words, team roles, an invented scorer.
     ("Messi! Argentina lead one nil!", "Messi! Argentina lead two nil!"),
     ("Messi! Argentina lead France 1-0!", "Messi! France lead Argentina 1-0!"),
     ("What a goal! 1-0!", "John Doe scores! 1-0!"),

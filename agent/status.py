@@ -37,7 +37,7 @@ END = {"Finish", "Full time", "End of game"}  # a match's last moment: whoever l
 log = logging.getLogger(__name__)
 
 
-def _when(m: dict) -> str:
+def _when(m: dict, laps: int | None = None) -> str:
     """The time as a commentator says it: an NBA clock counts down ("First quarter, 0:30 left"),
     a football one is whole minutes played ("Second half, 96 minutes played")."""
     p, clock = m["period"], m["clock"]
@@ -50,7 +50,7 @@ def _when(m: dict) -> str:
         return half if p == 5 else f"{half}, {int(clock.split(':')[0])} minutes played"
     if m["sport"] == "cricket":
         return f"Innings {p}, over {clock}"
-    return f"Lap {p}"
+    return f"Lap {p} of {laps}" if laps else f"Lap {p}"
 
 
 def _people(m: dict) -> str:
@@ -85,7 +85,7 @@ def build_request(header: dict, m: dict) -> dict:
     message = MESSAGE.substitute(
         sport=m["sport"],
         match=_match(header),
-        when=_when(m),
+        when=_when(m, header.get("laps")),
         score=_score(header, m),
         lead=_lead(m),
         type=m["type"],

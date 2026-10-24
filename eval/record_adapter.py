@@ -8,10 +8,10 @@ panel show it. Writes to the store the server uses: STORE_DIR locally, or MODE=c
 --task defaults to commentary. Each task keeps its own records; /stats shows each task's latest.
 
 On a deployed service, copy the service's adapter records down, append, and copy them back
-(here staging; production is .../night-shift), so one task's record doesn't replace the others'.
+(the staging or production prefix), so one task's record doesn't replace the others'.
 The server never writes this kind. /stats reads it next call.
 
-    d=$(mktemp -d) o=gs://hackathon-starter-ao-state/night-shift-staging/adapter.jsonl
+    d=$(mktemp -d) o=gs://<state bucket>/<prefix>/adapter.jsonl
     gcloud storage cp $o $d/adapter.jsonl
     STORE_DIR=$d uv run python -m eval.record_adapter --task line_check --status ready --version 1
     gcloud storage cp $d/adapter.jsonl $o

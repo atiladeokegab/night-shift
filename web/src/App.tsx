@@ -16,6 +16,7 @@ import { Wall } from './components/Wall'
 import { chipName, defaultVoice, wallOrder } from './teams'
 import { SPORTS, type Answer, type Line, type Match, type Moment, type Sport, type Voice } from './types'
 import { QuietSpell, WHERE } from './quiet'
+import { askKey, isRepeat } from './ask'
 import { airAnswer, bigSoon, isBig, isDecisive, type Caption } from './turns'
 import { onScreen, useReplay } from './useReplay'
 import { useSpeech } from './useSpeech'
@@ -38,6 +39,7 @@ export default function App() {
   // #131: a viewer's question, then its answer, takes the caption from the lines while it is on
   const [asking, setAsking] = useState<Caption | null>(null)
   const asked = useRef(0) // only the newest question may change the caption
+  const inFlight = useRef<string | null>(null) // the question being asked, by askKey
   const [interrupted, setInterrupted] = useState<string[]>([]) // answers a decisive moment cut off
   const [paused, setPaused] = useState(false)
   const [describeQuiet, setDescribeQuiet] = useState(true) // #186: on by default
@@ -227,25 +229,32 @@ export default function App() {
   // #117: an off-air answer is shown, never spoken. #131: the stage shows the question, then the answer
   // while it is spoken. #139: the analyst answers at a gap, never with a big moment due in the next 3 s.
   // A decisive moment may cut an answer off: the Lines card marks it, with "Hear it again".
-  const askCommentator = async (question: string, momentIdx: number, viewer = true, ask = () => replay.ask(question, momentIdx)) => {
+  // A new ask (no `again`) is sent once: the quiet-spell ask and a press at the same moment are one row.
+  const askCommentator = async (question: string, momentIdx: number, viewer = true, again?: () => Promise<Answer>) => {
+    if (!again && isRepeat(replay.state.answers, inFlight.current, question, momentIdx)) return
+    const key = again ? null : (inFlight.current = askKey(question, momentIdx))
     const sent = session.current
     const mine = ++asked.current
-    await airAnswer(
-      question,
-      ask,
-      (answer, started) =>
-        answer.off_air
-          ? null
-          : (speech
-              .sayAnswer(answer, voiceNow.current, started, () => bigSoon(ahead.current.queuedMoments, ahead.current.now))
-              ?.then((cut) => {
-                if (cut && session.current === sent) setInterrupted((ids) => [...ids, answer.line_id])
-              }) ?? null),
-      setAsking,
-      () => session.current === sent && asked.current === mine,
-      undefined,
-      viewer ? undefined : '',
-    )
+    try {
+      await airAnswer(
+        question,
+        again ?? (() => replay.ask(question, momentIdx)),
+        (answer, started) =>
+          answer.off_air
+            ? null
+            : (speech
+                .sayAnswer(answer, voiceNow.current, started, () => bigSoon(ahead.current.queuedMoments, ahead.current.now))
+                ?.then((cut) => {
+                  if (cut && session.current === sent) setInterrupted((ids) => [...ids, answer.line_id])
+                }) ?? null),
+        setAsking,
+        () => session.current === sent && asked.current === mine,
+        undefined,
+        viewer ? undefined : '',
+      )
+    } finally {
+      if (key && inFlight.current === key) inFlight.current = null
+    }
   }
   const hearAgain = (answer: Answer) => {
     setInterrupted((ids) => ids.filter((id) => id !== answer.line_id))

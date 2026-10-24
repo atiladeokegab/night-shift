@@ -1,4 +1,5 @@
-import type { Answer, Line } from './types'
+import { clockText } from './moment.ts'
+import type { Answer, Line, Moment } from './types'
 
 // The calm copy for any failed question (#108): the provider's error or an HTTP status never reaches the page.
 export const OFF_AIR = 'Commentator is off air for a moment'
@@ -33,4 +34,22 @@ export function withAnswers(lines: Line[], answers: Answer[]): LogItem[] {
     out.push({ line })
   }
   return [...out, ...asked.slice(i).map((answer) => ({ answer }))]
+}
+
+// An answer is about the moment it was asked at: "at 104:30", and stale once a later key moment is on
+// screen, so it never reads as now after the match moved on. `moments` are the ones the picture reached.
+export const answeredAt = (a: Pick<Answer, 'moment_idx'>, moments: Moment[]): string | null => {
+  const m = moments.find((x) => x.idx === a.moment_idx)
+  return m ? `at ${clockText(m)}` : null
+}
+export const isStale = (a: Pick<Answer, 'moment_idx'>, moments: Pick<Moment, 'idx'>[]): boolean =>
+  moments.some((m) => m.idx > a.moment_idx)
+
+// One question at one moment is asked once (#186): the page's own quiet-spell "Where are we?" and a
+// viewer's press a moment later would give two identical rows. `asking` is the key in flight. An
+// off-air answer doesn't count, so asking again can still get one.
+export const askKey = (question: string, momentIdx: number): string => `${momentIdx}|${question.trim().toLowerCase()}`
+export const isRepeat = (answers: Answer[], asking: string | null, question: string, momentIdx: number): boolean => {
+  const key = askKey(question, momentIdx)
+  return asking === key || answers.some((a) => !a.off_air && askKey(a.question, a.moment_idx) === key)
 }

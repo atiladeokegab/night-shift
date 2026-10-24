@@ -1,5 +1,5 @@
 """The app factory: every route of the spine. The match catalogue, the Moment loader and the
-commentator come from data/ and agent/ (#13) through `Deps`, so tests inject their own."""
+commentator come from data/ and agent/ through `Deps`, so tests inject their own."""
 
 import asyncio
 import hmac
@@ -27,7 +27,7 @@ from core.stats import stats
 from core.store import open_store
 from core.voice import Speaker, voice_router
 
-log = logging.getLogger("night_shift.app")
+log = logging.getLogger("touchline.app")
 REJOIN_S = 10.0  # a replay with no open stream this long is stopped: its lines cost model calls
 FORGET_S = 60.0  # a finished replay is forgotten once nobody streams or touches it this long
 
@@ -46,7 +46,8 @@ class Deps:
 
 
 def default_deps() -> Deps:
-    """Wire #13's loaders and commentator; None until they land, and the replay routes say 503."""
+    """Wire the loaders and the commentator; None if agent/ or data/ fail to import, and the replay
+    routes say 503."""
     try:
         from agent.commentator import answer, commentate, correct
         from agent.status import status
@@ -101,7 +102,7 @@ def asked_so_far(replay: Replay, moments: list[dict], on_screen: int | None):
 def create_app(
     store=None, deps: Deps | None = None, tts_transport=None, guard: Guard | None = None
 ) -> FastAPI:
-    app = FastAPI(title="Night Shift")
+    app = FastAPI(title="Touchline")
     store = store or open_store()
     deps = deps or default_deps()
     replays: dict[str, Replay] = {}
