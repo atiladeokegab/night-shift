@@ -98,8 +98,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
   #still { position: relative; display: block; height: 56.25vw; }
   #still[hidden] { display: none; }
   .nav { position: sticky; z-index: 2; background: var(--bg); flex-wrap: wrap; }
-  /* The match picks take their own row and scroll inside the page width, never past it. */
-  .nav .seg { order: 1; flex: 1 1 100%; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+  /* The match picks take their own row and wrap inside the page width, so no tab is ever cut in half. */
+  .nav .seg { order: 1; flex: 1 1 100%; min-width: 0; flex-wrap: wrap; justify-content: center; }
   .seg button { flex: none; white-space: nowrap; }
   .lane, .side, .novideo { position: static; width: auto; margin: 16px var(--gut); }
   .novideo { width: fit-content; max-width: calc(100% - 2 * var(--gut)); margin: 16px auto; font-size: .85rem; }

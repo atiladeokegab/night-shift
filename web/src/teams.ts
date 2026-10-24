@@ -111,6 +111,18 @@ export function commentatorName(name: string): string {
   return name.includes(' ') ? name : `${name} commentator`
 }
 
+// The dock chip's name, short enough for a phone and never a lone nationality ("British"): the voice's own
+// name before a colon or comma ("Connor: British, energetic" is "Connor", "Raju, Cricket Commentator" is "Raju"),
+// else a pick's role words ("British Football Announcer" is "Football Announcer"). The sheet shows labels whole.
+export function chipName(v: Voice | null): string {
+  if (!v) return ''
+  if (v.browser) return 'Browser voice'
+  const own = /^([^:,(]+)[:,]/.exec(v.label)
+  if (own) return own[1].trim()
+  const words = v.label.split(/\s+/)
+  return words.length > 2 ? words.slice(-2).join(' ') : v.label
+}
+
 // The voice sheet's options for a sport: one per voice. Of the entries for the same voice (same_as), the
 // sport's chosen one shows, else its default, else the first, so football's pick and f1's default are one option.
 export function sheetVoices(voices: Voice[], sport: Sport, chosenId?: string): Voice[] {

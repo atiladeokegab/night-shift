@@ -321,6 +321,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 @media (max-width: 760px), (orientation: landscape) and (max-height: 500px) {
   .dock .back { display: inline-flex; flex: none; width: 44px; height: 44px; padding: 0; font-size: 1.1rem; }
   .dock .back span { display: none; }
+  .dock .voice .pre { display: none; } /* the name alone fits; the button's label keeps "Voice:" */
 }
 /* A phone on its side: the stage takes the whole screen and the dock one row, so the score bar, the
    no-video caption, the subtitle and the dock stack without touching. */
