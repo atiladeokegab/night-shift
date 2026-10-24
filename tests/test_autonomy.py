@@ -40,12 +40,18 @@ def calls(texts: dict[int, list[str]]):
 def test_checked_marks_a_kept_retry_and_keeps_a_failed_try_for_the_producer():
     m = load_moments(KOBE)[0]
     first = insight.checked(calls({}), m, [])
-    assert first["text"] == FINE and not {"retried", "fallback", "tried"} & first.keys()
+    assert first["text"] == FINE and first["checked"]
+    assert not {"retried", "fallback", "tried"} & first.keys()
     again = insight.checked(calls({0: [WRONG, FINE]}), m, [])
-    assert again["text"] == FINE and again["retried"] and again["rejected"]["text"] == WRONG
+    assert again["text"] == FINE and again["retried"] and again["checked"]
+    assert again["rejected"]["text"] == WRONG
     gave_up = insight.checked(calls({0: [WRONG]}), m, [])
     assert gave_up["fallback"] and gave_up["text"] == insight.fallback_text(match_header(KOBE), m)
-    assert gave_up["tried"] == WRONG and gave_up["wrong"] == ["58 is not in the moment"]
+    assert (
+        gave_up["checked"]
+        and gave_up["tried"] == WRONG
+        and gave_up["wrong"] == ["58 is not in the moment"]
+    )
 
 
 def replay(store, match_id, texts, n=6):
@@ -81,15 +87,15 @@ def test_stats_count_each_call_per_match_and_overall(tmp_path):
     assert s["autonomy"] == {"called": 10, "first_time": 6, "auto_fixed": 2, "to_human": 2}
 
 
-def test_a_retry_stored_before_the_flag_is_known_by_its_auto_fix(tmp_path):
+def test_a_line_the_check_never_saw_is_not_counted_as_a_pass(tmp_path):
     store = Store(tmp_path)
-    store.append("lines", {"line_id": "k", "match_id": KOBE, "text": "Kept.", "speaker": "lead"})
-    store.append("lines", {"line_id": "f", "match_id": KOBE, "text": "Fine.", "speaker": "lead"})
-    store.append("auto_fixes", {"line_id": "rejected", "corrected_text": "Kept."})
+    old = {"match_id": KOBE, "speaker": "lead"}  # said before the check existed: no `checked`
+    store.append("lines", {**old, "line_id": "old", "text": WRONG})
+    store.append("lines", {**old, "line_id": "new", "text": FINE, "checked": True})
     assert stats(store)["autonomy"] == {
-        "called": 2,
+        "called": 1,
         "first_time": 1,
-        "auto_fixed": 1,
+        "auto_fixed": 0,
         "to_human": 0,
     }
 
