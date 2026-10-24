@@ -1,0 +1,114 @@
+import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { registerHooks } from 'node:module'
+import { test } from 'node:test'
+import { fileURLToPath } from 'node:url'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { transformSync } from 'rolldown/experimental'
+import { setPlaying, shownCaption, type Transport } from './player.ts'
+import type { Line, Match, Moment } from './types.ts'
+import type { ReplayState } from './useReplay.ts'
+
+// The live page rendered to HTML in node: .tsx goes through Vite's own transform, and the app's
+// extensionless imports resolve as Vite resolves them.
+registerHooks({
+  resolve(specifier, context, next) {
+    if (/^\.\.?\//.test(specifier) && !/\.[a-z]+$/.test(specifier)) {
+      for (const ext of ['.ts', '.tsx']) {
+        try {
+          return next(specifier + ext, context)
+        } catch {
+          // not this extension
+        }
+      }
+    }
+    return next(specifier, context)
+  },
+  load(url, context, next) {
+    if (!url.endsWith('.tsx')) return next(url, context)
+    const { code } = transformSync(fileURLToPath(url), readFileSync(new URL(url), 'utf8'), { jsx: { runtime: 'automatic' } })
+    return { format: 'module', source: code, shortCircuit: true }
+  },
+})
+Object.assign(globalThis, { window: { location: { search: '' } } }) // api.ts reads ?demo on import
+const { Live } = await import('./components/Live.tsx')
+
+const match: Match = { match_id: '0020500591', sport: 'basketball', title: 'Los Angeles Lakers v Toronto Raptors, NBA Regular season', youtube_id: '46nYnjGdQlk', video_start: 480 }
+const moment = (idx: number, video_t: number, clock: string): Moment => ({
+  sport: 'basketball', match_id: match.match_id, idx, period: 3, clock, type: 'Field goal', team: 'Los Angeles Lakers',
+  players: { shooter: 'Kobe Bryant' }, outcome: '2 points', score: { home: 60 + idx, away: 69 }, detail: {}, video_t,
+})
+const line = (idx: number, video_t: number, text: string): Line => ({ line_id: `l${idx}`, match_id: match.match_id, moment_idx: idx, text, latency_ms: 900, video_t })
+const EARLY = 'Kobe pulls up from the elbow and buries it.'
+const LATER = 'Kobe again! That is forty for the night.'
+
+// Played to 510 s (both moments on screen), then sought back to 500 s: the 508 s moment is ahead again.
+const replay: ReplayState = {
+  phase: 'live', stream: 'ok', gated: true, now: 500, duration: 1671,
+  moments: [moment(3, 490.5, '06:12'), moment(4, 508, '05:40')], lines: [line(4, 508, LATER), line(3, 490.5, EARLY)],
+  late: [], queuedMoments: [], queuedLines: [], ended: false, error: null, stats: null, fixes: {}, answers: [],
+}
+
+const noop = () => {}
+function render(props: Record<string, unknown> = {}) {
+  return renderToStaticMarkup(createElement(Live, {
+    match, replay, replayKey: 1, switching: false, sports: ['football', 'basketball'],
+    voice: { status: 'on', chip: 'Sam', speaking: true }, video: 'ok', onVideo: noop, onClock: noop, onSport: noop, onNext: null,
+    onVoiceSheet: noop, onFix: noop, onAsk: async () => {}, onRetry: noop, onReconnect: noop, onGo: noop, ...props,
+  }))
+}
+
+// The HTML from `<section class="vcard"` to its own closing tag.
+function videoCard(html: string): string {
+  const start = html.indexOf('<section class="vcard"')
+  assert.ok(start >= 0, 'the video card is on the page')
+  const tags = /<(\/?)section\b/g
+  tags.lastIndex = start
+  let depth = 0
+  for (let m = tags.exec(html); m; m = tags.exec(html)) {
+    depth += m[1] ? -1 : 1
+    if (depth === 0) return html.slice(start, m.index)
+  }
+  throw new Error('the video card never closes')
+}
+
+test('pause holds the player and tells App, so the voice stops with the picture; play resumes both', () => {
+  const calls: string[] = []
+  const transport: Transport = { play: () => calls.push('player play'), pause: () => calls.push('player pause'), seek: noop }
+  const on = { onPause: () => calls.push('onPause'), onPlay: () => calls.push('onPlay') }
+  setPlaying(false, transport, on)
+  assert.deepEqual(calls, ['player pause', 'onPause'])
+  setPlaying(true, transport, on)
+  assert.deepEqual(calls, ['player pause', 'onPause', 'player play', 'onPlay'])
+  setPlaying(false, null, on) // no player yet: App still hears it
+  assert.equal(calls.at(-1), 'onPause')
+})
+
+test('a seek backwards never shows a line from later than the new time (A-6.4)', () => {
+  // App's caption is still the 508 s line it last spoke; the picture is back at 500 s.
+  const html = render({ caption: { kind: 'line', text: LATER, speaker: 'lead' } })
+  assert.ok(!html.includes(LATER), 'the later line is gone from the caption and the log')
+  assert.match(html, new RegExp(`<p class="cap-text">${EARLY}</p>`))
+  assert.deepEqual(shownCaption({ kind: 'line', text: LATER }, [EARLY]), { kind: 'line', text: EARLY })
+  assert.equal(shownCaption(null, []), null)
+  // A viewer's question and its answer are not tied to the clock: shown as given.
+  assert.deepEqual(shownCaption({ kind: 'question', text: 'Who scores next?' }, [EARLY]), { kind: 'question', text: 'Who scores next?' })
+})
+
+test('the sidebar, the caption and the sport bar are never inside the video card; only the score bug and ON AIR are', () => {
+  const html = render()
+  const card = videoCard(html)
+  for (const outside of ['class="side"', 'class="panel lines', 'aria-label="Caption"', 'class="pickbar', 'aria-label="Sport"']) {
+    assert.ok(!card.includes(outside), `${outside} sits outside the video card`)
+    assert.ok(html.includes(outside), `${outside} is on the page`)
+  }
+  assert.match(card, /class="bug"><div class="scorebar glass"[\s\S]*class="onair glass on"/)
+  assert.match(card, /class="controls"[\s\S]*aria-label="Pause"[\s\S]*aria-label="Seek"[\s\S]*aria-label="Mute commentary"[\s\S]*aria-label="Commentary volume"[\s\S]*aria-label="Fullscreen"/)
+})
+
+test('an answer shows under its question in the caption card, with the moment it was asked at', () => {
+  const answered = { ...replay, answers: [{ line_id: 'a1', moment_idx: 3, question: 'Who scores next?', text: 'Kobe, on this form.' }] }
+  const html = render({ replay: answered, caption: { kind: 'answer', text: 'Kobe, on this form.', speaker: 'analyst' } })
+  assert.match(html, /<span class="chip analyst">Analyst<\/span><span class="tag">06:12 · [^<]+<\/span><\/div><p class="cap-asks">A viewer asks: Who scores next\?<\/p><p class="cap-text">Kobe, on this form\.<\/p>/)
+})
