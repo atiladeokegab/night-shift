@@ -7,6 +7,7 @@ import time
 from fastapi import APIRouter, HTTPException
 
 from core import graph
+from core.predict import load_pack
 from data.matches import match_header
 
 TTL_S = 60.0
@@ -24,15 +25,36 @@ def _ask(name: str, *args, **kw) -> list:
         return []
 
 
+def _pack_squad(pack: dict | None, team: str) -> list[dict]:
+    """The team's players from the match's pack, most scoring first, when the graph has no squad.
+    A pack counts only matches before this one (its window), so nothing here is from tonight."""
+    mine = [(n, p) for n, p in ((pack or {}).get("players") or {}).items() if p.get("team") == team]
+    mine.sort(key=lambda kv: (-kv[1].get("made", 0), -kv[1].get("games", 0), kv[0]))
+    what = "goals from" if (pack or {}).get("sport") == "football" else "baskets from"
+    return [
+        {
+            "name": n,
+            "matches": p["games"],
+            "headline": f"{p['made']} {what} {p['attempts']} shots in {p['games']}",
+        }
+        for n, p in mine[:SQUAD_MAX]
+        if p.get("games") and p.get("attempts")
+    ]
+
+
 def build(sport: str, header: dict) -> dict:
     before = header["date"]
     sides = [header[k] for k in ("home", "away") if k in header]  # a race has no sides
+    squads = {t: _ask("squad", sport, t, before)[:SQUAD_MAX] for t in sides}
+    if not all(squads.values()):  # the graph lacks a side's squad: the packs, once, for this match
+        pack = graph.pack(header["match_id"]) or load_pack(sport, header["match_id"])
+        squads = {t: sq or _pack_squad(pack, t) for t, sq in squads.items()}
     return {
         "teams": [
             {
                 "team": t,
                 "form": _ask("team_form", sport, t, before),
-                "squad": _ask("squad", sport, t, before)[:SQUAD_MAX],
+                "squad": squads[t],
             }
             for t in sides
         ],
