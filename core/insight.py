@@ -10,6 +10,7 @@ from collections import Counter
 
 from agent.packs import phase
 from core import predict
+from core.fallback import fallback_text  # noqa: F401  checked() says it; tests import it here
 
 WORDS_PER_S = 2.7  # a line has likely finished speaking after its words at this rate
 PAUSE_S = 2.0  # then this breath before the next insight
@@ -474,7 +475,8 @@ def said(text: str) -> list:
             cur, words = (cur or 0) + TENS[w], [*words, w]
         elif w in UNITS or (w in ORDINALS and cur):
             v = UNITS.index(w) if w in UNITS else ORDINALS[w]
-            if not (cur and cur % 10 == 0 and v < 10):
+            # "one hundred and eleven": a teen after a hundred is part of it too
+            if not (cur and (cur % 10 == 0 and v < 10 or cur % 100 == 0 and v < 20)):
                 flush()
             cur, words = (cur or 0) + v, [*words, w]
         elif w == "hundred" and (cur or words == ["a"]):
@@ -625,7 +627,7 @@ def _wrong_margin(text: str, m: dict, header: dict) -> list[str]:
         n, *after = said(text[hit.start(1) : hit.start(1) + 48]) or [None]
         n = 1.0 if n == "one" else n
         if isinstance(n, float) and not (
-            after and (isinstance(after[0], float) or after[0] == "to")
+            after and (isinstance(after[0], float) or after[0] in ("to", "one"))  # "lead two, one"
         ):
             if n not in margins:
                 wrong.append(f"{n:g} is not the margin ({min(margins):g})")
@@ -718,19 +720,6 @@ def wrong_event(text: str, m: dict) -> list[str]:
     if m.get("type") == "Shot" and not goal and not ENDED.search(text):
         wrong.append(f"the line never says how the shot ended: {m.get('outcome')}")
     return wrong
-
-
-def fallback_text(header: dict, m: dict) -> str:
-    """A line built only from the moment's data, said when the commentator's numbers stay wrong."""
-    from agent.commentator import _score
-
-    who, d = _who(m), m.get("detail") or {}
-    said = f"{m['type']}, {m['outcome']}" if m.get("outcome") else m["type"]
-    parts = [f"{said}, {who}." if who else f"{said}."]
-    extra = d.get("milestone") or (d.get("chase") if "need" not in d.get("chase", "need") else None)
-    if extra:
-        parts.append(f"{extra[0].upper()}{extra[1:]}.")
-    return " ".join([*parts, f"{_score(header, m)}."])
 
 
 def checked(commentate, moment: dict, history: list[dict]) -> dict | None:
