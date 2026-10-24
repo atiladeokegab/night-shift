@@ -83,7 +83,7 @@ def test_lead_and_analyst_lines_are_reported_apart(tmp_path):
         "lines": 1,
         "first_word_ms_p50": 2000,
         "first_word_ms_p95": 2000,
-        "cost_per_line_usd": None,
+        "cost_per_line_usd": pytest.approx(0.0022),  # 0.002 + 0.0002
     }
 
 
