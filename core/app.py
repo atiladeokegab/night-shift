@@ -398,10 +398,17 @@ def create_app(
         fix = next((f for f in reversed(store.all("fixes")) if f.get("line_id") == line_id), None)
         # the fix sent to Line check as a training example (#305), once it is sent
         sent = [x for x in store.all("linecheck_fixes") if x.get("line_id") == line_id]
+        # the Score check examples its fixes sent (#392), as stored: the review page's panel (#400)
+        scored = [
+            x
+            for x in store.all("scorecheck_examples")
+            if x.get("line_id") == line_id and x.get("source") == "fix"
+        ]
         return {
             **line,
             **({"fix": fix} if fix else {}),
             **({"linecheck_example": sent[-1]} if sent else {}),
+            "scorecheck_examples": scored,
         }
 
     @app.post("/lines/{line_id}/fix")

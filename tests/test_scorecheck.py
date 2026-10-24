@@ -143,11 +143,15 @@ def test_a_fix_sends_the_line_and_the_fixed_text_as_score_check_examples(tmp_pat
                     break
                 time.sleep(0.02)
             time.sleep(0.1)
+        line = client.get("/lines/w").json()
     rows = store.all("scorecheck_examples")
     assert [(r["source"], r["kind"], r["gold"], r["line_id"], r["text"]) for r in rows] == [
         ("fix", "corrected", "wrong", "w", WRONG),
         ("fix", "matched", "ok", "w", RIGHT),
     ]
+    # the review page's training panel (#400): the line's own examples, request ids as stored
+    assert line["scorecheck_examples"] == rows
+    assert all("mubit_request_id" in r for r in line["scorecheck_examples"])
 
 
 def test_fixes_made_before_now_are_sent_once_and_counted(tmp_path):
