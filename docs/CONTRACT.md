@@ -144,11 +144,13 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   `voice line=<id> first_byte_ms=<n> model=<model>`. (core)
 - `GET /stats` → `{lines, fixes, mubit_requests, first_word_ms_p50, first_word_ms_p95,
   latency_ms_p50, latency_ms_p95, tokens_in, tokens_out, cost_per_line_usd, adapter, by_speaker,
-  fixes_recorded, fixes_toward_next}` (core). The `stats` SSE event carries the same object.
+  fixes_recorded, fixes_toward_next, fixes_auto}` (core). The `stats` SSE event carries the same object.
   - `by_speaker: {lead, analyst}`, each `{model, lines, first_word_ms_p50, first_word_ms_p95,
     cost_per_line_usd}`: the lead's calls and the analyst's stat lines apart (a line with no
     `speaker` is the lead's).
-  - `fixes_recorded: int`: fixes with `recorded: true`; `fixes` counts every stored fix.
+  - `fixes_recorded: int`: human fixes with `recorded: true`; `fixes` counts every stored fix.
+  - `fixes_auto: int`: fixes the number check sent itself (`auto: true`, reason `auto: number check`):
+    a lead line's rejected first try, corrected to its accepted retry (#162). Never in `fixes_recorded`.
   - `fixes_toward_next: int`: recorded fixes since the latest `adapter` record (all of them before one).
   - `cost_per_line_usd: number | null`: mean cost of the stored lines, tokens × the model's list
     price; null when no line's model has a known price.
