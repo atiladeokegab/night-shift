@@ -57,13 +57,13 @@ export function listen(make: () => Recognizer, on: Heard): () => void {
 }
 
 // Mic on (#286): hands-free, the viewer talks whenever they like. The page's own voice reaches the mic too, so
-// a transcript is the viewer's only if most of its words are not the line on air (or the one that just ended),
-// and while a line is on air only from 3 words.
+// a transcript is the viewer's only if most of its words are not the lines on air (the one playing and the one
+// before it, whose tail the mic may still be hearing), and while a line is on air only from 3 words.
 const words = (s: string) => s.toLowerCase().match(/[\p{L}\p{N}']+/gu) ?? []
-export function isViewer(text: string, onAir: string | null): boolean {
+export function isViewer(text: string, onAir: string[]): boolean {
   const said = words(text)
-  if (!onAir || !said.length) return said.length > 0
-  const line = new Set(words(onAir))
+  if (!onAir.length || !said.length) return said.length > 0
+  const line = new Set(onAir.flatMap(words))
   return said.length >= 3 && said.filter((w) => line.has(w)).length / said.length < 0.6
 }
 
@@ -77,7 +77,7 @@ export interface Always extends Heard {
 // Listens until the returned stop, starting the recognizer again whenever it ends (Chrome stops after a
 // silence); a session that ended within a second waits a second first, so a failing one never spins.
 // Each sentence the viewer says goes to `done` once; an echo of `airing()` is never sent. `hint` turns it off.
-export function listenAlways(make: () => Recognizer, on: Always, airing: () => string | null): () => void {
+export function listenAlways(make: () => Recognizer, on: Always, airing: () => string[]): () => void {
   let r: Recognizer | null = null
   let live = true
   let again: ReturnType<typeof setTimeout> | undefined
@@ -97,6 +97,7 @@ export function listenAlways(make: () => Recognizer, on: Always, airing: () => s
     let barged = false
     let shown = false
     rec.onresult = (e) => {
+      if (!live) return // stop() makes the browser finalise what it heard: turned off, nothing is sent
       const text = Array.from(e.results, (res) => res[0].transcript).join('').trim()
       const viewer = isViewer(text, airing())
       if (viewer && !barged) {

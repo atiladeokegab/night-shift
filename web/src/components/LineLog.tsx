@@ -171,7 +171,7 @@ function AskBox({ onAsk, mic }: { onAsk: Props['onAsk']; mic?: Mic }) {
           {asking ? <><span className="spin sm" />Asking…</> : 'Ask'}
         </button>
       </form>
-      <MicOn on={handsFree} onToggle={setHandsFree} mic={mic} disabled={!onAsk || asking} {...voice} />
+      <MicOn on={handsFree} onToggle={setHandsFree} ready={!!onAsk} mic={mic} disabled={!onAsk || asking} {...voice} />
     </>
   )
 }

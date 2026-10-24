@@ -84,20 +84,21 @@ export function MicButton({ disabled, onHeard, onSend, onHint }: Props) {
 }
 
 export interface Mic {
-  airing: () => string | null // what the page is saying, or said under 3 s ago
+  airing: () => string[] // what the page is saying, and the line before it, until 3 s after each ends
   duck: () => void // hushes the commentary: the viewer is talking
 }
 
 interface OnProps extends Props {
   on: boolean
   onToggle: (on: boolean) => void
+  ready: boolean // a moment is on screen to ask about; until then it can't be turned on
   mic?: Mic
 }
 
 // Mic on (#286): one press and the page listens until it is pressed again, so the viewer talks to Touchline
 // whenever they like. Their voice hushes the commentary at once; the finished sentence is asked as a typed
 // question is, and the commentary carries on. Hidden where the browser has no speech recognition.
-export function MicOn({ on, onToggle, mic, disabled, onHeard, onSend, onHint }: OnProps) {
+export function MicOn({ on, onToggle, ready, mic, disabled, onHeard, onSend, onHint }: OnProps) {
   const latest = useRef({ disabled, mic, onHeard, onSend, onHint, onToggle })
   useEffect(() => {
     latest.current = { disabled, mic, onHeard, onSend, onHint, onToggle }
@@ -110,14 +111,15 @@ export function MicOn({ on, onToggle, mic, disabled, onHeard, onSend, onHint }: 
       heard: (t) => now().disabled || now().onHeard(t),
       done: (t) => (now().disabled ? now().onHeard('') : now().onSend(t)), // one question at a time
       hint: (h) => (now().onToggle(false), now().onHint(h)),
-    }, () => now().mic?.airing() ?? null)
+    }, () => now().mic?.airing() ?? [])
   }, [on])
 
   if (!make) return null
   return (
     // One line in both states, with room under it for the pressed button's glow.
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, height: 38, marginBottom: 14 }}>
-      <button type="button" className={`btn sm${on ? ' primary' : ''}`} aria-pressed={on} onClick={() => onToggle(!on)}
+      <button type="button" className={`btn sm${on ? ' primary' : ''}`} aria-pressed={on} disabled={!on && !ready}
+        onClick={() => onToggle(!on)}
         style={{ flex: 'none', whiteSpace: 'nowrap', gap: 6 }}>
         {icon}Mic on
       </button>
