@@ -472,7 +472,7 @@ def create_app(
 
     @app.get("/stats")
     def get_stats():
-        return {**stats(store), "budget": guard.stats(store)}
+        return {**stats(store), "budget": guard.stats(store), "voice": speaker.health()}
 
     @app.get("/stage")
     def stage():

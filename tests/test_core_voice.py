@@ -813,3 +813,78 @@ def test_jobs_that_finish_after_the_cap_filled_are_trimmed_too(monkeypatch):
         return [k[0] for k in speaker.jobs]
 
     assert asyncio.run(run()) == ["s3", "s4"]
+
+
+QUOTA = b'{"detail": {"status": "quota_exceeded", "message": "This request exceeds your quota."}}'
+
+
+def test_stats_say_when_the_voice_falls_back_and_why(tmp_path, monkeypatch):
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    answers = [(401, QUOTA)]
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        status, body = answers[0]
+        return httpx.Response(status, content=body)
+
+    with client_for(tmp_path, httpx.MockTransport(handle)) as client:
+        assert client.get("/stats").json()["voice"] == {
+            "provider": "elevenlabs",
+            "last_error": None,
+            "since": None,
+        }
+        assert client.get("/lines/l1/audio").status_code == 503
+        voice = client.get("/stats").json()["voice"]
+        assert voice["provider"] == "browser" and voice["last_error"] == "quota_exceeded"
+        assert voice["since"].endswith("+00:00")
+        answers[0] = (200, AUDIO)  # credits added: the next line is ElevenLabs again
+        assert (
+            client.get("/stats").json()["voice"]["provider"] == "browser"
+        )  # until a line is voiced
+        assert client.get("/lines/l1/audio").status_code == 200
+        assert client.get("/stats").json()["voice"]["provider"] == "elevenlabs"
+
+
+@pytest.mark.parametrize(
+    "answer,kind",
+    [
+        (
+            httpx.Response(429, json={"detail": {"status": "too_many_concurrent_requests"}}),
+            "too_many_concurrent_requests",
+        ),
+        (httpx.Response(429, content=b"slow down"), "429"),
+        (httpx.Response(500, content=b""), "500"),
+        (httpx.ReadTimeout("slow"), "timeout"),
+        (httpx.ConnectError("down"), "network"),
+    ],
+)
+def test_each_failure_is_named(tmp_path, monkeypatch, answer, kind):
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        if isinstance(answer, Exception):
+            raise answer
+        return answer
+
+    with client_for(tmp_path, httpx.MockTransport(handle)) as client:
+        assert client.get("/lines/l1/audio").status_code == 503
+        assert client.get("/stats").json()["voice"]["last_error"] == kind
+
+
+def test_no_key_is_browser_speech(tmp_path, monkeypatch):
+    monkeypatch.delenv("ELEVENLABS_API_KEY", raising=False)
+    with client_for(tmp_path, upstream()) as client:
+        voice = client.get("/stats").json()["voice"]
+    assert voice == {"provider": "browser", "last_error": "not_configured", "since": None}
+
+
+def test_warm_says_loudly_when_the_quota_is_gone(caplog):
+    from core.voice import warm
+
+    caplog.set_level(logging.ERROR, logger="touchline.voice")
+    took = warm(KEY, transport=upstream(401, QUOTA))
+    assert set(took.values()) == {None}
+    loud = [r for r in caplog.records if r.levelno == logging.ERROR]
+    assert len(loud) == 1 and "QUOTA EXCEEDED" in loud[0].message
+    caplog.clear()
+    warm(KEY, transport=upstream(401, b'{"detail": {"status": "invalid_api_key"}}'))
+    assert not [r for r in caplog.records if r.levelno == logging.ERROR]
