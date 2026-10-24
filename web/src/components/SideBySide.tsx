@@ -11,7 +11,7 @@ export function SideBySide() {
   const { adapter, pairs } = report
   const view = viewOf(report)
   return (
-    <section className="panel glass" aria-label="Big model vs ours">
+    <section className="panel glass" aria-label="Big model vs ours" style={{ marginTop: 16 }}>
       <div className="panel-h">
         <h3>Big model vs ours</h3>
         <span className="badge">Recorded</span>
