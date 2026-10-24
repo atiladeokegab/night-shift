@@ -75,6 +75,11 @@ TRUE_AT_105_41 = [
     "Messi hasn't scored in extra time yet.",
     "Messi's penalty was not the only goal.",
     "Messi scored, but Di María has not scored since the first half.",
+    "Messi hasn't scored again since his penalty.",
+    "Messi hasn't scored again.",
+    "Messi hasn't scored from open play.",
+    "Mbappé has two; no goal for Messi in extra time.",
+    "No goals for France in extra time, but Mbappé has two.",
 ]
 
 

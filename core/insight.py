@@ -1074,12 +1074,13 @@ def wrong_answer(answer: dict, question: str, past: list[dict], lines: list[dict
 
 
 # "Messi hasn't scored yet" with his penalty in (#236). Not one with a time window, "hasn't scored
-# since the 81st minute" or "in extra time", nor "was not the only goal"; "in this final" is caught
+# since the 81st minute", "no goal for Messi in extra time", nor "again", "from open play" or "was
+# not the only goal"; "in this final" is caught
 NOT_SCORED = re.compile(
     r"\b(?:hasn't|has not|hadn't|had not|yet to|still to|not|never|no)\s+"
     r"(?:(?!only\b)\w+\s+){0,2}?(?:scor\w*|goals?|netted|found the net)\b"
-    r"(?!\s+(?:yet\s+)?(?:since|in\s+(?:the\s+)?(?:extra[- ]time|(?:first|second) half"
-    r"|(?:penalty )?shootout))\b)",
+    r"(?!\s+(?:again|from open play|(?:for\s+\w+(?:\s+\w+)?\s+)?(?:yet\s+)?(?:since"
+    r"|in\s+(?:the\s+)?(?:extra[- ]time|(?:first|second) half|(?:penalty )?shootout)))\b)",
     re.I,
 )
 # a goal said to have happened: "his second", "Mbappé's brace", "completes a hat-trick"; never
@@ -1128,9 +1129,11 @@ def wrong_claims(text: str, past: list[dict]) -> list[str]:
         )
 
         for hit in NOT_SCORED.finditer(clause):
-            # "No goal for Messi yet": with no one named before it, the first named after it
-            first_after = next((name for start, name in named if start > hit.start()), None)
-            if (name := _named_before(named, hit.start()) or first_after) and goals[name]:
+            # "No goal for Messi yet": with no one named before it, the player it is "for"
+            after = re.match(r"\s+for\s+", clause[hit.end() :])
+            at = hit.end() + after.end() if after else -1
+            for_whom = next((name for start, name in named if start == at), None)
+            if (name := _named_before(named, hit.start()) or for_whom) and goals[name]:
                 wrong.append(f"{name} has scored {goals[name]} so far")
         for hit in NTH.finditer(clause):
             n = NTH_GOAL.get(next(g for g in hit.groups() if g).lower(), 3)
