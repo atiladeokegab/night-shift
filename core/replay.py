@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 from core import insight
 from core.stats import stats
 
-log = logging.getLogger("night_shift.replay")
+log = logging.getLogger("touchline.replay")
 # never the provider's text: it can carry its console URL and request id onto the screen
 OFF_AIR = "Commentator is off air for a moment"
 
