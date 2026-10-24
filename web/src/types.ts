@@ -116,6 +116,7 @@ export interface ReviewItem {
   play: string
   text: string
   wrong: string[] // what the number check found, e.g. "58 is not in the moment"
+  later_check: boolean // said before today's check, which fails it; false: its retry failed as it was said
 }
 
 export interface SpeakerStats {
