@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 
+from core import insight
 from core.replay import OFF_AIR, Replay, run_replay
 from core.stats import stats
 from core.store import open_store
@@ -164,7 +165,10 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
         if d.correct is None:
             raise HTTPException(503, "commentator not configured")
         try:
-            sent = await asyncio.to_thread(d.correct, line, req.corrected_text)
+            # an insight or reply goes back with its own Stat request, not its moment's
+            over = insight.said_over(line, d.load_moments)
+            more = {"moments": over} if over else {}
+            sent = await asyncio.to_thread(d.correct, line, req.corrected_text, **more)
         except Exception as exc:  # nothing is stored, so the page can send the fix again
             raise HTTPException(503, f"correction not sent: {exc}") from exc
         fix = store.append(

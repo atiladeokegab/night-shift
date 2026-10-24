@@ -11,7 +11,7 @@ from core import predict
 WORDS_PER_S = 2.7  # a line has likely finished speaking after its words at this rate
 PAUSE_S = 2.0  # then this breath before the next insight
 CLEAR_S = 6.0  # no insight starts closer than this to the next mapped moment
-MAX_CALLS = 120  # new insight calls per replay; cached ones are free
+MAX_CALLS = 160  # new insight calls per replay; cached ones are free
 REPLY_EVERY = 4  # every 4th line in a quiet stretch is the lead replying to the analyst
 RECENT = 6  # the key moments that count as recent play for momentum
 
@@ -188,30 +188,21 @@ class Gaps:
         m = past[-1]
         reply = n % REPLY_EVERY == REPLY_EVERY - 1
         role, speaker = ("reply", "lead") if reply else ("insight", "analyst")
-        heard = " ".join(str(before or "").split())  # one line: it must not forge a field
         ln = self.cached.get((m["idx"], n))
         if ln is not None and role in ln:
-            kind, detail = ln[role]["kind"], ln[role]["detail"]
-            if not reply and detail in self.used:  # another replay's choice: never said twice
+            said_as = ln[role]
+            if not reply and said_as["detail"] in self.used:  # another replay's: never said twice
                 return None
         elif self.calls >= MAX_CALLS:
             return None
-        elif reply:
-            ln, kind, detail = None, "reply", heard
         else:
-            ln, picked = None, self.next_stat(past)
+            ln = None
+            heard = " ".join(str(before or "").split())  # one line: it must not forge a field
+            picked = ("reply", heard) if reply else self.next_stat(past)
             if not picked:
                 return None
-            kind, detail = picked
-        # its own detail stays out (it would be called again); the score line needs these
-        keep = {k: v for k, v in (m.get("detail") or {}).items() if k in ("balls_left", "shootout")}
-        said_to = {"speaker": speaker, "Partner just said": heard}
-        stat = {
-            **m,
-            "type": "Stat",
-            "outcome": kind,
-            "detail": {**keep, **said_to, **({} if reply else {"stat": detail})},
-        }
+            said_as = {"kind": picked[0], "detail": picked[1], "heard": heard}
+        stat = stat_moment(m, said_as, reply)
         if ln is None:
             self.calls += 1
             # the same seam as every line: only moments up to the one followed reach the model
@@ -220,14 +211,29 @@ class Gaps:
                 return None
             key = {"match_id": self.match_id, "after_idx": m["idx"], "n": n}
             ln = self.store.append(
-                "lines",
-                {
-                    **said,
-                    "video_t": video_t,
-                    "speaker": speaker,
-                    role: {**key, "kind": kind, "detail": detail},
-                },
+                "lines", {**said, "video_t": video_t, "speaker": speaker, role: {**key, **said_as}}
             )
         if not reply:
-            self.used.add(detail)
+            self.used.add(said_as["detail"])
         return stat, ln
+
+
+def stat_moment(m: dict, said_as: dict, reply: bool) -> dict:
+    """The synthetic Stat moment an insight or reply is said over: moment m's team, players and
+    score, with Details of who speaks, the line it hears and (not for a reply) the stat."""
+    # m's own detail stays out (it would be called again); the score line needs these
+    keep = {k: v for k, v in (m.get("detail") or {}).items() if k in ("balls_left", "shootout")}
+    said_to = {"speaker": "lead" if reply else "analyst", "Partner just said": said_as["heard"]}
+    stat = {} if reply else {"stat": said_as["detail"]}
+    return {**m, "type": "Stat", "outcome": said_as["kind"], "detail": {**keep, **said_to, **stat}}
+
+
+def said_over(line: dict, load_moments) -> list[dict] | None:
+    """The moments an insight or reply line was said over, its Stat moment last: so a producer's
+    fix goes back with that line's own request, not its moment's. None for a moment's line."""
+    said_as = line.get("insight") or line.get("reply")
+    if not said_as:
+        return None
+    moments = load_moments(said_as["match_id"])
+    i = next(i for i, m in enumerate(moments) if m["idx"] == said_as["after_idx"])
+    return [*moments[: i + 1], stat_moment(moments[i], said_as, "reply" in line)]
