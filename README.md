@@ -102,18 +102,35 @@ was said.
 
 ### Where Mubit is called
 
-- **Every commentary call:** the Anthropic client points at Mubit, [`agent/commentator.py:36`](agent/commentator.py#L36)
-  (`MUBIT_URL`) and [`:806`](agent/commentator.py#L806); a moment's line is
-  [`commentate`, `:321`](agent/commentator.py#L321), which calls Mubit at [`:741`](agent/commentator.py#L741).
-- **A producer's correction, as the next turn of the line's own call (#245):**
-  [`correct`, `agent/commentator.py:390`](agent/commentator.py#L390); the recorded send is
-  [`:434`](agent/commentator.py#L434). The fix route calls it at [`core/app.py:432`](core/app.py#L432),
-  and later lines of the match carry the fixes ([`core/app.py:70`](core/app.py#L70), at most five).
-- **A fix as a Score check example:** [`teach`, `agent/scorecheck.py:83`](agent/scorecheck.py#L83),
-  sent by [`eval/seed_scorecheck.py:82`](eval/seed_scorecheck.py#L82).
-- **The training ledger:** every example sent to Score check, with its Mubit session and request
-  id, [`ledger`, `core/ledger.py:43`](core/ledger.py#L43), served at `GET /ledger`
-  ([`core/app.py:615`](core/app.py#L615)).
+Function names first, since line numbers drift; a test keeps every link below on its call.
+
+- **Commentary and check calls, `MubitProvider._stream`:** the Anthropic client's `base_url` is
+  Mubit, `MUBIT_URL` [`agent/commentator.py:36`](agent/commentator.py#L36), set at
+  [`:819`](agent/commentator.py#L819). [`_stream`, `:856`](agent/commentator.py#L856) calls
+  `client.messages.stream` at [`:858`](agent/commentator.py#L858) and reads Mubit's request id at
+  [`:871`](agent/commentator.py#L871) and the model that served it at [`:874`](agent/commentator.py#L874).
+  A moment's line is [`commentate`, `:334`](agent/commentator.py#L334), through
+  [`_call`, `:751`](agent/commentator.py#L751).
+- **Line check on each line:** the replay starts a second opinion on every line that passed the
+  number check, [`core/replay.py:361-363`](core/replay.py#L361);
+  [`live_check`, `agent/linecheck.py:106`](agent/linecheck.py#L106) runs
+  [`check`, `:88`](agent/linecheck.py#L88), which calls Mubit at [`:94`](agent/linecheck.py#L94).
+- **Producer fix (#245):** `POST /lines/{line_id}/fix`,
+  [`fix_line`, `core/app.py:406`](core/app.py#L406), calls
+  [`correct`, `agent/commentator.py:403`](agent/commentator.py#L403) at [`core/app.py:432`](core/app.py#L432).
+  The fix goes to Mubit as the next turn of the line's own call; the recorded send, on
+  `correction_provider`, is [`agent/commentator.py:447`](agent/commentator.py#L447), and its Mubit
+  request id is stored with the fix at [`core/app.py:444`](core/app.py#L444). Later lines of the
+  match carry the fixes, at most five ([`core/app.py:70`](core/app.py#L70)).
+- **Fix to Score check training:** the fix route starts `score_teach` at
+  [`core/app.py:461`](core/app.py#L461) (defined at [`:319`](core/app.py#L319)); it calls
+  [`send_fix`, `eval/seed_scorecheck.py:129`](eval/seed_scorecheck.py#L129), which labels each
+  example with [`teach`, `agent/scorecheck.py:83`](agent/scorecheck.py#L83) and sends it with
+  [`send`, `eval/seed_scorecheck.py:82`](eval/seed_scorecheck.py#L82). Each example sent is stored in
+  `scorecheck_examples` at [`eval/seed_scorecheck.py:141`](eval/seed_scorecheck.py#L141).
+- **Ledger:** `GET /ledger` at [`core/app.py:615`](core/app.py#L615) returns
+  [`ledger`, `core/ledger.py:43`](core/ledger.py#L43): every example sent to Score check, with its
+  Mubit session and request id.
 
 The console, the correction loop and a real fix step by step:
 [the evidence](docs/evidence.md).
