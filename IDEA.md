@@ -40,7 +40,7 @@ commentary for every match possible.
 - Side by side: the big model and our trained commentator calling the same moment (Mubit's Try
   models, unless Mubit lets the app call the adapter).
 
-- Iconic extra screens, after the core works: Messi v Mbappé (2022 World Cup final), Michael Jordan's last shot (1998 NBA Finals), Lewis Hamilton's 2024 Silverstone win. Same commentator, same prompt.
+- Iconic extra screens, after the core works: Messi v Mbappé (2022 World Cup final), the Battle of the Bridge (Chelsea 2-2 Tottenham, 2016), Kobe Bryant's 81 points (2006), Michael Jordan's last shot (1998 NBA Finals), Max Verstappen from 17th to win at São Paulo 2024. Same commentator, same prompt.
 
 ## What we don't build
 
@@ -55,7 +55,7 @@ commentary for every match possible.
 
 ## The demo, in one line
 
-The 2023 Women's World Cup final's highlights play and Touchline calls each moment aloud, like a TV commentator, in under a second, the
+Kobe Bryant's 81-point game plays and Touchline calls each moment aloud, like a TV commentator, in under a second, the
 producer fixes one wrong line on stage, our own trained commentator calls a moment beside the big model,
 then one tap switches to Kohli's last overs against Pakistan in 2022 and the same commentator calls cricket.
 
