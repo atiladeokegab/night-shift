@@ -54,6 +54,7 @@ class ReplayRequest(BaseModel):
     match_id: str
     speed: float = Field(10.0, gt=0)
     start_idx: int | None = Field(None, ge=0)  # start at this moment: nothing before it is called
+    smoke: bool = False  # the deploy's live smoke (core/smoke.py): not counted as a full replay
 
 
 class FixRequest(BaseModel):
@@ -121,7 +122,7 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
         jump = req.start_idx
         if jump is not None and not any(m["idx"] == jump for m in moments):
             raise HTTPException(422, f"no moment {jump} in {req.match_id!r}")
-        replay = Replay(req.match_id, req.speed)
+        replay = Replay(req.match_id, req.speed, req.smoke)
         replays[replay.id] = replay
         # a jump starts the video just before its moment (#163), as GET /matches' peak_video_start
         video = d.video_map(req.match_id) if jump is None else d.video_map(req.match_id, jump)

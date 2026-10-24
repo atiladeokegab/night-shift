@@ -70,7 +70,8 @@ export function ProofPanel({ live }: Props) {
         <p className="small">
           First word: time from the match moment to the first word of the model's text reply, measured through
           Mubit. Finishing the line, speech synthesis and playback are not included.
-          Cost per match: one replay run start to finish, at list prices. Model: its LLM tokens; Voice: its speech characters.
+          Per full replay: a replay from the first moment to the last, at list prices. Model: the tokens of
+          every line it said, cached or not; Voice: its speech characters.
           {stats?.adapter && !stats.adapter.cost_measurable && " Adapter cost: not measurable; Mubit doesn't report it to the app."}
         </p>
       </section>
@@ -85,8 +86,8 @@ function PerMatch({ stats }: { stats: Stats }) {
   return (
     <>
       <div className="wide">
-        <dt className="label">Cost per match</dt>
-        <dd>{n ? `Model + Voice, mean of ${n} full ${n === 1 ? 'replay' : 'replays'}` : 'Shows once a match plays start to finish'}</dd>
+        <dt className="label">Per full replay ({n} measured)</dt>
+        <dd>{n ? 'Cost: Model + Voice, the mean' : 'Shows once a match plays start to finish'}</dd>
       </div>
       <Figure className="third" label="Total" value={cents(stats.cost_per_match_usd)} />
       <Figure className="third" label="Model" value={cents(stats.model_cost_per_match_usd)} />
