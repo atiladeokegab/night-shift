@@ -312,3 +312,13 @@ test('the live page has one h1, the match title, for screen readers', () => {
   assert.equal(html.match(/<h1[\s>]/g)?.length, 1)
   assert.match(html, /<h1 class="sr-only">Kobe&#x27;s 81 v Toronto<\/h1>/)
 })
+
+test('each Fix button has its own name: the speaker, the clock and the first words of the line', () => {
+  // A lead line and the analyst's on the same moment used to share "Fix the line at 06:12".
+  const both = { ...replay, lines: [line(3, 490.5, EARLY), { ...line(3, 491, LATER), line_id: 'a3', speaker: 'analyst' as const }] }
+  const names = [...render({ replay: both }).matchAll(/<button class="btn sm"[^>]*aria-label="([^"]+)">Fix</g)].map((m) => m[1])
+  assert.equal(names.length, 2)
+  assert.equal(new Set(names).size, 2)
+  assert.ok(names.includes('Fix the lead line at 06:12: Kobe pulls up from the elbow…'), names.join(' | '))
+  assert.ok(names.includes('Fix the analyst line at 06:12: Kobe again! That is forty for…'), names.join(' | '))
+})
