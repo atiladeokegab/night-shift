@@ -103,13 +103,15 @@ Read 24 Oct 2026 from one real fix (Bulls v Jazz 1998, the Jordan layup).
 
 ## How it uses Mubit
 
-Every LLM call goes through Mubit, which records our traffic as training data for a small commentator
-model; producer fixes go into the same task as corrections. A version is used only once it passes
+Every LLM call goes through Mubit. Calls with recording enabled supply training data for a small
+commentator model; eligible producer fixes go into the original task as corrections. A version is
+used only once it passes
 Mubit's test, and none has yet ([as its console shows it](#correction-loop-with-evidence)). That smaller model is what would make a commentator for every match affordable.
 
 1. **Every call goes through Mubit.** Each moment line is one call to Mubit's Anthropic endpoint
-   (`claude-haiku-4-5`, recorded), or two when the agent uses its one permitted round of tools. The
-   analyst's stat lines and the lead's replies are one call each to `claude-sonnet-5-5`, unrecorded. There is one
+   (`claude-haiku-4-5`, recorded for training runs; unrecorded on the default live key), or two when
+   the agent uses its one permitted round of tools. The analyst's stat lines and the lead's replies
+   are one call each to `claude-sonnet-5-5`, unrecorded. There is one
    session per match, and no model is called from the browser
    ([`agent/commentator.py`](../agent/commentator.py)).
 2. **One task for every sport.** The system prompt, message template, tools and model are the same,
