@@ -193,6 +193,15 @@ def test_he_hasnt_scored_is_the_player_named_last_in_the_answer_or_question():
         assert wrong_claims(text, past, question) == [], text
 
 
+def test_a_verb_in_the_answer_is_not_a_player_but_a_lowercase_question_name_is():
+    # Chelsea v Spurs, Kane 1, Danny Rose 0: "rose" is a verb in prose (Prometheus on #264)
+    past = load_moments("3754092")
+    kane = ["Harry Kane has scored 1 so far"]
+    prose = "Harry Kane played well. His shot rose. He has not scored yet."
+    assert wrong_claims(prose, past) == kane
+    assert wrong_claims("He has not scored yet.", past, "how is kane doing?") == kane
+
+
 def test_a_he_answer_is_retried_with_the_question_s_player():
     past, lines = past_at_105_41()
     ask, asked = model("He hasn't scored yet.", RIGHT)

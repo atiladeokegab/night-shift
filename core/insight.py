@@ -1170,14 +1170,20 @@ def wrong_claims(text: str, past: list[dict], question: str = "") -> list[str]:
     surnames = Counter(n.split()[-1] for n in names)
     said = {n: n if surnames[n.split()[-1]] > 1 else n.split()[-1] for n in names}  # two Martínez
 
-    def named_in(words: str) -> list[tuple[int, str]]:
+    def named_in(words: str, any_case: bool = False) -> list[tuple[int, str]]:
+        """Full names in any case; in answer prose a surname only as the data spells it, so "his
+        shot rose" is never Danny Rose. A question ("how did messi score?") matches any case."""
         return sorted(
             (hit.start(), name)
             for name in names
-            for hit in re.finditer(rf"\b{re.escape(said[name])}\b", words, re.I)  # "messi"
+            for hit in re.finditer(
+                rf"\b(?:(?i:{re.escape(name)})|{re.escape(said[name])})\b",
+                words,
+                re.I if any_case else 0,
+            )
         )
 
-    everyone, asked, offset = named_in(text), named_in(question), 0
+    everyone, asked, offset = named_in(text), named_in(question, any_case=True), 0
     for clause in re.split(r"(?<=[.!?;])\s+", text):  # a clause each: "Messi; Mbappé's brace"
         offset = text.index(clause, offset)
         named = named_in(clause)
