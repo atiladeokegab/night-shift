@@ -62,7 +62,7 @@ class ReplayRequest(BaseModel):
 
 class FixRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
-    corrected_text: str = Field(min_length=1)
+    corrected_text: str = Field(min_length=1, max_length=200)
     reason: str = ""
 
 
@@ -228,6 +228,9 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
             raise HTTPException(404, f"no line {line_id!r}")
         if d.correct is None:
             raise HTTPException(503, "commentator not configured")
+        # a fix is spoken on the next replay (#232) and trains Mubit: never one the data contradicts
+        if wrong := await asyncio.to_thread(review.wrong, line, req.corrected_text, d):
+            raise HTTPException(422, {"wrong": wrong})
         try:
             # an insight or reply goes back with its own Stat request, not its moment's
             over = insight.said_over(line, d.load_moments)
