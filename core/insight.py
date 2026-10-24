@@ -6,6 +6,7 @@ by later replays of the same match."""
 
 import itertools
 import math
+import random
 import re
 from collections import Counter
 
@@ -25,9 +26,15 @@ MAX_CALLS = 160  # new insight calls per replay; cached ones are free
 # after the lead's call the voices alternate, never one twice in a row (#288): the analyst
 # reacts, the lead comes back to them, the analyst answers the lead; then the stretch ends
 PER_GAP = 3
+# a stretch that ends with the next moment more than FILL_S away gets one more pair, lead then
+# analyst, kept only if both lines are made and end FILL_CLEAR_S before that moment (#297)
+FILL_S = 10.0
+FILL_CLEAR_S = 2.0
+MAX_PER_GAP = PER_GAP + 2
 # stored insights of another version are never reused (v1 re-called the play, v2 tallied counts,
-# v3 opened cold on the stat with no names, v4 gave the analyst two lines in a row)
-VERSION = 5
+# v3 opened cold on the stat with no names, v4 gave the analyst two lines in a row, v5 named by
+# position, so one match could name the partner in every comeback)
+VERSION = 6
 COMEBACK_WORDS = 10  # the longest lead comeback: the room it needs before the analyst can answer it
 OPEN = "cold open"  # the kind of the two lines before the first mapped moment (#221)
 OPENING = (  # who says each line of it and what to do: short, so even a read-back fits
@@ -35,7 +42,10 @@ OPENING = (  # who says each line of it and what to do: short, so even a read-ba
     ("analyst", "one light line back to your partner"),
 )
 OPEN_S = 15.0  # the whole cold open is spoken within this
-NAME_EVERY = 3  # a line in a stretch uses the partner's name about this often
+# how often a stretch line may use the partner's name: the lead's comeback, the analyst (#297)
+NAMED = {"lead": 1 / 3, "analyst": 1 / 4}
+ANALYST_WORDS = 18  # the analyst's line is asked to keep to this many words
+CUT_WORDS = 22  # a stretch line longer than this is cut at its last full sentence that fits
 RECENT = 6  # the key moments that count as recent play for momentum
 
 
@@ -393,7 +403,7 @@ class Gaps:
         answer. A line that repeats one of the `recent` ones, or echoes a phrase from one, is never
         said."""
         m = past[-1]
-        if n >= PER_GAP:
+        if n >= MAX_PER_GAP:
             return None
         ball = self.balls().get(m["idx"])
         reply = n % 2 == 1
@@ -440,8 +450,7 @@ class Gaps:
                 "heard": heard,
                 # who said it: always the other voice, the lead's call before the first line
                 "by": "analyst" if reply else "lead",
-                # by position, so a cached line keeps it: about one line in NAME_EVERY
-                "named": (m["idx"] + n) % NAME_EVERY == 0,
+                "named": named(self.match_id, m["idx"], n),
                 "v": VERSION,
             }
             if picked[0] == "orientation":  # said at the ball's time, the latest it reads (A-1.4)
@@ -461,6 +470,8 @@ class Gaps:
                 self.calls += 1
                 # the same seam as every line: only moments up to the one followed reach the model
                 said = commentate(stat_moment(m, said_as, reply), list(past))
+                if said and said.get("text"):  # the checks below see what is said
+                    said = {**said, "text": cut(said["text"])}
                 # where the ball is now is news, though it reads like where it was before; its own
                 # check (wrong_orientation, below) falls back to the data's line, never drops it
                 fresh = said_as["kind"] == "orientation"
@@ -507,6 +518,8 @@ class Gaps:
                     "speaker": speaker,
                     "replay_id": self.replay_id,
                     role: {**key, **said_as},
+                    # the extra pair: the page drops it if the next moment comes first (#297)
+                    **({"fill": True} if n >= PER_GAP else {}),
                 },
             )
         if reply:
@@ -629,6 +642,26 @@ def _words(text: str) -> list[tuple[str, bool]]:
 
 # a run of this many words two lines share is the same phrase; 4 caught "chelsea have a lot" (#288)
 ECHO_WORDS = 5
+
+
+def named(match_id: str, after_idx: int, n: int) -> bool:
+    """Whether the n-th stretch line may use the partner's name: seeded by its place, so a replay
+    asks the same; the note reaches only the user message, never the prompt (#297)."""
+    rate = NAMED["lead" if n % 2 else "analyst"]
+    return random.Random(f"{match_id}:{after_idx}:{n}").random() < rate
+
+
+def cut(text: str, most: int = CUT_WORDS) -> str:
+    """The line, or when it runs over `most` words its full sentences that fit; never cut
+    mid-sentence, so a first sentence over `most` keeps the whole line."""
+    if len(text.split()) <= most:
+        return text
+    kept: list[str] = []
+    for sentence in re.split(r"(?<=[.!?])\s+", text.strip()):
+        if len(" ".join([*kept, sentence]).split()) > most:
+            break
+        kept.append(sentence)
+    return " ".join(kept) or text
 
 
 def echoes(text: str, recent: list[str]) -> str | None:
@@ -1323,12 +1356,15 @@ def stat_moment(m: dict, said_as: dict, reply: bool) -> dict:
     # m's own detail stays out too; the score line needs these
     keep = {k: v for k, v in (m.get("detail") or {}).items() if k in ("balls_left", "shootout")}
     me, partner = ("lead", "analyst") if reply else ("analyst", "lead")
+    open_ = said_as.get("kind") == OPEN
     by = said_as.get("by") or partner  # who said `heard`: before v4, always the partner
     said_to = {  # the names reach only this unrecorded request, never the lead's moment prompt
         "speaker": me,
         "you are": NAMES[me],
         "partner": f"{NAMES[partner]}, the {partner}",
         "call partner by name": "yes" if said_as.get("named") else "no",
+        # a reminder in the user message: the analyst's prompt is the task's fingerprint (#297)
+        **({"length": f"at most {ANALYST_WORDS} words"} if me == "analyst" and not open_ else {}),
         # the comeback may ask about what the analyst says next, so the next line answers it
         **(
             {f"{NAMES['analyst']}'s next point is about": said_as["next"]}

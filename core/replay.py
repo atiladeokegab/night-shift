@@ -265,11 +265,14 @@ async def run_replay(
             # last line has likely been spoken
             end = min((t for t in video_t.values() if t > tag["video_t"]), default=None)
             t, said = tag["video_t"], (line or {}).get("text")
-            held = []  # the lead's question, said only once its answer is made
+            held = []  # the lead's question or extra line, said only once the analyst's is made
             for n in itertools.count():
                 # each voice as the other ends; the page holds a line until the one on air ends
                 t = insight.due_after(t, said, insight.TURN_S)
                 if end is None or t > end - insight.CLEAR_S:
+                    break
+                fill = n >= insight.PER_GAP  # the extra pair (#297): only into a long quiet
+                if fill and not held and end - t <= insight.FILL_S:
                     break
                 got = await call(
                     moment["idx"],
@@ -286,8 +289,10 @@ async def run_replay(
                     break
                 held.append((*got, t))
                 said = got[1]["text"]
-                if "next" in got[1].get("reply", {}):
+                if "next" in got[1].get("reply", {}) or fill and "reply" in got[1]:
                     continue  # may ask the analyst something: the answer goes out with it
+                if fill and insight.due_after(t, said, 0) > end - insight.FILL_CLEAR_S:
+                    break  # the extra pair would run into the next moment: neither is said
                 for stat, said_line, at in held:
                     await replay.publish("moment", {**stat, "video_t": at})
                     await say({**said_line, "video_t": at}, stat)

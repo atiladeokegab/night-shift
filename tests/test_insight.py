@@ -100,7 +100,11 @@ def test_kobe_one_viewing_fills_each_quiet_stretch_up_to_the_cap_without_repeats
         after = [ln for ln in lines if gap(ln).get("after_idx") == line["moment_idx"]]
         assert line["speaker"] == "lead"
         assert [gap(ln)["n"] for ln in after] == list(range(len(after)))
-        assert len(after) <= insight.PER_GAP  # the analyst, the lead's comeback, the analyst (#288)
+        # the analyst, the lead's comeback, the analyst (#288); a long quiet, one more pair (#297)
+        assert len(after) in (0, 1, 2, insight.PER_GAP, insight.MAX_PER_GAP)
+        assert [bool(ln.get("fill")) for ln in after] == [
+            n >= insight.PER_GAP for n in range(len(after))
+        ]
         for n, ln in enumerate(after):  # the voices alternate after the lead's call
             reply = n % 2 == 1
             assert ("reply" in ln, ln["speaker"]) == (reply, "lead" if reply else "analyst")
@@ -109,7 +113,13 @@ def test_kobe_one_viewing_fills_each_quiet_stretch_up_to_the_cap_without_repeats
             assert ln["video_t"] == pytest.approx(insight.due_after(t, said, insight.TURN_S))
             assert ln["video_t"] <= end - insight.CLEAR_S
             t, said = ln["video_t"], ln["text"]
-        full = len(after) == insight.PER_GAP
+        if len(after) == insight.MAX_PER_GAP:  # the extra pair: into a long quiet, ending before it
+            assert (
+                end - insight.due_after(after[2]["video_t"], after[2]["text"], insight.TURN_S)
+                > insight.FILL_S
+            )
+            assert insight.due_after(t, said, 0) <= end - insight.FILL_CLEAR_S
+        full = len(after) >= insight.PER_GAP
         assert full or insight.due_after(t, said, insight.TURN_S) > end - insight.CLEAR_S, (
             "left quiet"
         )
@@ -425,12 +435,12 @@ def test_the_stat_is_the_event_and_the_moments_shooter_stays_out():
 
 
 def test_new_insight_calls_stop_at_the_cap(tmp_path, monkeypatch):
-    # three lines a gap keep Kobe well under 160 calls, so a lower cap shows it still holds
+    # up to five lines a gap keep Kobe well under 160 calls, so a lower cap shows it still holds
     monkeypatch.setattr(insight, "MAX_CALLS", 20)
     store = Store(tmp_path)
-    counts = [len(stat_calls(replay(KOBE, store)[1])) for _ in range(4)]
+    counts = [len(stat_calls(replay(KOBE, store)[1])) for _ in range(5)]
     # each viewing tops up the stretches the one before left quiet, until all are cached
-    assert counts[0] == counts[1] == 20 and 0 < counts[2] <= 20 and counts[3] == 0
+    assert counts[0] == counts[1] == counts[2] == 20 and 0 < counts[3] <= 20 and counts[4] == 0
 
 
 def test_no_video_no_insights(tmp_path):
@@ -656,10 +666,12 @@ def test_after_the_call_the_voices_alternate_and_each_answers_the_other(tmp_path
     for ln in said:
         if gap(ln):
             next(r for r in runs if r[0]["moment_idx"] == gap(ln)["after_idx"]).append(ln)
-    assert max(len(r) for r in runs) == 1 + insight.PER_GAP
+    assert (
+        max(len(r) for r in runs) == 1 + insight.MAX_PER_GAP
+    )  # a long quiet gets one more pair (#297)
     for run in runs:
         speakers = [ln["speaker"] for ln in run]
-        assert speakers == ["lead", "analyst", "lead", "analyst"][: len(run)]
+        assert speakers == (["lead", "analyst"] * 3)[: len(run)]
         for prev, ln in itertools.pairwise(run):  # each heard the other voice's line
             assert gap(ln)["heard"] == prev["text"] or gap(ln)["n"] == 0
             assert gap(ln)["by"] == prev["speaker"]
@@ -736,3 +748,109 @@ def test_no_voice_says_a_phrase_a_recent_line_said(tmp_path):
         assert not insight.echoes(text, said[max(0, i - insight.RECENT_LINES) : i])
     told = [m["detail"].get("never say") for m in asked if m["type"] == "Stat"]
     assert "chelsea have a lot to" in told
+
+
+def stretches(lines):
+    """Each moment's stretch lines, by the moment they follow."""
+    out = {}
+    for ln in lines:
+        if ln.get("insight") or ln.get("reply"):
+            out.setdefault(gap(ln)["after_idx"], []).append(ln)
+    return out
+
+
+def extra_pairs(lines, match_id):
+    """(the line before the extra pair, the pair's last line, the next moment's time) for each
+    stretch that got the extra pair; and asserts no stretch is longer."""
+    times = [m["video_t"] for m in video_map(match_id)["moments"]]
+    out = []
+    for s in stretches(lines).values():
+        assert len(s) <= insight.MAX_PER_GAP
+        if len(s) == insight.MAX_PER_GAP:
+            out.append((s[2], s[-1], min(t for t in times if t > s[-1]["video_t"])))
+    return out
+
+
+def test_a_long_quiet_gets_one_more_pair(tmp_path):
+    # #297: a stretch that ends more than FILL_S before the next moment adds the lead, then the
+    # analyst, once; 7-word lines, so the pair would fit in less
+    pairs = extra_pairs(replay(KOBE, Store(tmp_path))[0], KOBE)
+    assert pairs
+    for before, _, end in pairs:
+        assert (
+            end - insight.due_after(before["video_t"], before["text"], insight.TURN_S)
+            > insight.FILL_S
+        )
+
+
+def test_the_extra_pair_is_dropped_if_it_would_run_into_the_next_moment(tmp_path, monkeypatch):
+    monkeypatch.setattr(insight, "FILL_S", 0.0)  # any quiet, and a line may start close to the
+    monkeypatch.setattr(insight, "CLEAR_S", 1.0)  # next moment: only the fit decides
+    lines, _ = replay(KOBE, Store(tmp_path), calls=Sized())  # 14-word lines
+    pairs = extra_pairs(lines, KOBE)
+    assert pairs
+    for _, last, end in pairs:
+        assert insight.due_after(last["video_t"], last["text"], 0) <= end - insight.FILL_CLEAR_S
+
+
+def test_the_extra_pair_is_dropped_if_the_analyst_line_fails(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        insight.Gaps, "peek", lambda *a, **k: None
+    )  # no question: the hold is the pair's
+    count = itertools.count()
+
+    def failing(moment, history):  # the analyst's line after the lead's extra one comes back empty
+        words = " ".join(letters(10 * next(count) + k) for k in range(6))
+        said = str(moment["detail"].get(f"{NAMES['lead']} just said"))
+        if moment["type"] == "Stat" and moment["detail"]["speaker"] == "lead":
+            stretched[moment["idx"]] = stretched.get(moment["idx"], 0) + 1
+            words += " once more" * (stretched[moment["idx"]] > 1)  # the extra pair's
+        elif moment["type"] == "Stat" and said.endswith("once more"):
+            words = ""
+        return {"line_id": uuid.uuid4().hex, "moment_idx": moment["idx"], "text": words}
+
+    stretched = {}
+    store = Store(tmp_path / "fail")
+    lines, _ = replay(KOBE, store, calls=failing)
+    assert max(stretched.values()) > 1  # the extra pair was tried
+    assert all(len(s) <= insight.PER_GAP for s in stretches(lines).values())  # and never said
+    assert not [ln for ln in lines if ln.get("fill")]
+    assert [
+        ln for ln in store.all("lines") if ln.get("fill")
+    ]  # the lead's, kept for a later replay
+
+
+@pytest.mark.parametrize(("n", "rate"), [(1, 1 / 3), (3, 1 / 3), (0, 1 / 4), (2, 1 / 4)])
+def test_the_name_note_comes_about_as_often_as_set(n, rate):
+    # seeded by the line's place: the same every replay, about 1 in 3 for the lead, 1 in 4 analyst
+    said = [insight.named(match_id, idx, n) for match_id in ("a", "b", "c") for idx in range(1000)]
+    assert abs(sum(said) / len(said) - rate) < 0.03
+    assert said == [insight.named(m, idx, n) for m in ("a", "b", "c") for idx in range(1000)]
+
+
+def test_the_name_note_and_length_reminder_reach_the_user_message_only(tmp_path):
+    _, fake = replay(CHELSEA, Store(tmp_path))
+    asks = stat_calls(fake)
+    analyst = [q for q in asks if "speaker: analyst" in q["messages"][0]["content"]]
+    lead = [q for q in asks if "speaker: lead" in q["messages"][0]["content"]]
+    assert analyst and lead
+    assert {q["system"] for q in asks} == {commentator.ANALYST}  # the fingerprint is unchanged
+    reminder = f"length: at most {insight.ANALYST_WORDS} words"
+    assert all(reminder in q["messages"][0]["content"] for q in analyst)
+    assert not any(reminder in q["messages"][0]["content"] for q in lead)
+
+
+@pytest.mark.parametrize(
+    ("text", "said"),
+    [
+        ("Short and sweet.", "Short and sweet."),
+        (
+            "One goal from eleven shots before tonight. That is a rare one for a defender who "
+            "mostly heads them clear and rarely gets forward at all.",
+            "One goal from eleven shots before tonight.",
+        ),
+        (" ".join(["word"] * 25) + ".", " ".join(["word"] * 25) + "."),  # never mid-sentence
+    ],
+)
+def test_a_long_line_is_cut_at_its_last_full_sentence_that_fits(text, said):
+    assert insight.cut(text) == said
