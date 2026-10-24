@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { airAnswer, Floor, HOLD_MAX_MS, isBig, loudness, voiceOf, type Caption, type Turn } from './turns.ts'
+import { airAnswer, bigSoon, Floor, HOLD_MAX_MS, isBig, loudness, voiceOf, type Caption, type Turn } from './turns.ts'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 type Said = Turn & { id: string }
@@ -43,6 +43,43 @@ test('the two commentators take turns, and only a big moment cuts in on the othe
   assert.equal(stats.take(analyst('after'), 2000), true)
 })
 
+test('a question asked mid-line is answered when that line ends, and held back while a big moment is due', () => {
+  const floor = new Floor<Said>()
+  let due = false
+  floor.bigDue = () => due
+  const call = lead('call')
+  const answer: Said = { id: 'answer', speaker: 'analyst', answer: true }
+  floor.take(call, 0)
+  assert.equal(floor.take(answer, 500), false) // mid-line: the commentary carries on
+  const more = lead('more')
+  assert.equal(floor.take(more, 800), true) // the commentary keeps going while the answer waits
+  assert.equal(floor.ended(call, 900), null) // a line already cut off is no gap
+  due = true
+  assert.equal(floor.ended(more, 1500), null) // the line ended, but a goal is due: held back
+  assert.equal(floor.gap(), null)
+  due = false
+  assert.equal(floor.gap()?.id, 'answer') // the goal has gone by: the answer takes the floor
+  assert.equal(floor.take(lead('goal', true), 2000), false) // and nothing cuts it off
+  const quiet = new Floor<Said>()
+  assert.equal(quiet.take(answer, 0), true) // nothing on air and nothing due: answered at once
+  const next = new Floor<Said>()
+  next.take(analyst('stat'), 0)
+  next.take(answer, 100)
+  assert.equal(next.ended(analyst('other'), 200), null)
+  next.clear() // a rewind or leaving drops the waiting answer too
+  assert.equal(next.take(lead('after'), 300), true)
+  assert.equal(next.gap(), null)
+})
+
+test('a big moment is due when the picture reaches it within 3 s', () => {
+  const goal = { type: 'Shot', outcome: 'Goal', video_t: 63 }
+  assert.ok(bigSoon([goal], 61))
+  assert.ok(!bigSoon([goal], 59)) // over 3 s away
+  assert.ok(!bigSoon([goal], 64)) // already gone by
+  assert.ok(!bigSoon([{ ...goal, outcome: 'Saved' }], 62)) // routine
+  assert.ok(!bigSoon([{ type: 'Shot', outcome: 'Goal' }], 0)) // ungated: no time to know
+})
+
 test('goals, wickets, baskets and overtakes are big; routine moments are not', () => {
   assert.ok(isBig({ type: 'Shot', outcome: 'Goal' }))
   assert.ok(isBig({ type: 'Wicket', outcome: 'caught' }))
@@ -64,17 +101,20 @@ test('the stage shows the question, then the answer while it is spoken, then the
   const shown: (Caption | null)[] = []
   let answer!: (a: { text: string }) => void
   let spoken!: () => void
+  let start!: () => void
   const asking = airAnswer(
     'Who scores next?',
     () => new Promise((r) => (answer = r)),
-    () => new Promise<void>((r) => (spoken = r)),
+    (_, started) => ((start = started), new Promise<void>((r) => (spoken = r))),
     (c) => shown.push(c),
     () => true,
   )
-  assert.deepEqual(shown, [{ kind: 'question', text: 'A viewer asks: Who scores next?' }])
+  assert.deepEqual(shown, [{ kind: 'question', text: 'A viewer asks: Who scores next? · thinking…' }])
   answer({ text: 'Who scores next? Reds are pressing!' })
-  await asking // the ask box is free once the answer is in, while it is still being spoken
-  assert.deepEqual(shown.at(-1), { kind: 'answer', text: 'Who scores next? Reds are pressing!', speaker: 'lead' })
+  await asking // the ask box is free once the answer is in, while it waits for a gap and is spoken
+  assert.equal(shown.length, 1) // still thinking: the commentary goes on until a gap
+  start()
+  assert.deepEqual(shown.at(-1), { kind: 'answer', text: 'Who scores next? Reds are pressing!', speaker: 'analyst' })
   spoken()
   await sleep(0)
   assert.equal(shown.at(-1), null)
@@ -83,7 +123,7 @@ test('the stage shows the question, then the answer while it is spoken, then the
 test('an answer that is not spoken stays up for the read time; a replaced replay changes nothing', async () => {
   const shown: (string | null)[] = []
   await airAnswer('Score?', async () => ({ text: 'Off air' }), () => null, (c) => shown.push(c?.text ?? null), () => true, 20)
-  assert.deepEqual(shown, ['A viewer asks: Score?', 'Off air'])
+  assert.deepEqual(shown, ['A viewer asks: Score? · thinking…', 'Off air'])
   await sleep(40)
   assert.equal(shown.at(-1), null)
   const stale: (string | null)[] = []
@@ -91,7 +131,7 @@ test('an answer that is not spoken stays up for the read time; a replaced replay
   const late = airAnswer('Score?', async () => ({ text: 'One nil' }), () => null, (c) => stale.push(c?.text ?? null), () => current)
   current = false // the viewer switched match before the answer came back
   await late
-  assert.deepEqual(stale, ['A viewer asks: Score?'])
+  assert.deepEqual(stale, ['A viewer asks: Score? · thinking…'])
 })
 
 test('the commentary plays at the chosen volume, kept between 0 and 1, and muted is silent', () => {

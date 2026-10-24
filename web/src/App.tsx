@@ -14,7 +14,7 @@ import { VoiceSheet } from './components/VoiceSheet'
 import { Wall } from './components/Wall'
 import { chipName, defaultVoice } from './teams'
 import { SPORTS, type Line, type Match, type Moment, type Sport, type Voice } from './types'
-import { airAnswer, isBig, type Caption } from './turns'
+import { airAnswer, bigSoon, isBig, type Caption } from './turns'
 import { onScreen, useReplay } from './useReplay'
 import { useSpeech } from './useSpeech'
 import { viewOf } from './view'
@@ -60,9 +60,11 @@ export default function App() {
     [speech],
   )
   const replay = useReplay(sayLine, speech.hush)
+  const ahead = useRef(replay.state) // #139: the moments still to come, for an answer waiting for a gap
   useLayoutEffect(() => {
     presented.current = replay.state.moments
-  }, [replay.state.moments])
+    ahead.current = replay.state
+  }, [replay.state])
   const { unGate } = replay
   // A video that can't play here for good says so, and the commentary goes on on the replay's clock.
   const onVideo = useCallback(
@@ -188,15 +190,16 @@ export default function App() {
     )
   }
 
-  // #117: the answer is spoken in the voice the viewer picked; an off-air answer is shown, never spoken.
-  // #131: the stage shows the question, then the answer while it is spoken.
+  // #117: an off-air answer is shown, never spoken. #131: the stage shows the question, then the answer
+  // while it is spoken. #139: the analyst answers at a gap, never with a big moment due in the next 3 s.
   const askCommentator = async (question: string, momentIdx: number) => {
     const sent = session.current
     const mine = ++asked.current
     await airAnswer(
       question,
       () => replay.ask(question, momentIdx),
-      (answer) => (answer.off_air ? null : speech.sayAnswer(answer, voiceNow.current)),
+      (answer, started) =>
+        answer.off_air ? null : speech.sayAnswer(answer, voiceNow.current, started, () => bigSoon(ahead.current.queuedMoments, ahead.current.now)),
       setAsking,
       () => session.current === sent && asked.current === mine,
     )
