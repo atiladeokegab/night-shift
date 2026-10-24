@@ -6,6 +6,7 @@ import json
 import threading
 import time
 from datetime import UTC, datetime
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
@@ -328,10 +329,17 @@ def test_the_eval_scores_line_check_beside_the_rules_offline(tmp_path, capsys):
 
 def test_stats_serve_the_held_out_result_the_eval_wrote(tmp_path, monkeypatch):
     from core import stats as stats_mod
+    from eval import linecheck_eval
 
-    result = {"labels": "heldout_labels.jsonl", "lines": 288, "wrong": 5}
-    monkeypatch.setattr(stats_mod, "HELDOUT", tmp_path / "linecheck_heldout.json")
+    # the shape --json writes (web/src/proof.test.ts reads the same fixture)
+    fixture = Path(__file__).parent / "fixtures" / "linecheck_heldout.json"
+    result = json.loads(fixture.read_text())
+    rules = {"overall": {"lines": 288, "tp": 1, "fn": 4, "fp": 0}}
+    model = {"overall": {"tp": 3, "fp": 5}}
+    out = {"rules": rules, "line_check": model, "errors": 0}
+    assert linecheck_eval.summary("heldout_labels.jsonl", out) == result
     store = Store(tmp_path / "store")
+    monkeypatch.setattr(stats_mod, "HELDOUT", tmp_path / "linecheck_heldout.json")
     assert stats_mod.stats(store)["linecheck"]["heldout"] is None  # no file: nothing claimed
-    stats_mod.HELDOUT.write_text(json.dumps(result))
+    monkeypatch.setattr(stats_mod, "HELDOUT", fixture)
     assert stats_mod.stats(store)["linecheck"]["heldout"] == result

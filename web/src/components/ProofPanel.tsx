@@ -72,8 +72,9 @@ export function ProofPanel({ live, matchId, fellBack = false }: Props) {
             <div className="wide">
               <dt className="label">Checker model</dt>
               <dd>{linecheckRow(stats.linecheck)}</dd>
+              {/* nothing until eval/linecheck_heldout.json is committed (#317) */}
               {heldout && <dd>{heldout}</dd>}
-              <dd className="small">{FLAG_NOTE}</dd>
+              {heldout && <dd className="small">{FLAG_NOTE}</dd>}
             </div>
           )}
           {stats.fixes_toward_next !== undefined && (
