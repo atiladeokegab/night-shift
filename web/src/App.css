@@ -98,11 +98,16 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 #video.off .player { display: none; }
 .live { position: relative; z-index: 1; }
 .stage { position: relative; height: var(--stage-h); }
+/* The bottom scrim is pinned in px to the subtitle lane (bottom 150px, two lines and the tag), so it sits
+   at about 70% under the text at any stage height, however bright the frame. */
 .shade { position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(180deg, rgba(6, 8, 15, .78) 0%, rgba(6, 8, 15, 0) 24%, rgba(6, 8, 15, 0) 46%, rgba(6, 8, 15, .9) 100%),
+  background: linear-gradient(180deg, rgba(6, 8, 15, .78) 0%, rgba(6, 8, 15, 0) 24%),
+              linear-gradient(0deg, rgba(6, 8, 15, .9) 0, rgba(6, 8, 15, .72) 320px, rgba(6, 8, 15, 0) 480px),
               radial-gradient(120% 90% at 40% 50%, transparent 55%, rgba(0, 0, 0, .5)); }
 .live .nav { position: absolute; top: 0; left: 0; right: 0; z-index: 3; }
 .lane { position: absolute; left: var(--gut); right: calc(var(--side-w) + var(--gut) + 16px); z-index: 2; }
+/* Denser glass over the video, so the score bar, ON AIR pill and panels hold over a white frame. */
+.live .glass { --glass: rgba(10, 13, 24, .8); }
 .hud { top: 84px; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
 .scorebar { display: flex; align-items: center; gap: 14px; padding: 10px 16px; border-radius: 14px; font: 600 1.05rem/1 var(--display); flex-wrap: wrap; }
 .team { display: inline-flex; align-items: center; gap: 8px; letter-spacing: .02em; }
@@ -129,7 +134,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .subtitle .tag.fixed { color: var(--fix); background: rgba(124, 212, 255, .1); border-color: rgba(124, 212, 255, .3); }
 .subtitle::before { content: ""; position: absolute; inset: -64px -18% -40px; z-index: -1; pointer-events: none; background: radial-gradient(closest-side, rgba(4, 6, 12, .82), rgba(4, 6, 12, .5) 62%, transparent); }
 .subtitle p { margin: 0; max-width: 34ch; font: 600 clamp(1.6rem, 3vw, 3rem)/1.12 var(--display); letter-spacing: -.02em; text-wrap: balance;
-  text-shadow: 0 2px 30px rgba(0, 0, 0, .65); animation: rise .38s var(--ease); }
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .9), 0 2px 12px rgba(0, 0, 0, .8), 0 2px 30px rgba(0, 0, 0, .65); animation: rise .38s var(--ease); }
 .subtitle.fixed p { color: var(--fix); }
 .subtitle.waiting p { font: 500 1.15rem/1.4 var(--body); color: var(--muted); letter-spacing: 0; }
 @keyframes rise { from { opacity: 0; transform: translateY(10px); filter: blur(4px); } }
