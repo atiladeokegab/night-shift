@@ -10,7 +10,7 @@ interface Props {
   children?: ReactNode // the live page's match bar, between the wordmark and the links (#153)
 }
 
-// The top nav (docs/design.md): "Touchline." left; "Matches" (green dot), "Fixtures", "About" right.
+// The top nav (docs/design.md): "Touchline." left; "Matches" (green dot), "Fixtures", "Review", "About" right.
 export function Nav({ current, onGo, children }: Props) {
   const link = (screen: Screen, label: string, dot = false) => (
     <button aria-current={current === screen || (screen === 'wall' && current === 'live') ? 'page' : undefined} onClick={() => onGo(screen)}>

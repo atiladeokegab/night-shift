@@ -1,4 +1,4 @@
-/* The approved redesign (docs/design.md, PRD v2+), ported from docs/mockup/index.html. The mockup's state
+/* The approved redesign (docs/design.md), ported from docs/mockup/index.html. The mockup's state
    bar is left out; the SVG stand-in for the video is the real YouTube player here. */
 :root {
   --bg: #06080F; --fg: #F6F4EF; --muted: rgba(246, 244, 239, .66); --faint: rgba(246, 244, 239, .42);
