@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { isDemo, lineAudioUrl } from './api'
-import { Floor, voiceOf, type Speaker } from './turns'
+import { Floor, loudness, voiceOf, type Speaker } from './turns'
 import type { Line, Voice } from './types'
 
 type Said = Pick<Line, 'line_id' | 'text'> & { speaker?: Speaker }
@@ -19,7 +19,8 @@ export function useSpeech() {
   const [speaking, setSpeaking] = useState(false)
   const [volume, setVolumeState] = useState(1)
   const [muted, setMuted] = useState(false)
-  const level = useRef(1) // what the next sound plays at: 0 when muted
+  const level = useRef(1) // what the next sound plays at
+  const silent = useRef(false) // muted: nothing is said until unmuted
   const playing = useRef<HTMLAudioElement | null>(null)
   const turn = useRef(0) // only the newest utterance may change `speaking`
   const floor = useRef(new Floor<OnAir>())
@@ -51,14 +52,20 @@ export function useSpeech() {
     [hush],
   )
 
-  // The commentary's volume, 0 to 1, and mute; the playing line follows at once, browser speech from the next.
-  const setVolume = useCallback((next: number, mute: boolean) => {
-    const v = Math.min(1, Math.max(0, next))
-    setVolumeState(v)
-    setMuted(mute)
-    level.current = mute ? 0 : v
-    if (playing.current) playing.current.volume = level.current
-  }, [])
+  // The commentary's volume (the video stays muted): the playing line follows at once, browser speech
+  // from the next. Muting is silence: it hushes the line on air, and nothing is said until unmuted.
+  const setVolume = useCallback(
+    (next: number, mute: boolean) => {
+      const v = loudness(next, false)
+      setVolumeState(v)
+      setMuted(mute)
+      silent.current = mute
+      level.current = v
+      if (mute) hush()
+      else if (playing.current) playing.current.volume = v
+    },
+    [hush],
+  )
 
   // `done` runs once the utterance ends or fails for good, never after a newer one took over.
   const speakInBrowser = useCallback(
@@ -123,7 +130,7 @@ export function useSpeech() {
   // A line as its moment plays. `big` (a goal, a wicket, a basket, an overtake) may cut in on the other speaker.
   const say = useCallback(
     (line: Said, voice: Voice | null, big = false) => {
-      if (!on) return
+      if (!on || silent.current) return
       const item: OnAir = { line, voice, speaker: line.speaker ?? 'lead', big }
       if (floor.current.take(item, performance.now())) play(item)
     },
@@ -131,10 +138,10 @@ export function useSpeech() {
   )
 
   // A viewer's answer, in the lead's voice: resolves when it has been said (or hushed). null when the
-  // voice is off, so the caller shows the answer for a read time instead.
+  // voice is off or muted, so the caller shows the answer for a read time instead.
   const sayAnswer = useCallback(
     (answer: Said, voice: Voice | null): Promise<void> | null => {
-      if (!on) return null
+      if (!on || silent.current) return null
       aired.current?.() // a newer answer takes the floor from the one still on air
       const item: OnAir = { line: answer, voice, speaker: 'lead', answer: true }
       floor.current.take(item, performance.now())

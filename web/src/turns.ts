@@ -64,6 +64,9 @@ export function voiceOf(speaker: Speaker, leadVoiceId: string | undefined): { id
   return speaker === 'analyst' ? { pitch: 0.8, rate: 1.0 } : { id: leadVoiceId, pitch: 1, rate: 1.1 }
 }
 
+// The commentary's level for a volume control: 0 to 1, and silence when muted.
+export const loudness = (volume: number, muted: boolean): number => (muted ? 0 : Math.min(1, Math.max(0, volume || 0)))
+
 export interface Caption {
   kind: 'line' | 'question' | 'answer'
   text: string

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { airAnswer, Floor, HOLD_MAX_MS, isBig, voiceOf, type Caption, type Turn } from './turns.ts'
+import { airAnswer, Floor, HOLD_MAX_MS, isBig, loudness, voiceOf, type Caption, type Turn } from './turns.ts'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 type Said = Turn & { id: string }
@@ -92,4 +92,12 @@ test('an answer that is not spoken stays up for the read time; a replaced replay
   current = false // the viewer switched match before the answer came back
   await late
   assert.deepEqual(stale, ['A viewer asks: Score?'])
+})
+
+test('the commentary plays at the chosen volume, kept between 0 and 1, and muted is silent', () => {
+  assert.equal(loudness(0.4, false), 0.4)
+  assert.equal(loudness(1.5, false), 1)
+  assert.equal(loudness(-1, false), 0)
+  assert.equal(loudness(Number.NaN, false), 0)
+  assert.equal(loudness(0.8, true), 0)
 })
