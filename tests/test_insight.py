@@ -4,6 +4,7 @@ video replay, from data up to the moment they follow only, through the analyst's
 
 import asyncio
 import functools
+import json
 import uuid
 from collections import Counter
 
@@ -248,7 +249,18 @@ def test_only_a_sonnet_stat_request_turns_thinking_down(tmp_path, monkeypatch, m
     stats = stat_calls(fake)
     want = [{"type": "between_tools"}] if model == "claude-sonnet-5-5" else [None]
     assert stats and [q.get("thinking") for q in stats] == want * len(stats)
-    assert not any("thinking" in q for q in fake.requests if q not in stats)
+    frozen = {
+        "model": commentator.MODEL,
+        "max_tokens": commentator.MAX_TOKENS,
+        "system": commentator.SYSTEM,
+        "tools": commentator.TOOLS,
+        "tool_choice": commentator.TOOL_CHOICE,
+    }
+    moments = [q for q in fake.requests if q not in stats]
+    assert moments  # each one is exactly a line's request: the frozen parts, byte for byte
+    for q in moments:
+        assert set(q) == {*frozen, "metadata", "messages"}
+        assert json.dumps({k: q[k] for k in frozen}) == json.dumps(frozen)
 
 
 def test_analyst_and_reply_lines_never_go_through_the_recorded_provider(tmp_path, monkeypatch):
