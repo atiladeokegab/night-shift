@@ -24,8 +24,8 @@ commentary still plays on the match's own clock.
   first line.
 - Open **Review** once and find the line for shot 4: Jordan's last game as a Bull, the layup where
   Utah lead 86–85 but the line says Chicago lead.
-- Have Mubit's console open, signed in. Its figures are only those in the README's
-  [correction loop](../README.md#correction-loop-with-evidence) section; read them again on the day.
+- Have Mubit's console open, signed in. Its figures are only those in the evidence page's
+  [correction loop](evidence.md#correction-loop-with-evidence) section; read them again on the day.
 - Record at 1280 wide. Record the voice separately, then lay it over the screen. Do a dry take
   first: the opening lines vary by run.
 
