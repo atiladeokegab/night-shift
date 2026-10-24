@@ -1,5 +1,3 @@
-import type { Moment } from './types'
-
 // GET /replays/{id}/players (#140): everyone in the match, those the moments so far name first.
 export interface Player {
   name: string
@@ -46,11 +44,11 @@ export function search(players: Player[], query: string, limit = 8): Player[] {
   return players.filter((p) => words.every((w) => fold(`${p.name} ${p.team ?? ''}`).includes(w))).slice(0, limit)
 }
 
-// A line belongs to the followed player when its moment names them in any role (or F1's top five).
-export function names(moment: Moment | undefined, followed: string | null | undefined): boolean {
-  if (!moment || !followed) return false
-  const top = (moment.score as { top?: { driver: string }[] }).top ?? []
-  return [...Object.values(moment.players ?? {}), ...top.map((t) => t.driver)].some((n) => fold(n) === fold(followed))
+// A line is the followed player's when its words name them: their surname ("Messi", "Kohli", "Di María"
+// by "maría"), accents ignored. A line about their team that never names them is not theirs.
+export function names(text: string | undefined, followed: string | null | undefined): boolean {
+  const surname = followed ? fold(followed).split(/\s+/).at(-1) : ''
+  return !!text && !!surname && fold(text).split(/[^\p{L}\p{N}]+/u).includes(surname)
 }
 
 const many = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`

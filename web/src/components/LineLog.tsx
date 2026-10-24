@@ -54,7 +54,7 @@ export function LineLog({ lines, late, fixes, moments, onFix, answers, onAsk, sh
             const firstWord = l.first_word_ms != null // undefined or null: only the whole reply was timed
             const ms = l.first_word_ms ?? l.latency_ms
             return (
-              <li key={l.line_id} className={fix ? 'fixed' : isLate ? 'late' : undefined} data-follow={names(m, followed) || undefined}>
+              <li key={l.line_id} className={fix ? 'fixed' : isLate ? 'late' : undefined} data-follow={names(fix ? fix.corrected_text : l.text, followed) || undefined}>
                 <span className="when num">{m ? clockText(m, true) : ''}</span>
                 <div className="text">
                   <span>{fix ? fix.corrected_text : l.text}</span>

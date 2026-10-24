@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { answerFor, names, recordLine, sampleNote, search, tonightLine, type Player, type Profile } from './follow.ts'
-import type { Moment } from './types.ts'
 
 const p = (name: string, team: string): Player => ({ name, team, record: true, named: false })
 const players = [p('Kylian Mbappé', 'France'), p('Lionel Messi', 'Argentina'), p('Ángel Di María', 'Argentina')]
@@ -14,13 +13,13 @@ test('the picker finds a player without accents, by any word of the name or the 
   assert.deepEqual(search(players, 'nobody'), [])
 })
 
-test("a line is the followed player's when its moment names them, in any role or F1's top five", () => {
-  const m = (players: Record<string, string>, top?: { driver: string }[]) => ({ players, score: { top } }) as unknown as Moment
-  assert.equal(names(m({ shooter: 'Kylian Mbappé' }), 'Kylian Mbappé'), true)
-  assert.equal(names(m({ keeper: 'Hugo Lloris', shooter: 'Lionel Messi' }), 'Hugo Lloris'), true)
-  assert.equal(names(m({ shooter: 'Lionel Messi' }), 'Kylian Mbappé'), false)
-  assert.equal(names(m({}, [{ driver: 'Max Verstappen' }]), 'Max Verstappen'), true)
-  assert.equal(names(m({ shooter: 'Lionel Messi' }), null), false)
+test("a line is the followed player's only when it names them", () => {
+  assert.equal(names('Messi! From the spot, cool as you like.', 'Lionel Messi'), true)
+  assert.equal(names('MBAPPE again, a hat-trick!', 'Kylian Mbappé'), true)
+  assert.equal(names('Kohli, off the back foot, six!', 'V Kohli'), true)
+  assert.equal(names('Stat, score story for Argentina!', 'Lionel Messi'), false) // his team, never him
+  assert.equal(names('Messina clears', 'Lionel Messi'), false) // whole words only
+  assert.equal(names('Messi', null), false)
   assert.equal(names(undefined, 'Lionel Messi'), false)
 })
 
