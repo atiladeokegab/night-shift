@@ -68,14 +68,15 @@ def gap(ln):
 
 
 class Sized:
-    """A commentator whose lines are 14 words, about a real line's length (13 on average)."""
+    """A commentator whose lines are 14 words, about a real line's length (13 on average), and say
+    no number: an analyst line with one the stat doesn't give is dropped."""
 
     def __init__(self):
         self.stats = 0
 
     def __call__(self, moment, history):
         self.stats += moment["type"] == "Stat"
-        said = f"{moment['type']} {moment['idx']} " + f"{letters(self.stats)} " * 12
+        said = f"{moment['type']} {letters(moment['idx'])} " + f"{letters(self.stats)} " * 12
         return {"line_id": uuid.uuid4().hex, "moment_idx": moment["idx"], "text": said.strip()}
 
 

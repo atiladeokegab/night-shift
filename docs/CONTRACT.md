@@ -175,6 +175,10 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
     total. `autonomy_by_match: {match_id: the same}`. `GET /review` also lists stored lead lines
     that today's check fails but that passed it (or predate it) when said: those entries carry
     `later_check: true` (a `to_human` try, `false`) and are never counted here (#220).
+    `GET /review` gives one entry per mistake (#227): the lines whose check gives the same
+    `wrong` at the same match and moment are one entry, the newest line's, with `lines` (how many
+    distinct wordings) and `others` (the older wordings, newest first). A fix on any of them
+    clears every line of that mistake stored up to the fix (`created_at`); one said after it is a new entry.
   - `fixes_toward_next: int`: recorded fixes since the latest `adapter` record (all of them before one).
   - `voice_chars: int`: characters in every `voice` record.
   - `cost_per_match_usd: number | null`: the mean full replay's spend, `model_cost_per_match_usd`
