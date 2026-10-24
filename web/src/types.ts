@@ -19,6 +19,8 @@ export interface Match {
   youtube_id?: string
   video_start?: number // the second the video starts at, just before its first mapped moment
   embed?: boolean // false: the owner blocks embedding, so a poster and a YouTube link instead
+  peak_idx?: number // "Jump to the big moment" (#163) starts the replay at this moment
+  peak_video_start?: number // and the video at this second
 }
 
 // Football and basketball: {home, away}; cricket: runs and wickets; f1: the lap and the top five.

@@ -185,7 +185,7 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
   }, [])
 
   const start = useCallback(
-    async (matchId: string, speed: number, gated: boolean, from = 0) => {
+    async (matchId: string, speed: number, gated: boolean, from = 0, startIdx?: number) => {
       const token = ++run.current
       stop.current?.()
       stop.current = null
@@ -194,7 +194,7 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
       at.current = 0
       dispatch({ type: 'start', gated })
       try {
-        const id = await createReplay(matchId, speed)
+        const id = await createReplay(matchId, speed, startIdx)
         if (run.current !== token) return
         replayId.current = id
         dispatch({ type: 'started' })
