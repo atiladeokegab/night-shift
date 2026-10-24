@@ -103,7 +103,9 @@ async def run_replay(
                 speak(line, moment, due)
             await replay.publish("line", line)
             await replay.publish("stats", stats(store))
-    except Exception as exc:  # the stream says why it stopped instead of hanging open
-        await replay.publish("error", {"detail": str(exc)})
+    except Exception:  # the stream says why it stopped instead of hanging open
+        # never the provider's text: it can carry its console URL and request id onto the screen
+        off_air = {"code": "commentator_off_air", "detail": "Commentator is off air for a moment"}
+        await replay.publish("error", off_air)
     finally:
         await replay.finish()
