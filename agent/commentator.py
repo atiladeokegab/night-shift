@@ -275,8 +275,8 @@ def answer(
         header = match_header(past[-1]["match_id"])
     request = build_request(header, past)
     request["system"] = ASK
-    said = "\n".join(f"- {ln['text']}" for ln in lines[-5:]) or "- none yet"
-    request["messages"][0]["content"] += "\n" + QUESTION.format(lines=said, question=question)
+    heard = "\n".join(f"- {ln['text']}" for ln in lines[-5:]) or "- none yet"
+    request["messages"][0]["content"] += "\n" + QUESTION.format(lines=heard, question=question)
     start = time.monotonic()
     reply, replies, tool_calls, _ = _call(provider or default_provider(), request, header, past)
     said = " ".join(b["text"] for b in reply["content"] if b["type"] == "text")
