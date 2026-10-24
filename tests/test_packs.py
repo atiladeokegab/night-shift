@@ -9,7 +9,8 @@ import pytest
 from agent import packs
 
 DATA = Path(__file__).resolve().parent.parent / "data"
-MATCHES = [f"{sport}-{match_id}" for sport, match_id in packs.MATCHES]
+MATCHES = [f"{sport}-{match_id}" for sport, match_id in packs.MATCHES if sport != "cricket"]
+CRICKET = "cricket-1298150"
 
 
 def load(name):
@@ -75,3 +76,31 @@ def test_football_zones():
     assert packs.football_zone(108, 40) == "central box"  # the penalty spot
     assert packs.football_zone(108, 20) == "wide box"
     assert packs.football_zone(100, 40) == "outside box"
+
+
+def test_cricket_players_and_window():
+    pack, sample = load(CRICKET)
+    names = {name for m in sample["moments"] for name in m["players"].values()}
+    assert names <= set(pack["players"])
+    day = sample["header"]["date"]
+    assert pack["matches"] and max(m["date"] for m in pack["matches"]) < day
+    assert pack["window"]["to"] < day
+    assert all(set(m["teams"]) & set(pack["teams"]) for m in pack["matches"])
+    kohli = pack["players"]["V Kohli"]
+    assert kohli["games"] > 0 and kohli["batting"]["death"]["sr"] > 100
+    assert pack["players"]["Arshdeep Singh"]["bowling"]["economy"] > 0
+
+
+def test_cricket_tonight_reveals_each_ball_no_earlier_than_its_moment():
+    pack, sample = load(CRICKET)
+    moments, balls = sample["moments"], pack["tonight"]
+    idx = [b["idx"] for b in balls]
+    assert idx == sorted(idx) and idx[-1] == len(moments) - 1
+    # every wicket moment is the ball it reveals; the innings totals match the sample's score
+    for m in moments:
+        if m["type"] == "Wicket":
+            assert any(b["idx"] == m["idx"] and b["out"] == m["players"]["out"] for b in balls)
+    for inn in (1, 2):
+        final = max(m["score"]["runs"] for m in moments if m["period"] == inn)
+        upto = max(m["idx"] for m in moments if m["period"] == inn)
+        assert sum(b["runs"] for b in balls if b["innings"] == inn and b["idx"] <= upto) == final
