@@ -11,7 +11,7 @@ set -euo pipefail
 REGION="${REGION:-europe-west1}"
 SERVICE="${SERVICE:-night-shift}"
 STATE_BUCKET="${STATE_BUCKET:-$PROJECT-state}"
-MIN_INSTANCES="${MIN_INSTANCES:-0}"  # the event playbook sets 1 on demo day: no cold start
+MIN_INSTANCES="${MIN_INSTANCES:-0}"  # set 1 for a demo: no cold start
 # The one list of secrets: each mounts as its upper-cased name (mubit-api-key is
 # MUBIT_API_KEY), and scripts/bootstrap.sh creates and grants exactly these.
 SECRETS="mubit-api-key elevenlabs-api-key"
@@ -90,7 +90,7 @@ gcloud run deploy "$SERVICE" --source . --region "$REGION" --project "$PROJECT" 
 RELEASE="$(gcloud run services describe "$SERVICE" --region "$REGION" --project "$PROJECT" \
   --format 'value(status.url,status.latestReadyRevisionName)')"
 URL="${RELEASE%%$'\t'*}"
-# The release record, one line: what is live, by commit, revision and URL. hub live forwards it.
+# The release record, one line: what is live, by commit, revision and URL.
 echo "release: commit=$COMMIT revision=${RELEASE#*$'\t'} url=$URL"
 curl -fsS --max-time 30 "$URL/health"
 echo
