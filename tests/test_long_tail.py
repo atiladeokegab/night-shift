@@ -67,3 +67,11 @@ def test_the_checks_hold_on_its_moments():
     assert "manchester" not in insight._sides(derby)[0]  # names neither side
     facts = insight._profiles(load_pack("football", WSL), moments[:20])
     assert facts and all("this season before tonight" in d for d in facts if "before" in d)
+
+
+def test_the_spoken_lead_and_where_say_the_club_not_its_wfc_suffix():
+    moments = load_moments(WSL)
+    assert moments[8]["detail"]["lead"] == "Brighton & Hove Albion lead 1-0"
+    stated = [str(m["detail"].get(k, "")) for m in moments for k in ("lead", "where")]
+    assert not any("WFC" in s for s in stated)
+    assert any("Bristol City's" in s for s in stated)
