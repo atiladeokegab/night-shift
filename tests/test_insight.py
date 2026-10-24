@@ -312,7 +312,8 @@ def test_analyst_and_reply_lines_never_go_through_the_recorded_provider(tmp_path
         return {"\nEvent: Stat, " in q["messages"][0]["content"] for q in fake.requests}
 
     assert any("reply" in ln for ln in lines)
-    assert stats(recorded) == {False} and stats(unrecorded) == {True}
+    # #399: every line is made unrecorded; only a checked lead line is sent again, recorded
+    assert recorded.requests == [] and True in stats(unrecorded)
     assert unrecorded.requests[-1]["messages"][-1]["content"].startswith("Producer correction")
 
 

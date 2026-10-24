@@ -179,11 +179,14 @@ def test_a_line_made_with_a_note_is_called_unrecorded(monkeypatch):
     monkeypatch.setattr(commentator, "unrecorded_provider", lambda: unrecorded)
     moments, header = load_moments(JAZZ)[:34], match_header(JAZZ)
     plain = commentator.commentate(moments[-1], moments[:-1], header)
-    assert recorded.requests and not unrecorded.requests and "screen" not in plain
-    del recorded.requests[:]
+    assert unrecorded.requests and not recorded.requests and "screen" not in plain  # #399
+    del unrecorded.requests[:]
     line = commentator.commentate(moments[-1], moments[:-1], header, seen=NOTE)
     assert unrecorded.requests and not recorded.requests and line["screen"] is True
     assert f"On screen: {NOTE}" in unrecorded.requests[0]["messages"][0]["content"]
+    # a line made from a screen note is never sent again to be recorded
+    assert commentator.commentate(moments[-1], moments[:-1], header, seen=NOTE, record=True) is None
+    assert not recorded.requests
 
 
 def test_a_line_made_with_a_note_is_only_that_viewers(tmp_path, monkeypatch):

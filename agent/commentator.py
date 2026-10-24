@@ -325,18 +325,22 @@ def commentate(
     provider=None,
     fixes=(),
     seen: str | None = None,
+    record: bool = False,
 ) -> dict:
     """The server's seam: one Line for `moment`, given only the earlier moments and the match's
-    producer fixes (`build_request`). A line made with `seen`, what a viewer's shared tab showed, is
-    untrusted (#291): called unrecorded, so never training data, and marked `screen`, so it goes
-    only to that viewer."""
+    producer fixes (`build_request`). It is called unrecorded: only a line that passed the number
+    check is sent again with `record` (`recorded`, #399). A line made with `seen`, what a viewer's
+    shared tab showed, is untrusted (#291): never recorded, and marked `screen`, so it goes only
+    to that viewer."""
     if header is None:
         from data.matches import match_header
 
         header = match_header(moment["match_id"])
     moments = [*history, moment]
+    if record:
+        return None if seen else recorded(header, moments, len(history), fixes)
     if provider is None:
-        provider = unrecorded_provider() if seen else provider_for(moment)
+        provider = unrecorded_provider()
     try:
         line = line_for(header, moments, len(history), provider, fixes, seen)
     except NoLine:
@@ -433,8 +437,27 @@ def correct(
         "correction": turn,  # exactly what Mubit was given after the line
         "reply": said,
         "reply_passed": passed,
-        # True only when Mubit recorded it for training: never a reply that failed the check first
-        "recorded": getattr(trainer, "record", False),
+        # True only when Mubit recorded a reply that passed the check, the first try and its own
+        "recorded": getattr(trainer, "record", False) and passed,
+    }
+
+
+def recorded(header: dict, moments: list[dict], idx: int, fixes=(), provider=None) -> dict | None:
+    """A line that passed the number check, its request sent again on the lines' own provider when
+    it records (#399): Mubit records the reply it makes, so that reply is checked too, and
+    `recorded` is True only when it passes. None when nothing was sent: no recording provider, or
+    an analyst's Stat, which is never recorded."""
+    from core.insight import wrong_numbers
+    from core.review import UNSAID
+
+    trainer = provider or default_provider()
+    if not getattr(trainer, "record", False) or moments[idx]["type"] == "Stat":
+        return None
+    line = line_for(header, moments, idx, trainer, fixes)
+    wrong = wrong_numbers(line["text"], moments[idx], header, moments[:idx])
+    return {
+        "mubit_request_ids": line["mubit_request_ids"],
+        "recorded": not [w for w in wrong if UNSAID not in w],
     }
 
 
@@ -469,11 +492,6 @@ def correction_provider():
 
 
 _unrecorded = None
-
-
-def provider_for(moment: dict):
-    """The analyst's Stat lines go unrecorded, like Ask; every moment's line is recorded."""
-    return unrecorded_provider() if moment["type"] == "Stat" else default_provider()
 
 
 def unrecorded_provider():
