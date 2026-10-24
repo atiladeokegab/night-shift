@@ -93,7 +93,7 @@ test('keyboard only: Tab to Kobe, Enter, it is called aloud; Tab to Ask, Enter, 
   await page.keyboard.press('Enter')
   await expect(page.locator('.caption .cap-text')).toBeVisible({ timeout: 45_000 })
   await expect.poll(() => said(page), { timeout: 15_000 }).not.toEqual([]) // spoken with no further clicks
-  await expect(page.getByRole('status').filter({ hasText: /^Playing Los Angeles Lakers v Toronto Raptors$/ })).toBeAttached()
+  await expect(page.getByRole('status').filter({ hasText: /^Playing Kobe's 81 v Toronto$/ })).toBeAttached()
   // A line on the caption is heard, never announced over the voice.
   await expect(page.getByRole('region', { name: 'Caption' })).toHaveAttribute('aria-live', 'off')
 

@@ -495,9 +495,10 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 }
 .tile-yt::after { content: ""; position: absolute; inset: min(0px, calc(50% - 22px)); } /* already absolute, on the tile */
 .scrub input { inset: -4px 0; height: auto; }
-.controls .vol { height: 44px; margin-block: -4px; } /* 44 px to tap, still 36 in the bar's layout */
+.controls input.vol { height: 44px; margin-block: -4px; } /* 44 px to tap, still 36 in the bar's layout */
 .ask :is(input, textarea), .ask .btn.sm { min-height: 44px; }
-.ask { margin-bottom: 6px; } /* the 6 px the row grew: Lines and Proof stay where they were */
+.ask { margin-bottom: 6px; } /* each row keeps its old height plus margin (38 + 12, the Lines textarea 40 + 12), */
+.lines .ask { margin-bottom: 8px; } /* so Lines, the log and Proof stay where they were */
 .log { padding-top: 6px; margin-top: -6px; } /* room inside the scroller for the first row's Fix target */
 @media (max-width: 760px) {
   /* The sport tabs scroll sideways, which clips anything around them, and the controls sit flush on the
