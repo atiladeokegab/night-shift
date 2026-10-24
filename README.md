@@ -14,10 +14,13 @@
 
 [**Try it live**](https://night-shift-5zvig7nbvq-ew.a.run.app) · [**Backup page**](https://night-shift-5zvig7nbvq-ew.a.run.app/stage) · [**The six screens**](#the-six-screens) · [**How it uses Mubit**](#how-it-uses-mubit) · [**For judges**](#for-judges) · [**Run it**](#run-it) · [**Demo script**](docs/demo.md)
 
-<img src="docs/img/live.png" alt="The live page, from the design mockup. A drawn night stadium stands in for the highlights video. Top left, the score bar reads ESP 1-0 ENG, 28:29, 1st half, REPLAY. Top right, a red ON AIR pill names the British commentator. In the lower third, the moment tag 28:29 GOAL sits above the large subtitle: Olga Carmona! Low across Earps and in! Spain lead the World Cup final! Under it, a dock with Fixtures, a Football and Cricket switch and Voice: British, and a video timeline with a small Synced to video label. On the right, a Lines card lists each line with its clock, its first-word time and a Fix button, and a Proof card shows first word p50 and p95, cost per line, lines, fixes and the adapter's result." width="100%">
+<img src="docs/img/wall.png" alt="The deployed home page, the match wall: the heading Tap a match to hear it called over six tiles, each a match with its sport, title, date and Tap to hear it called: Messi v Mbappé, Spain v England, India v Pakistan, Kobe's 81 v Toronto, Jordan's last shot and Hamilton at Silverstone." width="100%">
 
-<sub>The live page as designed (<code>docs/mockup/index.html</code>). In the product the broadcast
-highlights play where the drawn stadium is; the numbers in this picture are samples, not measurements.</sub>
+<img src="docs/img/live-goal.png" alt="The deployed live page during the Women's World Cup final replay. Top left, the score bar reads ESP 1-0 ENG, 28:29, 1st half, REPLAY. A red ON AIR pill names the British Football Announcer. In the lower third, the moment tag 28:29 GOAL sits above the large subtitle: Olga Carmona! Spain go ahead, one-nil! Under it, a dock with Wall, the four sports, Voice and Next match, and the replay clock at 5:16. On the right, the Lines card shows the goal line and an earlier save, each with a Fix button and its model first-text-word time, and the Proof card shows first text word p50 0.52 s and p95 0.88 s, $0.0017 a line, 594 lines, 0 fixes, and the adapter as not trained yet." width="100%">
+
+<sub>The deployed page on 24 October 2026, captured in headless Chrome: the match wall, then a tap into
+Spain v England with Olga Carmona's goal being called. YouTube wouldn't play in the headless browser,
+so each video's own thumbnail stands in for its highlights. The lines, panels and numbers are live.</sub>
 
 </div>
 
@@ -43,8 +46,8 @@ shown as a large subtitle. A line is never shown or spoken before its moment rea
 
 One agent calls every sport. It reads the match's real event feed, looks up the score, the player and
 recent play with tools, and never sees anything from later in the match than the moment it is
-calling. A producer fixes any line that's wrong in one tap, and the fix goes back through Mubit to
-train the commentator.
+calling. A producer corrects any line that's wrong, and the fix goes back through Mubit to train the
+commentator.
 
 ## How it uses Mubit
 
@@ -64,9 +67,11 @@ producer fixes. That smaller model is what would make a commentator for every ma
    through the same Mubit task and session.
 5. **Counted at Mubit.** Each line stores the Mubit request id of every call it made, and
    `GET /stats` counts calls from those ids.
-6. **The trained model is measured, not assumed.** Mubit's console holds about 336 requests on the
-   frozen prompt; `/stats` counts only the live service's own lines, so it shows fewer. The adapter has not been trained or tried yet, so it has not passed
-   anything; `/stats` reports it as `not_trained`. When it is tried, we compare it with the big model on
+6. **The trained model is measured, not assumed.** The Mubit task holds about 700 requests on the
+   frozen prompt and tools (695 by our logs: 678 line requests and 17 correction turns), from 637
+   lines over 64 matches (28 football, 28 cricket, 4 basketball, 4 F1);
+   `/stats` counts the live service's own calls. The adapter has not been trained or tried yet, so it
+   has not passed anything; `/stats` reports it as `not_trained`. When it is tried, we compare it with the big model on
    held-out moments. The aim is that it matches the big model at lower cost; we make no claim that it
    beats it.
 
@@ -94,31 +99,31 @@ next line. The browser's own speech is the fallback.
 
 Live URL: <https://night-shift-5zvig7nbvq-ew.a.run.app> (Cloud Run, real Mubit calls). The backup page,
 <https://night-shift-5zvig7nbvq-ew.a.run.app/stage>, is one static file served by the same server.
-Every number below was read from that service's `GET /stats` on 23 October 2026 at 23:40 UTC; anything
+Every number below was read from that service's `GET /stats` on 24 October 2026 at 00:17 UTC; anything
 not yet measured says so.
 
 | Criterion | Evidence | Measured | Check it |
 |---|---|---|---|
-| Use of Mubit | Every call goes through Mubit's Anthropic endpoint, one session per match, one task for every sport | 197 lines; 206 Mubit calls, counted by their request ids. Mubit's console holds about 336 requests on the frozen prompt | `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/stats` (`mubit_requests`) |
+| Use of Mubit | Every call goes through Mubit's Anthropic endpoint, one session per match, one task for every sport | Live service: 547 lines; 573 Mubit calls, counted by their request ids. The Mubit task: about 700 requests on the frozen prompt (695 by our logs) over 64 matches | `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/stats` (`mubit_requests`) |
 | Use of Mubit: a correction becomes a model update | `POST /lines/{line_id}/fix` stores the fix beside the original and sends it through the same task and session | 0 fixes on the live service so far; the first is made in the demo | `fixes` in `/stats` |
 | Usefulness | Real matches from real event data in four sports, called the way a TV commentator would | 6 demo matches served | `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/matches` |
 | Technical execution | FastAPI server, durable store on Cloud Storage, server-sent event stream, commentary gated on the video player's clock, an offline test suite and a live smoke test on every deploy | Health: ok | `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/health` |
 | Demo | A 2-minute live demo on the deployed URL, scripted in [docs/demo.md](docs/demo.md) | To be rehearsed and recorded | |
-| Track: quality, cost and latency side by side | The proof panel and `GET /stats` show latency, cost per line, lines, fixes and the trained model's result | Big model, 197 lines: first word of the model's text (not the audio) p50 529 ms, p95 951 ms; full line p50 821 ms, p95 1,187 ms; $0.0015 a line. The trained model: not trained or tried yet | `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/stats` |
+| Track: quality, cost and latency side by side | The proof panel and `GET /stats` show latency, cost per line, lines, fixes and the trained model's result | Big model, 547 lines: first word of the model's text (not the audio) p50 523 ms, p95 951 ms; full line p50 851 ms, p95 1,187 ms; $0.0017 a line. The trained model: not trained or tried yet | `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/stats` |
 
 ### Quality, cost and latency, side by side
 
 | | Big model (`claude-haiku-4-5` via Mubit) | Our trained commentator |
 |---|---|---|
 | Agreement with the big model on held-out moments | baseline | not tried yet |
-| Cost per line | $0.0015 | not tried yet |
-| Tokens per line, in / out | about 1,415 / 25 (278,720 / 5,006 over 197 lines) | not tried yet |
-| First word of the model's text, p50 / p95 | 529 ms / 951 ms | not tried yet |
-| Full line, p50 / p95 | 821 ms / 1,187 ms | not tried yet |
+| Cost per line | $0.0017 | not tried yet |
+| Tokens per line, in / out | about 1,602 / 29 (876,281 / 15,732 over 547 lines) | not tried yet |
+| First word of the model's text, p50 / p95 | 523 ms / 951 ms | not tried yet |
+| Full line, p50 / p95 | 851 ms / 1,187 ms | not tried yet |
 
 ### Status
 
-As of 23 October 2026, 23:40 UTC.
+As of 24 October 2026, 00:17 UTC.
 
 | Capability | Status |
 |---|---|
@@ -127,8 +132,8 @@ As of 23 October 2026, 23:40 UTC.
 | Expressive voice per sport, with a voice setting (A-6.3, A-6.6) | Live |
 | Proof panel: latency, cost per line, lines, fixes and the adapter's result (A-7.1) | Live |
 | Producer fix: the server stores it and sends it through Mubit (A-4.1) | Live, with the Fix button on the page |
-| The home page as a wall of all six matches playing at once (A-6.5) | In progress |
-| Mubit's trained commentator against the big model on held-out moments (R-8) | Not trained or tried yet; about 336 requests are in Mubit's console |
+| The home page as a wall of all six matches; tap one to watch it called full screen (A-6.5) | Live |
+| Mubit's trained commentator against the big model on held-out moments (R-8) | Not trained or tried yet; about 700 requests on the frozen prompt (695 by our logs) |
 
 ## Run it
 
