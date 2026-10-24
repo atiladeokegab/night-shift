@@ -283,7 +283,7 @@ def correct(
     """A producer's fix as the next turn of the line's own call: same task, same session. Only
     the messages differ from the line's request. It goes unrecorded first (`provider`, else
     `unrecorded_provider()`); only a reply that passes the number check is sent again, the same
-    request, on the recording provider, so Mubit never trains on a failing correction."""
+    request, on the recording provider. A reply that fails it is not resent."""
     from core.insight import wrong_numbers
     from core.review import UNSAID
 
