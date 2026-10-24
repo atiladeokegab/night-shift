@@ -14,10 +14,10 @@
 
 [**Try it live**](https://night-shift-5zvig7nbvq-ew.a.run.app) · [**For judges**](#for-judges) · [**Real numbers**](#real-numbers) · [**Architecture**](docs/ARCHITECTURE.md) · [**Known limitations**](#known-limitations) · [**Run it**](#run-it) · [**Demo script**](docs/demo.md)
 
-<img src="docs/img/live.png" alt="The live page (old layout) calling Kobe Bryant's 81-point game. Top left, the score bar reads LAK 65-75 RAP, 06:22, Q3, REPLAY, and an ON AIR pill names the voice, Sam. The large subtitle reads: Kobe Bryant from 26 feet, three! Lakers down ten, 65 to 75, but Bryant's got 41 already. Under it, a dock with Wall, the four sports, Voice and Next match. On the right, the Lines card with an Ask box, a Shot map chip for Kobe Bryant and each line with a Fix button and its model first-text-word time, and the Proof card with first text word p50 0.53 s and p95 0.74 s, $0.0018 a line, the lines count, 0 fixes, and the adapter as not trained yet (captured before 13:04 UTC)." width="100%">
+<img src="docs/img/live.png" alt="The live page calling Michael Jordan's last game, the 1998 NBA Finals Game 6. Above the video card, the sport bar with Wall, the four sports, Voice: Sam and Next match. On the video card, the score bug JAZ 70-70 BUL, 08:05, Q4, an ON AIR pill naming Sam, and playback controls along the bottom. Under the card, the docked caption, marked ANALYST and 08:05 3 POINTS: Level at 70, and the numbers say there's a 44% chance Michael Jordan scores Chicago's next basket. That's the best single option on the floor. On the right, the Lines card, newest first: the lead's call, Kukoc from deep! Toni Kukoc with the three from twenty-five feet, and it's tied at seventy!; then the analyst's stat line, Kukoc came in shooting 46 percent this season, 481 of 1044 over 94 games; then the prediction line. Each line has a Fix button and its model first-text-word time. Below, the Proof card." width="100%">
 
-<sub>The live site on 24 October 2026, captured in headless Chrome: Kobe Bryant's 81 against Toronto
-being called. YouTube won't play in a headless browser, so the video area is empty and the page says
+<sub>The live site on 24 October 2026 at 13:20 UTC, captured in headless Chrome: Jordan's last shot
+being called by the lead, with the analyst's stat lines in the gap after Kukoc's three. YouTube won't play in a headless browser, so the video area is empty and the page says
 so; the lines, voice timing and numbers are live.</sub>
 
 </div>
@@ -48,7 +48,7 @@ Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026. Track: Own
 | Feature | Status | Proof in the code |
 |---|---|---|
 | [The six matches](#the-six-matches) | Live | [`GET /matches`](https://night-shift-5zvig7nbvq-ew.a.run.app/matches), [`agent/feed.py`](agent/feed.py) |
-| [Two commentators: lead and analyst](#two-commentators-lead-and-analyst) | Live; analyst lines saying the stat itself in progress (#142) | [`core/insight.py`](core/insight.py), [`core/replay.py`](core/replay.py) |
+| [Two commentators: lead and analyst](#two-commentators-lead-and-analyst) | Live (#130, #142) | [`core/insight.py`](core/insight.py), [`core/replay.py`](core/replay.py) |
 | [Ask, by typing](#ask-by-typing-or-by-voice) | Live | [`POST /replays/{id}/ask`](core/app.py), [`agent/ask.md`](agent/ask.md) |
 | [Ask, by voice](#ask-by-typing-or-by-voice) | Live (#145) | [`web/src/voice.ts`](web/src/voice.ts), [`web/src/components/MicButton.tsx`](web/src/components/MicButton.tsx), [`web/src/voice.test.ts`](web/src/voice.test.ts) |
 | [Follow a player: shot map](#follow-a-player) | Live | [`GET /replays/{id}/players/{name}/shots`](core/app.py), [`web/src/components/ShotMap.tsx`](web/src/components/ShotMap.tsx) |
