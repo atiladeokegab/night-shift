@@ -4,6 +4,7 @@ commentator come from data/ and agent/ (#13) through `Deps`, so tests inject the
 import asyncio
 import json
 import logging
+import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -14,7 +15,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 
-from core.replay import Replay, run_replay
+from core.replay import OFF_AIR, Replay, run_replay
 from core.stats import stats
 from core.store import open_store
 from core.voice import Speaker, voice_router
@@ -32,16 +33,17 @@ class Deps:
     commentate: Callable[[dict, list[dict]], dict]
     video_map: Callable[[str], dict | None] = lambda match_id: None
     correct: Callable[[dict, str], dict] | None = None
+    ask: Callable[[str, list[dict], list[dict]], dict] | None = None
 
 
 def default_deps() -> Deps:
     """Wire #13's loaders and commentator; None until they land, and the replay routes say 503."""
     try:
-        from agent.commentator import commentate, correct
+        from agent.commentator import answer, commentate, correct
         from data.matches import list_matches, load_moments, video_map
     except ImportError:
         return None
-    return Deps(list_matches, load_moments, commentate, video_map, correct)
+    return Deps(list_matches, load_moments, commentate, video_map, correct, answer)
 
 
 class ReplayRequest(BaseModel):
@@ -55,6 +57,26 @@ class FixRequest(BaseModel):
     reason: str = ""
 
 
+class AskRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    question: str = Field(min_length=1, max_length=200)
+    moment_idx: int | None = None  # the last moment on the viewer's screen; None: the latest sent
+
+
+def asked_so_far(replay: Replay, moments: list[dict], on_screen: int | None):
+    """The moments and lines up to the one on screen, never past the last one the replay has sent:
+    the page can hold the window back (a video behind the stream) but never push it forward."""
+    sent = [e["data"]["idx"] for e in replay.events if e["event"] == "moment"]
+    if not sent:
+        return [], []
+    upto = max(sent) if on_screen is None else min(on_screen, max(sent))
+    past = [m for m in moments if m["idx"] <= upto]
+    lines = [
+        e["data"] for e in replay.events if e["event"] == "line" and e["data"]["moment_idx"] <= upto
+    ]
+    return past, lines
+
+
 def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> FastAPI:
     app = FastAPI(title="Night Shift")
     store = store or open_store()
@@ -63,6 +85,7 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
     speaker = Speaker(tts_transport)
     tasks: set[asyncio.Task] = set()
     running: dict[str, asyncio.Task] = {}  # replay id: its run_replay task, until it ends
+    asking: set[str] = set()  # replay ids with a viewer's question in flight
 
     def need_deps() -> Deps:
         if deps is None:
@@ -162,6 +185,39 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
                 await replay.publish("fixed", fix)
                 await replay.publish("stats", stats(store))
         return fix
+
+    @app.post("/replays/{replay_id}/ask")
+    async def ask(replay_id: str, req: AskRequest):
+        d = need_deps()
+        replay = replays.get(replay_id)
+        if replay is None:
+            raise HTTPException(404, f"no replay {replay_id!r}")
+        if replay_id in asking:
+            raise HTTPException(409, "a question is already in flight")
+        past, lines = asked_so_far(replay, d.load_moments(replay.match_id), req.moment_idx)
+        if not past:
+            raise HTTPException(409, "nothing has happened yet")
+        asking.add(replay_id)
+        try:
+            said = await asyncio.to_thread(d.ask, req.question, past, lines) if d.ask else None
+        except Exception as exc:  # the calm off-air state, never the provider's error
+            name = type(exc).__name__
+            log.warning("ask %s off air: %s: %s", replay.match_id, name, str(exc)[:300])
+            said = None
+        finally:
+            asking.discard(replay_id)
+        if said is None:  # nothing stored: there is nothing to speak
+            reply = {
+                "line_id": uuid.uuid4().hex,
+                "moment_idx": past[-1]["idx"],
+                "question": req.question,
+                "text": OFF_AIR,
+                "off_air": True,
+            }
+        else:
+            reply = store.append("answers", {**said, "replay_id": replay_id})
+        await replay.publish("answer", reply)
+        return reply
 
     @app.get("/stats")
     def get_stats():

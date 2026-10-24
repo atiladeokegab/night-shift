@@ -97,11 +97,22 @@ export interface Fix {
   reply_matched?: boolean
 }
 
+// POST /replays/{id}/ask's answer and the `answer` SSE event (#117). `line_id` so it is spoken like a line;
+// off_air: the commentator could not answer, and nothing was stored or will be spoken.
+export interface Answer {
+  line_id: string
+  moment_idx: number
+  question: string
+  text: string
+  off_air?: boolean
+}
+
 export type StreamEvent =
   | { type: 'moment'; moment: Moment }
   | { type: 'line'; line: Line }
   | { type: 'stats'; stats: Stats }
   | { type: 'fixed'; fix: Fix }
+  | { type: 'answer'; answer: Answer }
   | { type: 'error'; detail: string }
   | { type: 'end' }
 

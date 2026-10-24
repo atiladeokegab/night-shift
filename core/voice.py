@@ -303,8 +303,9 @@ def voice_router(store, speaker: Speaker) -> APIRouter:
 
     @router.get("/lines/{line_id}/audio")
     async def line_audio(line_id: str, voice: str | None = None):
-        # only stored lines are spoken, so the key can't be used to read out arbitrary text
-        line = next((ln for ln in store.all("lines") if ln.get("line_id") == line_id), None)
+        # only stored lines and answers are spoken, so the key can't read out arbitrary text
+        said = store.all("lines") + store.all("answers")
+        line = next((ln for ln in said if ln.get("line_id") == line_id), None)
         if line is None:
             raise HTTPException(404, f"no line {line_id!r}")
         if voice:

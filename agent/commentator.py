@@ -18,6 +18,7 @@ from string import Template
 AGENT = Path(__file__).resolve().parent
 SYSTEM = (AGENT / "prompt.md").read_text(encoding="utf-8")
 MESSAGE = (AGENT / "message.md").read_text(encoding="utf-8")
+ASK = (AGENT / "ask.md").read_text(encoding="utf-8")
 TOOLS = json.loads((AGENT / "tools.json").read_text(encoding="utf-8"))
 TOOL_CHOICE = {"type": "auto"}
 MODEL = "claude-haiku-4-5"
@@ -156,7 +157,7 @@ _META = re.compile(
 )
 
 
-def spoken(text: str) -> str:
+def spoken(text: str, limit: int = MAX_WORDS) -> str:
     """The line as spoken: preamble dropped, and any paragraph about the input left out."""
     kept = []
     for para in re.split(r"\n\s*\n", text.strip()):
@@ -166,7 +167,7 @@ def spoken(text: str) -> str:
         para = _STRAY.sub("", para)
         if para and not _META.search(para):
             kept.append(para)
-    return _fit(" ".join(kept))
+    return _fit(" ".join(kept), limit)
 
 
 def _fit(text: str, limit: int = MAX_WORDS) -> str:
@@ -233,10 +234,89 @@ def default_provider():
     return _provider
 
 
+_unrecorded = None
+
+
+def unrecorded_provider():
+    """Mubit with recording off when MUBIT_API_KEY is set, else FakeProvider; made once per process.
+    An answer has its own system prompt: recorded, it would split the one task the lines train."""
+    global _unrecorded
+    if _unrecorded is None:
+        key = os.environ.get("MUBIT_API_KEY")
+        _unrecorded = MubitProvider(key, record=False) if key else FakeProvider()
+    return _unrecorded
+
+
 def line_for(header: dict, moments: list[dict], idx: int, provider) -> dict:
     """One Line for moments[idx], with at most one tool round."""
     past = moments[: idx + 1]  # never anything later than this moment
+    start = time.monotonic()
+    reply, replies, tool_calls, offset = _call(provider, build_request(header, past), header, past)
+    text = spoken(" ".join(b["text"] for b in reply["content"] if b["type"] == "text"))
+    if not text:  # a tool-only or preamble-only reply: no line beats a blank or a wrong one
+        raise NoLine(f"no commentary for moment {past[-1]['idx']}")
+    first = reply.get("first_word_ms")
+    return {
+        "line_id": uuid.uuid4().hex,
+        "sport": header["sport"],
+        "match_id": header["match_id"],
+        "moment_idx": past[-1]["idx"],
+        "text": text,
+        "model": MODEL,
+        "latency_ms": round((time.monotonic() - start) * 1000),
+        "first_word_ms": round(offset + first) if first is not None else None,
+        "tokens_in": sum(r["usage"]["input_tokens"] for r in replies),
+        "tokens_out": sum(r["usage"]["output_tokens"] for r in replies),
+        "mubit_request_ids": [r["request_id"] for r in replies],
+        "tool_calls": tool_calls,
+        "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
+    }
+
+
+ANSWER_WORDS = 30
+QUESTION = "Lines said so far:\n{lines}\nViewer question: {question}"
+
+
+def answer(
+    question: str, past: list[dict], lines: list[dict], header: dict | None = None, provider=None
+) -> dict:
+    """A viewer's question about the match so far, answered in the same Mubit session. `past` ends
+    at the moment on screen: the request and the tools never see a later one."""
+    if header is None:
+        from data.matches import match_header
+
+        header = match_header(past[-1]["match_id"])
     request = build_request(header, past)
+    request["system"] = ASK
+    heard = "\n".join(f"- {ln['text']}" for ln in lines[-5:]) or "- none yet"
+    # one quoted line: a line break in the question must not forge a field the model reads
+    quoted = json.dumps(" ".join(question.split()), ensure_ascii=False)
+    request["messages"][0]["content"] += "\n" + QUESTION.format(lines=heard, question=quoted)
+    start = time.monotonic()
+    reply, replies, tool_calls, _ = _call(provider or unrecorded_provider(), request, header, past)
+    said = " ".join(b["text"] for b in reply["content"] if b["type"] == "text")
+    text = spoken(said, ANSWER_WORDS)
+    if not text:
+        raise NoLine(f"no answer at moment {past[-1]['idx']}")
+    return {
+        "line_id": uuid.uuid4().hex,  # an answer is spoken like a line: /lines/{id}/audio
+        "sport": header["sport"],
+        "match_id": header["match_id"],
+        "moment_idx": past[-1]["idx"],
+        "question": question,
+        "text": text,
+        "model": MODEL,
+        "latency_ms": round((time.monotonic() - start) * 1000),
+        "tokens_in": sum(r["usage"]["input_tokens"] for r in replies),
+        "tokens_out": sum(r["usage"]["output_tokens"] for r in replies),
+        "mubit_request_ids": [r["request_id"] for r in replies],
+        "tool_calls": tool_calls,
+        "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
+    }
+
+
+def _call(provider, request: dict, header: dict, past: list[dict]):
+    """The reply to `request`, with at most one tool round answered from `past` only."""
     start = time.monotonic()
     reply = provider.call(request)
     replies, tool_calls, offset = [reply], [], 0.0
@@ -258,25 +338,7 @@ def line_for(header: dict, moments: list[dict], idx: int, provider) -> dict:
         offset = (time.monotonic() - start) * 1000
         reply = provider.call(request)  # the last round: any further tool request is dropped
         replies.append(reply)
-    text = spoken(" ".join(b["text"] for b in reply["content"] if b["type"] == "text"))
-    if not text:  # a tool-only or preamble-only reply: no line beats a blank or a wrong one
-        raise NoLine(f"no commentary for moment {past[-1]['idx']}")
-    first = reply.get("first_word_ms")
-    return {
-        "line_id": uuid.uuid4().hex,
-        "sport": header["sport"],
-        "match_id": header["match_id"],
-        "moment_idx": past[-1]["idx"],
-        "text": text,
-        "model": MODEL,
-        "latency_ms": round((time.monotonic() - start) * 1000),
-        "first_word_ms": round(offset + first) if first is not None else None,
-        "tokens_in": sum(r["usage"]["input_tokens"] for r in replies),
-        "tokens_out": sum(r["usage"]["output_tokens"] for r in replies),
-        "mubit_request_ids": [r["request_id"] for r in replies],
-        "tool_calls": tool_calls,
-        "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
-    }
+    return reply, replies, tool_calls, offset
 
 
 def _block(b) -> dict:
@@ -333,8 +395,12 @@ class FakeProvider:
         fields = dict(line.split(": ", 1) for line in text.splitlines() if ": " in line)
         big = fields.get("Event", "").startswith(("Shot, Goal", "Wicket"))
         said = msgs[-1]["content"]
+        asked = "\nViewer question: " in text
         if isinstance(said, str) and said.startswith("Producer correction"):
             content = [{"type": "text", "text": said.split(": ", 1)[1]}]
+        elif asked:  # a viewer's question: the score in the request, so a spoiler would show
+            score = fields.get("Score after this moment")
+            content = [{"type": "text", "text": f"So far, {score}."}]
         elif len(msgs) == 1 and big:
             content = [
                 {"type": "tool_use", "id": f"fake-tool-{n}", "name": "get_score", "input": {}}

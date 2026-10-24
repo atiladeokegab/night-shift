@@ -11,6 +11,8 @@ from collections.abc import Callable
 from core.stats import stats
 
 log = logging.getLogger("night_shift.replay")
+# never the provider's text: it can carry its console URL and request id onto the screen
+OFF_AIR = "Commentator is off air for a moment"
 
 
 def moment_seconds(moment: dict) -> float:
@@ -112,8 +114,7 @@ async def run_replay(
         # the provider's status and error type, e.g. Mubit's 402 when its credit runs out
         name = type(exc).__name__
         log.warning("replay %s stopped: %s: %s", replay.match_id, name, str(exc)[:300])
-        # never the provider's text: it can carry its console URL and request id onto the screen
-        off_air = {"code": "commentator_off_air", "detail": "Commentator is off air for a moment"}
+        off_air = {"code": "commentator_off_air", "detail": OFF_AIR}
         await replay.publish("error", off_air)
     finally:
         await replay.finish()

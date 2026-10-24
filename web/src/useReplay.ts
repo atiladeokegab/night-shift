@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react'
-import { createReplay, followReplay, type StreamStatus } from './api'
+import { askCommentator, createReplay, followReplay, type StreamStatus } from './api'
 import { release, replayClock } from './gate'
-import type { Fix, Line, Moment, Stats } from './types'
+import type { Answer, Fix, Line, Moment, Stats } from './types'
 
 export interface ReplayState {
   phase: 'idle' | 'starting' | 'live' | 'failed'
@@ -18,6 +18,7 @@ export interface ReplayState {
   error: string | null // a server `error` event: the commentator failed mid-replay
   stats: Stats | null // the latest `stats` event; store-wide, so it outlives a single replay
   fixes: Record<string, Fix> // by line_id: from the `fixed` event or the fix request's answer
+  answers: Answer[] // viewers' questions and the commentator's answers, newest first (#117)
 }
 
 type Action =
@@ -29,13 +30,14 @@ type Action =
   | { type: 'tick'; t: number; playing: boolean; duration: number }
   | { type: 'stats'; stats: Stats }
   | { type: 'fixed'; fix: Fix }
+  | { type: 'answer'; answer: Answer }
   | { type: 'stream'; status: StreamStatus }
   | { type: 'error'; detail: string }
   | { type: 'end' }
 
 const initial: ReplayState = {
   phase: 'idle', stream: 'ok', gated: false, now: 0, duration: 0, moments: [], lines: [], late: [], queuedMoments: [], queuedLines: [],
-  ended: false, error: null, stats: null, fixes: {},
+  ended: false, error: null, stats: null, fixes: {}, answers: [],
 }
 
 const waits = (s: ReplayState, item: { video_t?: number }) => s.gated && item.video_t !== undefined
@@ -81,6 +83,8 @@ function reduce(s: ReplayState, a: Action): ReplayState {
       }
     }
     case 'fixed': return { ...s, fixes: { ...s.fixes, [a.fix.line_id]: a.fix } }
+    case 'answer':
+      return s.answers.some((x) => x.line_id === a.answer.line_id) ? s : { ...s, answers: [a.answer, ...s.answers] }
     case 'stream': return { ...s, stream: a.status }
     case 'error': return { ...s, error: a.detail }
     case 'end': return { ...s, ended: true, stream: 'ok' }
@@ -172,6 +176,7 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
         if (e.type === 'line') dispatch({ type: 'line', line: e.line })
         if (e.type === 'stats') dispatch({ type: 'stats', stats: e.stats })
         if (e.type === 'fixed') dispatch({ type: 'fixed', fix: e.fix })
+        if (e.type === 'answer') dispatch({ type: 'answer', answer: e.answer })
         if (e.type === 'error') dispatch({ type: 'error', detail: e.detail })
         if (e.type === 'end') dispatch({ type: 'end' })
       },
@@ -220,5 +225,17 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
   // A fix's answer marks the line at once; the `fixed` event that follows on the stream is the same Fix.
   const markFixed = useCallback((fix: Fix) => dispatch({ type: 'fixed', fix }), [])
 
-  return { state, start, reconnect, leave, setClock, unGate, markFixed }
+  // A viewer's question about the moment on screen; the answer shows at once (the `answer` event that
+  // follows is the same one) and is returned for the caller to speak, unless the replay was replaced.
+  const ask = useCallback(async (question: string, momentIdx: number): Promise<Answer | null> => {
+    const token = run.current
+    const id = replayId.current
+    if (!id) return null
+    const answer = await askCommentator(id, question, momentIdx)
+    if (run.current !== token) return null
+    dispatch({ type: 'answer', answer })
+    return answer
+  }, [])
+
+  return { state, start, reconnect, leave, setClock, unGate, markFixed, ask }
 }

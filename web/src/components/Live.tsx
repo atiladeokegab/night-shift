@@ -25,6 +25,7 @@ interface Props {
   onNext: (() => void) | null // the wall's next match (A-6.5), when there is more than one
   onVoiceSheet: () => void
   onFix: (line: Line) => void
+  onAsk: (question: string, momentIdx: number) => Promise<void>
   onRetry: () => void
   onReconnect: () => void
   onGo: (screen: Screen) => void
@@ -34,7 +35,7 @@ interface Props {
 // the score bar and ON AIR pill, the moment tag and subtitle, the dock and the video timeline; the Lines
 // and Proof cards stand in a glass column on the right (under the stage below 1100px).
 export function Live(props: Props) {
-  const { match, replay, replayKey, switching, sports, voice, video, onVideo, onClock, onSport, onNext, onVoiceSheet, onFix, onRetry, onReconnect, onGo } = props
+  const { match, replay, replayKey, switching, sports, voice, video, onVideo, onClock, onSport, onNext, onVoiceSheet, onFix, onAsk, onRetry, onReconnect, onGo } = props
   const shown = onScreen(replay)
   const moment = shown.moments.at(-1) ?? null
   const latest = shown.lines.find((l) => !replay.late.includes(l.line_id))
@@ -146,7 +147,8 @@ export function Live(props: Props) {
         {overlay}
       </section>
       <aside className="side">
-        <LineLog lines={shown.lines} late={replay.late} fixes={replay.fixes} moments={shown.moments} onFix={onFix} />
+        <LineLog lines={shown.lines} late={replay.late} fixes={replay.fixes} moments={shown.moments} onFix={onFix}
+          answers={replay.answers} onAsk={moment ? (q) => onAsk(q, moment.idx) : null} />
         <ProofPanel live={replay.stats} />
       </aside>
     </div>
