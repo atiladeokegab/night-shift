@@ -83,6 +83,8 @@ export interface VoiceHealth {
 
 export interface Stats {
   voice?: VoiceHealth // GET /stats only: the `stats` event leaves it out
+  mubit?: 'ok' | 'degraded' // GET /stats only (#401): key unset or the last Mubit call failed
+  mubit_reason?: string | null // e.g. "MUBIT_API_KEY unset", "503 engine_unavailable"
   lines: number
   fixes: number
   mubit_requests: number
@@ -309,4 +311,22 @@ export interface LedgerRow {
 export interface Ledger {
   sent: number // examples sent to Score check
   rows: LedgerRow[] // the newest 50 corrections
+}
+
+// GET /teams/{sport}/{match_id} (#375): the graph's view of both sides before the match; sections may be empty.
+export interface TeamGame {
+  date: string
+  opponent: string
+  home: boolean
+  score: string
+  result: string // W, D, L, or another code a sport uses
+}
+export interface TeamInfo {
+  team: string
+  form: TeamGame[]
+  squad: { name: string; matches: number; headline: string }[]
+}
+export interface Teams {
+  teams: TeamInfo[]
+  head_to_head: TeamGame[]
 }

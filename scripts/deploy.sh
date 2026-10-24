@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Deploy the committed HEAD to Cloud Run and prove it answers.
 #   PROJECT=<gcp-project-id> [REGION=europe-west1] [SERVICE=night-shift] \
-#     [STATE_BUCKET=<PROJECT>-state] [MIN_INSTANCES=0] [DEPLOY_AS_SELF=1] [PRODUCER_TOKEN=...] scripts/deploy.sh
+#     [STATE_BUCKET=<PROJECT>-state] [MIN_INSTANCES=0] [DEPLOY_AS_SELF=1] [PRODUCER_TOKEN=...] [CONVERSE_AGENT_ID=... CONVERSE_LLM_SECRET=...] scripts/deploy.sh
 # A rehearsal deploys SERVICE=night-shift-staging, whose store sits under its own prefix.
 # One-time GCP setup: scripts/bootstrap.sh. Rollback: route traffic to the previous revision
 # (gcloud run services update-traffic SERVICE --to-revisions REV=100).
@@ -72,6 +72,15 @@ MUBIT_RECORD="${MUBIT_RECORD:-off}"
 # set on the service by hand would go at the next deploy: it comes from the deploy's environment
 # (never .env), and unset leaves fixes open. No "@", which would split the list.
 PRODUCER_TOKEN="${PRODUCER_TOKEN:-}"
+# Talk to the commentator (#380), from the deploy's environment (never .env); both unset leaves the
+# Talk button off and the page on Ask. CONVERSE_LLM_SECRET is the bearer scripts/converse_agent.py
+# gave the agent's custom LLM. No "@", which would split the list.
+CONVERSE_AGENT_ID="${CONVERSE_AGENT_ID:-}"
+CONVERSE_LLM_SECRET="${CONVERSE_LLM_SECRET:-}"
+if [[ ! "$CONVERSE_AGENT_ID$CONVERSE_LLM_SECRET" =~ ^[A-Za-z0-9_.~+/=-]*$ ]]; then
+  echo "deploy: CONVERSE_AGENT_ID and CONVERSE_LLM_SECRET may hold only letters, digits and _.~+/=-" >&2
+  exit 1
+fi
 if [[ -n "$PRODUCER_TOKEN" && ! "$PRODUCER_TOKEN" =~ ^[A-Za-z0-9_.~+/=-]+$ ]]; then
   echo "deploy: PRODUCER_TOKEN may hold only letters, digits and _.~+/=-" >&2  # never echo the value
   exit 1
@@ -103,7 +112,7 @@ done
 gcloud run deploy "$SERVICE" --source . --region "$REGION" --project "$PROJECT" \
   --allow-unauthenticated \
   --set-secrets "${MOUNTS%,}" \
-  --set-env-vars "^@^MODE=cloud@STORE_URL=gs://$STATE_BUCKET/$SERVICE@MUBIT_RECORD=$MUBIT_RECORD$VOICE_ENV${PRODUCER_TOKEN:+@PRODUCER_TOKEN=$PRODUCER_TOKEN}" \
+  --set-env-vars "^@^MODE=cloud@STORE_URL=gs://$STATE_BUCKET/$SERVICE@MUBIT_RECORD=$MUBIT_RECORD$VOICE_ENV${PRODUCER_TOKEN:+@PRODUCER_TOKEN=$PRODUCER_TOKEN}${CONVERSE_AGENT_ID:+@CONVERSE_AGENT_ID=$CONVERSE_AGENT_ID}${CONVERSE_LLM_SECRET:+@CONVERSE_LLM_SECRET=$CONVERSE_LLM_SECRET}" \
   --labels "commit=$COMMIT" \
   --min-instances "$MIN_INSTANCES" \
   --max-instances 1 \

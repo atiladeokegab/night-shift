@@ -15,6 +15,8 @@ export default defineConfig({
       '/stats': api,
       '/health': api,
       '/voices': api,
+      '/review': api, // the Review queue and the ledger read the server too (#171)
+      '/ledger': api,
     },
   },
 })

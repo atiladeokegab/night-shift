@@ -16,6 +16,17 @@ test('Chelsea v Spurs keeps talking past 40 s, in both voices, and the Proof car
     if (/\/lines\/[^/]+\/audio/.test(r.url())) audio.push({ status: r.status(), url: r.url() })
   })
   await page.addInitScript(() => {
+    // the most audio elements playing at once: a big moment fades the line it cuts out first, so never more than one
+    const w = window as unknown as { maxAudio: number }
+    const on = new Set<HTMLMediaElement>()
+    w.maxAudio = 0
+    const off = (e: Event) => on.delete(e.target as HTMLMediaElement)
+    const play = HTMLMediaElement.prototype.play
+    HTMLMediaElement.prototype.play = function (this: HTMLMediaElement) {
+      this.addEventListener('playing', () => (on.add(this), (w.maxAudio = Math.max(w.maxAudio, on.size))))
+      for (const ev of ['pause', 'ended', 'emptied']) this.addEventListener(ev, off)
+      return play.call(this)
+    }
     window.speechSynthesis.speak = (u: SpeechSynthesisUtterance) => {
       setTimeout(() => u.onend?.(new SpeechSynthesisEvent('end', { utterance: u })), 2000)
     }
@@ -36,6 +47,7 @@ test('Chelsea v Spurs keeps talking past 40 s, in both voices, and the Proof car
   await expect.poll(() => said(page, 'lead'), { timeout: 30_000 }).toBeGreaterThan(0)
   await expect.poll(() => said(page, 'analyst'), { timeout: 30_000, message: 'the analyst never spoke' }).toBeGreaterThan(0)
 
+  expect(await page.evaluate(() => (window as unknown as { maxAudio: number }).maxAudio), 'two voices played at once').toBeLessThanOrEqual(1)
   expect(audio.length, 'no line asked for its audio').toBeGreaterThan(0)
   expect(audio.filter((a) => a.status !== 200), 'voice requests that did not answer 200').toEqual([])
 

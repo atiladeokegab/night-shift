@@ -224,12 +224,19 @@ def run_tool(name: str, args: dict, header: dict, past: list[dict]) -> str:
         count = max(1, min(10, count if isinstance(count, int) else 3))
         return "\n".join(describe(p) for p in past[-count - 1 : -1]) or "No earlier moments."
     if name in ("get_player_profile", "get_next_score_odds"):
-        pack = predict.load_pack(header["sport"], header["match_id"])
+        pack = predict.pack(header["sport"], header["match_id"])
         if pack is None:
             return "No pre-match record for this event."
         if name == "get_next_score_odds":
             return predict.odds_text(pack, past, len(past) - 1)
-        return predict.profile_text(pack, past, len(past) - 1, str((args or {}).get("name", "")))
+        who = str((args or {}).get("name", ""))
+        said = predict.profile_text(pack, past, len(past) - 1, who)
+        try:
+            who = predict.find(pack, who)
+        except KeyError:
+            return said
+        season = predict.season_text(header["sport"], who, header.get("date", ""))
+        return f"{said}\n{season}" if season else said
     return f"Unknown tool {name}."
 
 
@@ -318,18 +325,22 @@ def commentate(
     provider=None,
     fixes=(),
     seen: str | None = None,
+    record: bool = False,
 ) -> dict:
     """The server's seam: one Line for `moment`, given only the earlier moments and the match's
-    producer fixes (`build_request`). A line made with `seen`, what a viewer's shared tab showed, is
-    untrusted (#291): called unrecorded, so never training data, and marked `screen`, so it goes
-    only to that viewer."""
+    producer fixes (`build_request`). It is called unrecorded: only a line that passed the number
+    check is sent again with `record` (`recorded`, #399). A line made with `seen`, what a viewer's
+    shared tab showed, is untrusted (#291): never recorded, and marked `screen`, so it goes only
+    to that viewer."""
     if header is None:
         from data.matches import match_header
 
         header = match_header(moment["match_id"])
     moments = [*history, moment]
+    if record:
+        return None if seen else recorded(header, moments, len(history), fixes)
     if provider is None:
-        provider = unrecorded_provider() if seen else provider_for(moment)
+        provider = unrecorded_provider()
     try:
         line = line_for(header, moments, len(history), provider, fixes, seen)
     except NoLine:
@@ -426,8 +437,27 @@ def correct(
         "correction": turn,  # exactly what Mubit was given after the line
         "reply": said,
         "reply_passed": passed,
-        # True only when Mubit recorded it for training: never a reply that failed the check first
-        "recorded": getattr(trainer, "record", False),
+        # True only when Mubit recorded a reply that passed the check, the first try and its own
+        "recorded": getattr(trainer, "record", False) and passed,
+    }
+
+
+def recorded(header: dict, moments: list[dict], idx: int, fixes=(), provider=None) -> dict | None:
+    """A line that passed the number check, its request sent again on the lines' own provider when
+    it records (#399): Mubit records the reply it makes, so that reply is checked too, and
+    `recorded` is True only when it passes. None when nothing was sent: no recording provider, or
+    an analyst's Stat, which is never recorded."""
+    from core.insight import wrong_numbers
+    from core.review import UNSAID
+
+    trainer = provider or default_provider()
+    if not getattr(trainer, "record", False) or moments[idx]["type"] == "Stat":
+        return None
+    line = line_for(header, moments, idx, trainer, fixes)
+    wrong = wrong_numbers(line["text"], moments[idx], header, moments[:idx])
+    return {
+        "mubit_request_ids": line["mubit_request_ids"],
+        "recorded": not [w for w in wrong if UNSAID not in w],
     }
 
 
@@ -462,11 +492,6 @@ def correction_provider():
 
 
 _unrecorded = None
-
-
-def provider_for(moment: dict):
-    """The analyst's Stat lines go unrecorded, like Ask; every moment's line is recorded."""
-    return unrecorded_provider() if moment["type"] == "Stat" else default_provider()
 
 
 def unrecorded_provider():
@@ -617,7 +642,7 @@ def _strangers(question: str, header: dict, past: list[dict]) -> list[str]:
         moments = load_moments(header["match_id"])
     except KeyError:  # a match with no data file: its moments so far
         moments = past
-    pack = predict.load_pack(header["sport"], header["match_id"]) or {}
+    pack = predict.pack(header["sport"], header["match_id"]) or {}
     names = [str(header.get(k) or "") for k in ("home", "away", "competition", "stage", "venue")]
     names += [str(m.get("team") or "") for m in moments]
     names += [str(v) for m in moments for v in (m.get("players") or {}).values()]
@@ -742,6 +767,29 @@ def _block(b) -> dict:
     return {"type": "text", "text": getattr(b, "text", "")}
 
 
+# the last Mubit call's failure, per process (#401): None after a success. /health and /stats read
+# it; nothing probes Mubit for them
+_last_error: str | None = None
+
+
+def mubit_status() -> dict:
+    """degraded with a short reason when MUBIT_API_KEY is unset or the last Mubit call failed."""
+    reason = _last_error if os.environ.get("MUBIT_API_KEY") else "MUBIT_API_KEY unset"
+    return {"mubit": "degraded" if reason else "ok", "mubit_reason": reason}
+
+
+def _reason(exc: Exception) -> str:
+    """Mubit's status and error type, e.g. "503 engine_unavailable"; the exception's type when it
+    never answered. Never the message, which could echo a request."""
+    status = getattr(exc, "status_code", None)
+    if status is None:
+        return type(exc).__name__
+    body = getattr(exc, "body", None)
+    err = body.get("error", body) if isinstance(body, dict) else None
+    kind = (err.get("type") or err.get("code")) if isinstance(err, dict) else err
+    return f"{status} {kind}"[:80] if isinstance(kind, str) else str(status)
+
+
 class MubitProvider:
     """Anthropic SDK pointed at Mubit; streams so the first word can be timed. A key that runs out
     of credit (402) hands every later call to `fallback`'s key."""
@@ -762,6 +810,16 @@ class MubitProvider:
         )
 
     def call(self, request: dict) -> dict:
+        global _last_error
+        try:
+            reply = self._call(request)
+        except Exception as exc:
+            _last_error = _reason(exc)
+            raise
+        _last_error = None
+        return reply
+
+    def _call(self, request: dict) -> dict:
         import anthropic
 
         client, start = self.client, time.monotonic()

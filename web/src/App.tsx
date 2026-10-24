@@ -312,6 +312,7 @@ export default function App() {
       {screen === 'live' && current ? (
         <Live
           {...stage}
+          replayId={replay.currentId}
           match={current.match}
           replay={replay.state}
           replayKey={current.key}

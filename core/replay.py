@@ -88,7 +88,7 @@ class Replay:
 
 async def auto_fix(store, correct, rejected: dict, kept: dict) -> None:
     """The number check's rejected first try, corrected to the kept retry as a Fix that is visibly
-    not a human's: the try was recorded before the check could see it."""
+    not a human's: the try was never recorded, and the correction is only once it passes (#399)."""
     try:
         # the checker's own reasons, as a producer's fix gives theirs (#245)
         reason = "number check: " + "; ".join(rejected.get("wrong") or ["a wrong number"])
@@ -111,6 +111,17 @@ async def auto_fix(store, correct, rejected: dict, kept: dict) -> None:
             "recorded": sent.get("recorded", False),
         },
     )
+
+
+async def record_line(record, moment: dict, history: list[dict], line_id: str) -> None:
+    """A line that passed the number check, sent again for Mubit to record (#399)."""
+    try:
+        got = await asyncio.to_thread(record, moment, history)
+    except Exception as exc:  # the line is already said; only its training example is lost
+        log.warning("line %s not recorded: %s", line_id, str(exc)[:300])
+        return
+    if got and not got["recorded"]:
+        log.warning("line %s: the recorded reply failed the number check", line_id)
 
 
 async def second_opinion(replay: Replay, store, linecheck, line: dict, moment, history) -> None:
@@ -144,7 +155,9 @@ async def run_replay(
     start_idx: int = 0,
     correct: Callable[[dict, str], dict] | None = None,
     linecheck: Callable[[dict, dict, list[dict]], dict | None] | None = None,
+    record: Callable[[dict, list[dict]], dict | None] | None = None,
 ) -> None:
+    # `record`: a line that passed the number check, sent again to be recorded (#399)
     # A video map: only mapped moments are called, each tagged with its video time and sent as
     # soon as it is ready; the page holds each line until the player reaches that time.
     video_t = {m["idx"]: m["video_t"] for m in video["moments"]} if video else None
@@ -344,9 +357,13 @@ async def run_replay(
                 await say(said_line, moment)
                 recent.append(line.get("text") or "")
                 screen = screened(line)  # a screen note's line is never checked or fixed (#291)
-                if linecheck and line.get("checked") and not line.get("fallback") and not screen:
+                passed = line.get("checked") and not line.get("fallback") and not screen
+                if linecheck and passed:
                     args = (replay, store, linecheck, said_line, moment, history[:-1])
                     fixes.append(asyncio.create_task(second_opinion(*args)))
+                if record and passed:  # recorded only once checked, off the line's path
+                    args = (record, moment, history[:-1], said_line["line_id"])
+                    fixes.append(asyncio.create_task(record_line(*args)))
                 # after the kept line is out: never on its path
                 if rejected and correct and not screen and not screened(rejected):
                     fixes.append(asyncio.create_task(auto_fix(store, correct, rejected, line)))

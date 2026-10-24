@@ -194,8 +194,8 @@ def hoop(kind, outcome, period=2, clock="06:00", **detail):
         ({"type": "Wicket", "outcome": "caught"}, "[shouting]"),
         ({"type": "Six", "outcome": "6 runs"}, "[shouting]"),
         ({"type": "Last ball", "outcome": "1 run"}, "[shouting]"),
-        ({"type": "Shot", "outcome": "Saved"}, "[excited]"),
-        ({"type": "Four", "outcome": "4 runs"}, "[excited]"),
+        ({"type": "Shot", "outcome": "Saved"}, None),
+        ({"type": "Four", "outcome": "4 runs"}, None),
         ({"type": "Chase", "outcome": "dot ball"}, "[hushed]"),
         ({"type": "Substitution", "outcome": "Tactical"}, None),
         (hoop("Field goal", "2 points", period=4, clock="00:05"), "[shouting]"),
@@ -203,8 +203,8 @@ def hoop(kind, outcome, period=2, clock="06:00", **detail):
         (hoop("Field goal", "2 points", play="Bryant Slam Dunk (51 PTS)"), "[shouting]"),
         (hoop("Field goal", "3 points"), "[shouting]"),
         (hoop("End of game", "Final buzzer", period=4, clock="00:00"), "[shouting]"),
-        (hoop("Steal", "Steal", period=4, clock="00:18"), "[excited]"),
-        (hoop("Free throw", "1 point", period=4, clock="00:43"), "[excited]"),
+        (hoop("Steal", "Steal", period=4, clock="00:18"), None),
+        (hoop("Free throw", "1 point", period=4, clock="00:43"), None),
         (hoop("Field goal", "2 points"), None),  # a routine basket mid-game stays plain
         ({"sport": "f1", "type": "Lead change", "outcome": "P1 on track"}, "[shouting]"),
         ({"sport": "f1", "type": "Red flag", "outcome": "Red flag"}, "[shouting]"),
@@ -689,7 +689,35 @@ def test_audio_the_request_started_is_not_tried_twice(monkeypatch):
     speaker = Speaker(upstream(500, b"", seen=seen))
     line = {"line_id": "x", "sport": "football", "text": "Goal!"}
     assert asyncio.run(speaker.audio(line, VOICES[1])) is None
-    assert len(seen) == 3  # v3, v3, flash: then 503, and the next request tries again
+    # v3, v3, flash, then flash once more: then 503, and the next request tries again
+    assert [json.loads(r.content)["model_id"] for r in seen] == [
+        "eleven_v3",
+        "eleven_v3",
+        "eleven_flash_v2_5",
+        "eleven_flash_v2_5",
+    ]
+
+
+def test_a_line_that_failed_before_any_audio_gets_one_short_flash_try_before_the_503(
+    tmp_path, monkeypatch
+):
+    # a demo line dropped to browser speech when every call timed out once (24 Oct)
+    from core import voice
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    calls, timeouts = [], []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        calls.append(json.loads(request.content)["model_id"])
+        return httpx.Response(500 if len(calls) <= 3 else 200, content=AUDIO)  # v3, v3, flash fail
+
+    real = voice.asyncio.timeout
+    monkeypatch.setattr(voice.asyncio, "timeout", lambda s: timeouts.append(s) or real(s))
+    with client_for(tmp_path, httpx.MockTransport(handle)) as client:
+        resp = client.get("/lines/l1/audio")
+    assert resp.status_code == 200 and resp.content == AUDIO
+    assert calls[3:] == ["eleven_flash_v2_5"]
+    assert timeouts[3] <= voice.RETRY_S  # brief: it holds one of the three TTS slots
 
 
 def test_a_request_that_joins_a_prepared_job_still_running_gets_a_fresh_try(monkeypatch):
@@ -853,7 +881,7 @@ def test_an_analyst_line_is_made_ahead_in_the_analyst_voice_with_a_calmer_tag(mo
         return await speaker.audio(stat, analyst)  # the page asks for the same job
 
     assert asyncio.run(run()) == (AUDIO, "eleven_v3")
-    assert seen == [(analyst["eleven_id"], "eleven_v3", "[thoughtful] 40 tonight.")]
+    assert seen == [(analyst["eleven_id"], "eleven_v3", "40 tonight.")]
 
 
 def test_the_page_gets_an_analyst_line_in_the_analyst_voice(tmp_path, monkeypatch):
@@ -876,7 +904,7 @@ def test_the_page_gets_an_analyst_line_in_the_analyst_voice(tmp_path, monkeypatc
         assert client.get("/lines/s2/audio").status_code == 200
     analyst = analyst_voice("cricket")["eleven_id"]
     assert [v for v, _, _ in seen] == [analyst] * 3
-    assert seen[0][2] == "[thoughtful] Six fours." and seen[-1] == (
+    assert seen[0][2] == "Six fours." and seen[-1] == (
         analyst,
         "eleven_flash_v2_5",
         "Six fours.",
@@ -1174,3 +1202,55 @@ def test_a_429_opens_the_breaker_so_queued_lines_skip_to_subtitles(monkeypatch):
         return first, queued, len(seen), await speaker.audio(line(2), VOICES[1])
 
     assert asyncio.run(run()) == (None, None, 1, (AUDIO, "eleven_v3"))
+
+
+def test_a_goal_is_more_intense_than_a_pass_and_the_pair_is_voiced_to_match(monkeypatch):
+    import asyncio
+    import time
+
+    from core.insight import stat_moment
+    from core.voice import Speaker, analyst_voice, intensity
+
+    goal = {"type": "Shot", "outcome": "Goal", "detail": {}, "score": {}}
+    routine = {"type": "Pass", "detail": {}, "score": {}}
+    assert (intensity(goal), intensity(routine)) == ("high", "calm")
+    said_as = {"kind": "form", "detail": "x", "heard": "Goal!"}
+    assert stat_moment(goal, said_as, False)["detail"]["intensity"] == "high"
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    seen = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        seen.append((body["text"], body.get("voice_settings")))
+        return httpx.Response(200, content=AUDIO)
+
+    speaker = Speaker(httpx.MockTransport(handle))
+
+    async def run(moment, line_id):
+        line = {"line_id": line_id, "sport": "football", "speaker": "analyst", "text": "Two."}
+        speaker.prepare(line, stat_moment(moment, said_as, False), time.monotonic() + 30)
+        await speaker.audio(line, analyst_voice("football"))
+
+    asyncio.run(run(goal, "a"))
+    asyncio.run(run(routine, "b"))
+    assert seen == [
+        ("[excited] Two.", {"stability": 0.0}),
+        ("Two.", {"stability": 0.5}),
+    ]
+
+
+def test_a_football_goal_is_as_big_as_the_game_state_makes_it():
+    from core.voice import intensity, tag_for
+
+    def goal(home, away, clock="30:00"):
+        return {
+            "sport": "football", "type": "Shot", "outcome": "Goal", "clock": clock,
+            "score": {"home": home, "away": away}, "detail": {},
+        }  # fmt: skip
+
+    assert intensity(goal(1, 1)) == "high"  # an equaliser
+    assert intensity(goal(1, 0)) == "high"  # the go-ahead
+    assert intensity(goal(2, 0, "85:00")) == "high"  # late, still a game
+    assert intensity(goal(4, 0)) == "medium" and tag_for(goal(4, 0)) == "[warmly]"
+    assert tag_for(goal(1, 1)) == "[shouting]"

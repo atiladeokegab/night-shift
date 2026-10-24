@@ -15,7 +15,7 @@ from fastapi.testclient import TestClient
 
 from agent import commentator
 from agent.commentator import FakeProvider
-from core import insight, predict, smoke
+from core import graph, insight, predict, smoke
 from core.app import Deps, create_app
 from core.predict import load_pack
 from core.replay import Replay, run_replay
@@ -204,6 +204,8 @@ def test_a_pack_match_cites_the_pack_and_one_without_uses_tonight_only(tmp_path,
     # Chelsea has a pack (#134): take it away to see a match without one
     assert load_pack("football", CHELSEA) is not None
     monkeypatch.setattr(predict, "load_pack", lambda sport, match_id: None)
+    monkeypatch.setattr(graph, "_db", None)  # nor the graph's, nor its form facts (#374)
+    monkeypatch.setattr(graph, "_kv", None)
     chelsea, _ = replay(CHELSEA, Store(tmp_path / "chelsea"))
     said = [ln["insight"] for ln in chelsea if "insight" in ln]
     tonight = {"tally", "score story", "look back", "momentum", "orientation"}  # the ball: #205
@@ -310,7 +312,8 @@ def test_analyst_and_reply_lines_never_go_through_the_recorded_provider(tmp_path
         return {"\nEvent: Stat, " in q["messages"][0]["content"] for q in fake.requests}
 
     assert any("reply" in ln for ln in lines)
-    assert stats(recorded) == {False} and stats(unrecorded) == {True}
+    # #399: every line is made unrecorded; only a checked lead line is sent again, recorded
+    assert recorded.requests == [] and True in stats(unrecorded)
     assert unrecorded.requests[-1]["messages"][-1]["content"].startswith("Producer correction")
 
 
@@ -855,3 +858,39 @@ def test_the_name_note_and_length_reminder_reach_the_user_message_only(tmp_path)
 )
 def test_a_long_line_is_cut_at_its_last_full_sentence_that_fits(text, said):
     assert insight.cut(text) == said
+
+
+def test_a_quiet_stretch_talks_about_one_player_then_the_next_stretch_another(tmp_path):
+    # #378: the pair take turns on one player, one fact each; the next stretch picks someone new
+    moments = load_moments("3869685")
+    gaps = insight.Gaps("3869685", Store(tmp_path))
+    pack = gaps.pack(moments[0])
+    names = sorted(pack["players"], key=len, reverse=True)  # "Ab Cd" before "Ab"
+
+    def who(detail):
+        return next(n for n in names if detail.startswith(n + " "))
+
+    def stretch(turns=2):
+        got = []
+        for i in range(turns):
+            kind, detail = gaps.next_stat(moments[:5], first=i == 0)
+            gaps.used.add(detail)
+            got.append((kind, who(detail)))
+        return got
+
+    one = stretch()
+    assert {k for k, _ in one} == {"player profile"} and len({n for _, n in one}) == 1
+    assert stretch()[0][1] != one[0][1]
+
+
+def test_a_players_conversation_holds_no_fact_from_after_the_moment_it_follows(tmp_path):
+    # #378: the sizing to the next big moment is asserted in the replay test above (never into it)
+    moments = load_moments("3869685")
+    gaps = insight.Gaps("3869685", Store(tmp_path))
+    pack = gaps.pack(moments[0])
+    first = moments[0]["idx"]
+    later = {t["player"] for t in pack["tonight"] if t["idx"] > first}
+    sooner = {t["player"] for t in pack["tonight"] if t["idx"] <= first}
+    assert later - sooner  # someone's first shot comes after the moment
+    for detail in insight._profiles(pack, moments[:1]):
+        assert not any(detail.startswith(f"{n} tonight") for n in later - sooner), detail

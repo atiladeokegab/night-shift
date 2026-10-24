@@ -13,10 +13,12 @@ import { Caption } from './Caption'
 import { Controls } from './Controls'
 import { FollowPicker } from './FollowPicker'
 import { LineLog } from './LineLog'
+import { Converse } from './Converse'
 import type { Mic } from './MicButton'
 import { Nav, type Screen } from './Nav'
 import { ProfileCard } from './ProfileCard'
 import { ProofPanel } from './ProofPanel'
+import { TeamPanel } from './TeamPanel'
 import { FALLBACK_NOTE } from '../proof'
 import { ScoreBar } from './ScoreBar'
 import { ShotMap } from './ShotMap'
@@ -59,6 +61,7 @@ interface Props {
   muted?: boolean
   onVolume?: (volume: number, muted: boolean) => void
   closed?: boolean // "Close your eyes" (#277): the picture covered; local to the page unless App holds it
+  replayId?: () => string | null // Talk (#380): the replay the conversation is about; unset, no Talk button
   onLook?: (image: string, t: number) => Promise<boolean> // Let them watch (#291): a frame of the shared tab
 }
 
@@ -75,6 +78,7 @@ export function Live(props: Props) {
   const blocked = gated && !embeds(match)
   const voiceLabel = voice.chip // the dock chip's name, never a lone nationality
   // The shot map follows the moment on screen while it is open (#120).
+  const [talkHint, setTalkHint] = useState('') // why Talk could not start (#380)
   const [picked, setPicked] = useState<Picked>(null)
   const mapOf = pickedFor(picked, replayKey)
   const mapped = MAPPED.includes(match.sport)
@@ -115,7 +119,7 @@ export function Live(props: Props) {
   const [localClosed, setLocalClosed] = useState(false)
   const closed = props.closed ?? localClosed
   const onEyes = useCallback(() => setLocalClosed((c) => !c), [])
-  const [chosenTab, setTab] = useState<'follow' | 'lines' | 'proof' | 'shots'>('lines')
+  const [chosenTab, setTab] = useState<'follow' | 'lines' | 'proof' | 'teams' | 'shots'>('lines')
   const tab = chosenTab === 'shots' && !mapped ? 'lines' : chosenTab // a sport with no shot map shows Lines
 
   const ended = fullTime(replay, video)
@@ -169,6 +173,17 @@ export function Live(props: Props) {
   const canPlay = !!transport && video === 'ok' && !busy
   const noVideo = !gated || blocked || video === 'unavailable'
   const covered = closed // with no picture too: the page blacks out to its line and score (#338)
+  // T opens the Teams panel and moves the screen reader's focus to its heading (#375)
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null
+      if (e.key.toLowerCase() !== 't' || e.ctrlKey || e.metaKey || e.altKey || t?.closest('input, textarea, select, [contenteditable]')) return
+      setTab('teams')
+      setTimeout(() => document.getElementById('teams-h')?.focus(), 0)
+    }
+    window.addEventListener('keydown', down)
+    return () => window.removeEventListener('keydown', down)
+  }, [])
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (!eyesKey(e)) return
@@ -282,6 +297,7 @@ export function Live(props: Props) {
             <button role="tab" id="tab-follow" aria-controls="pane-follow" aria-selected={tab === 'follow'} onClick={() => setTab('follow')}>Follow</button>
             <button role="tab" id="tab-lines" aria-controls="pane-lines" aria-selected={tab === 'lines'} onClick={() => setTab('lines')}>Lines</button>
             <button role="tab" id="tab-proof" aria-controls="pane-proof" aria-selected={tab === 'proof'} onClick={() => setTab('proof')}>Proof</button>
+            <button role="tab" id="tab-teams" aria-controls="pane-teams" aria-selected={tab === 'teams'} aria-keyshortcuts="T" onClick={() => setTab('teams')}>Teams</button>
             {mapped && <button role="tab" id="tab-shots" aria-controls="pane-shots" aria-selected={tab === 'shots'} onClick={() => setTab('shots')}>Shot map</button>}
           </div>
           <div className="pane" role="tabpanel" id="pane-follow" aria-labelledby="tab-follow" data-on={tab === 'follow'}>
@@ -294,11 +310,22 @@ export function Live(props: Props) {
             )}
           </div>
           <div className="pane lines-pane" role="tabpanel" id="pane-lines" aria-labelledby="tab-lines" data-on={tab === 'lines'}>
+            {props.replayId && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <Converse sport={match.sport} matchId={match.match_id} momentIdx={moment?.idx ?? null} paused={!!props.paused}
+                  getReplayId={props.replayId} onPause={() => props.onPause?.()} onPlay={() => props.onPlay?.()}
+                  onHint={setTalkHint} />
+                {talkHint && <p className="hint" role="status">{talkHint}</p>}
+              </div>
+            )}
             <LineLog lines={shown.lines} late={replay.late} fixes={replay.fixes} checks={replay.checks} examples={replay.examples} moments={shown.moments} onFix={onFix}
               answers={replay.answers} interrupted={props.interrupted} onHear={props.onHear} onAsk={moment ? (q) => onAsk(q, moment.idx) : null} shooter={null} onShots={openMap} followed={followed} roster={roster} onUnfollow={() => setFollow(null)} voiced={voiced} mic={props.mic} />
           </div>
           <div className="pane" role="tabpanel" id="pane-proof" aria-labelledby="tab-proof" data-on={tab === 'proof'}>
             <ProofPanel live={replay.stats} matchId={match.match_id} fellBack={voice.fellBack} />
+          </div>
+          <div className="pane" role="tabpanel" id="pane-teams" aria-labelledby="tab-teams" data-on={tab === 'teams'}>
+            <TeamPanel sport={match.sport} matchId={match.match_id} />
           </div>
           {mapped && (
             <div className="pane" role="tabpanel" id="pane-shots" aria-labelledby="tab-shots" data-on={tab === 'shots'}>

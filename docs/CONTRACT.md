@@ -103,10 +103,19 @@ and refuses to start without `STORE_URL=gs://bucket/prefix`.
 
 Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not configured.
 
-- `GET /health` → `{status: "ok"}` (core)
+- `GET /health` → `{status: "ok", mubit: "ok"|"degraded", mubit_reason}` (core, #401): `degraded`
+  when `MUBIT_API_KEY` is unset (`mubit_reason: "MUBIT_API_KEY unset"`, also warned at startup) or the
+  last Mubit call in this process failed (its status and error type, e.g. `"503 engine_unavailable"`,
+  or the exception type when Mubit never answered) until a call succeeds; `mubit_reason` is null when
+  `ok`. Read from the last call, never probed. `GET /stats` carries the same two fields, and the
+  review page then shows "Mubit unavailable: lines use the fallback".
 - `GET /matches` → `[Match]` (core over data/)
 - `GET /matches/{id}/start?at=<idx>` → `{video_start}` (core, #188): the second the video starts at for
   a replay with `start_idx: idx`, as `peak_video_start` is for the peak; null without a video.
+- `GET /teams/{sport}/{match_id}` → `{teams: [{team, form, squad}], head_to_head}` (core, #375): both
+  sides' recent games (`{date, opponent, home, score, result}`), the squad's headline numbers
+  (`{name, matches, headline}`) and the head-to-head, all before the match's date, from the graph.
+  A section the graph can't give is `[]`; cached 60 s; 404 for an unknown match.
 - `POST /replays {match_id, speed>0, start_idx?, smoke?}` → `{replay_id}` (core); `smoke: true` (the
   deploy's live smoke) is never counted as a full replay; `start_idx` (#163) starts the stream at
   that moment: earlier moments are never called. They are sent first, untimed (no `video_t`), so the score
@@ -162,6 +171,14 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   `/stats` → `linecheck`). Every later replay of that
   moment says the newest fix's text, rechecked against the moment, instead of calling the model: a
   Line with `fixed: true` and `fix_id` (the fixed line's id), stored in `lines` (#232).
+- `GET /converse/{sport}/{match_id}/token?replay_id=&moment_idx=` → `{signed_url, ctx}` (core, #380):
+  a short-lived ElevenLabs signed URL for the browser and the conversation's context id (the replay
+  and the moment, cut like Ask's). 503 when `CONVERSE_AGENT_ID`, `CONVERSE_LLM_SECRET` or
+  `ELEVENLABS_API_KEY` is unset or the day is off air; 404 for a replay of another match or sport;
+  409 before the first moment. The API key is never returned.
+- `POST /converse/v1/chat/completions` (core, #380): the agent's custom LLM, OpenAI-compatible, SSE
+  when `stream` is true. Bearer `CONVERSE_LLM_SECRET`; the context id (`ctx=...`) arrives in the system
+  prompt. The last user turn is answered by the Ask path (`insight.checked_answer`).
 - `POST /replays/{id}/ask {question, moment_idx?}` → Answer `{line_id, moment_idx, question, text,
   ...}` (core): a viewer's question (1-200 characters, trimmed) answered in 1-2 sentences from the
   match up to `moment_idx`, the last moment on the viewer's screen (default: the latest sent), never
@@ -221,7 +238,8 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   latency_ms_p50, latency_ms_p95, tokens_in, tokens_out, cost_per_line_usd, by_speaker,
   fixes_recorded, fixes_toward_next, voice_chars, matches_measured, cost_per_match_usd,
   model_cost_per_match_usd, voice_cost_per_match_usd, fixes_auto_sent, spoken_from_fix, autonomy,
-  autonomy_by_match, linecheck, scorecheck, earlier_tasks, budget}` (core). The `stats` SSE event carries the same object, without `budget`.
+  autonomy_by_match, linecheck, scorecheck, earlier_tasks, budget, mubit, mubit_reason}` (core;
+  `mubit` and `mubit_reason` as `GET /health`'s, GET /stats only). The `stats` SSE event carries the same object, without `budget`.
   - `budget: {daily_budget_usd, spent_today_usd, off_air}` (#244): the cap (null when off), the
     model and voice spend of lines, answers and Line checks created today (UTC), and whether it
     is past the cap.
