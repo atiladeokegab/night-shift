@@ -1662,6 +1662,21 @@ LEAD_MOVED = re.compile(
     re.I,
 )
 MAY_MOVE = re.compile(r"\b(?:to|could|would|can|will|might|may|should|if)\s+(?:\w+\s+)?$", re.I)
+LEAD_CLAUSE = re.compile(
+    r"[.!?,;:]|\b(?:but|however|although|"
+    r"though|whereas|while|yet|and)\b",
+    re.I,
+)
+LEAD_NEGATED = re.compile(
+    r"\b(?:never|not|no longer|cannot|can't|couldn't|didn't|doesn't|don't|won't|wouldn't|"
+    r"shouldn't|isn't|aren't|wasn't|weren't|hasn't|haven't|hadn't)\b(?:\s+\w+){0,2}\s*$",
+    re.I,
+)
+LEAD_NOT_ONLY = re.compile(r"\bnot\s+only(?:\s+\w+){0,2}\s*$", re.I)
+LEAD_HISTORY = re.compile(
+    r"\b(?:earlier|previously|before|prior(?:ly)?|last\s+(?:time|play|possession|quarter|period))\b",
+    re.I,
+)
 NOW_IN = r"\b(?:we're|we are|it's|it is|deep|now|already)\s+(?:\w+\s+)?(?:in|into)\s+the\s+"
 
 
@@ -1758,7 +1773,22 @@ def wrong_lead_move(text: str, past: list[dict]) -> list[str]:
     (#389), the free throws before it, not the steal. "Could extend their lead" is fine."""
     if len(past) < 2 or past[-1].get("score") is None or past[-1]["score"] != past[-2].get("score"):
         return []
-    if not any(not MAY_MOVE.search(text[: hit.start()]) for hit in LEAD_MOVED.finditer(text)):
+    for hit in LEAD_MOVED.finditer(text):
+        start, end = 0, len(text)
+        for boundary in LEAD_CLAUSE.finditer(text):
+            if boundary.end() <= hit.start():
+                start = boundary.end()
+            elif boundary.start() >= hit.end():
+                end = boundary.start()
+                break
+        before = text[start : hit.start()]
+        clause = text[start:end]
+        if MAY_MOVE.search(before) or LEAD_HISTORY.search(clause):
+            continue
+        if LEAD_NEGATED.search(before) and not LEAD_NOT_ONLY.search(before):
+            continue
+        break
+    else:
         return []
     m = past[-1]
     lead = (m.get("detail") or {}).get("lead")
