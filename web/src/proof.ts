@@ -1,4 +1,4 @@
-import type { Autonomy, LineCheck, LineCheckExample, LineCheckStats, Stats, TaskAdapter, VoiceHealth } from './types'
+import type { Autonomy, HeldOut, LineCheck, LineCheckExample, LineCheckStats, Stats, TaskAdapter, VoiceHealth } from './types'
 
 const NONE: Autonomy = { called: 0, first_time: 0, auto_fixed: 0, to_human: 0 }
 
@@ -37,6 +37,17 @@ export function linecheckRow(s: LineCheckStats): string {
   const kinds = Object.entries(s.examples_today_by_kind ?? {}).map(([kind, n]) => `${n} ${kind.replace('_', ' ')}`)
   return `${row} · ${s.examples_today} examples from fixes today${kinds.length ? ` (${kinds.join(', ')})` : ''}`
 }
+
+// Line check on held-out labelled lines beside the rules (#317), in counts, never a percentage, e.g.
+// "held-out: caught 3 of 5 wrong lines (rules: 1 of 5), 5 false alarms".
+export function heldoutRow(h: HeldOut | null | undefined): string | null {
+  if (!h) return null
+  const alarms = h.line_check.false_alarms
+  return `held-out: caught ${h.line_check.caught} of ${h.wrong} wrong lines (rules: ${h.rules.caught} of ${h.wrong}), ${alarms} false alarm${alarms === 1 ? '' : 's'}`
+}
+
+// What a Line check flag does: it never unsays a line (#317).
+export const FLAG_NOTE = 'A flag only sends a line to the fix queue; it never unsays it.'
 
 // The fix reasons that send Line check a training example: TEACHES in agent/linecheck.py (#298).
 export const TEACHES = ['Wrong score', 'Wrong player', 'Wrong fact']

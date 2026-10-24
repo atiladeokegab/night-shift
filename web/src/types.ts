@@ -116,6 +116,17 @@ export interface LineCheckStats {
   fixes_sent: number // producer fixes sent to Line check as examples
   examples_today?: number // #305: those sent today (UTC)
   examples_today_by_kind?: Record<string, number>
+  heldout?: HeldOut | null // #317: null until eval/linecheck_heldout.json is committed
+}
+
+// #317: eval/linecheck_eval.py --json on the held-out labels: each check's catches and false alarms
+export interface HeldOut {
+  labels: string
+  lines: number
+  wrong: number
+  rules: { caught: number; false_alarms: number }
+  line_check: { caught: number; false_alarms: number }
+  errors: number
 }
 
 // #305: GET /lines/{id} → `linecheck_example`, the Line check example a producer's fix sent

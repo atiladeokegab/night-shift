@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { getReview, getStats } from '../api'
 import type { Adapter, Autonomy, SpeakerStats, Stats } from '../types'
 import { SideBySide } from './SideBySide'
-import { adapterGood, adapterRows, autonomyRows, linecheckRow, TRAINING_LABEL, voiceRow } from '../proof'
+import { adapterGood, adapterRows, autonomyRows, FLAG_NOTE, heldoutRow, linecheckRow, TRAINING_LABEL, voiceRow } from '../proof'
 
 interface Props {
   live: Stats | null // the latest `stats` event from the replay, newer than the first GET /stats
@@ -35,6 +35,7 @@ export function ProofPanel({ live, matchId, fellBack = false }: Props) {
     const adapter = stats.adapter
     const tasks = adapterRows(stats.adapters)
     const voice = voiceRow(live?.voice ?? fetched?.voice, fellBack)
+    const heldout = heldoutRow(stats.linecheck?.heldout)
     // the lead's calls (Haiku) and the analyst's stat lines (Sonnet) apart, so neither skews the other
     const groups: [string, SpeakerStats][] = stats.by_speaker
       ? [['Lead', stats.by_speaker.lead], ['Analyst', stats.by_speaker.analyst]]
@@ -71,6 +72,8 @@ export function ProofPanel({ live, matchId, fellBack = false }: Props) {
             <div className="wide">
               <dt className="label">Checker model</dt>
               <dd>{linecheckRow(stats.linecheck)}</dd>
+              {heldout && <dd>{heldout}</dd>}
+              <dd className="small">{FLAG_NOTE}</dd>
             </div>
           )}
           {stats.fixes_toward_next !== undefined && (

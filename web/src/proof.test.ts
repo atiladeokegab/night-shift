@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { adapterGood, adapterRows, autonomyRows, checkText, exampleText, FALLBACK_NOTE, linecheckRow, TRAINING_LABEL, voiceRow } from './proof.ts'
+import { adapterGood, adapterRows, autonomyRows, checkText, exampleText, FALLBACK_NOTE, FLAG_NOTE, heldoutRow, linecheckRow, TRAINING_LABEL, voiceRow } from './proof.ts'
 
 const all = { called: 10, first_time: 6, auto_fixed: 2, to_human: 2 }
 const kobe = { called: 6, first_time: 3, auto_fixed: 1, to_human: 2 }
@@ -87,4 +87,20 @@ test("today's fix examples on the Proof row, and a fixed line's example in words
   assert.equal(exampleText({ ...ex, kind: 'error', mubit_request_id: null }), 'Line check example not sent')
   assert.equal(exampleText(null), null)
   for (const ex2 of [ex, { ...ex, kind: 'matched' as const }]) assert.doesNotMatch(exampleText(ex2)!, /updated|serves|trained/)
+})
+
+test('the held-out row says Line check beside the rules in counts, never a percentage (#317)', () => {
+  const h = {
+    labels: 'heldout_labels.jsonl', lines: 288, wrong: 5, errors: 0,
+    rules: { caught: 1, false_alarms: 0 }, line_check: { caught: 3, false_alarms: 5 },
+  }
+  assert.equal(heldoutRow(h), 'held-out: caught 3 of 5 wrong lines (rules: 1 of 5), 5 false alarms')
+  assert.equal(heldoutRow({ ...h, line_check: { caught: 3, false_alarms: 1 } })?.endsWith('1 false alarm'), true)
+  assert.equal(heldoutRow(null), null)
+  assert.equal(heldoutRow(undefined), null)
+  for (const text of [heldoutRow(h) ?? '', FLAG_NOTE]) {
+    assert.doesNotMatch(text, /%|adapter|serv|pass/i)
+  }
+  assert.match(FLAG_NOTE, /fix queue/)
+  assert.match(FLAG_NOTE, /never unsays/)
 })
