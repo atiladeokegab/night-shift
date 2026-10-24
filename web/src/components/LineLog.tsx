@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { answeredAt, isStale, withAnswers } from '../ask'
 import { names, shortName } from '../follow'
 import { MicButton, MicOn, type Mic } from './MicButton'
@@ -8,6 +8,7 @@ import { checkText, exampleText } from '../proof'
 import type { Answer, Fix, Line, LineCheck, LineCheckExample, Moment } from '../types'
 
 interface Props {
+  action?: ReactNode // Talk, in the card's header row
   lines: Line[] // newest first, only what the picture has reached
   late: string[] // released after the video had moved past them: never shown or spoken
   fixes: Record<string, Fix>
@@ -45,7 +46,7 @@ function fixName(l: Line, m: Moment | undefined): string {
   return `Fix the ${l.speaker === 'analyst' ? 'analyst' : 'lead'} line${m ? ` at ${clockText(m, true)}` : ''}: ${start}`
 }
 
-export function LineLog({ lines, late, fixes, checks = {}, examples = {}, moments, onFix, answers, interrupted = [], onHear, onAsk, shooter, onShots, followed, roster, onUnfollow, voiced, mic }: Props) {
+export function LineLog({ action, lines, late, fixes, checks = {}, examples = {}, moments, onFix, answers, interrupted = [], onHear, onAsk, shooter, onShots, followed, roster, onUnfollow, voiced, mic }: Props) {
   const said = (l: Line) => fixes[l.line_id]?.corrected_text ?? l.text
   const theirs = followed ? lines.filter((l) => names(said(l), followed, roster)).length : 0
   return (
@@ -53,6 +54,7 @@ export function LineLog({ lines, late, fixes, checks = {}, examples = {}, moment
       <div className="panel-h">
         <h2>Lines</h2>
         <span className="label">{count(lines)}</span>
+        {action && <span className="panel-act">{action}</span>}
       </div>
       <AskBox onAsk={onAsk} mic={mic} />
       {followed && (
