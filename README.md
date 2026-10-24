@@ -531,7 +531,7 @@ The commentator's tools and the shot map read per-match stats packs ([`data/pack
   ([#240](https://github.com/atiladeokegab/night-shift/pull/240), [`core/app.py`](core/app.py)
   `fix_line`). [`scripts/deploy.sh`](scripts/deploy.sh) passes it to Cloud Run from the deploy's
   own environment (never `.env`), so the live service has it exactly when the deploy did; one set
-  on the service by hand is wiped by the next deploy. Either way, a fix is number-checked against its
+  on the service by hand is wiped by the next deploy. It is a plain Cloud Run env var, not a secret: it is visible in the service config, in the deployer's gcloud logs and under `bash -x`. Either way, a fix is number-checked against its
   moment before it is stored, and one that contradicts the data gets a 422 and is never sent to Mubit.
 - **One instance.** The service runs with `--max-instances 1` ([`scripts/deploy.sh`](scripts/deploy.sh)):
   replays and voice clips live in that process's memory
