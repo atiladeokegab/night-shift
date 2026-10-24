@@ -111,7 +111,7 @@ test('each line is voiced, a failed voice falls back, and pause holds the queue'
 
   // Paused mid-line: the voice stops at once, the picture holds (no line falls due), and nothing is said.
   await expect.poll(() => onAir(page), { timeout: 60_000 }).toBe(true)
-  await page.getByRole('button', { name: 'Pause' }).click()
+  await page.getByRole('button', { name: 'Pause', exact: true }).click()
   expect(await onAir(page)).toBe(false)
   const before = (await heard(page)).length
   const at = await videoTime(page)
@@ -120,7 +120,7 @@ test('each line is voiced, a failed voice falls back, and pause holds the queue'
   expect(await heard(page)).toHaveLength(before)
 
   // Play: the picture moves on, and with it the queue.
-  await page.getByRole('button', { name: 'Play' }).click()
+  await page.getByRole('button', { name: 'Play', exact: true }).click()
   await expect.poll(() => videoTime(page)).toBeGreaterThan(at)
   await expect.poll(async () => (await heard(page)).slice(before).some((h) => h.startsWith('audio ')), { timeout: 60_000 }).toBe(true)
 })
