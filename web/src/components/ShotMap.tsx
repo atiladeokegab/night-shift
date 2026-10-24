@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { place, type Shots } from '../shots'
+import { place, zoneName, type Shots } from '../shots'
 
 interface Props {
   name: string
@@ -28,7 +28,11 @@ export function ShotMap({ name, momentIdx, load, onClose }: Props) {
   return (
     <div className="scrim" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="sheet glass shotmap" role="dialog" aria-modal="true" aria-labelledby="shots-h">
-        <h2 id="shots-h">{name}</h2>
+        {/* Close sits in the header: a footer bar would cover the zone table's last rows */}
+        <div className="shots-h">
+          <h2 id="shots-h">{name}</h2>
+          <button className="btn sm" onClick={onClose}>Close</button>
+        </div>
         {shots === 'loading' ? (
           <p className="lede"><span className="spin sm" /> Loading shots…</p>
         ) : shots === 'error' ? (
@@ -38,10 +42,6 @@ export function ShotMap({ name, momentIdx, load, onClose }: Props) {
         ) : (
           <Chart shots={shots} />
         )}
-        <div className="actions">
-          <span className="spacer" />
-          <button className="btn" onClick={onClose}>Close</button>
-        </div>
       </div>
     </div>
   )
@@ -50,7 +50,7 @@ export function ShotMap({ name, momentIdx, load, onClose }: Props) {
 function Chart({ shots }: { shots: Shots }) {
   const ball = shots.sport === 'basketball'
   const k = ball ? 1 : 0.17 // dot sizes in each court's units
-  const made = ball ? 'made' : 'goal'
+  const made = ball ? 'Made' : 'Goal'
   const att = shots.zones.reduce((n, z) => n + z.attempts, 0)
   const hit = shots.zones.reduce((n, z) => n + z.made, 0)
   const tonightMade = shots.tonight.filter((s) => s.made).length
@@ -60,6 +60,7 @@ function Chart({ shots }: { shots: Shots }) {
       <p className="lede num">
         Before tonight {hit} of {att}{att ? ` (${pct(hit / att)})` : ''} · Tonight {tonightMade} of {shots.tonight.length}
       </p>
+      <div className="shots-body">
       <svg className="court" viewBox={ball ? '-255 -55 510 482' : '-2 -4 84 66'} role="img"
         aria-label={`${shots.player}'s shots: ${shots.season.length} before tonight, ${shots.tonight.length} tonight`}>
         {ball ? <Court /> : <Pitch />}
@@ -72,23 +73,26 @@ function Chart({ shots }: { shots: Shots }) {
           return <circle key={`t${i}`} className={`tonight ${s.made ? 'made' : 'miss'}`} cx={x} cy={y} r={8 * k} strokeWidth={3 * k} />
         })}
       </svg>
+      <div>
       <p className="legend">
         <span><i className="dot season" />Before tonight</span>
-        <span><i className="dot made" />Tonight, {made}</span>
-        <span><i className="dot miss" />Tonight, {ball ? 'missed' : 'no goal'}</span>
+        <span><i className="dot made" />{made}</span>
+        <span><i className="dot miss" />{ball ? 'Missed' : 'No goal'}</span>
       </p>
       <table className="zones">
         <caption className="label">Hit rate by zone</caption>
         <tbody>
           {[...shots.zones].sort((a, b) => b.attempts - a.attempts).map((z) => (
             <tr key={z.zone}>
-              <th scope="row">{z.zone}</th>
+              <th scope="row">{zoneName(z.zone)}</th>
               <td className="num">{z.made} of {z.attempts}</td>
               <td className="num rate"><span style={{ width: pct(z.rate) }} />{pct(z.rate)}</td>
             </tr>
           ))}
         </tbody>
       </table>
+      </div>
+      </div>
     </>
   )
 }

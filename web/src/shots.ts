@@ -20,6 +20,9 @@ export function latestShooter(moments: Moment[]): string | null {
   return null
 }
 
+// NBA zone names, short enough for one line at phone width.
+export const zoneName = (zone: string) => zone.replace('In The Paint (Non-RA)', 'Paint (non-RA)')
+
 // A shot in the SVG's space. Basketball keeps NBA LOC_X/LOC_Y (tenths of a foot, hoop at the origin, away
 // from the basket is down the screen). Football turns StatsBomb 120x80 to an attacking half, goal at the top.
 export function place(sport: Shots['sport'], x: number, y: number): [number, number] {

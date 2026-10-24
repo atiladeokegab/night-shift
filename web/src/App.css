@@ -381,14 +381,22 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 
 /* The shot map (#120): faint dots before tonight, bright ones tonight (made filled, missed a ring), hit rate per zone. */
 .panel.lines .shots-open { align-self: flex-start; margin-bottom: 12px; }
-.shotmap .court { width: 100%; max-height: 52svh; display: block; }
+.sheet.shotmap { width: min(900px, 100%); }
+.shotmap .shots-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.shotmap .shots-body { display: grid; gap: 16px; }
+.shotmap .shots-body > div { display: grid; gap: 14px; align-content: start; }
+@media (min-width: 761px) { .shotmap .shots-body { grid-template-columns: 1.15fr 1fr; align-items: start; } }
+/* A cue that the sheet scrolls on a short phone: the zone table fades out under the sheet's bottom edge. */
+.shotmap::after { content: ''; position: sticky; bottom: calc(-1 * var(--pad)); height: 28px; margin: -44px calc(-1 * var(--pad)) calc(-1 * var(--pad)); pointer-events: none;
+  background: linear-gradient(rgba(12, 16, 28, 0), rgba(12, 16, 28, .95)); }
+.shotmap .court { width: 100%; max-height: 62svh; display: block; }
 .shotmap .marks { fill: none; stroke: var(--line-hi); stroke-width: 2; }
 .shotmap .marks.thin { stroke-width: .35; }
 .shotmap .season { fill: var(--fg); opacity: .16; }
 .shotmap .season.made { opacity: .3; }
 .shotmap .tonight.made { fill: var(--live); stroke: var(--bg); }
 .shotmap .tonight.miss { fill: rgba(255, 77, 79, .15); stroke: var(--air); }
-.shotmap .legend { margin: -6px 0 0; display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .8rem; color: var(--muted); }
+.shotmap .legend { margin: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .8rem; color: var(--muted); }
 .shotmap .dot { display: inline-block; width: 9px; height: 9px; margin-right: 6px; border-radius: 50%; vertical-align: -1px; }
 .shotmap .dot.season { background: var(--fg); opacity: .35; }
 .shotmap .dot.made { background: var(--live); }
