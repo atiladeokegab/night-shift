@@ -881,7 +881,7 @@ def test_an_analyst_line_is_made_ahead_in_the_analyst_voice_with_a_calmer_tag(mo
         return await speaker.audio(stat, analyst)  # the page asks for the same job
 
     assert asyncio.run(run()) == (AUDIO, "eleven_v3")
-    assert seen == [(analyst["eleven_id"], "eleven_v3", "[thoughtful] 40 tonight.")]
+    assert seen == [(analyst["eleven_id"], "eleven_v3", "[warmly] 40 tonight.")]
 
 
 def test_the_page_gets_an_analyst_line_in_the_analyst_voice(tmp_path, monkeypatch):
@@ -904,7 +904,7 @@ def test_the_page_gets_an_analyst_line_in_the_analyst_voice(tmp_path, monkeypatc
         assert client.get("/lines/s2/audio").status_code == 200
     analyst = analyst_voice("cricket")["eleven_id"]
     assert [v for v, _, _ in seen] == [analyst] * 3
-    assert seen[0][2] == "[thoughtful] Six fours." and seen[-1] == (
+    assert seen[0][2] == "[warmly] Six fours." and seen[-1] == (
         analyst,
         "eleven_flash_v2_5",
         "Six fours.",
@@ -1202,3 +1202,39 @@ def test_a_429_opens_the_breaker_so_queued_lines_skip_to_subtitles(monkeypatch):
         return first, queued, len(seen), await speaker.audio(line(2), VOICES[1])
 
     assert asyncio.run(run()) == (None, None, 1, (AUDIO, "eleven_v3"))
+
+
+def test_a_goal_is_more_intense_than_a_pass_and_the_pair_is_voiced_to_match(monkeypatch):
+    import asyncio
+    import time
+
+    from core.insight import stat_moment
+    from core.voice import Speaker, analyst_voice, intensity
+
+    goal = {"type": "Shot", "outcome": "Goal", "detail": {}, "score": {}}
+    routine = {"type": "Pass", "detail": {}, "score": {}}
+    assert (intensity(goal), intensity(routine)) == ("high", "calm")
+    said_as = {"kind": "form", "detail": "x", "heard": "Goal!"}
+    assert stat_moment(goal, said_as, False)["detail"]["intensity"] == "high"
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    seen = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        seen.append((body["text"], body.get("voice_settings")))
+        return httpx.Response(200, content=AUDIO)
+
+    speaker = Speaker(httpx.MockTransport(handle))
+
+    async def run(moment, line_id):
+        line = {"line_id": line_id, "sport": "football", "speaker": "analyst", "text": "Two."}
+        speaker.prepare(line, stat_moment(moment, said_as, False), time.monotonic() + 30)
+        await speaker.audio(line, analyst_voice("football"))
+
+    asyncio.run(run(goal, "a"))
+    asyncio.run(run(routine, "b"))
+    assert seen == [
+        ("[excited] Two.", {"stability": 0.0}),
+        ("[warmly] Two.", {"stability": 0.5}),
+    ]
