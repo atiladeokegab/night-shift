@@ -8,7 +8,7 @@ interface Props {
   asked?: string // an answer's question
   offAir?: boolean // the answer came back off air: a calm state, never a headline (#153)
   pending?: string // a viewer's question waiting for its answer, one line in the header (#153)
-  title?: string // the match, at the header's end while no question waits
+  title?: string // the match, at the header's end (a phone drops it while a question waits)
   children?: ReactNode // a state in place of the caption: waiting, off air
 }
 
@@ -23,9 +23,8 @@ export function Caption({ caption, tag, fixed, asked, offAir, pending, title, ch
           <div className="cap-h">
             <span className={`chip ${speaker.toLowerCase()}`}>{speaker}</span>
             {tag && <span className={`tag${fixed ? ' fixed' : ''}`}>{fixed ? 'Fixed · ' : ''}{tag}</span>}
-            {pending ? (
-              <span className="cap-side"><span className="chip viewer">Viewer</span><span className="cap-q">{pending}</span></span>
-            ) : title && <span className="cap-side cap-title">{title}</span>}
+            {pending && <span className="cap-side"><span className="chip viewer">Viewer</span><span className="cap-q">{pending}</span></span>}
+            {title && <span className="cap-side cap-title">{title}</span>}
           </div>
           {offAir ? (
             <p className="cap-state">Couldn't answer that one. Try again.</p>

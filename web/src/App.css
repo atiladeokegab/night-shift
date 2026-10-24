@@ -204,6 +204,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .cap-side { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; color: var(--muted); font: 500 .85rem/1.2 var(--body); }
 .cap-side .cap-q, .cap-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cap-side .cap-q { color: var(--fg); font-style: italic; }
+.cap-side + .cap-title { margin-left: 0; flex-shrink: 0; }
 .chip { font: 600 .65rem/1 var(--body); letter-spacing: .14em; text-transform: uppercase; padding: 5px 8px; border-radius: 6px; color: var(--fg); background: rgba(255, 255, 255, .1); }
 .chip.analyst { color: var(--fix); background: rgba(124, 212, 255, .12); }
 .chip.viewer { color: var(--muted); }
@@ -368,6 +369,10 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   .bug .clock { font-size: .82rem; }
   .bug .period, .bug .onair .who, .bug .onair .bars { display: none; }
   .bug .onair { padding: 6px 9px; font-size: .62rem; }
+  /* On air, the speaker's name takes the place of the words "ON AIR" (#153). */
+  .bug .onair .lbl { display: none; }
+  .bug .onair .lbl ~ .who { display: inline; font-size: .72rem; color: var(--fg); }
+  .cap-side + .cap-title { display: none; }
   .pickbar .btn { padding: 0 10px; }
   /* One row (#153): the back arrow, the sport tabs and an icon-only next match. The ON AIR pill opens the
      voice sheet, so the bar has no voice button. The tabs scroll if a sport ever doesn't fit. */

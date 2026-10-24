@@ -110,7 +110,8 @@ test('the sidebar, the caption and the sport bar are never inside the video card
 test('a question waits in the caption header without its prefix; the line on screen keeps the caption (#153)', () => {
   const html = render({ caption: { kind: 'question', text: 'A viewer asks: Who scores next?' } })
   assert.ok(!html.includes('A viewer asks:'), 'the Viewer chip says who asks')
-  assert.match(html, /<span class="cap-side"><span class="chip viewer">Viewer<\/span><span class="cap-q">Who scores next\?<\/span><\/span>/)
+  assert.match(html, /<span class="cap-side"><span class="chip viewer">Viewer<\/span><span class="cap-q">Who scores next\?<\/span><\/span><span class="cap-side cap-title">Kobe&#x27;s 81 v Toronto<\/span>/,
+    'the match stays named beside the waiting question')
   assert.match(html, new RegExp(`<p class="cap-text">${EARLY}</p>`))
 })
 
@@ -139,6 +140,7 @@ test('at full time the picture offers Watch again and Next match; not before the
   assert.match(html, /class="overlay end" role="status"><span>Full time · LAK 64–69 RAP<\/span>[\s\S]*Watch again[\s\S]*Next match →/)
   assert.match(html, /<p class="cap-text">Full time · LAK 64–69 RAP<\/p>/, 'the caption says full time, not the last play')
   assert.match(html, /aria-label="Play"/, 'the transport offers play again, never pause')
+  assert.ok(!render({ replay: { ...over, now: 1675, duration: 1671 } }).includes('27:55'), 'the clock stops at the duration')
   assert.ok(!render({ replay: { ...replay, ended: true } }).includes('Full time'), 'the stream ended but the picture is still at 500 s')
 })
 
