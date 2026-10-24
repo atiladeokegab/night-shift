@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { airAnswer, bigSoon, Floor, HOLD_MAX_MS, isBig, isDecisive, loudness, voiceOf, type Caption, type Turn } from './turns.ts'
+import { airAnswer, bigSoon, Floor, HOLD_MAX_MS, isBig, VIEWER_MS, isDecisive, loudness, voiceOf, type Caption, type Turn } from './turns.ts'
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 type Said = Turn & { id: string }
@@ -167,7 +167,7 @@ test('a goal, a wicket, a lead change and the final whistle are decisive; a bask
   assert.equal(isDecisive(undefined), false)
 })
 
-test('the extra pair in a long quiet gives way to any other line, so the next moment is never late (#297)', () => {
+test('a fill line in a quiet stretch gives way to any other line, so the next moment is never late (#297)', () => {
   const floor = new Floor<Said>()
   const aside: Said = { id: 'aside', speaker: 'lead', fill: true }
   assert.equal(floor.take(aside, 0), true)
@@ -179,4 +179,33 @@ test('the extra pair in a long quiet gives way to any other line, so the next mo
   late.take({ id: 'more', speaker: 'analyst', fill: true }, 0)
   assert.equal(late.take(lead('corner'), 1000), true) // a routine call cuts the extra analyst line
   assert.equal(late.take(analyst('stat'), 2000), false) // an ordinary line still waits for the lead
+})
+
+test('while the viewer talks and their answer waits, no fill line starts; a moment still does (#297)', () => {
+  const floor = new Floor<Said>()
+  const fill = (id: string): Said => ({ id, speaker: 'analyst', fill: true })
+  floor.take(fill('on air'), 0)
+  floor.clear() // Mic on heard the viewer: the line on air is hushed
+  floor.viewer(1000)
+  assert.equal(floor.take(fill('next'), 1500), false)
+  assert.equal(floor.ended(fill('next'), 2000), null) // dropped, not held for later
+  const call = lead('shot')
+  assert.equal(floor.take(call, 2500), true) // the moment always wins
+  assert.equal(floor.take(fill('after the call'), 5000), false)
+  const answer: Said = { id: 'answer', speaker: 'analyst', answer: true }
+  assert.equal(floor.take(answer, 6000), false) // the answer waits for the call to end
+  assert.equal(floor.take(fill('while it waits'), 6500), false)
+  assert.equal(floor.ended(call, 7000), answer) // the booth answers the viewer next
+  assert.equal(floor.ended(answer, 9000), null)
+  assert.equal(floor.take(fill('carry on'), 9500), true) // then they carry on
+  const quiet = new Floor<Said>()
+  quiet.viewer(0) // heard, but nothing was asked
+  assert.equal(quiet.take(fill('soon'), VIEWER_MS - 1), false)
+  assert.equal(quiet.take(fill('later'), VIEWER_MS), true)
+  const slow = new Floor<Said>()
+  slow.viewer(0)
+  slow.take(lead('long call'), 500)
+  slow.take(answer, 1000)
+  const comeback: Said = { id: 'past the quiet', speaker: 'lead', fill: true }
+  assert.equal(slow.take(comeback, VIEWER_MS + 1000), false) // the answer still waits: it goes first
 })

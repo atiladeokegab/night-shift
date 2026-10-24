@@ -48,6 +48,13 @@ export function useSpeech() {
     aired.current = null
   }, [stop])
 
+  // Mic on heard the viewer (#286): stop at once, so the mic doesn't hear the booth, and start no fill
+  // line until the booth has answered them (#297).
+  const duck = useCallback(() => {
+    hush()
+    floor.current.viewer(performance.now())
+  }, [hush])
+
   // Turning the voice off also stops whatever is being said now.
   const toggle = useCallback(
     (next: boolean) => {
@@ -182,5 +189,5 @@ export function useSpeech() {
 
   const airing = useCallback(() => saying.current.filter((s) => s.until > performance.now()).map((s) => s.text), [])
 
-  return { available, on, setOn: toggle, speaking, say, sayAnswer, hush, airing, volume, muted, setVolume }
+  return { available, on, setOn: toggle, speaking, say, sayAnswer, hush, duck, airing, volume, muted, setVolume }
 }
