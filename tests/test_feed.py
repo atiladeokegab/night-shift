@@ -533,3 +533,15 @@ def test_a_football_moment_carries_the_ball_a_beat_after_it_from_play_up_to_then
         planted = play("Shot", "Reds", mm, ss + 1, **shot)
         for feed_now in (events[: at + 1], [*events[: at + 1], planted, *events[at + 1 :]]):
             assert feed.football_moments(HEADER, feed_now)[m["idx"]]["ball"] == m["ball"]
+
+
+def test_only_a_shootout_kick_carries_the_shootout_score():
+    # the shootout clock restarts at 120:00, so Mbappé's first kick (120:13) follows 122:59
+    from data.matches import list_matches, load_moments
+
+    for match in list_matches():
+        moments = load_moments(match["match_id"])
+        if moments[0]["sport"] != "football":
+            continue
+        for m in moments:
+            assert ("shootout" in m["detail"]) == (m["period"] == 5), (match["match_id"], m["idx"])
