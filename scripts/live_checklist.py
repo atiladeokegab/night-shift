@@ -3,7 +3,8 @@
     uv run python scripts/live_checklist.py [--url URL]
 
 The two browser checks (F1 has no Teams tab, a dropped replay says it has ended) are in
-web/postdeploy/live.spec.ts: `cd web && LIVE_URL=... npx playwright test -c playwright.postdeploy.config.ts`.
+web/postdeploy/live.spec.ts:
+`cd web && LIVE_URL=... npx playwright test -c playwright.postdeploy.config.ts`.
 """
 
 import argparse
