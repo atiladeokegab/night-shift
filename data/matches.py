@@ -113,6 +113,22 @@ def _where(header: dict, m: dict) -> str:
     return f"on the {'left' if left else 'right'} wing" if wide else f"in {other}'s half"
 
 
+def orientation(header: dict, past: list[dict]) -> str | None:
+    """Who has the ball in the gap after the last of the `past` football moments (#205), from its
+    `ball`, and the score when that moment changed it. StatsBomb gives a side's attack only as
+    towards x = 120, so the line says whose goal they attack, never left or right of the screen."""
+    m, before = past[-1], past[-2] if len(past) > 1 else None
+    b = m.get("ball")
+    if not b:
+        return None
+    other = header["away"] if b["team"] == header["home"] else header["home"]
+    where = _where(header, {"type": "Pass", **b}).replace(f"{b['team']}'s own", "their own")
+    text = f"{b['team']} have the ball {where}, attacking {other}'s goal."
+    if before and before["score"] != m["score"] and "lead" in m["detail"]:
+        text += f" {m['detail']['lead'][0].upper()}{m['detail']['lead'][1:]}."
+    return text
+
+
 def leader(m: dict) -> str | None:
     """Who leads after a home/away moment, "home", "away" or None when level; a shootout decides
     once the goals are level."""

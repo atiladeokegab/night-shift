@@ -19,7 +19,7 @@ from core.predict import load_pack
 from core.replay import Replay, run_replay
 from core.smoke import read_stream
 from core.store import Store
-from data.matches import list_matches, load_moments, match_header, video_map
+from data.matches import list_matches, load_moments, match_header, orientation, video_map
 
 KOBE, CHELSEA = "0020500591", "3754092"
 
@@ -178,7 +178,8 @@ def test_a_pack_match_cites_the_pack_and_one_without_uses_tonight_only(tmp_path,
     monkeypatch.setattr(predict, "load_pack", lambda sport, match_id: None)
     chelsea, _ = replay(CHELSEA, Store(tmp_path / "chelsea"))
     said = [ln["insight"] for ln in chelsea if "insight" in ln]
-    assert said and {i["kind"] for i in said} <= {"tally", "score story", "momentum"}
+    tonight = {"tally", "score story", "momentum", "orientation"}  # and the ball (#205)
+    assert said and {i["kind"] for i in said} <= tonight
     assert not any("before tonight" in i["detail"] for i in said)
 
 
@@ -469,3 +470,72 @@ def test_the_live_smoke_fails_when_a_streamed_line_never_reached_the_store(tmp_p
     with pytest.raises(AssertionError, match="not in store"):
         smoke.live("http://testserver")
     assert TestClient(app).get("/lines/nope").status_code == 404
+
+
+FINAL = "3869685"  # the 2022 World Cup final
+
+
+def test_a_football_stretch_opens_on_who_has_the_ball_then_the_pack(tmp_path):
+    lines, _ = replay(FINAL, Store(tmp_path))
+    moments, header = load_moments(FINAL), match_header(FINAL)
+    upto = {m["idx"]: moments[: i + 1] for i, m in enumerate(moments)}
+    opened = 0
+    for ln in lines:
+        said_as = ln.get("insight") or {}
+        if said_as.get("n") not in (0, 1):
+            continue
+        ball = orientation(header, upto[said_as["after_idx"]])
+        assert ln["speaker"] == "analyst"
+        if said_as["n"] == 0:  # the ball where the data has it, never anywhere else
+            assert (said_as["kind"] == "orientation") == bool(ball)
+            assert said_as["detail"] == ball or not ball
+            opened += bool(ball)
+        elif ball:  # then the stretch's first stat, from the pre-match pack
+            assert said_as["kind"] in ("player profile", "next to score")
+    assert opened >= 10
+
+
+def test_the_ball_after_messis_penalty_is_said_with_the_score_it_made():
+    moments = load_moments(FINAL)
+    assert moments[5]["outcome"] == "Goal"
+    assert orientation(match_header(FINAL), moments[:6]) == (
+        "France have the ball in Argentina's half, attacking Argentina's goal. Argentina lead 1-0."
+    )
+    assert orientation(match_header(FINAL), moments[:4]) == (  # idx 3: no goal, no score
+        "France have the ball inside their own box, attacking Argentina's goal."
+    )
+
+
+@pytest.mark.parametrize("match_id", [CHELSEA, FINAL, "3913122"])
+def test_every_orientation_sentence_passes_the_checks(match_id):
+    moments, header = load_moments(match_id), match_header(match_id)
+    said = 0
+    for i, m in enumerate(moments):
+        if text := orientation(header, moments[: i + 1]):
+            said_as = {"kind": "orientation", "detail": text, "heard": ""}
+            assert insight.wrong_orientation(text, m, said_as, header, moments[: i + 1]) == []
+            said += 1
+    assert said >= 20
+
+
+@pytest.mark.parametrize(
+    "wrong",
+    [
+        "Messi scores again, and France are on the back foot!",  # no goal in open play
+        "France have the ball, three goals down.",  # no number the moment gives
+        "France lead and they have the ball.",  # Argentina lead 1-0
+    ],
+)
+def test_an_orientation_line_that_gets_it_wrong_says_the_ball_instead(tmp_path, wrong):
+    def calls(moment, history):
+        line = commentator.commentate(moment, history, provider=FakeProvider())
+        if moment["outcome"].startswith("orientation") and moment["idx"] == 5:
+            line["text"] = wrong
+        return line
+
+    lines, _ = replay(FINAL, Store(tmp_path), calls=calls)
+    after = [
+        ln for ln in lines if gap(ln).get("kind") == "orientation" and gap(ln)["after_idx"] == 5
+    ]
+    assert after, "the gap after Messi's penalty opens on the ball"
+    assert after[0]["text"] == after[0]["insight"]["detail"] and after[0]["fallback"] is True
