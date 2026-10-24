@@ -1,17 +1,18 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { getReview, getStats } from '../api'
-import type { Adapter, SpeakerStats, Stats } from '../types'
+import type { Adapter, Autonomy, SpeakerStats, Stats } from '../types'
 import { SideBySide } from './SideBySide'
-import { nextAdapter } from '../proof'
+import { autonomyRows, nextAdapter } from '../proof'
 
 interface Props {
   live: Stats | null // the latest `stats` event from the replay, newer than the first GET /stats
+  matchId?: string // the match on screen: its own autonomy row first (#204)
 }
 
 // The Proof card (docs/design.md): the model's first-text-word latency, cost per line, lines, fixes and
 // the adapter, all from GET /stats, then updated with every `stats` event. Nothing here is computed in
 // the browser. "First word" is the model's first text word; the footnote says what it measures (#37, #154).
-export function ProofPanel({ live }: Props) {
+export function ProofPanel({ live, matchId }: Props) {
   const [fetched, setFetched] = useState<Stats | null>(null)
   const [failed, setFailed] = useState(false)
   const [flagged, setFlagged] = useState<number | null>(null) // stored lines the number check flags (#171)
@@ -36,6 +37,8 @@ export function ProofPanel({ live }: Props) {
     body = (
       <>
         <dl className="stats">
+          {/* first: how many calls the number check passed, the retry fixed, or a person must (#204) */}
+          {autonomyRows(stats, matchId ?? null).map(([name, a]) => <Calls key={name} name={name} a={a} />)}
           {stats.matches_measured !== undefined && <PerMatch stats={stats} />}
           {groups.map(([name, s]) => <Speaker key={name} name={name} s={s} />)}
           {/* own heading so the fix counts don't read as the analyst's */}
@@ -68,6 +71,8 @@ export function ProofPanel({ live }: Props) {
         <div className="panel-h"><h3>Proof</h3></div>
         {body}
         <p className="small">
+          First time: the call passed the number check. Auto-fixed: it failed, and the retry passed. To a human:
+          the retry failed too, so a line built from the match data was said and the call waits in Review.
           First word: time from the match moment to the first word of the model's text reply, measured through
           Mubit. Finishing the line, speech synthesis and playback are not included.
           Per full replay: a replay from the first moment to the last, at list prices. Model: the tokens of
@@ -76,6 +81,20 @@ export function ProofPanel({ live }: Props) {
         </p>
       </section>
       <SideBySide />
+    </>
+  )
+}
+
+function Calls({ name, a }: { name: string; a: Autonomy }) {
+  return (
+    <>
+      <div className="wide">
+        <dt className="label">Calls · {name}</dt>
+        <dd>{a.called.toLocaleString()} checked against the match data</dd>
+      </div>
+      <Figure className="third" label="First time" value={a.first_time.toLocaleString()} />
+      <Figure className="third" label="Auto-fixed" value={a.auto_fixed.toLocaleString()} />
+      <Figure className="third" label="To a human" value={a.to_human.toLocaleString()} />
     </>
   )
 }
