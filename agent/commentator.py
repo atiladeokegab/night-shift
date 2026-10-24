@@ -169,6 +169,7 @@ _PREAMBLE = re.compile(
 # A stray grade word the model put before the line: "BAD Manenti with a boundary!".
 _STRAY = re.compile(r"^BAD\s+(?=[A-Z])")
 MAX_WORDS = 20
+ANALYST_WORDS = 25  # a stat line needs room for its numbers
 
 # The model questioning its input instead of calling the moment: "There's a discrepancy here ...".
 _META = re.compile(
@@ -286,7 +287,8 @@ def line_for(header: dict, moments: list[dict], idx: int, provider) -> dict:
     past = moments[: idx + 1]  # never anything later than this moment
     start = time.monotonic()
     reply, replies, tool_calls, offset = _call(provider, build_request(header, past), header, past)
-    text = spoken(" ".join(b["text"] for b in reply["content"] if b["type"] == "text"))
+    limit = ANALYST_WORDS if past[-1]["type"] == "Stat" else MAX_WORDS
+    text = spoken(" ".join(b["text"] for b in reply["content"] if b["type"] == "text"), limit)
     if not text:  # a tool-only or preamble-only reply: no line beats a blank or a wrong one
         raise NoLine(f"no commentary for moment {past[-1]['idx']}")
     first = reply.get("first_word_ms")
