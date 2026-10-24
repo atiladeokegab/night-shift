@@ -145,7 +145,8 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   play-by-play voice (Sam) for basketball, a British announcer for f1; `lang` is
   the BCP 47 tag the browser-speech fallback uses. `VOICE_<SPORT>` picks a sport's default: an id
   here, or a raw ElevenLabs voice id, listed as `<sport>-pick` (docs/voice.md). A pick that is the same
-  ElevenLabs voice as an earlier entry carries `same_as: <that entry's id>`, so the page lists the voice once. (core)
+  ElevenLabs voice as an earlier entry carries `same_as: <that entry's id>`, so the page lists the voice once.
+  The voice that reads a sport's analyst lines (`analyst_voice`) carries `analyst_for: [sports]`, so the page names the analyst. (core)
 - `GET /lines/{line_id}/audio[?voice=<id>]` → `audio/mpeg` of the stored line (or answer) read by ElevenLabs
   in the chosen voice, or by default the voice for the line's sport. `eleven_v3` with an audio tag
   for the moment's kind (in the TTS text only, never the stored line); one retry, then

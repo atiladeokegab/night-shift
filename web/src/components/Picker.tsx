@@ -41,7 +41,7 @@ export function Picker({ matches, error, voices, onRetry, onStart, onGo }: Props
     <div className="page">
       <Nav current="picker" onGo={onGo} />
       <main className="wrap">
-        <p className="eyebrow">A live AI commentator for matches nobody calls.</p>
+        <p className="eyebrow">Audio description for live sport, for the matches no human describer covers.</p>
         <h1>Pick a match</h1>
         {body}
         {/* --muted: .foot's --faint is 3.77:1 at 13 px, under WCAG AA (#154); App.css is #153's until it merges */}
