@@ -526,6 +526,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .profile .stat-lines { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; align-items: baseline; }
 .profile .stat-lines dd { margin: 0; font-size: .95rem; }
 .profile .zones { width: 100%; }
+.profile .zones td:not(.rate) { white-space: normal; } /* "· 0 off 1 tonight" wraps at 390 px rather than widening the card */
 .profile .laps { width: 100%; display: block; }
 .profile .laps .grid { stroke: var(--line); }
 .profile .laps text { fill: var(--muted); font: 500 10px var(--body); }

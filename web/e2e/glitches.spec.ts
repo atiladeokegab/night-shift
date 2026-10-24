@@ -38,3 +38,31 @@ test('a flagged line check stays a small chip inside Lines at 1440', async ({ pa
   const box = await inside(page, '#pane-lines .pill.check', '#pane-lines .log li')
   expect(box.height, 'chip height').toBeLessThan(32)
 })
+
+test('the cricket Follow card keeps its table and Unfollow inside its padding at 390', async ({ page }) => {
+  const moment = {
+    sport: 'cricket', match_id: '1298150', idx: 0, period: 1, clock: '1.1', type: 'Wicket', team: 'India',
+    players: { batter: 'Babar Azam', bowler: 'Arshdeep Singh' }, outcome: 'lbw', score: { home: 1, away: 1 }, detail: {},
+  }
+  const line = { line_id: 'c-1', match_id: '1298150', moment_idx: 0, text: 'Babar Azam goes for a duck.', latency_ms: 900 }
+  const phase = (runs: number, balls: number) => ({ runs, balls, outs: 0 })
+  const profile = {
+    player: 'Babar Azam', team: 'Pakistan', sport: 'cricket', window: { from: '2021-01-01', to: '2022-10-22' },
+    before: { games: 18, batting: { powerplay: phase(312, 247), middle: phase(250, 190), death: phase(49, 25) }, bowling: { balls: 0, runs: 0, wickets: 0, economy: null } },
+    tonight: { batting: { powerplay: phase(0, 1), middle: phase(0, 0), death: phase(0, 0) }, bowling: { balls: 0, runs: 0, wickets: 0 } },
+    n: 462, small_sample: false, text: '',
+  }
+  await replay(page, [['moment', moment], ['line', line]])
+  await page.route('**/replays/*/players?*', (r) => r.fulfill({ json: [{ name: 'Babar Azam', team: 'Pakistan', record: true, named: true }] }))
+  await page.route('**/replays/*/players/*/profile?*', (r) => r.fulfill({ json: profile }))
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/')
+  await page.getByRole('button', { name: /^Cricket/ }).first().click()
+  await page.getByRole('tab', { name: 'Follow' }).click()
+  await page.getByRole('combobox', { name: 'Follow a player' }).fill('Babar')
+  await page.getByRole('button', { name: /Babar Azam/ }).click()
+  await expect(page.getByText('Batting by phase')).toBeVisible()
+  await expect(page.locator('.profile .zones td').first()).toHaveText('312 off 247 · 0 off 1 tonight')
+  await inside(page, '.profile .zones', '.profile', 20)
+  await inside(page, '.profile .panel-h .btn', '.profile', 20)
+})
