@@ -52,7 +52,7 @@ Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026. Track: Own
 | [Ask, by typing](#ask-by-typing-or-by-voice) | Live | [`POST /replays/{id}/ask`](core/app.py), [`agent/ask.md`](agent/ask.md) |
 | [Ask, by voice](#ask-by-typing-or-by-voice) | Live (#145) | [`web/src/voice.ts`](web/src/voice.ts), [`web/src/components/MicButton.tsx`](web/src/components/MicButton.tsx), [`web/src/voice.test.ts`](web/src/voice.test.ts) |
 | [Follow a player: shot map](#follow-a-player) | Live | [`GET /replays/{id}/players/{name}/shots`](core/app.py), [`web/src/components/ShotMap.tsx`](web/src/components/ShotMap.tsx) |
-| [Follow a player: picker and profile card](#follow-a-player) | In progress (#140) | |
+| [Follow a player: picker and profile card](#follow-a-player) | Live (#140, #152) | [`GET /replays/{id}/players/{name}/profile`](core/app.py), [`web/src/components/ProfileCard.tsx`](web/src/components/ProfileCard.tsx) |
 | [Producer fixes](#producer-fixes) | Live | [`POST /lines/{id}/fix`](core/app.py), [`tests/test_core_fix.py`](tests/test_core_fix.py) |
 | [Big model vs ours](#big-model-vs-ours) | Live under the Proof card (#144, #147, #150) | [`data/side_by_side.json`](data/side_by_side.json), [`eval/side_by_side.py`](eval/side_by_side.py) |
 | [The Proof panel](#the-proof-panel) | Live | [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats), [`core/stats.py`](core/stats.py) |
@@ -116,8 +116,15 @@ match's pre-match pack) and tonight's so far, with hit rate by zone. It reads on
 one on screen ([`core/app.py`](core/app.py) `shots`, [`core/predict.py`](core/predict.py),
 [`tests/test_core_shots.py`](tests/test_core_shots.py)).
 
-**In progress (#140):** a Follow picker for anyone in the match, their lines highlighted in the log,
-and a profile card with their record coming in and tonight's line.
+Or follow anyone in the match: search for them in the Follow picker, and a profile card shows their
+record before tonight and tonight's so far, while their lines are marked in the log. Like the shot
+map, it reads only moments up to the one on screen ([`core/app.py`](core/app.py) `players` and
+`profile`, [`core/predict.py`](core/predict.py),
+[`web/src/components/FollowPicker.tsx`](web/src/components/FollowPicker.tsx),
+[`web/src/components/ProfileCard.tsx`](web/src/components/ProfileCard.tsx),
+[`tests/test_follow.py`](tests/test_follow.py), [`web/src/follow.test.ts`](web/src/follow.test.ts)).
+
+<img src="docs/img/follow.png" alt="The live page during Kobe's 81, LAK 65-75 RAP, 06:22, Q3, on the live site after #152. On the right, a profile card: Following Kobe Bryant, Los Angeles Lakers, with an Unfollow button; Before tonight 461 of 1036 (44%) in 38 games; Tonight 16 of 26 (62%); and a Shot map · Kobe Bryant chip. Below it, the Lines card with a bar reading Following Kobe Bryant · 2 lines and a Clear button. His two lines, Kobe Bryant from three, assisted by Devean George! at 06:22 and Kobe Bryant with the running jumper, 30 points for Bryant, Lakers trail 53 to 69. at 09:36, are edged in amber and tagged BRYANT; between them, the analyst's line, Before tonight he's made 461 of 1036 shots, 44 percent over 38 games, so thirty points here is a big night above his usual rate. Under the video, the caption marked LEAD repeats the three. The video area says Highlights can't play here, because the browser was headless." width="100%">
 
 #### Producer fixes
 
