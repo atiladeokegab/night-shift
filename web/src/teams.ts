@@ -33,6 +33,9 @@ export function teamStyle(name: string, fallback = 0): TeamStyle {
 }
 
 // [home, away]: from the match when the server names them, else from data/'s title "Home v Away, ...".
+// A race has no teams: the Teams tab and its T shortcut are for the sports with sides.
+export const hasTeams = (sport: Sport): boolean => sport !== 'f1'
+
 export function matchTeams(match: Match): [TeamStyle, TeamStyle] {
   const [home, away] = match.home && match.away
     ? [match.home, match.away]

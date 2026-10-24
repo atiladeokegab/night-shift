@@ -8,7 +8,7 @@ import { SPORT_NAMES, type Answer, type Line, type Match, type Sport } from '../
 import { onScreen, type Clock, type ReplayState } from '../useReplay'
 import type { Player, Profile } from '../follow'
 import { latestShooter, MAPPED, pickedFor, type Picked, type Shots } from '../shots'
-import { CARD_COPY, coverage, matchTeams } from '../teams'
+import { CARD_COPY, coverage, hasTeams, matchTeams } from '../teams'
 import { Caption } from './Caption'
 import { Controls } from './Controls'
 import { FollowPicker } from './FollowPicker'
@@ -140,7 +140,9 @@ export function Live(props: Props) {
   const closed = props.closed ?? localClosed
   const onEyes = useCallback(() => setLocalClosed((c) => !c), [])
   const [chosenTab, setTab] = useState<'follow' | 'lines' | 'proof' | 'teams' | 'shots'>('lines')
-  const tab = chosenTab === 'shots' && !mapped ? 'lines' : chosenTab // a sport with no shot map shows Lines
+  const teamsOn = hasTeams(match.sport) // a race has no teams: no tab, no T
+  // a sport with no shot map shows Lines, and one with no teams never shows Teams
+  const tab = (chosenTab === 'shots' && !mapped) || (chosenTab === 'teams' && !teamsOn) ? 'lines' : chosenTab
 
   const ended = fullTime(replay, video)
   const score = finalScore(match, shown.moments.at(-1))
@@ -197,13 +199,13 @@ export function Live(props: Props) {
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null
-      if (e.key.toLowerCase() !== 't' || e.ctrlKey || e.metaKey || e.altKey || t?.closest('input, textarea, select, [contenteditable]')) return
+      if (!teamsOn || e.key.toLowerCase() !== 't' || e.ctrlKey || e.metaKey || e.altKey || t?.closest('input, textarea, select, [contenteditable]')) return
       setTab('teams')
       setTimeout(() => document.getElementById('teams-h')?.focus(), 0)
     }
     window.addEventListener('keydown', down)
     return () => window.removeEventListener('keydown', down)
-  }, [])
+  }, [teamsOn])
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (!eyesKey(e)) return
@@ -317,7 +319,7 @@ export function Live(props: Props) {
             <button role="tab" id="tab-follow" aria-controls="pane-follow" aria-selected={tab === 'follow'} onClick={() => setTab('follow')}>Follow</button>
             <button role="tab" id="tab-lines" aria-controls="pane-lines" aria-selected={tab === 'lines'} onClick={() => setTab('lines')}>Lines</button>
             <button role="tab" id="tab-proof" aria-controls="pane-proof" aria-selected={tab === 'proof'} onClick={() => setTab('proof')}>Proof</button>
-            <button role="tab" id="tab-teams" aria-controls="pane-teams" aria-selected={tab === 'teams'} aria-keyshortcuts="T" onClick={() => setTab('teams')}>Teams</button>
+            {teamsOn && <button role="tab" id="tab-teams" aria-controls="pane-teams" aria-selected={tab === 'teams'} aria-keyshortcuts="T" onClick={() => setTab('teams')}>Teams</button>}
             {mapped && <button role="tab" id="tab-shots" aria-controls="pane-shots" aria-selected={tab === 'shots'} onClick={() => setTab('shots')}>Shot map</button>}
           </div>
           <div className="pane" role="tabpanel" id="pane-follow" aria-labelledby="tab-follow" data-on={tab === 'follow'}>
@@ -348,9 +350,11 @@ export function Live(props: Props) {
           <div className="pane" role="tabpanel" id="pane-proof" aria-labelledby="tab-proof" data-on={tab === 'proof'}>
             <ProofPanel live={replay.stats} matchId={match.match_id} fellBack={voice.fellBack} />
           </div>
-          <div className="pane" role="tabpanel" id="pane-teams" aria-labelledby="tab-teams" data-on={tab === 'teams'}>
-            <TeamPanel sport={match.sport} matchId={match.match_id} />
-          </div>
+          {teamsOn && (
+            <div className="pane" role="tabpanel" id="pane-teams" aria-labelledby="tab-teams" data-on={tab === 'teams'}>
+              <TeamPanel sport={match.sport} matchId={match.match_id} />
+            </div>
+          )}
           {mapped && (
             <div className="pane" role="tabpanel" id="pane-shots" aria-labelledby="tab-shots" data-on={tab === 'shots'}>
               <section className="panel glass shots-card" aria-label="Shot map">
