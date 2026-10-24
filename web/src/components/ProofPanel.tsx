@@ -33,9 +33,14 @@ export function ProofPanel({ live }: Props) {
       <>
         <dl className="stats">
           {groups.map(([name, s]) => <Speaker key={name} name={name} s={s} />)}
-          <Figure label="Fixes recorded to Mubit for training" value={String(stats.fixes)} />
+          {/* own heading so the fix counts don't read as the analyst's */}
+          <div className="wide">
+            <dt className="label">Training</dt>
+            <dd>Producer fixes Mubit recorded</dd>
+          </div>
+          <Figure label="Fixes recorded" value={String(stats.fixes_recorded ?? 0)} />
           {stats.fixes_toward_next !== undefined && (
-            <Figure label="Corrections needed for the next adapter" value={`${stats.fixes_toward_next} of ${adapter?.needed ?? 25}`} />
+            <Figure label="Next adapter" value={`${stats.fixes_toward_next} of ${adapter?.needed ?? 25}`} />
           )}
           <div className="wide">
             <dt className="label">Adapter</dt>
