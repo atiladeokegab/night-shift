@@ -42,8 +42,8 @@ export function Wall({ matches, error, onRetry, onOpen, onJump, onGo }: Props) {
     <div className="page">
       <Nav current="wall" onGo={onGo} />
       <main className="wrap">
-        <p className="eyebrow">A live AI commentator for matches nobody calls.</p>
-        <h1>Tap a match to hear it called</h1>
+        <p className="eyebrow">Audio description for live sport</p>
+        <h1>For the matches no human describer covers</h1>
         {body}
         {/* --muted: .foot's --faint is 3.77:1 at 13 px, under WCAG AA (#154); App.css is #153's until it merges */}
         <p className="foot" style={{ color: 'var(--muted)' }}>
