@@ -9,8 +9,7 @@ the panel reads only the latest, and the server never writes this kind. /stats r
 
     d=$(mktemp -d)
     STORE_DIR=$d uv run python -m eval.record_adapter --status ready --kept 31 --agree 23 --total 25
-    gcloud storage cp $d/adapter.jsonl \
-        gs://hackathon-starter-ao-state/night-shift-staging/adapter.jsonl
+    gcloud storage cp $d/adapter.jsonl gs://<state bucket>/<prefix>/adapter.jsonl
 """
 
 import argparse
