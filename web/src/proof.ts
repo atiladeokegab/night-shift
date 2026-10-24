@@ -35,5 +35,8 @@ function adapterRow(a: TaskAdapter | undefined): string {
   ].filter(Boolean).join(', ')
 }
 
+// The fix counts' heading: "Training" alone read as training under way; these are recorded data.
+export const TRAINING_LABEL = 'Training data'
+
 // The Adapter row's green dot: only a recorded pass of Mubit's gate, never one inferred from a status.
 export const adapterGood = (stats: Pick<Stats, 'adapter'>): boolean => stats.adapter?.state === 'passed'

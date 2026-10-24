@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { adapterGood, adapterRows, autonomyRows } from './proof.ts'
+import { adapterGood, adapterRows, autonomyRows, TRAINING_LABEL } from './proof.ts'
 
 const all = { called: 10, first_time: 6, auto_fixed: 2, to_human: 2 }
 const kobe = { called: 6, first_time: 3, auto_fixed: 1, to_human: 2 }
@@ -54,4 +54,8 @@ test('the Adapter row is green only for a recorded pass of the gate', () => {
   assert.equal(adapterGood({ adapter }), false)
   assert.equal(adapterGood({ adapter: { ...adapter, state: 'collecting' } }), false)
   assert.equal(adapterGood({}), false)
+})
+
+test('the fix counts are headed as training data, never a bare "Training" that reads as under way', () => {
+  assert.equal(TRAINING_LABEL, 'Training data')
 })
