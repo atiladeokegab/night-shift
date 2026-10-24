@@ -656,9 +656,12 @@ the player's other matches and teammates. If the graph fails, it reads the packs
   it caught 1 of the 6 wrong ones (recall 17%, no better than before #293), with no false alarm
   (precision 100%, 1 of 1). It checks the score, the leader and the key
   numbers, not every claim ([how well the check works](#how-well-the-check-works)).
-- **The voice comes seconds after the moment.** From the moment to its line's audio ready on the
-  server: p50 3.7 s, p95 9.0 s over 522 lead lines (`/stats` `by_speaker.lead.audio_first_ms_p50`
-  and `_p95`, 24 October 2026 at 19:37 UTC). The text's first word is out in about half a second.
+- **The voice comes seconds after the moment.** From the moment (in a video replay, the video
+  reaching it) to its line's audio ready on the server: p50 3.5 s, p95 6.4 s over 1,033 lead lines
+  (`/stats` `by_speaker.lead.audio_first_ms_p50` and `_p95`, 24 October 2026 at 20:36 UTC). Lines
+  voiced before 20:31 UTC count from the moment's publish, up to minutes before the video reached
+  it; the 41 lead lines voiced since read p50 0 s, p95 5.1 s. The text's first word is out in
+  about half a second.
 
 - **The adapter isn't ready or callable.** Six commentary tasks, 0 adapters serving, best 58.3% against a 95% target. Mubit
   serves an adapter only in its console, so the app can't call one, and its cost per line isn't
