@@ -106,8 +106,8 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   The budget guard (#244, core/guard.py): 429 with `Retry-After` past `REPLAYS_PER_HOUR` starts
   from one client (the first `X-Forwarded-For` hop) in an hour. With `MAX_LIVE_REPLAYS` replays
   already making lines, or today's spend past `DAILY_BUDGET_USD`, the replay plays each moment's
-  stored line again as a new Line (`cached`: the stored line's id, no tokens), with no model or voice
-  call and never counted as a full replay; 429 `{detail}` if the match has no stored lines. A 429's
+  stored line again as it was stored (its own `line_id`), with no model or voice call, nothing
+  stored and never counted as a full replay; 429 `{detail}` if the match has no stored lines. A 429's
   `detail` is viewer-safe: the page shows it.
 - `GET /replays/{id}/stream` → SSE: per moment `moment`, `line`, `stats` in that order; `error`
   `{code: "commentator_off_air", detail}` if the commentator fails, where `detail` is a fixed

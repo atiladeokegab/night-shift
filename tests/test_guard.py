@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from core.app import Deps, create_app
 from core.guard import Guard, Limiter, spent
 from core.smoke import read_stream
+from core.stats import stats
 from core.store import Store
 
 NOON = datetime(2026, 10, 24, 12, tzinfo=UTC).timestamp()
@@ -73,6 +74,19 @@ def texts(client, replay_id):
     return [d["text"] for n, d in read_stream(client, replay_id) if n == "line"]
 
 
+def test_a_cache_only_replay_publishes_stored_lines_and_stores_nothing(tmp_path):
+    store = Store(tmp_path)
+    stored(store, model="claude-haiku-4-5", tokens_in=1000)
+    before = stats(store)
+    client, calls = app(store, {"DAILY_BUDGET_USD": "0.001"})  # $0.003 today: past the cap
+    with client:
+        events = read_stream(client, start(client).json()["replay_id"])
+    ids = [d["line_id"] for n, d in events if n == "line"]
+    assert ids == ["old0", "old1", "old2"] and calls == []
+    assert len(store.all("lines")) == 3 and store.all("replays") == []
+    assert stats(store) == before  # the Proof card does not move
+
+
 def test_a_client_gets_its_hourly_starts_then_429_with_retry_after(tmp_path):
     client, _ = app(Store(tmp_path), {"REPLAYS_PER_HOUR": "2"})
     with client:
@@ -130,6 +144,7 @@ def test_beyond_max_live_a_replay_plays_stored_lines_or_429(tmp_path):
         unknown = start(client, match_id="8")  # nothing stored for it
         gate.set()
         read_stream(client, first)
+    assert len(store.all("lines")) == 6  # the stored three, and the first replay's three
     assert cached == ["Stored 0", "Stored 1", "Stored 2"]
     assert calls == [0, 1, 2]  # only the first replay called the model
     assert unknown.status_code == 429 and unknown.headers["retry-after"] == "60"
@@ -155,8 +170,7 @@ def test_over_the_daily_cap_lines_replay_from_the_store_and_ask_is_off_air(tmp_p
     assert audio.status_code == 503 and audio.json()["detail"] == "voice off air for today"
     assert unknown.status_code == 429
     assert int(unknown.headers["retry-after"]) == 12 * 3600  # noon to midnight UTC
-    # the replayed lines are stored again at no cost: today's spend is unchanged
-    assert spent(store, "2026-10-24") == 3.0
+    assert len(store.all("lines")) == 3 and spent(store, "2026-10-24") == 3.0
 
 
 def test_spend_counts_only_today_with_its_voice(tmp_path):

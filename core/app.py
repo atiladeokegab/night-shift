@@ -148,21 +148,22 @@ def create_app(
             raise HTTPException(422, f"no moment {jump} in {req.match_id!r}")
         commentate, speak, correct = d.commentate, speaker.prepare, d.correct
         off_air = await asyncio.to_thread(guard.off_air, store)
-        if off_air or guard.busy(len(live)):  # the lines already stored, no model or voice call
+        cached = off_air or guard.busy(len(live))
+        if cached:  # the lines already stored, said again: no model or voice call, nothing stored
             commentate, speak, correct = cached_commentator(store, req.match_id), None, None
             if commentate is None and off_air:
                 raise too_many(guard.until_tomorrow(), f"{OFF_TODAY}. Try again tomorrow.")
             if commentate is None:
                 raise too_many(60, "Lots of people are watching. Try again in a minute.")
         # a cached replay cost nothing: never a match for cost per full replay
-        replay = Replay(req.match_id, req.speed, req.smoke or speak is None)
+        replay = Replay(req.match_id, req.speed, req.smoke or cached)
         replays[replay.id] = replay
         # a jump starts the video just before its moment (#163), as GET /matches' peak_video_start
         video = d.video_map(req.match_id) if jump is None else d.video_map(req.match_id, jump)
         task = asyncio.create_task(
-            run_replay(replay, moments, commentate, store, video, speak, jump or 0, correct)
+            run_replay(replay, moments, commentate, store, video, speak, jump or 0, correct, cached)
         )
-        if speak is not None:
+        if not cached:
             live.add(replay.id)
             task.add_done_callback(lambda _: live.discard(replay.id))
         tasks.add(task)

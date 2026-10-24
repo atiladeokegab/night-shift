@@ -5,7 +5,6 @@ already stored for its match, with no model call, or the route answers 429. 0 tu
 import math
 import os
 import time
-import uuid
 from collections import defaultdict, deque
 from datetime import UTC, datetime, timedelta
 
@@ -61,14 +60,16 @@ def spent(store, day: str) -> float:
 
 
 def cached_commentator(store, match_id: str):
-    """A commentate that says each moment's stored line again as a new Line costing nothing, or
-    None for a moment with none and for every stat line: no model call. None: nothing stored."""
+    """A commentate that gives each moment's stored line back as it is, for run_replay's cache_only
+    path, or None for a moment with none and for every stat line: no model call. None: nothing
+    stored."""
     said = {
         ln["moment_idx"]: ln
         for ln in store.all("lines")
         if ln.get("match_id") == match_id
         and ln.get("speaker", "lead") == "lead"
         and "reply" not in ln
+        and "open" not in ln
         and ln.get("text")
     }
     if not said:
@@ -78,15 +79,7 @@ def cached_commentator(store, match_id: str):
         ln = said.get(moment["idx"])
         if ln is None or moment.get("type") == "Stat":
             return None
-        keep = {k: ln[k] for k in ("sport", "match_id", "moment_idx", "text", "model") if k in ln}
-        return {
-            **keep,
-            "line_id": uuid.uuid4().hex,
-            "cached": ln["line_id"],
-            "tokens_in": 0,
-            "tokens_out": 0,
-            "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
-        }
+        return {k: v for k, v in ln.items() if k != "video_t"}  # this replay's video time, if any
 
     return commentate
 
@@ -97,7 +90,7 @@ class Guard:
         self.max_live = int(env.get("MAX_LIVE_REPLAYS") or 4)
         self.replays = Limiter(int(env.get("REPLAYS_PER_HOUR") or 10), clock)
         self.asks = Limiter(int(env.get("ASKS_PER_HOUR") or 20), clock)
-        self.budget = float(env.get("DAILY_BUDGET_USD") or 5)
+        self.budget = float(env.get("DAILY_BUDGET_USD") or 25)
         self._spent: tuple[str, float, float] | None = None  # (day, read at, USD)
 
     def now(self) -> datetime:
