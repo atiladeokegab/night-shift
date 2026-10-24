@@ -1,6 +1,6 @@
 # Contract
 
-Written by the lead's agent from the day spec (`~/hub/projects/night-shift/day-spec.md`). Every area
+Written by the lead from the day's spec. Every area
 builds against it; only the lead changes it (anything else is a change-request, AGENTS.md §6).
 
 ## Assignment
@@ -8,7 +8,7 @@ builds against it; only the lead changes it (anything else is a change-request, 
 "Build a product that routes its LLM calls through Mubit and turns your corrections into model
 updates for a recurring task." Track: Own your intelligence layer.
 
-Demo: Kobe Bryant's 81 against Toronto (2006) replays and Night Shift calls it aloud, the first word of text in
+Demo: Kobe Bryant's 81 against Toronto (2006) replays and Touchline calls it aloud, the first word of text in
 about 0.5 s (median), the producer fixes one wrong line, the big model's recorded lines are shown
 where our trained commentator's will go (6 versions trained, none has passed Mubit's test yet, best
 55.8%, and the app does not call an adapter), then one tap switches to India v Pakistan 2022 and the same commentator calls cricket.
@@ -219,5 +219,5 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
 ## Check
 
 `make check` (ruff, ruff format, pytest) and `make smoke` (check, then an offline replay of each
-sample match through the app with `FakeProvider`). Contract tests: `tests/acceptance/test_A_2_*.py`,
+sample match through the app with `FakeProvider`). Contract tests:
 `tests/test_core_spine.py`.
