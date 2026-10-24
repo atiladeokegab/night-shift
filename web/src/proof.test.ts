@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { adapterGood, adapterRows, autonomyRows, checkText, FALLBACK_NOTE, linecheckRow, TRAINING_LABEL, voiceRow } from './proof.ts'
+import { adapterGood, adapterRows, autonomyRows, checkText, exampleText, FALLBACK_NOTE, linecheckRow, TRAINING_LABEL, voiceRow } from './proof.ts'
 
 const all = { called: 10, first_time: 6, auto_fixed: 2, to_human: 2 }
 const kobe = { called: 6, first_time: 3, auto_fixed: 1, to_human: 2 }
@@ -76,4 +76,15 @@ test("the voice row says when browser speech reads the lines, and why; nothing w
   assert.equal(voiceRow(undefined, false), null)
   // the page fell back before /stats caught up: the note, without a reason it doesn't know
   assert.equal(voiceRow({ provider: 'elevenlabs', last_error: null, since: null }, true), FALLBACK_NOTE)
+})
+
+test("today's fix examples on the Proof row, and a fixed line's example in words that claim no model update", () => {
+  const s = { checked: 9, flags: 2, rules_missed: 2, fixes_sent: 4, examples_today: 3, examples_today_by_kind: { corrected: 2, leader_only: 1 } }
+  assert.equal(linecheckRow(s), '9 checked · 2 flagged (2 the rules missed) · 4 fixes sent to it · 3 examples from fixes today (2 corrected, 1 leader only)')
+  assert.equal(linecheckRow({ ...s, examples_today: 0, examples_today_by_kind: {} }).endsWith('· 0 examples from fixes today'), true)
+  const ex = { line_id: 'w', kind: 'corrected' as const, mubit_request_id: 'req_0123456789abcdef', created_at: '2026-10-24T19:00:00+00:00' }
+  assert.equal(exampleText(ex), 'Sent to Mubit as a Line check example (request req_0123) · kind corrected')
+  assert.equal(exampleText({ ...ex, kind: 'error', mubit_request_id: null }), 'Line check example not sent')
+  assert.equal(exampleText(null), null)
+  for (const ex2 of [ex, { ...ex, kind: 'matched' as const }]) assert.doesNotMatch(exampleText(ex2)!, /updated|serves|trained/)
 })

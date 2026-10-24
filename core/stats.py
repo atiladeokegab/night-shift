@@ -1,5 +1,6 @@
 """Proof-panel numbers, computed from the store only."""
 
+from collections import Counter
 from datetime import UTC, datetime
 
 # USD per 1M tokens (input, output), list price
@@ -162,11 +163,18 @@ def _linecheck(store) -> dict:
     rules check passed when it was said, so each flag is one the rules missed."""
     checks = store.all("linechecks")
     flags = sum(bool(c.get("wrong")) for c in checks)
+    # producer fixes sent as training examples; a failed send (kind "error") is no example
+    sent = [x for x in store.all("linecheck_fixes") if x.get("kind") != "error"]
+    today = [
+        x for x in sent if x.get("created_at", "")[:10] == datetime.now(UTC).date().isoformat()
+    ]
     return {
         "checked": len(checks),
         "flags": flags,
         "rules_missed": flags,
-        "fixes_sent": len(store.all("linecheck_fixes")),  # producer fixes sent as examples
+        "fixes_sent": len(sent),
+        "examples_today": len(today),  # UTC day
+        "examples_today_by_kind": dict(Counter(x["kind"] for x in today)),
     }
 
 

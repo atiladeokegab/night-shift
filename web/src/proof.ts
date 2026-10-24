@@ -1,4 +1,4 @@
-import type { Autonomy, LineCheck, LineCheckStats, Stats, TaskAdapter, VoiceHealth } from './types'
+import type { Autonomy, LineCheck, LineCheckExample, LineCheckStats, Stats, TaskAdapter, VoiceHealth } from './types'
 
 const NONE: Autonomy = { called: 0, first_time: 0, auto_fixed: 0, to_human: 0 }
 
@@ -29,9 +29,25 @@ export function voiceRow(v: VoiceHealth | undefined, fellBack: boolean): string 
   return FALLBACK_NOTE + why + since
 }
 
-// The Proof card's Line check row (#298), straight from /stats.
+// The Proof card's Line check row (#298), straight from /stats, with the training examples fixes sent
+// today (#305), e.g. "· 3 examples from fixes today (2 corrected, 1 matched)".
 export function linecheckRow(s: LineCheckStats): string {
-  return `${s.checked} checked · ${s.flags} flagged (${s.rules_missed} the rules missed) · ${s.fixes_sent} fixes sent to it`
+  const row = `${s.checked} checked · ${s.flags} flagged (${s.rules_missed} the rules missed) · ${s.fixes_sent} fixes sent to it`
+  if (s.examples_today === undefined) return row
+  const kinds = Object.entries(s.examples_today_by_kind ?? {}).map(([kind, n]) => `${n} ${kind.replace('_', ' ')}`)
+  return `${row} · ${s.examples_today} examples from fixes today${kinds.length ? ` (${kinds.join(', ')})` : ''}`
+}
+
+// The fix reasons that send Line check a training example: TEACHES in agent/linecheck.py (#298).
+export const TEACHES = ['Wrong score', 'Wrong player', 'Wrong fact']
+
+// A fixed line's Line check example (#305), on its chip and in Review. It says only that a training
+// example was sent, never that a model was updated or serves.
+export function exampleText(ex: LineCheckExample | null | undefined): string | null {
+  if (!ex) return null
+  if (ex.kind === 'error') return 'Line check example not sent'
+  const request = ex.mubit_request_id ? ` (request ${ex.mubit_request_id.slice(0, 8)})` : ''
+  return `Sent to Mubit as a Line check example${request} · kind ${ex.kind.replace('_', ' ')}`
 }
 
 const TASKS: [string, string][] = [['commentary', 'Commentary'], ['where_are_we', 'Where are we?'], ['line_check', 'Line check']]
