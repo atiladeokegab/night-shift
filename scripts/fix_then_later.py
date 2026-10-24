@@ -21,7 +21,8 @@ from pathlib import Path
 
 import httpx
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
 from agent.commentator import FIXES, _fixes  # noqa: E402
 
 URL = "https://night-shift-5zvig7nbvq-ew.a.run.app"
@@ -64,7 +65,9 @@ def main() -> None:
     ap.add_argument("--reason", default=REASON)
     a = ap.parse_args()
     token = os.environ.get("PRODUCER_TOKEN", "")
-    moments = json.loads((Path("data/sample") / f"football-{a.match}.json").read_text())["moments"]
+    moments = json.loads((ROOT / "data" / "sample" / f"football-{a.match}.json").read_text())[
+        "moments"
+    ]
 
     with httpx.Client(base_url=a.url, timeout=60) as client:
         before = {ln["moment_idx"]: ln for ln in replay(client, a.match, a.idx)}
