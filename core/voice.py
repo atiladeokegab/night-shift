@@ -8,6 +8,7 @@ starts playing before the whole file is made. The key stays on the server."""
 import asyncio
 import logging
 import os
+import re
 import sys
 import time
 from datetime import UTC, datetime
@@ -286,6 +287,7 @@ class Speaker:
         self.clips: dict[tuple[str, str], Clip] = {}  # each job's audio as it streams in
         self.tags: dict[str, str | None] = {}
         self.stability: dict[str, float] = {}
+        self.stats: dict[str, bool] = {}  # a stat line is spoken calm: its "!" read as "."
         self.slots = asyncio.Semaphore(CONCURRENCY)
         self.closed_until = 0.0  # time.monotonic() the 429 breaker lets calls through again
         # shortcut: per process; one Cloud Run instance today, a shared store if it ever runs more
@@ -339,6 +341,7 @@ class Speaker:
         moment plays, None to speak it as it arrives."""
         self.tags[line["line_id"]] = tag_for(moment)
         self.stability[line["line_id"]] = STABILITY[intensity(moment)]
+        self.stats[line["line_id"]] = moment.get("type") == "Stat"
         if os.environ.get("ELEVENLABS_API_KEY"):
             self._job(line, voice_of(line), deadline)
 
@@ -393,6 +396,8 @@ class Speaker:
             del self.tags[next(iter(self.tags))]
         while len(self.stability) > KEEP_JOBS * 4:
             del self.stability[next(iter(self.stability))]
+        while len(self.stats) > KEEP_JOBS * 4:
+            del self.stats[next(iter(self.stats))]
         return job
 
     def _ended(self, key: tuple[str, str], job: asyncio.Task, clip: Clip) -> None:
@@ -431,7 +436,10 @@ class Speaker:
         else:
             said = self.tags.get(line["line_id"])
         tag = said if "v3" in model else None
-        text = f"{tag} {line['text']}" if tag else line["text"]
+        text = line["text"]
+        if self.stats.get(line["line_id"]) and "question" not in line:
+            text = re.sub(r"!+", ".", re.sub(r"\?!+", "?", text))  # read calm, not hot
+        text = f"{tag} {text}" if tag else text
         # made ahead (a video time still to come): one long v3 call, not two squeezed ones
         ahead = deadline is not None and deadline > time.monotonic()
         async with httpx.AsyncClient(transport=self.transport) as client:
