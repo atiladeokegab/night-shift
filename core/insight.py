@@ -942,9 +942,7 @@ WANTED_SIX = re.compile(
     re.I,
 )
 # an earlier six recalled: "a dot ball after the six", "found a six last over"
-PAST_SIX = re.compile(
-    r"\bafter (?:the|that|his) six\b|\bsix (?:earlier|last (?:ball|over))\b", re.I
-)
+PAST_SIX = re.compile(r"\bafter (?:the|that|his) six\b|\bsix (?:earlier|last over)\b", re.I)
 HOW_OUT = {
     "stumped": re.compile(r"\bstump(?:ed|ing)\b", re.I),
     "lbw": re.compile(r"\blbw\b|\bleg before\b", re.I),

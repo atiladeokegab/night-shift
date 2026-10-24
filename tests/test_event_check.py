@@ -154,6 +154,11 @@ OTHER_SPORTS = [
     (NEPAL, 62, None, "Four more, after the six off Rauf!"),
     (NEPAL, 62, None, "He found a six last over, and a four to finish."),
     (NEPAL, 62, "Another six, after the six last over!", "Four more, after the six last over!"),
+    # "last ball" is this ball: a six said there is a six called
+    (NEPAL, 62, "Nepal hit a six last ball!", None),
+    (INDIA, 41, "a six last ball and another now!", None),
+    (INDIA, 41, "Kohli hits a six last ball of the over!", None),
+    (INDIA, 41, "Two sixes: one earlier, and a six last ball!", None),
     (NEPAL, 62, None, "Nepal needed a six off the last ball to win, and got a four."),
     # a wicket line recalls the bowler's earlier six: no six is called on this ball
     (
