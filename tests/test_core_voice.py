@@ -323,6 +323,18 @@ def test_the_deployed_picks_give_every_sport_its_own_default(tmp_path, monkeypat
     assert [voice_in(r) for r in seen] == ["gU0LNdkMOQCOrPrwtbee"]
 
 
+def test_a_pick_is_labelled_by_voice_label_else_as_the_sports_pick(monkeypatch):
+    from core.voice import all_voices
+
+    monkeypatch.delenv("VOICE_LABEL_FOOTBALL", raising=False)
+    monkeypatch.setenv("VOICE_FOOTBALL", "gU0LNdkMOQCOrPrwtbee")
+    monkeypatch.setenv("VOICE_CRICKET", "IX4AgWzTnD6q0cNvHqvK")
+    monkeypatch.setenv("VOICE_LABEL_CRICKET", "Raju, Cricket Commentator")
+    labels = {v["id"]: v["label"] for v in all_voices()}
+    assert labels["cricket-pick"] == "Raju, Cricket Commentator"
+    assert labels["football-pick"] == "Football pick"
+
+
 def test_a_pick_by_another_sports_default_id_gets_its_own_entry(tmp_path, monkeypatch):
     # docs/voice.md's own id for the pick: the announcer is already f1's default
     monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)

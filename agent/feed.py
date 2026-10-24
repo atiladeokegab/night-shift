@@ -64,6 +64,10 @@ def _name(obj) -> str:
     return _s(obj.get("name")) if isinstance(obj, dict) else ""
 
 
+def _side(name) -> str:
+    return _s(name).removesuffix(" Women's")  # "Spain" in lines and the score bar
+
+
 # --- football -----------------------------------------------------------------------------
 
 
@@ -99,8 +103,8 @@ def football_header(meta: dict) -> dict:
     return {
         "sport": "football",
         "match_id": _s(meta.get("match_id")),
-        "home": _s(meta.get("home_team", {}).get("home_team_name")),
-        "away": _s(meta.get("away_team", {}).get("away_team_name")),
+        "home": _side(meta.get("home_team", {}).get("home_team_name")),
+        "away": _side(meta.get("away_team", {}).get("away_team_name")),
         "competition": _s(meta.get("competition", {}).get("competition_name")),
         "stage": _s(meta.get("competition_stage", {}).get("name")),
         "date": _s(meta.get("match_date"), 10),
@@ -128,7 +132,7 @@ def football_moments(
     moments = []
     for ev in events:
         kind = _name(ev.get("type"))
-        team = _name(ev.get("team"))
+        team = _side(_name(ev.get("team")))
         player = who(ev.get("player"))
         period = _num(ev.get("period")) or 0
         side = "home" if team == home else "away"

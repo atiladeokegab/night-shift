@@ -1,4 +1,5 @@
 import { momentTag } from '../moment'
+import { commentatorName } from '../teams'
 import { SPORT_NAMES, type Line, type Match, type Sport } from '../types'
 import { onScreen, type Clock, type ReplayState } from '../useReplay'
 import { LineLog } from './LineLog'
@@ -38,7 +39,7 @@ export function Live(props: Props) {
   const latest = shown.lines.find((l) => !replay.late.includes(l.line_id))
   const busy = replay.phase !== 'live'
   const gated = !!match.youtube_id
-  const voiceLabel = `${voice.name} commentator`
+  const voiceLabel = commentatorName(voice.name)
 
   let overlay = null
   if (replay.phase === 'starting') {

@@ -2,8 +2,8 @@
  "header": {
   "sport": "football",
   "match_id": "3906390",
-  "home": "Spain Women's",
-  "away": "England Women's",
+  "home": "Spain",
+  "away": "England",
   "competition": "Women's World Cup",
   "stage": "Final",
   "date": "2023-08-20"
@@ -16,7 +16,7 @@
    "period": 1,
    "clock": "04:12",
    "type": "Shot",
-   "team": "England Women's",
+   "team": "England",
    "players": {
     "shooter": "Lauren Hemp",
     "keeper": "Cata Coll"
@@ -42,7 +42,7 @@
    "period": 1,
    "clock": "15:11",
    "type": "Shot",
-   "team": "England Women's",
+   "team": "England",
    "players": {
     "shooter": "Lauren Hemp"
    },
@@ -67,7 +67,7 @@
    "period": 1,
    "clock": "16:47",
    "type": "Shot",
-   "team": "Spain Women's",
+   "team": "Spain",
    "players": {
     "shooter": "Salma Paralluelo"
    },
@@ -92,7 +92,7 @@
    "period": 1,
    "clock": "16:47",
    "type": "Shot",
-   "team": "Spain Women's",
+   "team": "Spain",
    "players": {
     "shooter": "Alba Redondo",
     "keeper": "Mary Alexandra Earps"
@@ -118,7 +118,7 @@
    "period": 1,
    "clock": "19:23",
    "type": "Shot",
-   "team": "England Women's",
+   "team": "England",
    "players": {
     "shooter": "Lauren Hemp",
     "keeper": "Cata Coll"
@@ -144,7 +144,7 @@
    "period": 1,
    "clock": "28:29",
    "type": "Shot",
-   "team": "Spain Women's",
+   "team": "Spain",
    "players": {
     "shooter": "Olga Carmona"
    },
@@ -169,7 +169,7 @@
    "period": 1,
    "clock": "36:30",
    "type": "Shot",
-   "team": "Spain Women's",
+   "team": "Spain",
    "players": {
     "shooter": "Irene Hernandez"
    },
@@ -194,7 +194,7 @@
    "period": 1,
    "clock": "38:49",
    "type": "Shot",
-   "team": "Spain Women's",
+   "team": "Spain",
    "players": {
     "shooter": "Alba Redondo"
    },
@@ -219,7 +219,7 @@
    "period": 1,
    "clock": "45:59",
    "type": "Shot",
-   "team": "Spain Women's",
+   "team": "Spain",
    "players": {
     "shooter": "Salma Paralluelo"
    },
@@ -244,7 +244,7 @@
    "period": 2,
    "clock": "45:00",
    "type": "Substitution",
-   "team": "England Women's",
+   "team": "England",
    "players": {
     "off": "Rachel Daly",
     "on": "Chloe Kelly"
@@ -263,7 +263,7 @@
    "period": 2,
    "clock": "45:00",
    "type": "Substitution",
-   "team": "England Women's",
+   "team": "England",
    "players": {
     "off": "Alessia Russo",
     "on": "Lauren James"
@@ -282,7 +282,7 @@
    "period": 2,
    "clock": "49:15",
    "type": "Shot",
-   "team": "Spain Women's",
+   "team": "Spain",
    "players": {
     "shooter": "Mariona Caldentey",
     "keeper": "Mary Alexandra Earps"
@@ -308,7 +308,7 @@
    "period": 2,
    "clock": "53:10",
    "type": "Shot",
-   "team": "England Women's",
+   "team": "England",
    "players": {
     "shooter": "Lauren Hemp"
    },
@@ -333,7 +333,7 @@
    "period": 2,
    "clock": "53:56",
    "type": "Foul Committed",
-   "team": "England Women's",
+   "team": "England",
    "players": {
     "offender": "Lauren Hemp"
    },
@@ -355,7 +355,7 @@
    "period": 2,
    "clock": "59:29",
    "type": "Substitution",
-   "team": "Spain Women's",
+   "team": "Spain",
    "players": {
     "off": "Alba Redondo",
     "on": "Oihane Hernández"
@@ -374,7 +374,7 @@
    "period": 2,
    "clock": "61:07",
    "type": "Shot",
-   "team": "Spain Women's",
+   "team": "Spain",
    "players": {
     "shooter": "Aitana Bonmati"
    },
@@ -399,7 +399,7 @@
    "period": 2,
    "clock": "64:18",
    "type": "Injury Stoppage",
-   "team": "Spain Women's",
+   "team": "Spain",
    "players": {
     "injured": "Jennifer Hermoso"
    },
@@ -417,7 +417,7 @@
    "period": 2,
    "clock": "69:01",
    "type": "Shot",
-   "team": "Spain Women's",
+   "team": "Spain",
    "players": {
     "shooter": "Jennifer Hermoso",
     "keeper": "Mary Alexandra Earps"
@@ -443,7 +443,7 @@
    "period": 2,
    "clock": "71:00",
    "type": "Injury Stoppage",
-   "team": "England Women's",
+   "team": "England",
    "players": {
     "injured": "Lauren Hemp"
    },
@@ -461,7 +461,7 @@
    "period": 2,
    "clock": "71:18",
    "type": "Injury Stoppage",
-   "team": "Spain Women's",
+   "team": "Spain",
    "players": {
     "injured": "Laia Codina"
    },
@@ -479,7 +479,7 @@
    "period": 2,
    "clock": "72:42",
    "type": "Substitution",
-   "team": "Spain Women's",
+   "team": "Spain",
    "players": {
     "off": "Laia Codina",
     "on": "Ivana Andrés"
@@ -498,7 +498,7 @@
    "period": 2,
    "clock": "73:51",
    "type": "Shot",
-   "team": "England Women's",
+   "team": "England",
    "players": {
     "shooter": "Lucy Bronze"
    },
@@ -523,7 +523,7 @@
    "period": 2,
    "clock": "75:07",
    "type": "Shot",
-   "team": "England Women's",
+   "team": "England",
    "players": {
     "shooter": "Lauren James",
     "keeper": "Cata Coll"
@@ -549,7 +549,7 @@
    "period": 2,
    "clock": "76:55",
    "type": "Foul Committed",
-   "team": "Spain Women's",
+   "team": "Spain",
    "players": {
     "offender": "Salma Paralluelo"
    },
@@ -571,7 +571,7 @@
    "period": 2,
    "clock": "77:26",
    "type": "Injury Stoppage",
-   "team": "Spain Women's",
+   "team": "Spain",
    "players": {
     "injured": "Jennifer Hermoso"
    },
@@ -589,7 +589,7 @@
    "period": 2,
    "clock": "84:31",
    "type": "Injury Stoppage",
-   "team": "England Women's",
+   "team": "England",
    "players": {
     "injured": "Lauren James"
    },
@@ -607,7 +607,7 @@
    "period": 2,
    "clock": "84:40",
    "type": "Injury Stoppage",
-   "team": "Spain Women's",
+   "team": "Spain",
    "players": {
     "injured": "Jennifer Hermoso"
    },
@@ -625,7 +625,7 @@
    "period": 2,
    "clock": "86:43",
    "type": "Substitution",
-   "team": "England Women's",
+   "team": "England",
    "players": {
     "off": "Ella Toone",
     "on": "Bethany England"
@@ -644,7 +644,7 @@
    "period": 2,
    "clock": "88:22",
    "type": "Shot",
-   "team": "England Women's",
+   "team": "England",
    "players": {
     "shooter": "Millie Bright"
    },
@@ -669,7 +669,7 @@
    "period": 2,
    "clock": "89:01",
    "type": "Shot",
-   "team": "Spain Women's",
+   "team": "Spain",
    "players": {
     "shooter": "Jennifer Hermoso"
    },
@@ -694,7 +694,7 @@
    "period": 2,
    "clock": "89:38",
    "type": "Substitution",
-   "team": "Spain Women's",
+   "team": "Spain",
    "players": {
     "off": "Mariona Caldentey",
     "on": "Alexia Putellas"
@@ -713,7 +713,7 @@
    "period": 2,
    "clock": "89:58",
    "type": "Shot",
-   "team": "Spain Women's",
+   "team": "Spain",
    "players": {
     "shooter": "Alexia Putellas"
    },
@@ -738,7 +738,7 @@
    "period": 2,
    "clock": "91:22",
    "type": "Shot",
-   "team": "Spain Women's",
+   "team": "Spain",
    "players": {
     "shooter": "Ona Batlle",
     "keeper": "Mary Alexandra Earps"
@@ -764,7 +764,7 @@
    "period": 2,
    "clock": "97:48",
    "type": "Shot",
-   "team": "Spain Women's",
+   "team": "Spain",
    "players": {
     "shooter": "Aitana Bonmati"
    },
@@ -789,7 +789,7 @@
    "period": 2,
    "clock": "97:53",
    "type": "Shot",
-   "team": "Spain Women's",
+   "team": "Spain",
    "players": {
     "shooter": "Salma Paralluelo"
    },
@@ -814,7 +814,7 @@
    "period": 2,
    "clock": "102:59",
    "type": "Shot",
-   "team": "England Women's",
+   "team": "England",
    "players": {
     "shooter": "Millie Bright"
    },

@@ -79,10 +79,17 @@ export const CARD_COPY: Record<string, { title: string; detail: string; result: 
 
 // The design's short voice name ("British", "Indian") from GET /voices' label
 // ("Connor: British, energetic", "Viraj: Indian English, energetic") or a browser voice's ("British (browser)").
+// A pick's label is the voice's own name ("British Football Announcer"), shown whole.
 export function voiceName(v: Voice | null): string {
   if (!v) return ''
+  if (!/[:(]/.test(v.label)) return v.label
   const desc = v.label.includes(':') ? v.label.split(':')[1] : v.label
   return desc.trim().split(/[\s,(]/)[0]
+}
+
+// "British commentator"; a pick's full name ("British Football Announcer") stands alone.
+export function commentatorName(name: string): string {
+  return name.includes(' ') ? name : `${name} commentator`
 }
 
 export function defaultVoice(voices: Voice[], sport: Sport): Voice | null {
