@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { getReview, postFix } from '../api'
 import { submitFix, type Refused } from '../fix'
-import type { ReviewItem } from '../types'
+import type { Fix, ReviewItem } from '../types'
 import { FixSheet, type FixPhase } from './FixSheet'
 import { Nav, type Screen } from './Nav'
 
@@ -12,6 +12,7 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
   const [failed, setFailed] = useState(false)
   const [fixing, setFixing] = useState<{ item: ReviewItem; phase: FixPhase; refused?: Refused } | null>(null)
   const [said, setSaid] = useState('')
+  const [fixed, setFixed] = useState<Fix | null>(null) // the last fix sent: its Mubit request id (#239)
   const heading = useRef<HTMLHeadingElement>(null)
 
   const load = () => getReview().then(setItems, () => setFailed(true))
@@ -32,6 +33,7 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
         setItems((xs) => xs && xs.filter((x) => x.line_id !== item.line_id))
         setFixing(null)
         setSaid(fix.recorded ? 'Fix sent. Mubit records it for training.' : 'Fix sent. Kept beside the original.')
+        setFixed(fix)
         heading.current?.focus() // its card is gone: focus goes back to the top of the queue
       },
       // A 503 stores nothing (CONTRACT.md): the sheet stays open with the text to send again.
@@ -105,6 +107,11 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
           fix goes back through Mubit, which trains on it.
         </p>
         {said && <p className="hint" role="status">{said}</p>}
+        {fixed?.mubit_request_id && (
+          <p className="hint">
+            {fixed.recorded ? 'Recorded in Mubit' : 'Sent to Mubit, not recorded'}: <code>{fixed.mubit_request_id}</code>
+          </p>
+        )}
         {body}
       </main>
       {fixing && (

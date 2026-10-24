@@ -76,6 +76,24 @@ Reply with exactly this line: …" with the corrected line. Mubit records that c
 line is training data for the next version ([`agent/commentator.py`](agent/commentator.py)
 `correct`, [`tests/test_core_fix.py`](tests/test_core_fix.py)).
 
+**Anatomy of a fix.** One real correction from the review queue to Mubit. The fix stores the
+correction call's Mubit request id and the exact correction turn, and `GET /lines/{line_id}`
+returns them under `fix`.
+
+<!-- ANATOMY OF A FIX PLACEHOLDER (#239): fill every TBD from one real fix after deploy, from
+GET /lines/{line_id} and the next replay of the same moment. State the date read. -->
+
+| Step | Value |
+|---|---|
+| The wrong line | TBD |
+| The checker's reason | TBD |
+| The producer's fix | TBD |
+| What Mubit was given (`fix.correction`, #245) | TBD |
+| The commentator's corrected reply, and whether it passed the number check (`fix.reply_passed`) | TBD |
+| Mubit request id | TBD |
+| Recorded for training | TBD |
+| What the next replay said | TBD |
+
 ---
 
 Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026. Track: Own your intelligence layer.

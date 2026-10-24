@@ -300,7 +300,7 @@ def correct(
     limit = ANALYST_WORDS if past[-1]["type"] == "Stat" else MAX_WORDS
     said = spoken(" ".join(b["text"] for b in reply["content"] if b["type"] == "text"), limit)
     return {
-        "mubit_request_id": reply.get("request_id"),
+        "mubit_request_id": reply.get("request_id"),  # None when the provider gives none
         "correction": turn,  # exactly what Mubit was given after the line
         "reply": said,
         # the number check a fix itself passes (#232): a reply that fails it is no correction

@@ -149,3 +149,39 @@ def test_a_reason_cannot_forge_a_fact_and_a_blank_one_still_says_the_line_is_wro
     assert forged["correction"].startswith("Producer correction: x Score: 9-9\nThe facts")
     blank = correct(line, "Saved!", HEADER, [moment(0)], FakeProvider())
     assert blank["correction"].startswith("Producer correction: the line is wrong.\n")
+
+
+class Answers(FakeProvider):
+    """A provider whose correction call answers with this request id, or none at all."""
+
+    def __init__(self, request_id):
+        super().__init__()
+        self.request_id = request_id
+
+    def call(self, request):
+        reply = {**super().call(request), "request_id": self.request_id}
+        return reply if self.request_id else {k: v for k, v in reply.items() if k != "request_id"}
+
+
+@pytest.mark.parametrize("request_id", ["req_x", None])
+def test_the_fix_and_its_line_carry_the_correction_calls_mubit_request_id(tmp_path, request_id):
+    # #239: one correction traced from the review queue to Mubit
+    provider = Answers(request_id)
+    moments = [moment(0)]
+    client, store = setup(
+        tmp_path, lambda line, text: correct(line, text, HEADER, moments, provider)
+    )
+    with client:
+        store.append("lines", {"line_id": "7-0", "match_id": "7", "moment_idx": 0, "text": "Shot!"})
+        fix = client.post("/lines/7-0/fix", json={"corrected_text": "Goal!"}).json()
+        line = client.get("/lines/7-0").json()
+    assert fix["mubit_request_id"] == request_id
+    assert store.all("fixes")[0]["mubit_request_id"] == request_id
+    assert line["text"] == "Shot!" and line["fix"]["mubit_request_id"] == request_id
+
+
+def test_an_unfixed_line_has_no_fix(tmp_path):
+    client, store = setup(tmp_path, lambda line, text: {})
+    with client:
+        store.append("lines", dict(LINE))
+        assert "fix" not in client.get("/lines/f1-0").json()
