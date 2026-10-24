@@ -10,6 +10,10 @@ export type Speaker = 'lead' | 'analyst'
 export const isBig = (m: Pick<Moment, 'type' | 'outcome'> | undefined): boolean =>
   !!m && (m.outcome === 'Goal' || ['Wicket', 'Field goal', 'Overtake', 'Lead change'].includes(m.type))
 
+// A decisive moment stops a viewer's answer and is said at once: a goal, a wicket, a lead change, the final whistle.
+export const isDecisive = (m: Pick<Moment, 'type' | 'outcome'> | undefined): boolean =>
+  !!m && (m.outcome === 'Goal' || ['Own Goal Against', 'Wicket', 'Lead change', 'Full time', 'End of game'].includes(m.type))
+
 // A held line spoken later than this after it was due is shown, never spoken: it would trail the picture.
 export const HOLD_MAX_MS = 5000
 
@@ -22,13 +26,14 @@ export const bigSoon = (moments: Pick<Moment, 'type' | 'outcome' | 'video_t'>[],
 
 export interface Turn {
   speaker: Speaker
-  answer?: boolean // a viewer's answer: never cut off, and it waits for a gap
+  answer?: boolean // a viewer's answer: only a decisive moment cuts it off, and it waits for a gap
   big?: boolean
+  decisive?: boolean
 }
 
 // The floor: one voice at a time. A line by the same speaker cuts off the one before it, so the voice
 // never falls behind the match; a line never cuts off the other speaker unless it is a big moment; and
-// nothing cuts off an answer. A line that may not cut in waits (the newest only) for the turn on air
+// only a decisive moment cuts off an answer (`onCut` hears which). A line that may not cut in waits (the newest only) for the turn on air
 // to end. A viewer's answer waits for a gap (#139): the commentary goes on until the line on air ends
 // with no big moment due (`bigDue`), then the answer takes the floor. Times are in ms on one clock.
 export class Floor<T extends Turn> {
@@ -36,6 +41,7 @@ export class Floor<T extends Turn> {
   private held: { item: T; due: number } | null = null
   private asked: T | null = null // the answer waiting for a gap
   bigDue: () => boolean = () => false
+  onCut: (answer: T) => void = () => {}
 
   // A turn due at `now`: true to say it at once, false when it waits for the one on air (or a gap).
   take(item: T, now: number): boolean {
@@ -44,11 +50,12 @@ export class Floor<T extends Turn> {
       return this.gap() === item
     }
     const on = this.on
-    const waits = !item.answer && !!on && (!!on.answer || (on.speaker !== item.speaker && !item.big))
+    const waits = !!on && (on.answer ? !item.decisive : on.speaker !== item.speaker && !item.big)
     if (waits) {
       this.held = { item, due: now }
       return false
     }
+    if (on?.answer) this.onCut(on)
     this.on = item
     this.held = null
     return true
