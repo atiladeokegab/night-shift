@@ -250,7 +250,8 @@ def test_the_question_said_back_is_not_spoken():
 def test_a_stream_with_no_text_event_we_know_still_answers(monkeypatch):
     monkeypatch.setattr(converse.commentator, "unrecorded_provider", FakeProvider)
     inner = SimpleNamespace(client=SlowClient([(0, "Player1 scored.")], kind="something_new"))
-    assert asyncio.run(sentences(inner)) == ["So far, Reds 1, Blues 0."]
+    # the call's own checked answer is said whole, with no second model call
+    assert asyncio.run(sentences(inner)) == ["Player1 scored."]
 
 
 def test_a_provider_that_cannot_stream_still_answers(monkeypatch):
@@ -322,3 +323,38 @@ def test_off_air_a_turn_makes_no_model_call(tmp_path, monkeypatch):
         monkeypatch.setattr(guard_module, "SPEND_TTL_S", 0)
         over = turn(client, ctx, "Who scored?")
     assert OFF_TODAY in said(over) and provider.requests == []
+
+
+class ToolClient(SlowClient):
+    """A first call that asks for a tool, a second that answers: two model calls, counted."""
+
+    def __init__(self):
+        super().__init__([(0, "Player1 scored for the Reds.")])
+        self.calls = 0
+
+    def stream(self, **request):
+        self.calls += 1
+        self.tool = self.calls == 1
+        return self
+
+    def __iter__(self):
+        if self.tool:
+            yield SimpleNamespace(
+                type="content_block_start", content_block=SimpleNamespace(type="tool_use")
+            )
+        else:
+            yield from super().__iter__()
+
+    def get_final_message(self):
+        if not self.tool:
+            return super().get_final_message()
+        use = SimpleNamespace(type="tool_use", id="t1", name="get_score", input={})
+        return SimpleNamespace(
+            content=[use], usage=SimpleNamespace(input_tokens=1, output_tokens=1)
+        )
+
+
+def test_an_answer_that_used_a_tool_costs_two_model_calls_not_three():
+    client = ToolClient()
+    said = asyncio.run(sentences(SimpleNamespace(client=client, call=None)))
+    assert said == ["Player1 scored for the Reds."] and client.calls == 2
