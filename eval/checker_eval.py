@@ -68,8 +68,11 @@ def sample(
     skip: frozenset = frozenset(),
 ) -> list[dict]:
     """Distinct lead lines (match, moment, text) with their moment in a bundled match, stratified
-    by match: each gets FLOOR lines (or all it has), the rest go by each match's share. `analyst`
-    keeps the analyst's lines too; `skip` leaves out these (match, moment, text)."""
+    by match: each gets FLOOR lines (or all it has) when the budget allows, the rest go by each
+    match's share. `analyst` keeps the analyst's lines too; `skip` leaves out these
+    (match, moment, text)."""
+    if size < 0:
+        raise ValueError("sample size must be non-negative")
     matches = bundled()
     moments = {mid: {m["idx"] for m in load_moments(mid)} for mid in matches}
     seen, pool = set(skip), {mid: [] for mid in matches}
@@ -90,14 +93,21 @@ def sample(
                 **said_as,
             }
         )
-    take = {mid: min(len(p), FLOOR) for mid, p in pool.items()}
-    rest = {mid: len(p) - take[mid] for mid, p in pool.items()}
-    left = size - sum(take.values())
-    share = {mid: left * n / sum(rest.values()) for mid, n in rest.items()}
+    target = min(size, sum(map(len, pool.values())))
+    floors = {mid: min(len(p), FLOOR) for mid, p in pool.items()}
+    if sum(floors.values()) > target:
+        take = dict.fromkeys(pool, 0)
+        rest = floors
+    else:
+        take = floors
+        rest = {mid: len(p) - take[mid] for mid, p in pool.items()}
+    left = target - sum(take.values())
+    denominator = sum(rest.values())
+    share = {mid: left * n / denominator if denominator else 0 for mid, n in rest.items()}
     for mid in sorted(share, key=lambda k: share[k] - int(share[k]), reverse=True):
         take[mid] += int(share[mid])  # whole shares first, then the largest remainders
     for mid in sorted(share, key=lambda k: share[k] - int(share[k]), reverse=True):
-        if sum(take.values()) < size and take[mid] < len(pool[mid]):
+        if sum(take.values()) < target and take[mid] < len(pool[mid]):
             take[mid] += 1
     rng = random.Random(seed)
     return [ln for mid in sorted(pool) for ln in rng.sample(pool[mid], take[mid])]
