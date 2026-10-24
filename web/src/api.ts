@@ -1,5 +1,5 @@
 // The only module that talks to the match server (docs/CONTRACT.md, 'HTTP'):
-// GET /matches, POST /replays {match_id, speed} -> {replay_id},
+// GET /matches, GET /matches/{id}/start?at=, POST /replays {match_id, speed} -> {replay_id},
 // GET /replays/{id}/stream (SSE: moment, line, stats per moment; error; end last),
 // GET /stats, GET /voices, POST /lines/{id}/fix, POST /replays/{id}/ask, GET /replays/{id}/players, .../players/{name}/shots and .../profile and GET /lines/{id}/audio?voice=<id>
 // (ElevenLabs; 503 when the voice isn't configured).
@@ -39,6 +39,13 @@ export async function createReplay(matchId: string, speed: number, startIdx?: nu
   })
   if (!res.ok) throw new Error(`POST /replays failed (${res.status})`)
   return ((await res.json()) as { replay_id: string }).replay_id
+}
+
+// The video's start for a replay that jumps to moment `at` (#188); null without a video.
+export async function videoStartAt(matchId: string, at: number): Promise<number | null> {
+  if (isDemo) return null
+  const res = await fetch(`/matches/${encodeURIComponent(matchId)}/start?at=${at}`)
+  return res.ok ? ((await res.json()) as { video_start: number | null }).video_start : null
 }
 
 // Follows a replay's stream from the start; a late or reconnected subscriber gets every event again,

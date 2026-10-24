@@ -103,6 +103,12 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
     def matches():
         return need_deps().list_matches()
 
+    @app.get("/matches/{match_id}/start")
+    def video_start(match_id: str, at: int):
+        """Where the video starts for a replay that jumps to moment `at` (the page's ?at=)."""
+        vmap = need_deps().video_map(match_id, at)
+        return {"video_start": vmap and vmap["start"]}
+
     @app.post("/replays")
     async def start_replay(req: ReplayRequest):
         d = need_deps()
