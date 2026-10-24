@@ -97,6 +97,9 @@ async def run_replay(
     try:
         last = None
         history: list[dict] = []
+        # the texts said so far: a stat line that nearly repeats one of the last few is dropped;
+        # a moment's own line is news, so it is always said
+        recent: list[str] = []
         for moment in moments:
             tag = {}
             if video_t is None:
@@ -115,6 +118,7 @@ async def run_replay(
             history.append(moment)
             if line is not None:  # None: the commentator had nothing usable to say
                 await say(store.append("lines", {**line, **tag, "speaker": "lead"}), moment)
+                recent.append(line.get("text") or "")
             if not tag:
                 continue
             # the quiet stretch until the next mapped moment: stat lines, each due once the
@@ -125,13 +129,16 @@ async def run_replay(
                 t = insight.due_after(t, said)
                 if end is None or t > end - insight.CLEAR_S:
                     break
-                got = await asyncio.to_thread(gaps.line, list(history), n, t, commentate, said)
+                got = await asyncio.to_thread(
+                    gaps.line, list(history), n, t, commentate, said, list(recent)
+                )
                 if got is None:
                     break
                 stat, said_line = got
                 await replay.publish("moment", {**stat, "video_t": t})
                 await say({**said_line, "video_t": t}, stat)
                 said = said_line["text"]
+                recent.append(said)
     except Exception as exc:  # the stream says why it stopped instead of hanging open
         # the provider's status and error type, e.g. Mubit's 402 when its credit runs out
         name = type(exc).__name__
