@@ -54,6 +54,23 @@ def test_checked_marks_a_kept_retry_and_keeps_a_failed_try_for_the_producer():
     )
 
 
+def test_a_fallback_line_is_served_by_no_model_and_a_kept_retry_by_its_own(monkeypatch):
+    # #250: the data-built line must not carry the rejected reply's model or adapter
+    m = load_moments(KOBE)[0]
+
+    def served(texts):
+        said = calls(texts)
+        models = iter(["adapter-test", "adapter-retry"])
+        return lambda moment, history: {**said(moment, history), "served_by": next(models)}
+
+    gave_up = insight.checked(served({0: [WRONG]}), m, [])
+    assert gave_up["fallback"] and gave_up["served_by"] is None and gave_up["tried"] == WRONG
+    kept = insight.checked(served({0: [WRONG, FINE]}), m, [])
+    assert kept["text"] == FINE and kept["served_by"] == "adapter-retry"
+    first = insight.checked(served({}), m, [])
+    assert first["served_by"] == "adapter-test"
+
+
 def replay(store, match_id, texts, n=6):
     moments = load_moments(match_id)[:n]
     r = Replay(match_id, 1e9)
