@@ -691,13 +691,31 @@ def named(match_id: str, after_idx: int, n: int) -> bool:
     return random.Random(f"{match_id}:{after_idx}:{n}").random() < rate
 
 
+ABBREVIATIONS = {
+    "st",
+    "mr",
+    "dr",
+    "jr",
+    "vs",
+    "v",
+    "no",
+}  # a full stop after these ends no sentence
+
+
 def cut(text: str, most: int = CUT_WORDS) -> str:
     """The line, or when it runs over `most` words its full sentences that fit; never cut
     mid-sentence, so a first sentence over `most` keeps the whole line."""
     if len(text.split()) <= most:
         return text
+    sentences: list[str] = []
+    for piece in re.split(r"(?<=[.!?])\s+", text.strip()):
+        last = sentences[-1].split()[-1].rstrip(".") if sentences else ""
+        if last.lower() in ABBREVIATIONS or (len(last) == 1 and last.isupper()):
+            sentences[-1] += " " + piece  # "St. James Park" is one sentence
+        else:
+            sentences.append(piece)
     kept: list[str] = []
-    for sentence in re.split(r"(?<=[.!?])\s+", text.strip()):
+    for sentence in sentences:
         if len(" ".join([*kept, sentence]).split()) > most:
             break
         kept.append(sentence)
