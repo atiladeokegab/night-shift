@@ -27,14 +27,14 @@ CRICSHEET_ZIP = "https://cricsheet.org/downloads/t20s_json.zip"
 NBA_PBP = "https://github.com/shufinskiy/nba_data/raw/main/datasets/{name}.tar.xz"
 TIMEOUT = httpx.Timeout(30.0, connect=10.0)
 
-# WWC 2023 final; Ind v Pak 2022; WC 2022 final
+# Chelsea v Spurs 2016; Ind v Pak 2022; WC 2022 final
 DEMO = {
-    ("football", "3906390"),
+    ("football", "3754092"),
     ("cricket", "1298150"),
     ("football", "3869685"),
     ("basketball", "0049700088"),  # Jordan, 1998 Finals Game 6
     ("basketball", "0020500591"),  # Kobe's 81 v Toronto
-    ("f1", "9558"),  # Hamilton, 2024 British Grand Prix
+    ("f1", "9636"),  # Verstappen, 2024 São Paulo Grand Prix
 }
 
 

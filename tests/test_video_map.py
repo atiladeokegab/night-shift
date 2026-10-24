@@ -81,32 +81,32 @@ MAPS = sorted(VIDEO.glob("*.json"))
 
 def test_every_demo_match_has_a_map():
     assert {p.stem for p in MAPS} == {
-        "football-3906390",
+        "football-3754092",
         "cricket-1298150",
         "football-3869685",
         "basketball-0049700088",
         "basketball-0020500591",
-        "f1-9558",
+        "f1-9636",
     }
     assert {m["match_id"]: m.get("youtube_id") for m in list_matches()} == {
-        "3906390": "jD1GwCcJV-0",
+        "3754092": "hKWX-6Dtrio",
         "1298150": "tz_5DAA6IgE",
         "3869685": "VfmQIyDggBU",
         "0049700088": "kwAu78IiixE",
         "0020500591": "46nYnjGdQlk",
-        "9558": "yPvoKz6tyJs",
+        "9636": "ctd_8sQbF_I",
     }
 
 
 def test_only_the_embed_blocked_videos_say_so():
-    # FOM blocks embedding and the ITV re-upload is gone: a poster and a YouTube link instead.
+    # Every demo video embeds; a blocked one would get a poster and a YouTube link instead.
     assert {m["match_id"]: m.get("embed") for m in list_matches()} == {
-        "3906390": False,
+        "3754092": None,
         "1298150": None,
         "3869685": None,
         "0049700088": None,
         "0020500591": None,
-        "9558": False,
+        "9636": None,
     }
 
 
@@ -139,12 +139,12 @@ def test_each_video_starts_10_s_before_its_first_mapped_moment():
     # Kobe's first call is 490 s into the highlights: the page starts the video at 480 s, not 0.
     # 10 s, not 5: the first line is ready ~2 s in, and v3 needs 2-3 s more (#57).
     assert {m["match_id"]: m.get("video_start") for m in list_matches()} == {
-        "3906390": 93,
+        "3754092": 16,
         "1298150": 0,
         "3869685": 71,
         "0049700088": 358,
         "0020500591": 480,
-        "9558": 0,
+        "9636": 0,
     }
 
 
