@@ -46,6 +46,8 @@ export function search(players: Player[], query: string, limit = 8): Player[] {
 
 // A line is the followed player's when its words name them: their surname ("Messi", "Kohli", "Di María"
 // by "maría"), accents ignored. A line about their team that never names them is not theirs.
+export const shortName = (name: string) => name.trim().split(/\s+/).at(-1) ?? name
+
 export function names(text: string | undefined, followed: string | null | undefined): boolean {
   const surname = followed ? fold(followed).split(/\s+/).at(-1) : ''
   return !!text && !!surname && fold(text).split(/[^\p{L}\p{N}]+/u).includes(surname)

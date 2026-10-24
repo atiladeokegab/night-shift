@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { answerFor, names, recordLine, sampleNote, search, tonightLine, type Player, type Profile } from './follow.ts'
+import { answerFor, names, shortName, recordLine, sampleNote, search, tonightLine, type Player, type Profile } from './follow.ts'
 
 const p = (name: string, team: string): Player => ({ name, team, record: true, named: false })
 const players = [p('Kylian Mbappé', 'France'), p('Lionel Messi', 'Argentina'), p('Ángel Di María', 'Argentina')]
@@ -21,6 +21,8 @@ test("a line is the followed player's only when it names them", () => {
   assert.equal(names('Messina clears', 'Lionel Messi'), false) // whole words only
   assert.equal(names('Messi', null), false)
   assert.equal(names(undefined, 'Lionel Messi'), false)
+  assert.equal(shortName('Lionel Messi'), 'Messi') // the chip on a highlighted line
+  assert.equal(shortName('Ángel Di María'), 'María')
 })
 
 const base = { player: 'X', team: 'T', window: { from: '', to: '' }, n: 27, small_sample: false, text: '' }
