@@ -62,13 +62,8 @@ def _adapters(by_task: dict[str, dict]) -> dict:
     }
 
 
-def _speaker(lines: list[dict], voice: list[dict]) -> dict:
+def _speaker(lines: list[dict]) -> dict:
     first = [ln["first_word_ms"] for ln in lines if ln.get("first_word_ms") is not None]
-    ids = {ln.get("line_id") for ln in lines}
-    # a line with no audio has no voice record with a time: left out, never counted as 0
-    heard = [
-        v["audio_first_ms"] for v in voice if v.get("line_id") in ids and "audio_first_ms" in v
-    ]
     costs = [c for c in map(_cost, lines) if c is not None]
     return {
         # one string, not a list: a `stats` event carries no brackets (a TTS tag must never show)
@@ -76,10 +71,22 @@ def _speaker(lines: list[dict], voice: list[dict]) -> dict:
         "lines": len(lines),
         "first_word_ms_p50": _pct(first, 0.5),
         "first_word_ms_p95": _pct(first, 0.95),
+        "cost_per_line_usd": sum(costs) / len(costs) if costs else None,
+    }
+
+
+def _heard(lines: list[dict], voice: list[dict]) -> dict:
+    """Moment to audio ready (#233), for the lead only: an analyst line is called and checked
+    before its stat moment is published, so its figure would leave all of that out."""
+    ids = {ln.get("line_id") for ln in lines}
+    # a line with no audio has no voice record with a time: left out, never counted as 0
+    heard = [
+        v["audio_first_ms"] for v in voice if v.get("line_id") in ids and "audio_first_ms" in v
+    ]
+    return {
         "audio_first_ms_p50": _pct(heard, 0.5),
         "audio_first_ms_p95": _pct(heard, 0.95),
         "audio_lines": len(heard),
-        "cost_per_line_usd": sum(costs) / len(costs) if costs else None,
     }
 
 
@@ -152,7 +159,7 @@ def stats(store) -> dict:
         "cost_per_line_usd": sum(costs) / len(costs) if costs else None,
         "adapter": _adapter(commentary),  # the commentary task's, as before per-task records
         "adapters": _adapters(adapters),
-        "by_speaker": {"lead": _speaker(lead, voice), "analyst": _speaker(analyst, voice)},
+        "by_speaker": {"lead": _speaker(lead) | _heard(lead, voice), "analyst": _speaker(analyst)},
         "fixes_recorded": len(recorded),
         # recorded since commentary's latest adapter record: the corrections toward the next one
         "fixes_toward_next": sum(f.get("created_at", "") > since for f in recorded),
