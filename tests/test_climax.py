@@ -104,6 +104,24 @@ def test_a_line_may_say_only_the_true_leader_leads(idx, text, wrong):
     assert insight.wrong_numbers(text, m, match_header(JORDAN), before(JORDAN, idx)) == wrong
 
 
+@pytest.mark.parametrize(
+    ("idx", "text", "wrong"),
+    [
+        (29, "Stockton for three! The Bulls down three.", []),
+        (26, "Utah up by two.", []),
+        (26, "Jazz lead by two, eighty-three to eighty-one.", []),
+        (30, "Jordan scores! Bulls down one, eighty-six to eighty-five.", []),
+        (30, "The Jazz lead 86-85, with 37 seconds left.", []),
+        (27, "Forty for Jordan! Bulls trail eighty-three, eighty-two, 59 seconds left.", []),
+        # 2 is in the moment (a 2-point basket), but the Bulls trail by one
+        (30, "Jordan scores, but the Bulls are still down two.", ["2 is not the margin (1)"]),
+    ],
+)
+def test_a_margin_is_the_score_difference(idx, text, wrong):
+    m = moment(JORDAN, idx)
+    assert insight.wrong_numbers(text, m, match_header(JORDAN), before(JORDAN, idx)) == wrong
+
+
 def test_a_cricket_score_may_be_said_wickets_first():
     m = moment(CRICKET, 28)
     right = "Caught! India two for ten, needing one hundred fifty from one hundred balls."
