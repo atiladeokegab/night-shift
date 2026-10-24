@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getStats } from '../api'
-import type { Adapter, Stats } from '../types'
+import type { Adapter, SpeakerStats, Stats } from '../types'
 import { SideBySide } from './SideBySide'
 
 interface Props {
@@ -24,16 +24,19 @@ export function ProofPanel({ live }: Props) {
   else if (!stats) body = <p className="hint" role="status">Loading stats…</p>
   else {
     const empty = stats.lines === 0
-    const v = (x: string) => (empty ? '–' : x)
     const adapter = stats.adapter
+    // the lead's calls (Haiku) and the analyst's stat lines (Sonnet) apart, so neither skews the other
+    const groups: [string, SpeakerStats][] = stats.by_speaker
+      ? [['Lead', stats.by_speaker.lead], ['Analyst', stats.by_speaker.analyst]]
+      : [['All lines', { ...stats, models: [], cost_per_line_usd: stats.cost_per_line_usd ?? null }]]
     body = (
       <>
         <dl className="stats">
-          <Figure label="First word · median" value={v(seconds(stats.first_word_ms_p50))} />
-          <Figure label="First word · p95" value={v(seconds(stats.first_word_ms_p95))} />
-          <Figure label="Cost per line" value={v(dollars(stats.cost_per_line_usd))} />
-          <Figure label="Lines · all matches" value={v(stats.lines.toLocaleString())} />
-          <Figure label="Fixes" value={v(String(stats.fixes))} />
+          {groups.map(([name, s]) => <Speaker key={name} name={name} s={s} />)}
+          <Figure label="Fixes recorded to Mubit for training" value={String(stats.fixes)} />
+          {stats.fixes_toward_next !== undefined && (
+            <Figure label="Corrections needed for the next adapter" value={`${stats.fixes_toward_next} of ${adapter?.needed ?? 25}`} />
+          )}
           <div className="wide">
             <dt className="label">Adapter</dt>
             <dd className={adapter?.status === 'ready' ? 'good' : undefined}>{adapterText(adapter)}</dd>
@@ -55,6 +58,21 @@ export function ProofPanel({ live }: Props) {
         </p>
       </section>
       <SideBySide />
+    </>
+  )
+}
+
+function Speaker({ name, s }: { name: string; s: SpeakerStats }) {
+  const v = (x: string) => (s.lines === 0 ? '–' : x)
+  return (
+    <>
+      <div className="wide">
+        <dt className="label">{name}</dt>
+        <dd>{[...s.models, `${s.lines.toLocaleString()} lines · all matches`].join(' · ')}</dd>
+      </div>
+      <Figure label="First word · median" value={v(seconds(s.first_word_ms_p50))} />
+      <Figure label="First word · p95" value={v(seconds(s.first_word_ms_p95))} />
+      <Figure label="Cost per line" value={v(dollars(s.cost_per_line_usd))} />
     </>
   )
 }

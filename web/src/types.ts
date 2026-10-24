@@ -78,6 +78,16 @@ export interface Stats {
   tokens_out: number
   cost_per_line_usd?: number | null
   adapter?: Adapter | null
+  by_speaker?: { lead: SpeakerStats; analyst: SpeakerStats } // #161: Haiku's calls apart from Sonnet's stat lines
+  fixes_toward_next?: number // fixes stored since the latest adapter record (#161)
+}
+
+export interface SpeakerStats {
+  models: string[]
+  lines: number
+  first_word_ms_p50: number | null
+  first_word_ms_p95: number | null
+  cost_per_line_usd: number | null
 }
 
 export interface Adapter {
