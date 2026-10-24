@@ -35,10 +35,10 @@ test('the two commentators take turns, and only a big moment cuts in on the othe
   const stats = new Floor<Said>()
   const numbers = analyst('numbers')
   stats.take(numbers, 0)
-  assert.equal(stats.take(lead('save'), 100), true) // the next moment arrives: the analyst is dropped, not waited for
-  assert.equal(stats.ended(numbers, 900), null) // the dropped analyst ends nothing
+  assert.equal(stats.take(lead('save'), 100), false) // a routine call waits for the analyst to finish
+  assert.equal(stats.ended(numbers, 900)?.id, 'save')
   stats.take(analyst('more numbers'), 1000)
-  assert.equal(stats.take(lead('goal', true), 1100), true) // a goal cuts in, like a real broadcast
+  assert.equal(stats.take(lead('goal', true), 1100), false) // a goal waits for the end of the turn: never mid-word
   stats.clear() // a rewind, a pause or leaving drops the held line too
   assert.equal(stats.take(analyst('after'), 2000), true)
 })
@@ -210,18 +210,13 @@ test('while the viewer talks and their answer waits, no fill line starts; a mome
   assert.equal(slow.take(comeback, VIEWER_MS + 1000), false) // the answer still waits: it goes first
 })
 
-test('an analyst turn is dropped when the next moment arrives, and a stale held turn is never played late', () => {
+test('a big moment waits for the turn on air to end, is not replaced by a routine line, and is never stale', () => {
   const floor = new Floor<Said>()
-  const call = lead('call')
-  floor.take(call, 0)
-  floor.take(analyst('stat'), 100) // held behind the lead
-  assert.equal(floor.take(lead('next'), 200), true) // the next moment replaces the held analyst
-  assert.equal(floor.ended(call, 300), null) // already cut off
-  const next = lead('next2')
-  const on = new Floor<Said>()
-  on.take(next, 0)
-  on.take(analyst('late'), 10)
-  assert.equal(on.ended(next, 10 + HOLD_MAX_MS + 1), null) // stale: skipped
+  const talk = analyst('talk')
+  floor.take(talk, 0)
+  assert.equal(floor.take(lead('goal', true), 100), false)
+  assert.equal(floor.take(lead('routine'), 200), false) // does not replace the held goal
+  assert.equal(floor.ended(talk, 100 + HOLD_MAX_MS * 2)?.id, 'goal') // late, still said
 })
 
 test('one turn on air at a time: every take that returns true cut off the previous one', () => {
