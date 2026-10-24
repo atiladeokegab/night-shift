@@ -278,7 +278,8 @@ def test_v3_retries_once_then_falls_back_to_flash_without_the_tag(tmp_path, monk
     assert "model=eleven_flash_v2_5" in caplog.text and KEY not in caplog.text
 
 
-def test_v3_that_would_land_late_goes_straight_to_flash(monkeypatch):
+def test_v3_for_a_moment_a_second_away_is_still_tried(monkeypatch):
+    # was: straight to flash. 00037 played one line in five flat that way (#57).
     import asyncio
     import time
 
@@ -293,8 +294,8 @@ def test_v3_that_would_land_late_goes_straight_to_flash(monkeypatch):
         speaker.prepare(line, {"type": "Shot", "outcome": "Goal"}, time.monotonic() + 1.0)
         return await speaker.audio(line, VOICES[1])
 
-    assert asyncio.run(run()) == (AUDIO, "eleven_flash_v2_5")
-    assert seen == [("eleven_flash_v2_5", "Goal!")]
+    assert asyncio.run(run()) == (AUDIO, "eleven_v3")
+    assert [model for model, _ in seen] == ["eleven_v3"]
 
 
 def test_voice_and_model_per_sport_come_from_env(tmp_path, monkeypatch):
@@ -417,9 +418,11 @@ def test_a_slow_stream_past_the_deadline_falls_back(monkeypatch):
     import asyncio
     import time
 
+    from core import voice
     from core.voice import FALLBACK_RESERVE_S, VOICES, Speaker
 
     monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    monkeypatch.setattr(voice, "PREPARED_V3_S", 0.0)  # only the deadline bounds v3 here
     seen = []
 
     def handle(request: httpx.Request) -> httpx.Response:
@@ -441,6 +444,64 @@ def test_a_slow_stream_past_the_deadline_falls_back(monkeypatch):
 
     assert asyncio.run(run()) == (AUDIO, "eleven_flash_v2_5")
     assert seen[0] == "eleven_v3" and seen[-1] == "eleven_flash_v2_5"
+
+
+def test_a_prepared_lines_v3_call_gets_the_longer_timeout_and_a_live_one_its_deadline(
+    monkeypatch,
+):
+    # 00037: the first line of each replay is due 5 s in, ready at ~2 s, so v3 had ~1.5 s
+    import asyncio
+    import time
+
+    from core.voice import FALLBACK_RESERVE_S, LIVE_BUDGET_S, PREPARED_V3_S, VOICES, Speaker
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    timeouts = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        model = json.loads(request.content)["model_id"]
+        timeouts.append((model, request.extensions["timeout"]["read"]))
+        return httpx.Response(200, content=AUDIO)
+
+    speaker = Speaker(httpx.MockTransport(handle))
+    prepared = {"line_id": "a", "sport": "football", "text": "Goal!"}
+    live = {"line_id": "b", "sport": "football", "text": "Goal!"}
+
+    async def run():
+        speaker.prepare(prepared, {"type": "Goal"}, time.monotonic() + 3.0)
+        await speaker.audio(prepared, VOICES[1])
+        await speaker.audio(live, VOICES[1])
+
+    asyncio.run(run())
+    (m1, ahead), (m2, now) = timeouts
+    assert m1 == m2 == "eleven_v3"
+    assert PREPARED_V3_S - 0.5 < ahead <= PREPARED_V3_S  # past its moment: late v3 beats flash
+    assert now <= LIVE_BUDGET_S - FALLBACK_RESERVE_S  # the request-started line keeps its deadline
+
+
+def test_a_prepared_line_makes_one_v3_call_before_flash(monkeypatch):
+    import asyncio
+    import time
+
+    from core.voice import VOICES, Speaker
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    seen = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        model = json.loads(request.content)["model_id"]
+        seen.append(model)
+        return httpx.Response(500 if "v3" in model else 200, content=AUDIO)
+
+    speaker = Speaker(httpx.MockTransport(handle))
+    line = {"line_id": "x", "sport": "football", "text": "Goal!"}
+
+    async def run():
+        speaker.prepare(line, {"type": "Goal"}, time.monotonic() + 3.0)
+        return await speaker.audio(line, VOICES[1])
+
+    assert asyncio.run(run()) == (AUDIO, "eleven_flash_v2_5")
+    assert seen == ["eleven_v3", "eleven_flash_v2_5"]
 
 
 def test_audio_made_ahead_that_failed_is_tried_again_when_the_page_asks(monkeypatch):

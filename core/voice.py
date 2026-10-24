@@ -23,6 +23,7 @@ FALLBACK_TIMEOUT_S = 10.0
 FALLBACK_RESERVE_S = 1.5  # v3 stops this long before the moment, so flash still lands in time
 FALLBACK_MIN_S = 1.5  # flash always gets this long once it has a slot: a little late beats silence
 LIVE_BUDGET_S = 4.0  # a line with no video time is spoken as it arrives
+PREPARED_V3_S = 7.0  # v3's least time for a line made before its moment: late v3 beats flat flash
 CONCURRENCY = 3  # a whole match's lines arrive in seconds; ElevenLabs caps concurrent requests
 
 # The page's voice setting. ids are ours; eleven_id never leaves the server. VOICE_<SPORT> takes an
@@ -189,11 +190,14 @@ class Speaker:
         model = model_for(line.get("sport"))
         tag = self.tags.get(line["line_id"]) if "v3" in model else None
         text = f"{tag} {line['text']}" if tag else line["text"]
+        # made ahead (a video time still to come): one long v3 call, not two squeezed ones
+        ahead = deadline is not None and deadline > time.monotonic()
         async with httpx.AsyncClient(transport=self.transport) as client:
             if model != FALLBACK_MODEL:
-                for _ in range(2):  # a cold first request can time out; the retry is warm
+                for _ in range(1 if ahead else 2):  # a cold first request can time out; retry warm
                     until = min(end - FALLBACK_RESERVE_S, time.monotonic() + V3_TIMEOUT_S)
-                    audio = await self._tts(client, key, voice, model, text, until)
+                    least = PREPARED_V3_S if ahead else 0.0
+                    audio = await self._tts(client, key, voice, model, text, until, least)
                     if audio:
                         return audio, model
             until = min(end, time.monotonic() + FALLBACK_TIMEOUT_S)
