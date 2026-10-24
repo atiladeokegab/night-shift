@@ -162,5 +162,6 @@ def test_stats_show_examples_by_source_and_each_held_out_score(tmp_path):
     for agree in (60, 70):  # the latest per model counts
         store.append("scorecheck_evals", {"what": "Claude", "agree": agree, "scored": 74})
     sc = stats(store)["scorecheck"]
-    assert (sc["seeded"], sc["from_fixes"], sc["from_fixes_by_kind"]) == (2, 1, {"corrected": 1})
+    assert (sc["examples_sent"], sc["from_fixes_by_kind"]) == (3, {"corrected": 1})
+    assert sc["by_source"] == {"answer_key": 2, "auto_fixed": 0, "human": 1}
     assert [(w, e["agree"], e["scored"]) for w, e in sc["held_out"].items()] == [("Claude", 70, 74)]

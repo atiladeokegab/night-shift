@@ -113,15 +113,22 @@ def _adapters(by_task: dict[str, dict], records: list[dict]) -> dict:
     }
 
 
-def _scorecheck(store) -> dict:
-    """Score check (#321): the examples sent to Mubit, seeded or from a producer's fix, and each
-    model's latest score on the frozen held-out lines (eval/seed_scorecheck.py --score --record)."""
+# a ledger row's source, as the card names it: the match data's answer key, the number check's
+# own retry, or a producer's fix
+SOURCES = {"seed": "answer_key", "auto": "auto_fixed", "fix": "human"}
+
+
+def _scorecheck(store, recorded: dict | None) -> dict:
+    """Score check (#321), the one task trained (#363): the examples sent to Mubit by source, each
+    model's latest score on the frozen held-out lines (eval/seed_scorecheck.py --score --record),
+    and the last version read off the console by hand (eval/record_adapter.py), None until then."""
     sent = store.all("scorecheck_examples")
     fixes = [r for r in sent if r.get("source") == "fix"]
     held = {e["what"]: e for e in store.all("scorecheck_evals")}
+    by_source = Counter(SOURCES.get(r.get("source")) for r in sent)
     return {
-        "seeded": sum(r.get("source") == "seed" for r in sent),
-        "from_fixes": len(fixes),
+        "examples_sent": len(sent),
+        "by_source": {name: by_source[name] for name in SOURCES.values()},
         "from_fixes_by_kind": dict(Counter(r["kind"] for r in fixes)),
         # keyed by model: an SSE event's JSON carries no "[" (tests/test_core_voice.py)
         "held_out": {
@@ -129,6 +136,9 @@ def _scorecheck(store) -> dict:
             | {"recorded_at": e.get("created_at")}
             for what, e in held.items()
         },
+        # shortcut: a fixed time (Mubit's daily limit resets at 01:00 UK); edit it if training moves
+        "next_training": "after 01:00 UK",
+        "recorded": recorded,
     }
 
 
@@ -233,6 +243,7 @@ def stats(store) -> dict:
     adapters = _by_task(store)
     commentary = adapters.get("commentary", {})
     since = commentary.get("created_at", "")
+    tasks = _adapters(adapters, store.all("adapter"))
     # only a fix Mubit recorded for training counts; one stored before #161 carries no flag
     recorded = [f for f in fixes if f.get("recorded") is True]
     first = [ln["first_word_ms"] for ln in lines if ln.get("first_word_ms") is not None]
@@ -255,8 +266,6 @@ def stats(store) -> dict:
         "tokens_in": sum(ln.get("tokens_in", 0) for ln in lines),
         "tokens_out": sum(ln.get("tokens_out", 0) for ln in lines),
         "cost_per_line_usd": sum(costs) / len(costs) if costs else None,
-        "adapter": _adapter(commentary),  # the commentary task's, as before per-task records
-        "adapters": _adapters(adapters, store.all("adapter")),
         "by_speaker": {"lead": _speaker(lead) | _heard(lead, voice), "analyst": _speaker(analyst)},
         "fixes_recorded": len(recorded),
         # recorded since commentary's latest adapter record: the corrections toward the next one
@@ -272,6 +281,8 @@ def stats(store) -> dict:
         "autonomy": _autonomy(calls),
         "autonomy_by_match": {m: _autonomy(c) for m, c in by_match.items()},
         "linecheck": _linecheck(store),
-        "scorecheck": _scorecheck(store),
+        "scorecheck": _scorecheck(store, tasks.pop("score_check", None)),
+        # the commentary tasks trained before Score check (#363): kept, never the headline
+        "earlier_tasks": {"adapter": _adapter(commentary), "adapters": tasks},
         **_per_match(store, lines, voice),
     }

@@ -8,7 +8,7 @@ from eval.record_adapter import main
 def test_records_the_try_models_result_and_stats_shows_it(tmp_path):
     env = {"STORE_DIR": str(tmp_path)}
     main(["--status", "ready", "--kept", "31", "--agree", "23", "--total", "25"], env)
-    adapter = stats(Store(tmp_path))["adapter"]
+    adapter = stats(Store(tmp_path))["earlier_tasks"]["adapter"]
     assert (adapter["state"], adapter["kept"], adapter["agree"], adapter["total"]) == (
         "collecting",  # ready, but no version or verdict recorded
         31,
@@ -20,7 +20,7 @@ def test_records_the_try_models_result_and_stats_shows_it(tmp_path):
 
 def test_training_needs_no_counts(tmp_path):
     main(["--status", "training"], {"STORE_DIR": str(tmp_path)})
-    assert stats(Store(tmp_path))["adapter"]["state"] == "collecting"
+    assert stats(Store(tmp_path))["earlier_tasks"]["adapter"]["state"] == "collecting"
 
 
 @pytest.mark.parametrize(
@@ -66,7 +66,7 @@ def test_each_task_keeps_its_own_latest_record_and_adapter_stays_commentary(tmp_
         env,
     )
     s = stats(store)
-    line_check = s["adapters"]["line_check"]
+    line_check = s["earlier_tasks"]["adapters"]["line_check"]
     assert line_check["recorded_at"] == store.all("adapter")[-2]["created_at"]
     assert {k: v for k, v in line_check.items() if k not in ("recorded_at", "versions")} == {
         "state": "passed",  # Mubit's gate was recorded as passed
@@ -78,7 +78,7 @@ def test_each_task_keeps_its_own_latest_record_and_adapter_stays_commentary(tmp_
         "kept": None,  # the latest record didn't say: not carried over from the one before
         "source": "Mubit console",
     }
-    where = s["adapters"]["where_are_we"]
+    where = s["earlier_tasks"]["adapters"]["where_are_we"]
     assert (where["version"], where["score"], where["target"], where["passed"]) == (
         2,
         55.8,
@@ -86,17 +86,22 @@ def test_each_task_keeps_its_own_latest_record_and_adapter_stays_commentary(tmp_
         False,
     )
     assert where["kept"] == 0  # the console's kept count, recorded as 0: not None, not requests
-    assert s["adapters"]["commentary"]["kept"] == 25
-    assert (s["adapter"]["state"], s["adapter"]["kept"]) == ("collecting", 25)
+    assert s["earlier_tasks"]["adapters"]["commentary"]["kept"] == 25
+    assert (s["earlier_tasks"]["adapter"]["state"], s["earlier_tasks"]["adapter"]["kept"]) == (
+        "collecting",
+        25,
+    )
 
 
 def test_a_task_with_no_record_is_absent_not_guessed(tmp_path):
     main(["--task", "line_check", "--status", "training"], {"STORE_DIR": str(tmp_path)})
     s = stats(Store(tmp_path))
-    assert list(s["adapters"]) == ["line_check"]
+    assert list(s["earlier_tasks"]["adapters"]) == ["line_check"]
     # no commentary record yet: no as-of time
-    assert s["adapter"]["summary"] == "Collecting: no adapter version recorded yet."
-    assert s["adapters"]["line_check"]["passed"] is None
+    assert (
+        s["earlier_tasks"]["adapter"]["summary"] == "Collecting: no adapter version recorded yet."
+    )
+    assert s["earlier_tasks"]["adapters"]["line_check"]["passed"] is None
 
 
 @pytest.mark.parametrize(
@@ -133,7 +138,7 @@ def test_each_version_stays_on_record_with_its_id_and_source(tmp_path):
         + ["--score", "96", "--target", "95", "--passed", "--source", "Mubit console, History"],
         env,
     )
-    sc = stats(Store(tmp_path))["adapters"]["score_check"]
+    sc = stats(Store(tmp_path))["scorecheck"]["recorded"]
     assert (sc["version"], sc["version_id"], sc["source"]) == (2, "ad_2", "Mubit console, History")
     v = [(x["version"], x["version_id"], x["score"], x["passed"]) for x in sc["versions"]]
     assert v == [(1, "ad_1", 88.5, False), (2, "ad_2", 96.0, True)]
@@ -143,5 +148,5 @@ def test_a_pass_with_no_version_is_never_shown_as_passed(tmp_path):
     """A record from before the recorder's check (#321 review): no version, so no pass to show."""
     store = Store(tmp_path)
     store.append("adapter", {"task": "score_check", "status": "ready", "passed": True})
-    sc = stats(store)["adapters"]["score_check"]
+    sc = stats(store)["scorecheck"]["recorded"]
     assert (sc["state"], sc["passed"], sc["versions"]) == ("collecting", None, [])
