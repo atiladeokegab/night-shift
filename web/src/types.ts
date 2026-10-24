@@ -149,6 +149,7 @@ export interface Fix {
   created_at?: number | string
   reply_matched?: boolean
   recorded?: boolean // Mubit recorded it for training (#161)
+  mubit_request_id?: string | null // the correction call's request id (#239)
 }
 
 // POST /replays/{id}/ask's answer and the `answer` SSE event (#117). `line_id` so it is spoken like a line;
