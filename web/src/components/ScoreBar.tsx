@@ -1,5 +1,5 @@
 import { chaseText, clockText, periodText } from '../moment'
-import { matchTeams, sides, type TeamStyle } from '../teams'
+import { cricketScore, matchTeams, type TeamStyle } from '../teams'
 import type { Match, Moment } from '../types'
 
 interface Props {
@@ -9,7 +9,7 @@ interface Props {
 }
 
 // The score bar (docs/design.md "Components"): team bars and codes, the score, the clock and period
-// (football, basketball) or the over and "need N off M" (cricket, both totals at the same weight), the
+// (football, basketball) or the batting side, the over and "need N off M" (cricket), the
 // lap and the top three (f1), and "REPLAY".
 export function ScoreBar({ match, moment, moments }: Props) {
   return (
@@ -38,20 +38,13 @@ function Football({ match, moment }: { match: Match; moment: Moment | null }) {
 }
 
 function Cricket({ match, moment, moments }: Props) {
-  const [home, away] = matchTeams(match)
-  const { ours, theirs } = moment ? sides(match, moment.team) : { ours: home, theirs: away }
-  const s = moment?.score
+  const { batting, score, fielding } = cricketScore(match, moment, moments)
   const chase = moment ? chaseText(moment) : null
-  // The fielding side's total: their last first-innings moment, else the target less one.
-  const first = moments.filter((m) => m.period === 1 && m.team === theirs.name).at(-1)?.score
-  const other = first && 'runs' in first ? `${first.runs}/${first.wickets}`
-    : s && 'runs' in s && s.target ? String(s.target - 1) : null
   return (
     <>
-      <Team team={ours} />
-      <span className="score num">{s && 'runs' in s ? `${s.runs}/${s.wickets}` : '0/0'}</span>
-      <Team team={theirs} />
-      {moment?.period === 2 && other && <span className="score num">{other}</span>}
+      <Team team={batting} />
+      <span className="score num">{score}</span>
+      {fielding && <><Team team={fielding.team} /><span className="score num">{fielding.total}</span></>}
       <span className="sep" />
       <span className="clock num">{moment ? clockText(moment) : 'Over 0.0'}</span>
       {chase ? <span className="need num">{chase}</span> : <span className="period">{moment ? periodText(moment) : '1st innings'}</span>}
