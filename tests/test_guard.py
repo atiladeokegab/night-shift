@@ -252,3 +252,20 @@ def test_two_asks_at_once_get_one_answer_and_one_409(tmp_path, monkeypatch):
         with ThreadPoolExecutor(2) as pool:
             codes = sorted(pool.map(post, ["Who?", "Why?"]))
     assert codes == [200, 409]
+
+
+def test_after_midnight_a_read_error_does_not_carry_yesterdays_spend(tmp_path):
+    class Broken(Store):
+        down = False
+
+        def all(self, kind):
+            if self.down:
+                raise OSError("bucket unreachable")
+            return super().all(kind)
+
+    store, now = Broken(tmp_path), [NOON - 24 * 3600]
+    stored(store, day="2026-10-23", model="claude-haiku-4-5", tokens_in=1_000_000)  # $3
+    guard = Guard({"DAILY_BUDGET_USD": "2"}, lambda: now[0])
+    assert guard.off_air(store)  # yesterday, over the cap
+    store.down, now[0] = True, NOON
+    assert not guard.off_air(store)
