@@ -73,3 +73,21 @@ def test_second_request_is_cached(client, monkeypatch):
 def test_unknown_match_or_wrong_sport_is_404(client):
     assert client.get("/teams/football/nope").status_code == 404
     assert client.get("/teams/cricket/3754092").status_code == 404
+
+
+def test_squad_falls_back_to_the_pack_when_the_graph_has_none(client, monkeypatch):
+    monkeypatch.setattr(graph, "squad", lambda *a, **k: [], raising=False)
+    body = client.get("/teams/basketball/0020500591").json()
+    lakers = body["teams"][0]
+    assert lakers["team"] == "Los Angeles Lakers" and lakers["squad"]
+    assert all("baskets from" in p["headline"] for p in lakers["squad"])
+    assert len(lakers["squad"]) <= teams.SQUAD_MAX
+
+
+def test_every_football_and_basketball_demo_match_has_a_squad_for_each_side(client):
+    for m in list_matches():
+        if (
+            m["sport"] in ("football", "basketball") and m["match_id"] != "7457"
+        ):  # Orlando's first game
+            body = client.get(f"/teams/{m['sport']}/{m['match_id']}").json()
+            assert all(t["squad"] for t in body["teams"]), m["match_id"]
