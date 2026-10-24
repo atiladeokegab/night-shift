@@ -107,11 +107,53 @@ test('the sidebar, the caption and the sport bar are never inside the video card
   assert.match(card, /class="controls"[\s\S]*aria-label="Pause"[\s\S]*aria-label="Seek"[\s\S]*aria-label="Mute commentary"[\s\S]*aria-label="Commentary volume"[\s\S]*aria-label="Fullscreen"/)
 })
 
-test('a question shows once as App words it, and its answer shows under it with the moment it was asked at', () => {
-  const asking = render({ caption: { kind: 'question', text: 'A viewer asks: Who scores next?' } })
-  assert.equal(asking.split('A viewer asks:').length, 2)
-  assert.match(asking, /<span class="chip viewer">Viewer<\/span>/)
+test('a question waits in the caption header without its prefix; the line on screen keeps the caption (#153)', () => {
+  const html = render({ caption: { kind: 'question', text: 'A viewer asks: Who scores next?' } })
+  assert.ok(!html.includes('A viewer asks:'), 'the Viewer chip says who asks')
+  assert.match(html, /<span class="cap-side"><span class="chip viewer">Viewer<\/span><span class="cap-q">Who scores next\?<\/span><\/span>/)
+  assert.match(html, new RegExp(`<p class="cap-text">${EARLY}</p>`))
+})
+
+test('an answer shows under its question with the moment it was asked at, and the match is named', () => {
   const answered = { ...replay, answers: [{ line_id: 'a1', moment_idx: 3, question: 'Who scores next?', text: 'Kobe, on this form.' }] }
   const html = render({ replay: answered, caption: { kind: 'answer', text: 'Kobe, on this form.', speaker: 'analyst' } })
-  assert.match(html, /<span class="chip analyst">Analyst<\/span><span class="tag">06:12 · [^<]+<\/span><\/div><p class="cap-asks">A viewer asks: Who scores next\?<\/p><p class="cap-text">Kobe, on this form\.<\/p>/)
+  assert.match(html, /<span class="chip analyst">Analyst<\/span><span class="tag">06:12 · [^<]+<\/span><span class="cap-side cap-title">Kobe&#x27;s 81 v Toronto<\/span><\/div><p class="cap-asks">A viewer asks: Who scores next\?<\/p><p class="cap-text">Kobe, on this form\.<\/p>/)
+})
+
+test('an off-air answer is a calm state with the Analyst chip, never a headline (#153)', () => {
+  const answered = { ...replay, answers: [{ line_id: 'a1', moment_idx: 3, question: 'Who scores next?', text: 'The commentator is off air.', off_air: true }] }
+  const html = render({ replay: answered, caption: { kind: 'answer', text: 'The commentator is off air.', speaker: 'analyst' } })
+  assert.match(html, /<span class="chip analyst">Analyst<\/span>[\s\S]*<p class="cap-state">Couldn&#x27;t answer that one\. Try again\.<\/p>/)
+  assert.ok(!html.includes('<p class="cap-text">The commentator'), 'no headline')
+})
+
+test('ON AIR names the speaker on air: the lead by the chosen voice, the analyst by name (#153)', () => {
+  assert.match(render(), /class="who">Lead · Sam</)
+  const analyst = { ...replay, lines: [{ ...line(3, 490.5, EARLY), speaker: 'analyst' as const }] }
+  assert.match(render({ replay: analyst }), /class="who">Analyst · George</)
+})
+
+test('at full time the picture offers Watch again and Next match; not before the picture gets there (#153)', () => {
+  const over = { ...replay, ended: true, now: 1670 }
+  const html = render({ replay: over, onNext: noop })
+  assert.match(html, /class="overlay end" role="status"><span>Full time · LAK 64–69 RAP<\/span>[\s\S]*Watch again[\s\S]*Next match →/)
+  assert.ok(!render({ replay: { ...replay, ended: true } }).includes('Full time'), 'the stream ended but the picture is still at 500 s')
+})
+
+test('before the first call: a countdown to it, not "Waiting" (#153)', () => {
+  const early = { ...replay, moments: [], lines: [], queuedMoments: [moment(5, 520, '04:10'), moment(3, 512, '06:12')] }
+  assert.match(render({ replay: early }), /First call in 0:12/)
+})
+
+test('the Lines rows show the speaker and the time alone, the measure named in the title (#153)', () => {
+  const html = render()
+  assert.match(html, /<span class="chip lead">Lead<\/span><span class="num" title="model reply 0\.90 s">0\.90 s<\/span>/)
+  assert.ok(!html.includes('>model reply'), 'the label is in the title only')
+})
+
+test('the bar sits in the nav row, and with no video the clock and scrubber go (#153)', () => {
+  const html = render()
+  assert.match(html, /<header class="nav">[\s\S]*class="pickbar glass"[\s\S]*<nav class="links"[\s\S]*>Matches<\/button>/)
+  assert.match(render({ video: 'unavailable' }), /<section class="vcard"[^>]*data-video="off"/)
+  assert.ok(!/<section class="vcard"[^>]*data-video/.test(html))
 })
