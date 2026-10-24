@@ -91,7 +91,7 @@ def test_every_demo_match_has_a_map():
     assert {m["match_id"]: m.get("youtube_id") for m in list_matches()} == {
         "3906390": "jD1GwCcJV-0",
         "1298150": "tz_5DAA6IgE",
-        "3869685": "agrGb25mJzs",
+        "3869685": "VfmQIyDggBU",
         "0049700088": "kwAu78IiixE",
         "0020500591": "46nYnjGdQlk",
         "9558": "yPvoKz6tyJs",
@@ -99,11 +99,11 @@ def test_every_demo_match_has_a_map():
 
 
 def test_only_the_embed_blocked_videos_say_so():
-    # FIFA, FOM and the ITV re-upload block embedding; the pages show a poster and a YouTube link.
+    # FOM blocks embedding and the ITV re-upload is gone; the pages show a poster and a YouTube link.
     assert {m["match_id"]: m.get("embed") for m in list_matches()} == {
         "3906390": False,
         "1298150": None,
-        "3869685": False,
+        "3869685": None,
         "0049700088": None,
         "0020500591": None,
         "9558": False,
@@ -141,7 +141,7 @@ def test_each_video_starts_10_s_before_its_first_mapped_moment():
     assert {m["match_id"]: m.get("video_start") for m in list_matches()} == {
         "3906390": 93,
         "1298150": 0,
-        "3869685": 63,
+        "3869685": 71,
         "0049700088": 358,
         "0020500591": 480,
         "9558": 0,
