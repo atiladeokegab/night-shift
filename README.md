@@ -219,8 +219,8 @@ Each criterion weighs the same; one line each, with where to check it.
   a Mubit adapter, trained on its own matches, and every producer correction is a training signal
   that makes it better.
 - **Built for fans who can't see the screen.** Audio first, with keyboard and screen reader working
-  throughout (#170, in progress). Football shots already say where on the pitch they came from,
-  from the event data's own locations (#172).
+  throughout (#170, built). Football shots already say where on the pitch they came from, from the
+  event data's own locations (#172).
 - **The fan layer.** Ask by typing or voice, a choice of voices, and Follow a player, on any match.
 - **At scale,** Redis fans each match's lines out to every viewer and caches them across instances,
   and SurrealDB holds players, teams, matches and seasons as a graph
@@ -285,9 +285,6 @@ At least 2.2 billion people have a near or distance vision impairment
 ([WHO](https://www.who.int/news-room/fact-sheets/detail/blindness-and-visual-impairment)). For a fan
 who can't see the screen, a match that nobody describes is a match they can't follow.
 
-<!-- QUOTE PLACEHOLDER: a blind or low-vision fan on following a match that nobody describes.
-The lead supplies the quote and who said it; set it here as a blockquote. -->
-
 Outside Sky's matches, live audio description is voluntary and patchy. In UK football some top clubs,
 such as Manchester City, and some smaller ones, such as Wrexham, Bolton, Cardiff and Altrincham, run
 audio-descriptive commentary, and a Level Playing Field survey found few clubs offering it live
@@ -314,10 +311,11 @@ streaming platforms, for the long tail of matches they stream with no describer.
 highlights, and as each key moment plays (a goal, a wicket, a three) it calls it in one short line,
 read aloud in a commentator's voice and shown as a large subtitle. It describes key moments, not
 every pass: what happened and who did it, often with the score. Football shots say where on the pitch they came
-from, from the event data's own locations (#172). Making the page itself work without sight
-(#170) is in progress.
+from, from the event data's own locations (#172). The page itself works by keyboard and screen
+reader, with every control a 44 px target, checked by axe on the home and live pages
+([`web/e2e/a11y.spec.ts`](web/e2e/a11y.spec.ts), #170).
 
-One agent calls every sport. It reads the match's real event feed, looks up the score, the player and
+One agent calls every sport. It reads the match's real event data, looks up the score, the player and
 recent play with tools, and never sees anything from later in the match than the moment it is
 calling. A producer corrects any line that's wrong, and the fix goes back through Mubit beside the
 line, as a correction for the commentator's next training.
@@ -398,9 +396,12 @@ The commentator's tools and the shot map read per-match stats packs ([`data/pack
   include extras ([`core/predict.py`](core/predict.py)).
 - **The highlights are re-uploads** for four of seven matches, because the official uploads block
   embedding or don't exist. If one is taken down, the commentary carries on without the picture.
-- **Not covered by tests:** the browser's speech playback ([`web/src/useSpeech.ts`](web/src/useSpeech.ts))
-  and the live page's components as rendered; they are checked by hand and by screenshots. Real Mubit
-  and ElevenLabs calls are checked only by the smoke test after each deploy.
+- **Not in `make check`:** the browser checks. The live page renders in unit tests
+  ([`web/src/live.test.ts`](web/src/live.test.ts)), but speech playback
+  ([`web/src/useSpeech.ts`](web/src/useSpeech.ts)) and the accessibility run
+  ([`web/e2e/a11y.spec.ts`](web/e2e/a11y.spec.ts), `npx playwright test` in `web/`) need a real
+  browser, so they run by hand. Real Mubit and ElevenLabs calls are checked only by the smoke test
+  after each deploy.
 
 ## Run it
 
@@ -444,5 +445,6 @@ commit names its source.
 - Atilade ([@atiladeokegab](https://github.com/atiladeokegab)): lead and design
 - Persia ([@PersiaF04](https://github.com/PersiaF04)): full stack
 
-Requirements: [docs/PRD.md](docs/PRD.md); each one has an ID such as A-6.4 and a test. How the team
+Requirements: [docs/PRD.md](docs/PRD.md); each one has an ID such as A-6.4, and the tests that
+check one name its ID. How the team
 works, the rules for our AI agents and the build process: [TEAMWORK.md](TEAMWORK.md).
