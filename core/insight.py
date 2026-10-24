@@ -1294,7 +1294,7 @@ def _wrong_margin(text: str, m: dict, header: dict) -> list[str]:
     margins = {float(abs(s["home"] - s["away"]))}
     if so:
         margins.add(float(abs(so["home"] - so["away"])))
-    _, names = _sides(header)
+    side, names = _sides(header)
     wrong = []
     for hit in re.finditer(rf"\b(?:{names}){MARGIN}", text, re.I):
         # the whole spoken number, then what follows it: "lead one hundred and two to ninety-three"
@@ -1303,8 +1303,15 @@ def _wrong_margin(text: str, m: dict, header: dict) -> list[str]:
             continue
         n, *after = said(text[hit.start(1) : hit.start(1) + 48]) or [None]
         n = 1.0 if n == "one" else n
-        if isinstance(n, float) and not (
-            after and (isinstance(after[0], float) or after[0] in ("to", "one"))  # "lead two, one"
+        if (
+            isinstance(n, float)
+            and not (
+                after
+                and (isinstance(after[0], float) or after[0] in ("to", "one"))  # "lead two, one"
+                # "Lakers lead one twenty-one, Raptors one oh-two" is a score
+                or any(isinstance(w, float) for w in after[1:3])
+                and after[0] in side
+            )
         ):
             if n not in margins:
                 wrong.append(f"{n:g} is not the margin ({min(margins):g})")

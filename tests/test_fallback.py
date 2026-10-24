@@ -69,6 +69,12 @@ def test_numbers_are_said_as_the_check_hears_them():
             "Los Angeles Lakers lead one twenty, one oh-two.",
             "lead by four.",
         ),  # 120-102
+        (
+            "0020500591",
+            22,
+            "Lakers lead one twenty-one, Raptors one oh-two!",
+            "lead by four.",
+        ),  # 121-102
         ("3754092", 26, "Tottenham Hotspur lead two, one.", "lead by two."),  # 2-1
     ],
 )
