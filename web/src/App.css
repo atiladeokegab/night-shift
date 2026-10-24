@@ -93,18 +93,21 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 
 /* Live page (#132): a bounded 16:9 video card, the caption card docked under it and the sport bar above it;
    Lines and Proof in a scrollable sidebar. Only the score bug and the ON AIR pill sit on the picture. */
-.live { min-height: 100svh; }
+.live { min-height: 100svh; --nav-h: 78px; }
+/* The sport and match bar sits in the nav's row (#153), so the picture gets the height. */
+.live .nav { padding-block: 14px; }
+.nav .pickbar { flex: 0 1 auto; min-width: 0; }
 .live-body { display: grid; grid-template-columns: minmax(0, 1fr) var(--side-w); gap: 24px; align-items: start; padding: 0 var(--gut) 24px; }
 /* The column is as tall as the sidebar beside it; the caption card takes the slack so both end together. */
 .live-main { display: flex; flex-direction: column; gap: 12px; align-items: center; min-width: 0; min-height: calc(100svh - var(--nav-h) - 24px); }
 .live-main > .caption { flex: 1 0 auto; }
 /* The card is as wide as the column allows while the nav, the bar, the card, its controls and a two-line
    caption fit the screen's height, so the column ends where the sidebar does; never under 480px on a desktop. */
-.live-main > * { width: min(100%, max(480px, calc((100svh - var(--nav-h) - 300px) * 16 / 9))); }
+.live-main > * { width: min(100%, max(480px, calc((100svh - var(--nav-h) - 200px) * 16 / 9))); }
 .pickbar { display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 16px; flex-wrap: wrap; }
 .pickbar .btn { height: 38px; border-color: transparent; background: none; font-size: .88rem; white-space: nowrap; }
 .pickbar .btn:hover:not(:disabled) { background: rgba(255, 255, 255, .07); border-color: transparent; }
-.pickbar .voice { margin-left: auto; min-width: 0; }
+.pickbar .voice { min-width: 0; }
 .pickbar .voice span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .vcard { position: relative; display: flex; flex-direction: column; border-radius: 20px; overflow: hidden; background: #03050A;
   border: 1px solid var(--line); box-shadow: 0 24px 64px -28px rgba(0, 0, 0, .7); }
@@ -117,6 +120,10 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 #video .still { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .3; }
 /* The score bug and ON AIR pill: small, inside the card's top edge, and the only things on the picture. */
 .bug { position: absolute; top: 10px; left: 10px; right: 10px; z-index: 2; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; pointer-events: none; }
+/* A shade behind the bug, so the video's own title never shows through it (#153). */
+.bug::before { content: ""; position: absolute; z-index: -1; inset: -10px -10px auto; height: 88px; background: linear-gradient(180deg, rgba(3, 5, 10, .82), rgba(3, 5, 10, 0)); }
+.bug button.onair { pointer-events: auto; color: var(--fg); cursor: pointer; }
+.onair .st { display: contents; }
 .bug .scorebar { padding: 7px 12px; gap: 6px 10px; font-size: .9rem; border-radius: 12px; min-width: 0; }
 .bug .score { font-size: 1.1rem; }
 .bug .clock { font-size: .95rem; }
@@ -161,6 +168,9 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .scrub input:disabled { cursor: default; }
 .scrub:has(input:focus-visible) .track { outline: 2px solid var(--amber); outline-offset: 6px; }
 .controls .vol { flex: none; width: 76px; }
+/* No picture to play: no clock or scrubber; the commentary's mute and volume stay (#153). */
+.vcard[data-video="off"] .controls :is(.time, .scrub) { display: none; }
+.vcard[data-video="off"] .controls .ctl:first-child { margin-right: auto; }
 .vcard:fullscreen { border: 0; border-radius: 0; justify-content: center; }
 .vcard:fullscreen .frame { width: min(100%, calc((100svh - 50px) * 16 / 9)); margin: 0 auto; }
 
@@ -190,6 +200,10 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 /* The caption card: the speaker chip and moment tag, then the line; long text wraps, never clipped. */
 .caption { padding: 14px 18px; min-height: 96px; display: grid; align-content: center; }
 .cap-h { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+/* The header's end: a question waiting for its answer, else the match's name. One line, never wrapping. */
+.cap-side { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; color: var(--muted); font: 500 .85rem/1.2 var(--body); }
+.cap-side .cap-q, .cap-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cap-side .cap-q { color: var(--fg); font-style: italic; }
 .chip { font: 600 .65rem/1 var(--body); letter-spacing: .14em; text-transform: uppercase; padding: 5px 8px; border-radius: 6px; color: var(--fg); background: rgba(255, 255, 255, .1); }
 .chip.analyst { color: var(--fix); background: rgba(124, 212, 255, .12); }
 .chip.viewer { color: var(--muted); }
@@ -197,7 +211,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   background: rgba(255, 181, 71, .1); border: 1px solid rgba(255, 181, 71, .28); }
 .caption .tag.fixed { color: var(--fix); background: rgba(124, 212, 255, .1); border-color: rgba(124, 212, 255, .3); }
 .caption p { margin: 0; overflow-wrap: anywhere; }
-.caption .cap-text { font: 600 clamp(1.15rem, 1.7vw, 1.55rem)/1.25 var(--display); letter-spacing: -.01em; text-wrap: pretty; animation: rise .38s var(--ease); }
+.caption .cap-text { font: 600 clamp(1.15rem, 1.1vw + .6rem, 2.1rem)/1.25 var(--display); letter-spacing: -.01em; text-wrap: pretty; animation: rise .38s var(--ease); }
 .caption.fixed .cap-text { color: var(--fix); }
 .caption .cap-asks { color: var(--muted); font-style: italic; font-size: .95rem; }
 .caption .cap-asks + .cap-text { margin-top: 6px; }
@@ -226,6 +240,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .log .when { font: 600 .8rem/1.55 var(--display); color: var(--amber); }
 .log .text { min-width: 0; font-size: .92rem; line-height: 1.45; }
 .log .orig { color: var(--muted); text-decoration: line-through; font-size: .82rem; margin-top: 4px; }
+.log .meta-l .chip { padding: 3px 6px; font-size: .6rem; }
 .log .meta-l { grid-column: 2; display: flex; gap: 8px; align-items: center; font-size: .72rem; color: var(--muted); }
 .log .fixed .text > span:first-child { color: var(--fix); }
 .log .late .text > span:first-child { color: var(--muted); text-decoration: line-through; }
@@ -304,6 +319,13 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .switch[aria-checked="true"]::after { transform: translateX(18px); }
 .toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 30; padding: 12px 18px; border-radius: 999px; font-weight: 500; font-size: .92rem; animation: lift .3s var(--ease); }
 
+/* Below 1200px the bar takes its own row under the wordmark and the links. */
+@media (max-width: 1199px) {
+  .live { --nav-h: 140px; }
+  .live .nav { flex-wrap: wrap; row-gap: 10px; }
+  .nav .pickbar { order: 3; flex: 1 1 100%; }
+  .pickbar .voice { margin-left: auto; }
+}
 /* Below 900px one column: the video card, the caption card, then a tab bar for Lines and Proof. The card
    keeps its picture and controls inside the screen's height, so a phone on its side still sees all of it. */
 @media (max-width: 899px) {
@@ -342,11 +364,14 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   .bug .period, .bug .onair .who, .bug .onair .bars { display: none; }
   .bug .onair { padding: 6px 9px; font-size: .62rem; }
   .pickbar .btn { padding: 0 10px; }
-  /* Four sports: the sport tabs take the bar's first row whole, the back arrow, the voice and next match
-     the second. The tabs still scroll if a fifth sport ever doesn't fit. */
-  .seg { order: -1; flex: 1 1 100%; justify-content: center; min-width: 0; overflow-x: auto; scrollbar-width: none; }
-  .seg button { padding: 0 12px; flex: none; }
-  .pickbar .voice { flex: 1 1 0; margin-left: 0; }
+  /* One row (#153): the back arrow, the sport tabs and an icon-only next match. The ON AIR pill opens the
+     voice sheet, so the bar has no voice button. The tabs scroll if a sport ever doesn't fit. */
+  .pickbar { flex-wrap: nowrap; gap: 2px; }
+  .seg { flex: 1 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+  .seg button { padding: 0 9px; flex: none; }
+  .pickbar .voice { display: none; }
+  .pickbar .next { flex: none; width: 44px; height: 44px; padding: 0; margin-left: auto; font-size: 1.1rem; }
+  .pickbar .next span { display: none; }
   .controls { gap: 4px; padding: 4px 6px; }
   .controls .time { min-width: 0; }
   .controls .vol { display: none; } /* a phone's own buttons set the volume; mute stays */
@@ -362,9 +387,12 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   .pickbar .back span { display: none; }
   .pickbar .voice .pre { display: none; } /* the name alone fits; the button's label keeps "Voice:" */
 }
-/* A phone on its side: the sport bar keeps one row. */
+/* A phone on its side: the picture and its controls fill the screen's height; no nav or bar (#153). */
 @media (orientation: landscape) and (max-height: 500px) {
-  .seg { order: 0; flex: 0 0 auto; }
+  .live .nav { display: none; }
+  .live-body { padding-top: 8px; }
+  .live-main { min-height: 0; }
+  .live-main > * { width: min(100%, calc((100svh - 56px) * 16 / 9)); }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 
