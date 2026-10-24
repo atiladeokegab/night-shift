@@ -1,10 +1,11 @@
 """#130: the analyst's stat lines, and now and then the lead's reply, fill each quiet stretch of a
-video replay, from data up to the moment they follow only, through the same commentator request as
-every line, and cached per match."""
+video replay, from data up to the moment they follow only, through the analyst's own request
+(a line's message, agent/analyst.md, never recorded), and cached per match."""
 
 import asyncio
 import functools
 import uuid
+from collections import Counter
 
 import pytest
 from fastapi.testclient import TestClient
@@ -205,6 +206,27 @@ def test_analyst_and_reply_lines_never_go_through_the_recorded_provider(tmp_path
     assert any("reply" in ln for ln in lines)
     assert stats(recorded) == {False} and stats(unrecorded) == {True}
     assert unrecorded.requests[-1]["messages"][-1]["content"].startswith("Producer correction")
+
+
+def test_a_dropped_analyst_line_hands_its_slot_to_the_next_kind_once(tmp_path):
+    fake, asked = Fake(), []
+
+    def calls(moment, history, drop="player profile"):
+        asked.append((moment["idx"], moment["outcome"])) if moment["type"] == "Stat" else None
+        if moment["outcome"].startswith(drop):
+            return None  # the line filter dropped it
+        return commentator.commentate(moment, history, provider=fake)
+
+    lines, _ = replay(KOBE, Store(tmp_path / "some"), calls=calls)
+    first = [ln["insight"]["kind"] for ln in lines if ln.get("insight", {}).get("n") == 0]
+    assert first and "player profile" not in first
+    assert any(o.startswith("player profile") for _, o in asked)
+    # every line dropped: each stretch spends at most two calls, then falls quiet
+    asked.clear()
+    lines, _ = replay(KOBE, Store(tmp_path / "all"), calls=functools.partial(calls, drop=""))
+    assert not any(gap(ln) for ln in lines)
+    per_stretch = Counter(idx for idx, _ in asked)
+    assert per_stretch and set(per_stretch.values()) == {2}
 
 
 def test_a_second_replay_makes_no_new_insight_calls(tmp_path):

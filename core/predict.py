@@ -227,7 +227,7 @@ def _shots_profile(pack: dict, so_far: list[dict], name: str) -> str:
     chance = (
         "Chance a shot goes in (xG-based)"
         if football
-        else "Chance the next attempt goes in, before tonight and tonight combined"
+        else "Chance the next shot goes in (season and tonight blended)"
     )
     lines.append(f"{tonight}. {chance}: {_pct(_rate(pack, p, mine))}.")
     return "\n".join(lines)

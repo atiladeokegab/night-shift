@@ -207,7 +207,8 @@ class Gaps:
         self, past: list[dict], n: int, video_t: float, commentate, before: str | None = None
     ) -> tuple[dict, dict] | None:
         """The n-th line in the quiet stretch after past[-1]: the moment it is said over and its
-        stored Line, the cached one, else one new commentate call. None ends the stretch. The
+        stored Line, the cached one, else a new commentate call (an analyst line that comes back
+        empty hands the slot to the next kind, once). None ends the stretch. The
         analyst speaks the insights and hears the line before it (`before`); now and then the
         lead replies to the analyst."""
         m = past[-1]
@@ -227,20 +228,27 @@ class Gaps:
             if not picked:
                 return None
             said_as = {"kind": picked[0], "detail": picked[1], "heard": heard, "v": VERSION}
-        stat = stat_moment(m, said_as, reply)
         if ln is None:
-            self.calls += 1
-            # the same seam as every line: only moments up to the one followed reach the model
-            said = commentate(stat, list(past))
-            if not said or not said.get("text"):
-                return None
+            for retry in (False, True):
+                self.calls += 1
+                # the same seam as every line: only moments up to the one followed reach the model
+                said = commentate(stat_moment(m, said_as, reply), list(past))
+                if said and said.get("text"):
+                    break
+                if reply or retry or self.calls >= MAX_CALLS:
+                    return None
+                self.used.add(said_as["detail"])  # dropped: the next kind gets this slot, once
+                picked = self.next_stat(past)
+                if not picked:
+                    return None
+                said_as = {**said_as, "kind": picked[0], "detail": picked[1]}
             key = {"match_id": self.match_id, "after_idx": m["idx"], "n": n}
             ln = self.store.append(
                 "lines", {**said, "video_t": video_t, "speaker": speaker, role: {**key, **said_as}}
             )
         if not reply:
             self.used.add(said_as["detail"])
-        return stat, ln
+        return stat_moment(m, said_as, reply), ln
 
 
 def stat_moment(m: dict, said_as: dict, reply: bool) -> dict:
