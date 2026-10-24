@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { getReview, getStats } from '../api'
 import type { Adapter, Autonomy, SpeakerStats, Stats } from '../types'
 import { SideBySide } from './SideBySide'
-import { adapterGood, adapterRows, autonomyRows } from '../proof'
+import { adapterGood, adapterRows, autonomyRows, TRAINING_LABEL } from '../proof'
 
 interface Props {
   live: Stats | null // the latest `stats` event from the replay, newer than the first GET /stats
@@ -43,7 +43,7 @@ export function ProofPanel({ live, matchId }: Props) {
           {groups.map(([name, s]) => <Speaker key={name} name={name} s={s} />)}
           {/* own heading so the fix counts don't read as the analyst's */}
           <div className="wide">
-            <dt className="label">Training</dt>
+            <dt className="label">{TRAINING_LABEL}</dt>
             <dd>Your fixes that passed the check, recorded in Mubit as training data</dd>
           </div>
           <Figure label="Fixes" value={String(stats.fixes_recorded ?? 0)} />
