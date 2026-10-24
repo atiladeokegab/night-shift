@@ -832,7 +832,9 @@ def test_the_name_note_and_length_reminder_reach_the_user_message_only(tmp_path)
     assert all(insight.MIN_WORDS <= length(q) <= insight.COMEBACK_WORDS for q in lead)
     assert {length(q) for q in analyst} > {insight.ANALYST_WORDS}  # some had less room
     assert {angle(q) for q in analyst} <= {None, *insight.ANGLES.values()}  # None: the ball
-    assert len({angle(q) for q in analyst} - {None}) >= 3 and not any(map(angle, lead))
+    assert len({angle(q) for q in analyst} - {None}) >= 2 and not any(
+        map(angle, lead)
+    )  # a stretch stays on a player (#378)
 
 
 @pytest.mark.parametrize(
@@ -860,27 +862,41 @@ def test_a_long_line_is_cut_at_its_last_full_sentence_that_fits(text, said):
     assert insight.cut(text) == said
 
 
-def test_a_quiet_stretch_talks_about_one_player_then_the_next_stretch_another(tmp_path):
-    # #378: the pair take turns on one player, one fact each; the next stretch picks someone new
+def test_a_quiet_stretch_stays_on_one_player_while_facts_last_then_never_moves(tmp_path):
+    # #378: the pair take turns on one player; when his facts run out the rest of the stretch
+    # rotates, it does not move on to another player; the next stretch picks someone new
     moments = load_moments("3869685")
     gaps = insight.Gaps("3869685", Store(tmp_path))
-    pack = gaps.pack(moments[0])
-    names = sorted(pack["players"], key=len, reverse=True)  # "Ab Cd" before "Ab"
 
-    def who(detail):
-        return next(n for n in names if detail.startswith(n + " "))
-
-    def stretch(turns=2):
+    def stretch(turns):
         got = []
         for i in range(turns):
             kind, detail = gaps.next_stat(moments[:5], first=i == 0)
             gaps.used.add(detail)
-            got.append((kind, who(detail)))
+            got.append((kind, detail, gaps.focus))
         return got
 
-    one = stretch()
-    assert {k for k, _ in one} == {"player profile"} and len({n for _, n in one}) == 1
-    assert stretch()[0][1] != one[0][1]
+    one = stretch(6)
+    focus = one[0][2]
+    assert focus and sum(focus in d for _, d, _ in one) >= 3  # more than one or two stats
+    assert {f for _, _, f in one} <= {focus, ""}  # never another player
+    assert stretch(2)[0][2] not in (focus, None)
+
+
+def test_a_model_outage_ends_a_stat_line_not_the_replay(tmp_path):
+    moments = load_moments("3869685")
+    gaps = insight.Gaps("3869685", Store(tmp_path))
+
+    def down(moment, history):
+        raise RuntimeError("503")
+
+    # the analyst's turn falls back to the fact itself, within the room, and passes the check
+    stat, got = gaps.line(moments[:5], 2, 100.0, down, "Jim said it", [], 200.0)
+    assert got["fallback"] and got["text"] == got["text"].strip()
+    assert got["text"] and not gaps.wrong(got["text"], stat, moments[:5])
+    assert len(got["text"].split()) <= insight.room(100.0, 200.0)
+    # the lead's comeback has no fact to read: it stays quiet
+    assert gaps.line(moments[:5], 1, 100.0, down, "Julian said it", [], 200.0) is None
 
 
 def test_a_players_conversation_holds_no_fact_from_after_the_moment_it_follows(tmp_path):
