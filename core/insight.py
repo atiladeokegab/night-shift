@@ -1126,7 +1126,7 @@ def wrong_answer(answer: dict, question: str, past: list[dict], lines: list[dict
 NOT_SCORED = re.compile(
     r"\b(?:hasn't|has not|hadn't|had not|yet to|still to|not|never|no)\s+"
     r"(?:(?!only\b)\w+\s+){0,2}?(?:scor\w*|goals?|netted|found the net)\b"
-    r"(?!\s+(?:again|from open play|(?:for\s+\w+(?:\s+\w+)?\s+)?(?:yet\s+)?(?:since"
+    r"(?!\s+(?:again|from open play|(?:yet\s+)?(?:for\s+\w+(?:\s+\w+){0,2}\s+)?(?:yet\s+)?(?:since"
     r"|in\s+(?:the\s+)?(?:extra[- ]time|(?:first|second) half|(?:penalty )?shootout)))\b)",
     re.I,
 )
@@ -1149,11 +1149,12 @@ def _named_before(named: list[tuple[int, str]], at: int) -> str | None:
     return next((name for start, name in reversed(named) if start < at), None)
 
 
-def wrong_claims(text: str, past: list[dict]) -> list[str]:
+def wrong_claims(text: str, past: list[dict], question: str = "") -> list[str]:
     """What a football answer says that the numbers check can't see: a player's goals so far, each
-    claim tied to the player named last before it, and that the match is now in a half it hasn't
-    reached ("we're deep in the second half of extra time" at 105:41; never "in the second half
-    they need to come out stronger")."""
+    claim tied to the player named last before it ("he" to the last named in the answer, else in
+    the question), and that the match is now in a half it hasn't reached ("we're deep in the
+    second half of extra time" at 105:41; never "in the second half they need to come out
+    stronger")."""
     from agent.commentator import goals_so_far
 
     m = past[-1]
@@ -1168,19 +1169,48 @@ def wrong_claims(text: str, past: list[dict]) -> list[str]:
     names = {n for p in past for n in (p.get("players") or {}).values() if isinstance(n, str)}
     surnames = Counter(n.split()[-1] for n in names)
     said = {n: n if surnames[n.split()[-1]] > 1 else n.split()[-1] for n in names}  # two Martínez
-    for clause in re.split(r"(?<=[.!?;])\s+", text):  # a clause each: "Messi; Mbappé's brace"
-        named = sorted(
+
+    def named_in(words: str, any_case: bool = False) -> list[tuple[int, str]]:
+        """Full names in any case; in answer prose a surname only as the data spells it, so "his
+        shot rose" is never Danny Rose. A question ("how did messi score?") matches any case."""
+        return sorted(
             (hit.start(), name)
             for name in names
-            for hit in re.finditer(rf"\b{re.escape(said[name])}\b", clause)
+            for hit in re.finditer(
+                rf"\b(?:(?i:{re.escape(name)})|{re.escape(said[name])})\b",
+                words,
+                re.I if any_case else 0,
+            )
         )
 
+    everyone, asked, offset = named_in(text), named_in(question, any_case=True), 0
+    for clause in re.split(r"(?<=[.!?;])\s+", text):  # a clause each: "Messi; Mbappé's brace"
+        offset = text.index(clause, offset)
+        named = named_in(clause)
+
         for hit in NOT_SCORED.finditer(clause):
-            # "No goal for Messi yet": with no one named before it, the player it is "for"
-            after = re.match(r"\s+for\s+", clause[hit.end() :])
-            at = hit.end() + after.end() if after else -1
-            for_whom = next((name for start, name in named if start == at), None)
-            if (name := _named_before(named, hit.start()) or for_whom) and goals[name]:
+            # "no goal (yet) for Lionel Messi" is Messi's, even after "Lautaro is searching, but";
+            # "no goal for France (while Messi...)" is nobody's
+            after = re.match(r"\s+(?:yet\s+)?for\s+", clause[hit.end() :])
+            rest = clause[hit.end() + after.end() :] if after else ""
+            for_whom = next(
+                (
+                    n
+                    for n in names
+                    if re.match(rf"(?:{re.escape(n)}|{re.escape(said[n])})\b", rest, re.I)
+                ),
+                None,
+            )
+            # "He hasn't scored": the player named last in the answer, else in the question
+            he = re.search(
+                r"\b(?:he|she)(?:['’]s)?(?:\s+\w+){0,2}\s*$", clause[: hit.start()], re.I
+            )
+            him = he and (
+                _named_before(everyone, offset + hit.start())
+                or _named_before(asked, len(question) + 1)
+            )
+            name = for_whom if after else _named_before(named, hit.start()) or him
+            if name and goals[name]:
                 wrong.append(f"{name} has scored {goals[name]} so far")
         for hit in NTH.finditer(clause):
             n = NTH_GOAL.get(next(g for g in hit.groups() if g).lower(), 3)
@@ -1203,7 +1233,9 @@ def checked_answer(ask, question: str, past: list[dict], lines: list[dict]) -> d
         answer = ask(question, past, lines, **({"wrong": wrong} if retry else {}))
         if answer is None:
             return None
-        wrong = wrong_answer(answer, question, past, lines) + wrong_claims(answer["text"], past)
+        wrong = wrong_answer(answer, question, past, lines) + wrong_claims(
+            answer["text"], past, question
+        )
         if not wrong:
             return {**answer, "checked": True, **({"retried": True} if retry else {})}
     try:
