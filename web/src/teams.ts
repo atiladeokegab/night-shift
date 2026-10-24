@@ -94,8 +94,8 @@ export const CARD_COPY: Record<string, { title: string; detail: string; result: 
     title: 'Brighton v Bristol City', // the long tail: a league match, not a famous one
     detail: "Women's Super League · 21 Jan 2024",
     result: "Brighton 3–2 Bristol City, Terland's winner in stoppage time",
-    // Not "no description": Brighton's ground has in-stadium receivers; no broadcast or stream was described
-    note: 'No audio description that we could find',
+    // Not "no audio description": Brighton's ground has in-stadium receivers; no broadcast or stream was described
+    note: 'No described broadcast that we could find',
   },
   '1298150': {
     title: 'India v Pakistan',

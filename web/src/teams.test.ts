@@ -80,7 +80,7 @@ test('the whole matches lead, then the WSL match with its quiet note; the famous
   const ids = wallOrder([m('cricket', '1298150', 'v'), m('football', '3869685', 'v'), m('football', '3913122', 'v'),
     m('football', '3754092', 'v'), m('cricket', '1515217'), m('football', '7457')])
   assert.deepEqual(ids.map((x) => x.match_id), ['7457', '1515217', '3913122', '3869685', '3754092', '1298150'])
-  assert.equal(CARD_COPY['3913122'].note, 'No audio description that we could find')
+  assert.equal(CARD_COPY['3913122'].note, 'No described broadcast that we could find')
   assert.equal(coverage(m('football', '7457')), 'Whole match, every key moment')
   assert.equal(coverage(m('football', '3869685', 'v')), 'Highlights, synced to video')
 })

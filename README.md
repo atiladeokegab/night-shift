@@ -125,7 +125,7 @@ Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026. Track: Own
 
 | Feature | Status | Proof in the code |
 |---|---|---|
-| [The seven matches](#the-seven-matches) | Live | [`GET /matches`](https://night-shift-5zvig7nbvq-ew.a.run.app/matches), [`agent/feed.py`](agent/feed.py) |
+| [The nine matches](#the-nine-matches) | Live | [`GET /matches`](https://night-shift-5zvig7nbvq-ew.a.run.app/matches), [`agent/feed.py`](agent/feed.py) |
 | [Two commentators: lead and analyst](#two-commentators-lead-and-analyst) | Live (#130, #142) | [`core/insight.py`](core/insight.py), [`core/replay.py`](core/replay.py) |
 | [Ask, by typing](#ask-by-typing-or-by-voice) | Live | [`POST /replays/{id}/ask`](core/app.py), [`agent/ask.md`](agent/ask.md) |
 | [Ask, by voice](#ask-by-typing-or-by-voice) | Live (#145) | [`web/src/voice.ts`](web/src/voice.ts), [`web/src/components/MicButton.tsx`](web/src/components/MicButton.tsx), [`web/src/voice.test.ts`](web/src/voice.test.ts) |
@@ -138,7 +138,7 @@ Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026. Track: Own
 
 #### The nine matches
 
-<img src="docs/img/wall.png" alt="The home page in a dark theme, at 1440 wide. The amber Touchline. wordmark top left; on the right the links Matches (with a green dot, the current page), Replays, Review and About. Under the eyebrow Touchline: the describer that checks itself, the heading The match nobody described and a short paragraph on what it does. Then the long-tail match as a wide tile across the full row: FOOTBALL · NO DESCRIBED BROADCAST, Brighton v Bristol City, Women's Super League · 21 Jan 2024. Below it, six tiles in three columns and two rows, each with a broadcast still, a Jump to the big moment pill and the link Tap to hear it called: Battle of the Bridge (Chelsea v Tottenham, 2016); Messi v Mbappé (2022 World Cup final); India v Pakistan (T20 World Cup, 2022); Kobe's 81 v Toronto (2006); Jordan's last shot as a Bull (1998 NBA Finals, Game 6); Verstappen, P17 to P1 (2024 São Paulo Grand Prix). Below them, the credits for the match data and the highlights." width="100%">
+<img src="docs/img/wall.png" alt="The home page in a dark theme, at 1440 wide. The amber Touchline. wordmark top left; on the right the links Matches (with a green dot, the current page), Replays, Review and About. Under the eyebrow Touchline: the describer that checks itself, the heading Every match deserves to be described, the line Most matches have no audio description. A blind or low-vision fan following one gets no description, a short paragraph on what it does and what a replay costs. Then nine tiles in three columns and three rows, each with a Jump to the big moment pill and the link Tap to hear it called. First the three long-tail matches: Orlando v North Carolina (NWSL · 24 May 2018) and Netherlands v Nepal (Women's T20 World Cup Qualifier · 22 Jan 2026), each marked No audio description that we could find and Whole match, every key moment, over a drawn stadium; then Brighton v Bristol City (Women's Super League · 21 Jan 2024), marked No described broadcast that we could find and Highlights, synced to video. Then the six famous ones, each over a broadcast still and marked Highlights, synced to video: Battle of the Bridge (Chelsea v Tottenham, 2016); Messi v Mbappé (2022 World Cup final); India v Pakistan (T20 World Cup, 2022); Kobe's 81 v Toronto (2006); Jordan's last shot as a Bull (1998 NBA Finals, Game 6); Verstappen, P17 to P1 (2024 São Paulo Grand Prix). Below them, the credits for the match data and the highlights." width="100%">
 
 Three matches from the long tail and six famous ones, in four sports, each replayed from real event data
 and called by the same commentator with the same prompt. The two whole matches have no video; the
@@ -246,13 +246,13 @@ the same numbers as `GET /stats` (its `by_speaker`) ([`web/src/components/ProofP
 Each criterion weighs the same; one line each, with where to check it.
 
 - **Use of Mubit (a correction becomes a model update):** every call goes through one Mubit task; its recorded lines have trained [6 adapter versions](#real-numbers) so far (none passed yet), and a producer's [fix](#producer-fixes) is stored beside the line as the correction for the next version: 66 corrections recorded for training so far, the team's, from the number-check fix list.
-- **Usefulness (a real recurring task):** a major broadcaster now describes [only some Premier League games (about 109 of 380)](#the-problem), and elsewhere live audio description is voluntary and patchy; Touchline speaks the key moments of [seven real matches in four sports](#the-seven-matches) from their real event data.
+- **Usefulness (a real recurring task):** a major broadcaster now describes [only some Premier League games (about 109 of 380)](#the-problem), and elsewhere live audio description is voluntary and patchy; Touchline speaks the key moments of [nine real matches in four sports](#the-nine-matches) from their real event data.
 - **Technical execution:** a line in [546 ms to its first word](#real-numbers) (median), gated on the video's clock, an offline test suite (`make check`) and a live smoke test on every deploy; [architecture](docs/ARCHITECTURE.md) and [known limitations](#known-limitations).
 - **Demo:** about 2:45 on the live URL, opening on the WSL match nobody described, scripted in [docs/demo.md](docs/demo.md); the [60-second path](#the-60-second-path) above is the short version.
 
 ## The product: where this goes
 
-> **Vision, not what's built.** This weekend's build is the seven replays above. This is the full product.
+> **Vision, not what's built.** This weekend's build is the nine replays above. This is the full product.
 
 - **Every streamed match, described aloud.** Leagues, clubs, rights holders and streaming platforms
   switch it on for the long tail of matches they stream with no describer, in any language or voice:
