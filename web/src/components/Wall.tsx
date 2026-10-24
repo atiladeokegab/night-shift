@@ -48,19 +48,24 @@ export function Wall({ matches, error, onRetry, onOpen, onJump, onGo }: Props) {
       <Nav current="wall" onGo={onGo} />
       <main className="wrap">
         <p className="eyebrow">Touchline: the describer that checks itself</p>
-        <h1>The match nobody described</h1>
+        <h1>Every match deserves to be described.</h1>
+        {/* #246: the pitch the film makes, audio description for blind and low-vision fans */}
+        <p className="status-line" style={{ maxWidth: '65ch', color: 'var(--fg)', fontSize: '1.15rem' }}>
+          Most matches have no audio description. A blind or low-vision fan following one gets nothing.
+        </p>
         {/* #206's pitch, word for word */}
         <p className="status-line" style={{ maxWidth: '65ch' }}>
           Touchline describes the matches a platform streams with nobody describing them. It checks every number before
           it speaks, fixes what it can itself, sends the rest to a producer, and every fix trains that platform's own
           describer in Mubit. The matches below are replays, as if live.
         </p>
-        {/* #246: who it is for, and what a match costs to describe, measured live (GET /stats, #174) */}
-        <p className="status-line" style={{ maxWidth: '65ch' }}>
-          For a blind or low-vision fan following a match with no described commentary.
-          {typeof perMatch === 'number' &&
-            ` Describing a match from start to finish costs $${perMatch.toFixed(2)} on average, model and voice, over the ${stats?.matches_measured} played so far.`}
-        </p>
+        {/* #246: what a match costs to describe, measured live (GET /stats, #174) */}
+        {typeof perMatch === 'number' && (
+          <p className="status-line" style={{ maxWidth: '65ch' }}>
+            Describing a match from start to finish costs ${perMatch.toFixed(2)} on average, model and voice, over the{' '}
+            {stats?.matches_measured} played so far.
+          </p>
+        )}
         {body}
         {/* --muted: .foot's --faint is 3.77:1 at 13 px, under WCAG AA (#154); App.css is #153's until it merges */}
         <p className="foot" style={{ color: 'var(--muted)' }}>

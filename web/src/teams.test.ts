@@ -89,10 +89,10 @@ test("the home page says #206's name, hook and pitch, and never the claims we ca
   const wall = readFileSync(new URL('./components/Wall.tsx', import.meta.url), 'utf8').replace(/\s+/g, ' ')
   for (const said of [
     'Touchline: the describer that checks itself',
-    'The match nobody described',
+    'Every match deserves to be described.', // #246
+    'Most matches have no audio description. A blind or low-vision fan following one gets nothing.',
     "Touchline describes the matches a platform streams with nobody describing them. It checks every number before it speaks, fixes what it can itself, sends the rest to a producer, and every fix trains that platform's own describer in Mubit.",
     'replays, as if live',
-    'For a blind or low-vision fan following a match with no described commentary.', // #246
   ]) assert.ok(wall.includes(said), said)
   assert.doesNotMatch(wall, /checks every fact|a million matches/i)
 })

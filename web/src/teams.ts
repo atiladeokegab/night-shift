@@ -69,7 +69,7 @@ export function cricketScore(match: Match, moment: Moment | null, moments: Momen
 export const CARD_COPY: Record<string, { title: string; detail: string; result: string; crest?: string; note?: string }> = {
   // The whole matches (#246): no video, so every key moment is called, kick-off to the final whistle
   '7457': {
-    title: 'Orlando Pride v North Carolina Courage',
+    title: 'Orlando v North Carolina',
     detail: 'NWSL · 24 May 2018',
     result: 'Orlando 3–4 North Carolina, the winner an 89th-minute own goal',
     note: 'No described broadcast',
