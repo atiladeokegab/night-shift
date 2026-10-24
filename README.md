@@ -67,8 +67,9 @@ producer fixes. That smaller model is what would make a commentator for every ma
    through the same Mubit task and session.
 5. **Counted at Mubit.** Each line stores the Mubit request id of every call it made, and
    `GET /stats` counts calls from those ids.
-6. **The trained model is measured, not assumed.** The Mubit task holds about 600 requests on the
-   frozen prompt and tools (598 by our logs, over 56 matches and 559 lines), plus 9 correction turns;
+6. **The trained model is measured, not assumed.** The Mubit task holds about 700 requests on the
+   frozen prompt and tools (695 by our logs: 678 line requests and 17 correction turns), from 637
+   lines over 64 matches (28 football, 28 cricket, 4 basketball, 4 F1);
    `/stats` counts the live service's own calls. The adapter has not been trained or tried yet, so it
    has not passed anything; `/stats` reports it as `not_trained`. When it is tried, we compare it with the big model on
    held-out moments. The aim is that it matches the big model at lower cost; we make no claim that it
@@ -103,7 +104,7 @@ not yet measured says so.
 
 | Criterion | Evidence | Measured | Check it |
 |---|---|---|---|
-| Use of Mubit | Every call goes through Mubit's Anthropic endpoint, one session per match, one task for every sport | Live service: 547 lines; 573 Mubit calls, counted by their request ids. The Mubit task: about 600 requests on the frozen prompt (598 by our logs) | `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/stats` (`mubit_requests`) |
+| Use of Mubit | Every call goes through Mubit's Anthropic endpoint, one session per match, one task for every sport | Live service: 547 lines; 573 Mubit calls, counted by their request ids. The Mubit task: about 700 requests on the frozen prompt (695 by our logs) over 64 matches | `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/stats` (`mubit_requests`) |
 | Use of Mubit: a correction becomes a model update | `POST /lines/{line_id}/fix` stores the fix beside the original and sends it through the same task and session | 0 fixes on the live service so far; the first is made in the demo | `fixes` in `/stats` |
 | Usefulness | Real matches from real event data in four sports, called the way a TV commentator would | 6 demo matches served | `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/matches` |
 | Technical execution | FastAPI server, durable store on Cloud Storage, server-sent event stream, commentary gated on the video player's clock, an offline test suite and a live smoke test on every deploy | Health: ok | `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/health` |
@@ -132,7 +133,7 @@ As of 24 October 2026, 00:17 UTC.
 | Proof panel: latency, cost per line, lines, fixes and the adapter's result (A-7.1) | Live |
 | Producer fix: the server stores it and sends it through Mubit (A-4.1) | Live, with the Fix button on the page |
 | The home page as a wall of all six matches; tap one to watch it called full screen (A-6.5) | Live |
-| Mubit's trained commentator against the big model on held-out moments (R-8) | Not trained or tried yet; about 600 requests on the frozen prompt (598 by our logs) |
+| Mubit's trained commentator against the big model on held-out moments (R-8) | Not trained or tried yet; about 700 requests on the frozen prompt (695 by our logs) |
 
 ## Run it
 
