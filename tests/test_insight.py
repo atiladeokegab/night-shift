@@ -24,14 +24,20 @@ from data.matches import list_matches, load_moments, match_header, video_map
 KOBE, CHELSEA = "0020500591", "3754092"
 
 
+def letters(n: int) -> str:
+    """A word of its own for each n, so no two fake lines nearly repeat each other."""
+    return "".join(chr(97 + int(d)) for d in str(n))
+
+
 class Fake(FakeProvider):
-    """FakeProvider, its read-back cut to 7 words: an insight's Event is the whole stat."""
+    """FakeProvider, its read-back swapped for 7 copies of a word new to each call: an insight's
+    Event reads back the whole stat, and stretch lines that repeat one another are dropped."""
 
     def call(self, request):
         reply = super().call(request)
         for b in reply["content"]:
             if b["type"] == "text":
-                b["text"] = " ".join(b["text"].split()[:7])
+                b["text"] = " ".join([letters(len(self.requests))] * 7)
         return reply
 
 
@@ -62,7 +68,7 @@ class Sized:
 
     def __call__(self, moment, history):
         self.stats += moment["type"] == "Stat"
-        said = f"{moment['type']} {moment['idx']} " + "word " * 12
+        said = f"{moment['type']} {moment['idx']} " + f"{letters(self.stats)} " * 12
         return {"line_id": uuid.uuid4().hex, "moment_idx": moment["idx"], "text": said.strip()}
 
 
@@ -298,6 +304,48 @@ def test_a_dropped_analyst_line_hands_its_slot_to_the_next_kind_once(tmp_path):
     assert not any(gap(ln) for ln in lines)
     per_stretch = Counter(idx for idx, _ in asked)
     assert per_stretch and set(per_stretch.values()) == {2}
+
+
+GOAL = "GOAL! Cole Palmer slots it home, and Chelsea lead 1-0!"
+
+
+def test_the_analyst_never_restates_the_leads_call(tmp_path):
+    fake, opened = Fake(), set()
+
+    def calls(moment, history):
+        if moment["type"] != "Stat":
+            return {"line_id": uuid.uuid4().hex, "moment_idx": moment["idx"], "text": GOAL}
+        if moment["idx"] not in opened:  # each stretch opens on the real repeat shape
+            opened.add(moment["idx"])
+            return {
+                "line_id": uuid.uuid4().hex,
+                "moment_idx": moment["idx"],
+                "text": "Palmer scores, and Chelsea lead 1-0.",
+            }
+        return commentator.commentate(moment, history, provider=fake)
+
+    store = Store(tmp_path)
+    lines, _ = replay(CHELSEA, store, calls=calls)
+    assert opened and all(ln["text"] != "Palmer scores, and Chelsea lead 1-0." for ln in lines)
+    assert [ln["text"] for ln in store.all("lines")] == [ln["text"] for ln in lines]
+    assert sum(ln["text"] == GOAL for ln in lines) == len(video_map(CHELSEA)["moments"])
+    assert any("insight" in ln for ln in lines)  # the next kind took the slot
+
+
+@pytest.mark.parametrize(
+    ("line", "repeat"),
+    [
+        ("Palmer scores, and Chelsea lead 1-0.", True),
+        ("Palmer finds the net, Chelsea 1-0 up.", True),
+        (GOAL, True),
+        ("Cole Palmer this season before tonight: 5 goals from 20 shots.", False),
+        ("Chance Palmer scores the next Chelsea goal: 18%.", False),
+        ("Chelsea tonight: 4 shots, 2 on target.", False),
+    ],
+)
+def test_a_line_repeats_the_call_unless_it_adds_a_fact(line, repeat):
+    assert insight.repeats(line, [GOAL]) is repeat
+    assert not insight.repeats(line, [GOAL, "a", "b", "c"])  # only the last 3 lines count
 
 
 def test_a_second_replay_makes_no_new_insight_calls(tmp_path):

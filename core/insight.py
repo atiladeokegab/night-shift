@@ -4,6 +4,7 @@ moments up to the one it follows and the pre-match pack, and it goes through the
 call as any line, so the Mubit task stays one task. Insight lines are kept in the store and reused
 by later replays of the same match."""
 
+import re
 from collections import Counter
 
 from agent.packs import phase
@@ -298,13 +299,19 @@ class Gaps:
         return None
 
     def line(
-        self, past: list[dict], n: int, video_t: float, commentate, before: str | None = None
+        self,
+        past: list[dict],
+        n: int,
+        video_t: float,
+        commentate,
+        before: str | None = None,
+        recent: list[str] = (),
     ) -> tuple[dict, dict] | None:
         """The n-th line in the quiet stretch after past[-1]: the moment it is said over and its
         stored Line, the cached one, else a new commentate call (an analyst line that comes back
         empty hands the slot to the next kind, once). None ends the stretch. The
         analyst speaks the insights and hears the line before it (`before`); now and then the
-        lead replies to the analyst."""
+        lead replies to the analyst. A line that repeats one of the `recent` ones is never said."""
         m = past[-1]
         reply = n % REPLY_EVERY == REPLY_EVERY - 1
         role, speaker = ("reply", "lead") if reply else ("insight", "analyst")
@@ -312,6 +319,8 @@ class Gaps:
         if ln is not None and role in ln:
             said_as = ln[role]
             if not reply and said_as["detail"] in self.used:  # another replay's: never said twice
+                return None
+            if repeats(ln.get("text") or "", list(recent)):
                 return None
         elif self.calls >= MAX_CALLS:
             return None
@@ -327,7 +336,7 @@ class Gaps:
                 self.calls += 1
                 # the same seam as every line: only moments up to the one followed reach the model
                 said = commentate(stat_moment(m, said_as, reply), list(past))
-                if said and said.get("text"):
+                if said and said.get("text") and not repeats(said["text"], list(recent)):
                     break
                 if reply or retry or self.calls >= MAX_CALLS:
                     return None
@@ -343,6 +352,57 @@ class Gaps:
         if not reply:
             self.used.add(said_as["detail"])
         return stat_moment(m, said_as, reply), ln
+
+
+RECENT_LINES = 3  # a line is checked against this many before it in the replay
+SAME = 0.6  # token Jaccard at or above which two lines say the same thing
+# one canonical word per event, so "GOAL! Palmer" and "Palmer scores" share it
+EVENT = {
+    **dict.fromkeys(
+        ("goal", "scores", "scored", "score", "net", "nets", "converts", "finish", "strikes"),
+        "goal",
+    ),
+    **dict.fromkeys(("wicket", "bowled", "caught", "lbw", "stumped"), "wicket"),
+    **dict.fromkeys(("six", "sixes"), "six"),
+    **dict.fromkeys(("dunk", "slam"), "dunk"),
+    **dict.fromkeys(("overtakes", "overtake", "passes"), "overtake"),
+}
+STOP = set(
+    "a an the and or but of to in on at for from with by is are was were be been it its it's "
+    "that this these those he she they his her their them there here as so now just still "
+    "what who has have had do does did not no yes up down off out over into than then".split()
+)
+
+
+def _words(text: str) -> list[tuple[str, bool]]:
+    """Content words, lowercased, events made canonical, each with whether it was capitalised."""
+    out = []
+    for w in re.findall(r"[A-Za-zÀ-ɏ'’]+|\d+", text):
+        low = w.lower().strip("'’")
+        if low and low not in STOP:
+            out.append((EVENT.get(low, low), w[0].isupper() and low not in EVENT))
+    return out
+
+
+def repeats(text: str, recent: list[str]) -> bool:
+    """True when the line nearly repeats one of the recent lines: most of its words, or the same
+    name and event with no new number (the analyst's "Palmer scores" after the lead's "GOAL!
+    Palmer"). A stat that adds a number is a new fact, so it stays."""
+    words = _words(text)
+    toks = {w for w, _ in words}
+    names = {w for w, cap in words if cap and not w.isdigit()}
+    events = toks & set(EVENT.values())
+    for prev in recent[-RECENT_LINES:]:
+        before = _words(prev)
+        ptoks = {w for w, _ in before}
+        if toks and len(toks & ptoks) / len(toks | ptoks) >= SAME:
+            return True
+        same_event = events & ptoks
+        same_name = names & {w for w, cap in before if cap}
+        new_number = {w for w in toks if w.isdigit()} - ptoks
+        if same_event and same_name and not new_number:
+            return True
+    return False
 
 
 def stat_moment(m: dict, said_as: dict, reply: bool) -> dict:
