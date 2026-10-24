@@ -29,6 +29,7 @@ from eval.linecheck import FIELDS, HELD_OUT, build_request, dumps, example_id, g
 
 SEED = 209
 WORKERS = 8  # calls in flight on --go and --pilot
+CORRECTED = ("score", "player_total", "event")
 
 
 def examples(lines: list[dict]) -> list[dict]:
@@ -93,17 +94,25 @@ def _go_one(ex: dict, provider) -> tuple[str, str]:
     req, want = request(ex), dumps(ex["gold"])
     try:
         said = _text(provider.call(req))
-        matched = said == want
+        got = parse(said)
+        matched = got == ex["gold"]
         corrected = "-"
-        if not matched:
+        # leader alone is never corrected: a scoreline's implied lead is too close to call
+        if got is None or any(got[f] != ex["gold"][f] for f in CORRECTED):
             req["messages"] += [
                 {"role": "assistant", "content": said or "(no reply)"},
                 {"role": "user", "content": CORRECTION.format(text=want)},
             ]
-            corrected = _text(provider.call(req)) == want
+            corrected = parse(_text(provider.call(req))) == ex["gold"]
     except Exception as exc:  # one failed call never stops the batch; the key is never printed
         return "error", f"ERR {ex['id']} {type(exc).__name__}"
-    kind = "matched" if matched else "corrected" if corrected else "uncorrected"
+    kind = (
+        "matched"
+        if matched
+        else "leader_only"
+        if corrected == "-"
+        else ("corrected" if corrected else "uncorrected")
+    )
     return kind, f"REC {ex['id']} matched={matched} corrected={corrected}"
 
 

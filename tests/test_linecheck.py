@@ -118,6 +118,42 @@ def test_gold_after_the_audit(match_id, idx, text, want):
     assert _gold(match_id, idx, text) == want
 
 
+@pytest.mark.parametrize(
+    "match_id, idx, text, lead",
+    [  # the pilot's leader misses: a lead claim with no team, or a team that extends it
+        (
+            "0020500591",
+            9,
+            "BRYANT WITH THE SLAM DUNK! Kobe takes the lead, Lakers 87, Raptors 85!",
+            "ok",
+        ),
+        (
+            "0049700088",
+            32,
+            "Michael Jordan! The go-ahead bucket! Chicago Bulls 87, Utah Jazz 86!",
+            "ok",
+        ),
+        ("0020500591", 19, "Kobe Bryant from the line, and the Lakers extend it to 119-102!", "ok"),
+        (
+            "0020500591",
+            19,
+            "Kobe Bryant from the line, and the Raptors extend it to 119-102!",
+            "wrong",
+        ),
+        (
+            "0020500591",
+            6,
+            "Kobe Bryant from deep, he takes the lead! Lakers 73, Raptors 78!",
+            "wrong",
+        ),
+        ("0049700088", 24, "Ron Harper from fifteen! Seventy-nine all!", "ok"),
+        ("0049700088", 24, "Ron Harper from fifteen, seventy-nine apiece!", "ok"),
+    ],
+)
+def test_gold_reads_take_the_lead_go_ahead_extend_all_apiece(match_id, idx, text, lead):
+    assert _gold(match_id, idx, text)["leader"] == lead
+
+
 def test_gold_never_guesses_a_number_it_cannot_place():
     # 47 is Bryant's total, said without "points": a total or not, code can't tell
     assert _gold("0020500591", 6, "Kobe Bryant from deep, 47 now!") is None
@@ -165,7 +201,7 @@ def test_parse_takes_exactly_one_json_object():
     assert parse(good) == _labels("ok", "wrong", "not_said", "ok")
     assert good == '{"score":"ok","leader":"wrong","player_total":"not_said","event":"ok"}'
     assert parse(f"  {good}\n") is not None
-    assert parse(json.dumps(json.loads(good))) is None  # spaced: not the canonical line
+    assert parse(json.dumps(json.loads(good))) is not None  # whitespace aside, the same line
     reordered = json.dumps(dict(reversed(json.loads(good).items())), separators=(",", ":"))
     assert parse(reordered) is None
     assert parse(f"Here you go: {good}") is None
@@ -241,12 +277,12 @@ def test_the_task_is_pinned():
     change these hashes only with a deliberate edit to agent/linecheck.py."""
     assert (
         hashlib.sha256(linecheck.SYSTEM.encode()).hexdigest()
-        == "d5969bf755d4ef087d8b4804ffed1df2781b8780a04341af33306dd49fa80e22"
+        == "5122b3495bfdf70124ac7a7dffafc7b0a6f1b2e039676f8d337f3a606a4f7a3d"
     )
     req = linecheck.request(linecheck.MESSAGE.template, "M", 0)
     digest = hashlib.sha256(json.dumps(req, sort_keys=True).encode()).hexdigest()
-    assert digest == "0b4e55f6ded3323f8ce68c1e1fd3cd2afd02e093df3dbc51bcdd565fc5e8f651"
-    assert req["temperature"] == 0 and "tools" not in req
+    assert digest == "4385ce91bd2b19d56fb4a7e34ced88ab9f746d64a54e516c9f49e89ac064b982"
+    assert "tools" not in req
 
 
 def test_one_mubit_session_per_moment():
@@ -278,3 +314,28 @@ def test_pilot_reports_gold_and_repeat_agreement(capsys):
     tally = seed_linecheck.pilot(exs, FakeProvider())  # no JSON: never the gold, same each time
     assert tally["agree"] == tally["score"] == 0 and tally["same"] == len(exs)
     assert "agrees with gold 0.0%, same on repeat 100.0%" in capsys.readouterr().out
+
+
+def test_go_never_corrects_on_leader_alone(capsys):
+    exs = seed_linecheck.batch(seed_linecheck.examples(_lines()), 10)
+    ex = next(e for e in exs if e["gold"]["leader"] != "wrong")
+
+    class LeaderOff:  # the gold, but for the leader
+        requests = []
+
+        def call(self, req):
+            self.requests.append(req)
+            return {"content": [{"type": "text", "text": dumps({**ex["gold"], "leader": "wrong"})}]}
+
+    fake = LeaderOff()
+    assert seed_linecheck.go([ex], fake) == {"leader_only": 1}
+    assert len(fake.requests) == 1  # no correction turn
+    assert f"REC {ex['id']} matched=False corrected=-" in capsys.readouterr().out
+
+
+def test_the_request_holds_the_answer_to_the_schema():
+    req = linecheck.request("Line: x", "M", 0)
+    assert "temperature" not in req and req["model"] == "claude-sonnet-5-5"
+    schema = req["output_config"]["format"]["schema"]
+    assert schema["required"] == list(linecheck.FIELDS) and not schema["additionalProperties"]
+    assert all(schema["properties"][f]["enum"] == list(linecheck.LABELS) for f in linecheck.FIELDS)
