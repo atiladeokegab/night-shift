@@ -4,8 +4,8 @@
   "adapter": {
     "name": null,
     "status": "not ready",
-    "adapters": 6,
-    "best_match_pct": 55.8,
+    "adapters": 7,
+    "best_match_pct": 58.3,
     "callable": false,
     "why": "Mubit serves an adapter only in its Try models console, and only once a version passes its tests; the app can't call it by API"
   },

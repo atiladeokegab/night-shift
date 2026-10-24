@@ -3,7 +3,7 @@
  "lines": 288,
  "wrong": 5,
  "rules": {
-  "caught": 1,
+  "caught": 2,
   "false_alarms": 0
  },
  "line_check": {

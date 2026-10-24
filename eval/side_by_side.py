@@ -1,7 +1,7 @@
 """Big model vs ours, side by side, for the proof panel (#141). Held-out matches only.
 
     export MUBIT_API_KEY=...  # the owner's key, which records
-    uv run python -m eval.side_by_side --adapters 6 --best 55.8
+    uv run python -m eval.side_by_side --adapters 7 --best 58.3
 
 The app can't call the adapter: Mubit has no model ID for one ("you can't send a call to an adapter
 by naming it as the model", docs.mubit.ai, Keep your model IDs), and its Try models console runs
