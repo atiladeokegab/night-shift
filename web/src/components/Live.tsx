@@ -207,6 +207,7 @@ export function Live(props: Props) {
       <p className="sr-only" role="status">{replay.phase === 'live' ? `${paused ? 'Paused' : `Playing ${title}`}${covered ? ' · Screen covered' : ''}` : ''}</p>
       <div className="live-body">
         <main className="live-main">
+          <h1 className="sr-only">{title}</h1>
           <section className="vcard" ref={card} aria-label={`${match.title ?? match.match_id} ${gated ? 'highlights' : 'match'}`} data-video={noVideo ? 'off' : undefined}>
             {/* A tap on the picture plays or pauses it; the Play button is the keyboard's way in. */}
             <div className="frame" data-eyes={covered ? 'closed' : undefined} onClick={canPlay ? toggle : undefined}>

@@ -306,3 +306,9 @@ test('a line whose retry passed the number check is tagged Auto-fixed, with its 
   assert.match(li(LATER), /<span class="pill fixed auto" title="[^"]+">Auto-fixed<span class="sr-only">: its first try failed the number check, and the retry passed<\/span><\/span>/)
   assert.ok(!li(EARLY).includes('Auto-fixed'))
 })
+
+test('the live page has one h1, the match title, for screen readers', () => {
+  const html = render()
+  assert.equal(html.match(/<h1[\s>]/g)?.length, 1)
+  assert.match(html, /<h1 class="sr-only">Kobe&#x27;s 81 v Toronto<\/h1>/)
+})
