@@ -203,7 +203,7 @@ class Speaker:
         )
 
     def health(self) -> dict:
-        """Who is speaking the lines: ElevenLabs, or the page's browser speech since its last failure."""
+        """Who speaks the lines: ElevenLabs, or the browser since ElevenLabs last failed."""
         if not os.environ.get("ELEVENLABS_API_KEY"):
             return {"provider": "browser", "last_error": "not_configured", "since": None}
         failing = self.failing or {"last_error": None, "since": None}

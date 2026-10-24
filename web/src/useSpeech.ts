@@ -18,6 +18,7 @@ export function useSpeech() {
   const available = typeof window !== 'undefined' && 'speechSynthesis' in window
   const [on, setOn] = useState(available)
   const [speaking, setSpeaking] = useState(false)
+  const [fellBack, setFellBack] = useState(false) // the last server line was read by browser speech (#306)
   const [volume, setVolumeState] = useState(1)
   const [muted, setMuted] = useState(false)
   const level = useRef(1) // what the next sound plays at
@@ -120,10 +121,14 @@ export function useSpeech() {
       const fallBack = () => {
         if (fell || turn.current !== mine) return
         fell = true
+        setFellBack(true)
         playing.current = null
         speakInBrowser(line.text, lang, sound, mine, done)
       }
-      audio.addEventListener('playing', () => turn.current === mine && setSpeaking(true))
+      audio.addEventListener('playing', () => {
+        setFellBack(false) // ElevenLabs is speaking again
+        if (turn.current === mine) setSpeaking(true)
+      })
       audio.addEventListener('ended', () => {
         if (turn.current !== mine) return
         setSpeaking(false)
@@ -182,5 +187,5 @@ export function useSpeech() {
 
   const airing = useCallback(() => saying.current.filter((s) => s.until > performance.now()).map((s) => s.text), [])
 
-  return { available, on, setOn: toggle, speaking, say, sayAnswer, hush, airing, volume, muted, setVolume }
+  return { available, on, setOn: toggle, speaking, fellBack, say, sayAnswer, hush, airing, volume, muted, setVolume }
 }

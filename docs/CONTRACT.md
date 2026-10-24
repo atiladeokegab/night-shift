@@ -215,6 +215,12 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   - `budget: {daily_budget_usd, spent_today_usd, off_air}` (#244): the cap (null when off), the
     model and voice spend of lines, answers and Line checks created today (UTC), and whether it
     is past the cap.
+  - `voice: {provider: "elevenlabs"|"browser", last_error, since}` (#306, GET /stats only): who
+    speaks the lines. `browser` from ElevenLabs' last failure until it returns audio again, with
+    `last_error` its `detail.status` on a 401 or 429 (e.g. `quota_exceeded`), `timeout`,
+    `network`, or the status, and `since` when the failing began (ISO, UTC). No key:
+    `not_configured`. Kept per process. The page then shows "Voice: browser fallback (ElevenLabs
+    unavailable)" on air and on the Proof card.
   - `linecheck: {checked, flags, rules_missed, fixes_sent}` (#298): live lead lines Line check
     checked (`linechecks` rows), those it flagged a field `wrong` on, the flags on lines the rules
     check passed (every live check is on such a line, so today it equals `flags`), and producer

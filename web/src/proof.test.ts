@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { adapterGood, adapterRows, autonomyRows, checkText, linecheckRow, TRAINING_LABEL } from './proof.ts'
+import { adapterGood, adapterRows, autonomyRows, checkText, FALLBACK_NOTE, linecheckRow, TRAINING_LABEL, voiceRow } from './proof.ts'
 
 const all = { called: 10, first_time: 6, auto_fixed: 2, to_human: 2 }
 const kobe = { called: 6, first_time: 3, auto_fixed: 1, to_human: 2 }
@@ -67,4 +67,13 @@ test("a checked line's chip says all ok or the fields the checker model flags, a
   assert.equal(checkText({ line_id: 'a', labels: null, wrong: [] }), null)
   assert.equal(checkText(undefined), null)
   assert.equal(linecheckRow({ checked: 9, flags: 2, rules_missed: 2, fixes_sent: 1 }), '9 checked · 2 flagged (2 the rules missed) · 1 fixes sent to it')
+})
+
+test("the voice row says when browser speech reads the lines, and why; nothing while ElevenLabs does", () => {
+  const quota = { provider: 'browser' as const, last_error: 'quota_exceeded', since: '2026-10-24T18:02:11+00:00' }
+  assert.equal(voiceRow(quota, false), 'Voice: browser fallback (ElevenLabs unavailable) · quota exceeded since 18:02 UTC')
+  assert.equal(voiceRow({ provider: 'elevenlabs', last_error: null, since: null }, false), null)
+  assert.equal(voiceRow(undefined, false), null)
+  // the page fell back before /stats caught up: the note, without a reason it doesn't know
+  assert.equal(voiceRow({ provider: 'elevenlabs', last_error: null, since: null }, true), FALLBACK_NOTE)
 })

@@ -1,4 +1,4 @@
-import type { Autonomy, LineCheck, LineCheckStats, Stats, TaskAdapter } from './types'
+import type { Autonomy, LineCheck, LineCheckStats, Stats, TaskAdapter, VoiceHealth } from './types'
 
 const NONE: Autonomy = { called: 0, first_time: 0, auto_fixed: 0, to_human: 0 }
 
@@ -16,6 +16,17 @@ export function checkText(c: LineCheck | undefined): string | null {
   if (!c?.labels) return null
   if (!c.wrong.length) return 'Checker model: all ok'
   return `Checker model: ${c.wrong.map((f) => f.replace('_', ' ')).join(', ')} may be wrong`
+}
+
+export const FALLBACK_NOTE = 'Voice: browser fallback (ElevenLabs unavailable)'
+
+// The Proof card's voice row (#306): the server's last ElevenLabs failure, or the page's own fallback;
+// null while ElevenLabs speaks the lines. A browser voice the viewer picked is no fallback.
+export function voiceRow(v: VoiceHealth | undefined, fellBack: boolean): string | null {
+  if (v?.provider !== 'browser' && !fellBack) return null
+  const why = v?.provider === 'browser' && v.last_error ? ` · ${v.last_error.replaceAll('_', ' ')}` : ''
+  const since = v?.provider === 'browser' && v.since ? ` since ${v.since.slice(11, 16)} UTC` : ''
+  return FALLBACK_NOTE + why + since
 }
 
 // The Proof card's Line check row (#298), straight from /stats.

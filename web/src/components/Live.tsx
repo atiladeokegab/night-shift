@@ -17,6 +17,7 @@ import type { Mic } from './MicButton'
 import { Nav, type Screen } from './Nav'
 import { ProfileCard } from './ProfileCard'
 import { ProofPanel } from './ProofPanel'
+import { FALLBACK_NOTE } from '../proof'
 import { ScoreBar } from './ScoreBar'
 import { ShotMap } from './ShotMap'
 import { VideoStage, type VideoState } from './VideoStage'
@@ -29,7 +30,7 @@ interface Props {
   replayKey: number // changes with every started replay, so the video restarts with it
   switching: boolean // started from the sport switch: "Switching to cricket…"
   sports: Sport[] // the sports the server has matches for
-  voice: { status: VoiceStatus; chip: string; speaking: boolean; analyst?: string }
+  voice: { status: VoiceStatus; chip: string; speaking: boolean; analyst?: string; fellBack?: boolean }
   video: VideoState
   onVideo: (state: VideoState) => void
   onClock: (clock: Clock | null) => void
@@ -289,7 +290,7 @@ export function Live(props: Props) {
               answers={replay.answers} interrupted={props.interrupted} onHear={props.onHear} onAsk={moment ? (q) => onAsk(q, moment.idx) : null} shooter={null} onShots={openMap} followed={followed} roster={roster} onUnfollow={() => setFollow(null)} voiced={voiced} mic={props.mic} />
           </div>
           <div className="pane" role="tabpanel" id="pane-proof" aria-labelledby="tab-proof" data-on={tab === 'proof'}>
-            <ProofPanel live={replay.stats} matchId={match.match_id} />
+            <ProofPanel live={replay.stats} matchId={match.match_id} fellBack={voice.fellBack} />
           </div>
           {mapped && (
             <div className="pane" role="tabpanel" id="pane-shots" aria-labelledby="tab-shots" data-on={tab === 'shots'}>
@@ -345,7 +346,7 @@ function OnAir({ voice, label, offAir, onOpen }: { voice: Props['voice']; label:
     )
   } else {
     if (voice.speaking) cls += ' on'
-    body = <><span className="rec" /><span className="lbl">ON AIR</span><span className="bars" aria-hidden><span /><span /><span /><span /></span><span className="who">{label}</span></>
+    body = <><span className="rec" /><span className="lbl">ON AIR</span><span className="bars" aria-hidden><span /><span /><span /><span /></span><span className="who">{voice.fellBack ? FALLBACK_NOTE : label}</span></>
   }
   const status = <span className="st" role={offAir || voice.status === 'on' ? 'status' : undefined}>{body}</span>
   if (!onOpen) return <span className={cls}>{status}</span>
