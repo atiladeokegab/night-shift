@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react'
 import { askCommentator, createReplay, followReplay, getPlayers, getProfile, getShots, type StreamStatus } from './api'
-import { release, replayClock } from './gate'
+import { release, replayClock, speaks } from './gate'
 import type { Answer, Fix, Line, Moment, Stats } from './types'
 
 export interface ReplayState {
@@ -127,7 +127,7 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
   useEffect(() => {
     if (!newest || newest.line_id === spoken.current) return
     spoken.current = newest.line_id
-    if (!state.late.includes(newest.line_id) && !newest.history) {
+    if (speaks(newest, state.late)) {
       spokenAt.current = newest.video_t ?? null
       said.current(newest)
     }
