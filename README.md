@@ -504,9 +504,12 @@ The commentator's tools and the shot map read per-match stats packs ([`data/pack
 - **The Proof card counts the moment lines only.** The analyst's lines and Ask answers are
   number-checked too ([`core/insight.py`](core/insight.py) `Gaps.line`, `checked_answer`), but
   aren't in `/stats`'s called, auto-fixed and sent-to-a-human counts.
-- **Anyone can post a fix.** `POST /lines/{id}/fix` has no sign-in, and until
-  [#240](https://github.com/atiladeokegab/night-shift/pull/240) merges a fix is stored and sent to
-  Mubit without a number check ([`core/app.py`](core/app.py) `fix_line`).
+- **A fix is locked only where `PRODUCER_TOKEN` is set.** With it set, `POST /lines/{id}/fix` needs
+  the header `X-Producer-Token` and answers 401 without it; unset, anyone can post a fix
+  ([#240](https://github.com/atiladeokegab/night-shift/pull/240), [`core/app.py`](core/app.py)
+  `fix_line`). [`scripts/deploy.sh`](scripts/deploy.sh) doesn't set it, so the live service has it
+  only if it was set on the service by hand. Either way, a fix is number-checked against its
+  moment before it is stored, and one that contradicts the data gets a 422 and is never sent to Mubit.
 - **One instance.** The service runs with `--max-instances 1` ([`scripts/deploy.sh`](scripts/deploy.sh)):
   replays and voice clips live in that process's memory
   ([`core/replay.py`](core/replay.py), [`core/voice.py`](core/voice.py)).
@@ -534,8 +537,8 @@ The commentator's tools and the shot map read per-match stats packs ([`data/pack
 
 | What | Count | Runs |
 |---|---|---|
-| Python tests: the number check, replay timing, the store, Mubit and ElevenLabs calls against fakes, the deploy script | 671 | `make check`, offline; and in `make smoke` |
-| Web unit tests: the live page, the Proof card, Fix, Ask, captions | 82 | `npm test` in `web/` |
+| Python tests: the number check, replay timing, the store, Mubit and ElevenLabs calls against fakes, the deploy script | 736 | `make check`, offline; and in `make smoke` |
+| Web unit tests: the live page, the Proof card, Fix, Ask, captions | 83 | `npm test` in `web/` |
 | Offline smoke: every sample match replayed end to end through the real server with a fake model | 7 matches | `make smoke`; in CI on every PR into `integration` ([`.github/workflows/smoke.yml`](.github/workflows/smoke.yml)), which also builds the container and imports the app inside it |
 | Live smoke on the real URL: one replay streams moments and lines, and the service's store grows by the lines it streamed | 1 replay | after every deploy, in [`scripts/deploy.sh`](scripts/deploy.sh) (`BASE_URL=<url> python -m core.smoke`) |
 | Accessibility: no serious axe violation on the home or live page, 44 px targets, a match started and a question asked by keyboard alone | 1 spec | by hand, `npx playwright test` in `web/` (needs a browser) |
