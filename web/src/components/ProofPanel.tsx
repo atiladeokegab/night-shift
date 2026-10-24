@@ -33,7 +33,7 @@ export function ProofPanel({ live, matchId, fellBack = false }: Props) {
   else {
     const empty = stats.lines === 0
     const adapter = stats.adapter
-    const tasks = adapterRows(stats.adapters)
+    const tasks = adapterRows(stats.adapters, stats.scorecheck)
     const voice = voiceRow(live?.voice ?? fetched?.voice, fellBack)
     // the lead's calls (Haiku) and the analyst's stat lines (Sonnet) apart, so neither skews the other
     const groups: [string, SpeakerStats][] = stats.by_speaker

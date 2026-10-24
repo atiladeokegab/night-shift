@@ -25,7 +25,7 @@ test("one row per Mubit task, saying only what its latest record says", () => {
     line_check: { ...record, version: 1, score: 82, passed: true },
     where_are_we: { ...record, state: 'collecting', kept: 0 },
   })
-  assert.deepEqual(rows, ['Commentary: not recorded', 'Where are we?: collecting, 0 kept', 'Line check: v1, 82%, Passed'])
+  assert.deepEqual(rows, ['Commentary: not recorded', 'Where are we?: collecting, 0 kept', 'Line check: v1, 82%, Passed', 'Score check: not recorded'])
 })
 
 test("a failed gate in the console's words; a ready version with no verdict never reads as passed", () => {
@@ -87,4 +87,22 @@ test("today's fix examples on the Proof row, and a fixed line's example in words
   assert.equal(exampleText({ ...ex, kind: 'error', mubit_request_id: null }), 'Line check example not sent')
   assert.equal(exampleText(null), null)
   for (const ex2 of [ex, { ...ex, kind: 'matched' as const }]) assert.doesNotMatch(exampleText(ex2)!, /updated|serves|trained/)
+})
+
+test("Score check's row keeps its earlier version, where it was read, and its examples and held-out scores (#321)", () => {
+  const v1 = { version: 1, version_id: 'ad_1', score: 88.5, target: 95, passed: false, recorded_at: null, source: null }
+  const v2 = { ...v1, version: 2, version_id: 'ad_2', score: 96, passed: true }
+  const sc = { ...record, version: 2, version_id: 'ad_2', score: 96, target: 95, passed: true, state: 'passed' as const, source: 'Mubit console', versions: [v1, v2] }
+  const rows = adapterRows({ score_check: sc }, {
+    seeded: 150,
+    from_fixes: 2,
+    from_fixes_by_kind: { corrected: 2 },
+    held_out: [{ what: 'Claude Sonnet 5.5 via API', agree: 70, scored: 74, unparsed: 0, recorded_at: null }],
+  })
+  assert.deepEqual(rows.slice(3), [
+    'Score check: v2 (ad_2), 96%, Passed · before: v1, 88.5%, below 95% target · Mubit console, 2026-10-24 16:00 UTC',
+    'Score check examples sent: 150 seeded, 2 from fixes (2 corrected)',
+    'Score check held-out (lines never sent): Claude Sonnet 5.5 via API, 70 of 74 match the data',
+  ])
+  for (const row of rows) assert.doesNotMatch(row, /serves|learns live|updated/)
 })

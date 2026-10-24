@@ -107,6 +107,15 @@ export interface Stats {
   autonomy?: Autonomy
   autonomy_by_match?: Record<string, Autonomy>
   linecheck?: LineCheckStats // #298
+  scorecheck?: ScoreCheckStats // #321
+}
+
+// #321: Score check's examples sent to Mubit, and each model's latest score on its frozen held-out lines
+export interface ScoreCheckStats {
+  seeded: number
+  from_fixes: number
+  from_fixes_by_kind: Record<string, number>
+  held_out: { what: string; agree: number; scored: number; unparsed: number; recorded_at: string | null }[]
 }
 
 // #298: Line check's second opinion on live lead lines; every flag is on a line the rules check passed
@@ -191,6 +200,19 @@ export interface TaskAdapter {
   passed: boolean | null // Mubit's gate: Passed or Failed
   kept: number | null // Mubit's kept examples from the console, never requests sent
   recorded_at: string | null
+  version_id?: string | null // #321: the version's ID as the console shows it
+  source?: string | null // #321: where the record was read, e.g. "Mubit console"
+  versions?: TaskVersion[] // #321: every version recorded, oldest first
+}
+
+export interface TaskVersion {
+  version: number
+  version_id: string | null
+  score: number | null
+  target: number | null
+  passed: boolean | null
+  recorded_at: string | null
+  source: string | null
 }
 
 // POST /lines/{line_id}/fix's answer and the `fixed` SSE event (CONTRACT.md).
