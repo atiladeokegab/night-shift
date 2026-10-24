@@ -51,7 +51,7 @@ export function Wall({ matches, error, onRetry, onOpen, onJump, onGo }: Props) {
         <h1>Every match deserves to be described.</h1>
         {/* #246: the pitch the film makes, audio description for blind and low-vision fans */}
         <p className="status-line" style={{ maxWidth: '65ch', color: 'var(--fg)', fontSize: '1.15rem' }}>
-          Most matches have no audio description. A blind or low-vision fan following one gets nothing.
+          Most matches have no audio description. A blind or low-vision fan following one gets no description.
         </p>
         {/* #206's pitch, word for word */}
         <p className="status-line" style={{ maxWidth: '65ch' }}>
@@ -62,8 +62,8 @@ export function Wall({ matches, error, onRetry, onOpen, onJump, onGo }: Props) {
         {/* #246: what a match costs to describe, measured live (GET /stats, #174) */}
         {typeof perMatch === 'number' && (
           <p className="status-line" style={{ maxWidth: '65ch' }}>
-            Describing a match from start to finish costs ${perMatch.toFixed(2)} on average, model and voice, over the{' '}
-            {stats?.matches_measured} played so far.
+            A full replay, mostly highlights, costs ${perMatch.toFixed(2)} on average. A whole match calls every moment, so it
+            costs more.
           </p>
         )}
         {body}

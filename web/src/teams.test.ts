@@ -80,7 +80,7 @@ test('the whole matches lead, then the WSL match with its quiet note; the famous
   const ids = wallOrder([m('cricket', '1298150', 'v'), m('football', '3869685', 'v'), m('football', '3913122', 'v'),
     m('football', '3754092', 'v'), m('cricket', '1515217'), m('football', '7457')])
   assert.deepEqual(ids.map((x) => x.match_id), ['7457', '1515217', '3913122', '3869685', '3754092', '1298150'])
-  assert.equal(CARD_COPY['3913122'].note, 'No described broadcast')
+  assert.equal(CARD_COPY['3913122'].note, 'No audio description that we could find')
   assert.equal(coverage(m('football', '7457')), 'Whole match, every key moment')
   assert.equal(coverage(m('football', '3869685', 'v')), 'Highlights, synced to video')
 })
@@ -90,9 +90,10 @@ test("the home page says #206's name, hook and pitch, and never the claims we ca
   for (const said of [
     'Touchline: the describer that checks itself',
     'Every match deserves to be described.', // #246
-    'Most matches have no audio description. A blind or low-vision fan following one gets nothing.',
+    'Most matches have no audio description. A blind or low-vision fan following one gets no description.',
     "Touchline describes the matches a platform streams with nobody describing them. It checks every number before it speaks, fixes what it can itself, sends the rest to a producer, and every fix trains that platform's own describer in Mubit.",
     'replays, as if live',
+    'A full replay, mostly highlights, costs', // #257 review: never price a highlights replay as a whole match
   ]) assert.ok(wall.includes(said), said)
   assert.doesNotMatch(wall, /checks every fact|a million matches/i)
 })

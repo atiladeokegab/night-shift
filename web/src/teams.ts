@@ -72,13 +72,13 @@ export const CARD_COPY: Record<string, { title: string; detail: string; result: 
     title: 'Orlando v North Carolina',
     detail: 'NWSL · 24 May 2018',
     result: 'Orlando 3–4 North Carolina, the winner an 89th-minute own goal',
-    note: 'No described broadcast',
+    note: 'No audio description that we could find',
   },
   '1515217': {
     title: 'Netherlands v Nepal',
     detail: "Women's T20 World Cup Qualifier · 22 Jan 2026",
     result: 'Netherlands won by 2 runs; Nepal needed 13 off the last over',
-    note: 'No described broadcast',
+    note: 'No audio description that we could find',
   },
   '3869685': {
     title: 'Messi v Mbappé',
@@ -95,7 +95,7 @@ export const CARD_COPY: Record<string, { title: string; detail: string; result: 
     detail: "Women's Super League · 21 Jan 2024",
     result: "Brighton 3–2 Bristol City, Terland's winner in stoppage time",
     // Not "no description": Brighton's ground has in-stadium receivers; no broadcast or stream was described
-    note: 'No described broadcast',
+    note: 'No audio description that we could find',
   },
   '1298150': {
     title: 'India v Pakistan',
