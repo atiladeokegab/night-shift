@@ -5,6 +5,7 @@ label is never sent. Lines of the held-out matches (3913122, 9636) never go: the
     uv run python -m eval.seed_scorecheck --dry                  # FakeProvider, no network
     uv run python -m eval.seed_scorecheck --pilot 50             # two unkept calls each
     uv run python -m eval.seed_scorecheck --go 150               # recorded; skips any already sent
+    uv run python -m eval.seed_scorecheck --fixes                # every stored fix, recorded
     uv run python -m eval.seed_scorecheck --held-out > eval/scorecheck_heldout.jsonl  # froze it
     uv run python -m eval.seed_scorecheck --claude out.jsonl     # Claude on held-out, unrecorded
     uv run python -m eval.seed_scorecheck --score out.jsonl --record "Claude Sonnet 5.5, API"
@@ -121,6 +122,30 @@ def go(exs: list[dict], provider, store, source: str = "seed", workers: int = WO
     return tally
 
 
+def send_fix(store, line: dict, corrected: str, teach) -> list[dict]:
+    """A producer's fix as Score check examples: the line as said and the fixed text, each labelled
+    from the data by `teach` (agent/scorecheck.py), each sent once ever; the rows written."""
+    rows = []
+    for said in (line, {**line, "tried": None, "text": corrected}):
+        sent = teach(said, {r["id"] for r in store.all("scorecheck_examples")})
+        if sent and sent["kind"] != "error":
+            at = datetime.now(UTC).isoformat(timespec="seconds")
+            row = {**sent, "line_id": line["line_id"], "source": "fix", "created_at": at}
+            store.append("scorecheck_examples", row)
+            rows.append(row)
+    return rows
+
+
+def fixes(store, teach) -> Counter:
+    """Every stored fix through send_fix: the ones made before a fix reached Score check."""
+    lines = {ln["line_id"]: ln for ln in store.all("lines")}
+    tally = Counter()
+    for f in store.all("fixes"):
+        if line := lines.get(f["line_id"]):
+            tally.update(r["kind"] for r in send_fix(store, line, f["corrected_text"], teach))
+    return tally
+
+
 def pilot(exs: list[dict], provider, workers: int = WORKERS) -> Counter:
     """Two calls per example: does Claude give the gold, and the same answer again?"""
 
@@ -195,10 +220,17 @@ def main(argv=None, env=os.environ) -> int:
     mode.add_argument("--held-out", action="store_true", help="print the held-out set as jsonl")
     mode.add_argument("--claude", metavar="OUT.jsonl", help="Claude on held-out, unrecorded")
     mode.add_argument("--score", metavar="OUTPUTS.jsonl", help='{"id", "output"} per line')
+    mode.add_argument("--fixes", action="store_true", help="every stored fix, recorded as live")
     p.add_argument("--record", metavar="WHAT", help="with --score: keep it for /stats, named")
     p.add_argument("--lines", help="a lines.jsonl copy, instead of the store")
     a = p.parse_args(argv)
     store = open_store(env)
+    if a.fixes:  # the live fix's recorder: the owner's key, else the lines' when it records
+        from agent.scorecheck import teach
+
+        tally = fixes(store, teach)
+        print("tally: " + ", ".join(f"{k} {v}" for k, v in sorted(tally.items())))
+        return 0
     if a.claude or a.score:  # the frozen set, so every model is scored on the same lines
         with open(HELD, encoding="utf-8") as f:
             exs = [json.loads(x) for x in f if x.strip()]
