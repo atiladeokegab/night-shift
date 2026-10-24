@@ -233,13 +233,54 @@ def commentate(
         return None  # the replay skips the moment
 
 
+# the line check's seeding (eval/seed_linecheck.py): its answer is one exact JSON line, so an echo
 CORRECTION = "Producer correction. Reply with exactly this line: {text}"
+
+# A producer's fix (#245): what was wrong and the facts, so the recorded example is a wrong call
+# corrected, not a line copied
+FIX = Template(
+    "Producer correction: $reason\n"
+    "The facts at this moment. Score: $score. Leader: $lead. Player total: $total.\n"
+    "The producer's line: $fixed\n"
+    "Say your line again, corrected: the line alone, at most $words words."
+)
+
+
+def correction_turn(header: dict, past: list[dict], corrected_text: str, reason: str = "") -> str:
+    """The user turn a fix sends after the line it corrects: the reason, the facts the number
+    check reads, and the producer's text as the reference."""
+    from agent.status import _lead
+    from eval.linecheck import player_total
+
+    m = past[-1]
+    # a Stat moment keeps none of its moment's detail, so who leads comes from that moment
+    said_at = past[-2] if m["type"] == "Stat" and len(past) > 1 else m
+    total = player_total(m, past[:-1]) if m["type"] != "Stat" else None
+    unit = ("point" if m["sport"] == "basketball" else "goal") + "s" * bool(total and total[1] != 1)
+    return FIX.substitute(
+        # one line each: a line break in either must not forge a field the model reads
+        reason=" ".join(reason.split()) or "the line is wrong.",
+        score=_score(header, m),
+        lead=_lead(said_at),
+        total=f"{total[0]}, {total[1]:g} {unit} tonight" if total else "none",
+        fixed=" ".join(corrected_text.split()),
+        words=ANALYST_WORDS if m["type"] == "Stat" else MAX_WORDS,
+    )
 
 
 def correct(
-    line: dict, corrected_text: str, header: dict | None = None, moments=None, provider=None
+    line: dict,
+    corrected_text: str,
+    header: dict | None = None,
+    moments=None,
+    provider=None,
+    reason: str = "",
 ) -> dict:
-    """A producer's fix as the next turn of the line's own call: same task, same session."""
+    """A producer's fix as the next turn of the line's own call: same task, same session. Only
+    the messages differ from the line's request; the reply counts if it passes the number check."""
+    from core.insight import wrong_numbers
+    from core.review import UNSAID
+
     if header is None or moments is None:
         from data.matches import load_moments, match_header
 
@@ -247,19 +288,24 @@ def correct(
         moments = moments if moments is not None else load_moments(line["match_id"])
     past = [m for m in moments if m["idx"] <= line["moment_idx"]]
     request = build_request(header, past)
+    turn = correction_turn(header, past, corrected_text, reason)
     request["messages"] += [
         {"role": "assistant", "content": line["text"]},
-        {"role": "user", "content": CORRECTION.format(text=corrected_text)},
+        {"role": "user", "content": turn},
     ]
     if provider is None:  # a moment's fix trains on the owner's key; a Stat's stays unrecorded
         trainer = correction_provider() if past[-1]["type"] != "Stat" else None
         provider = trainer or provider_for(past[-1])
     reply = provider.call(request)
-    # the echo, not a spoken line: untrimmed, so a correction over 20 words can still match
-    said = " ".join(b["text"] for b in reply["content"] if b["type"] == "text").split()
+    limit = ANALYST_WORDS if past[-1]["type"] == "Stat" else MAX_WORDS
+    said = spoken(" ".join(b["text"] for b in reply["content"] if b["type"] == "text"), limit)
     return {
-        "mubit_request_id": reply["request_id"],
-        "reply_matched": said == corrected_text.split(),
+        "mubit_request_id": reply.get("request_id"),
+        "correction": turn,  # exactly what Mubit was given after the line
+        "reply": said,
+        # the number check a fix itself passes (#232): a reply that fails it is no correction
+        "reply_passed": bool(said)
+        and not [w for w in wrong_numbers(said, past[-1], header, past[:-1]) if UNSAID not in w],
         # True only when Mubit records it for training (FakeProvider never does)
         "recorded": getattr(provider, "record", False),
     }
@@ -492,8 +538,12 @@ class FakeProvider:
         big = fields.get("Event", "").startswith(("Shot, Goal", "Wicket"))
         said = msgs[-1]["content"]
         asked = "\nViewer question: " in text
-        if isinstance(said, str) and said.startswith("Producer correction"):
+        if isinstance(said, str) and said.startswith("Producer correction. Reply with exactly"):
             content = [{"type": "text", "text": said.split(": ", 1)[1]}]
+        elif isinstance(said, str) and said.startswith("Producer correction: "):
+            # a fix (#245): the producer's line, said as the corrected line
+            fixed = re.search(r"^The producer's line: (.*)$", said, re.M)[1]
+            content = [{"type": "text", "text": fixed}]
         elif "Who leads" in fields:  # "Where are we?" (agent/status.py): the data read back
             lead, score = fields["Who leads"], fields["Score"]
             # a lead that holds every number of the score says it: "Level at 70-70", not both
