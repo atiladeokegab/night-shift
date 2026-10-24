@@ -354,3 +354,23 @@ def test_hamiltons_win_reaches_the_model_with_places_and_gaps():
     race = build_request(header, moments)  # A-10.3: the same frozen model, prompt and tools
     assert (race["model"], race["system"]) == (commentator.MODEL, commentator.SYSTEM)
     assert (race["tools"], race["tool_choice"]) == (commentator.TOOLS, commentator.TOOL_CHOICE)
+
+
+@pytest.mark.parametrize("setting, recorded", [(None, True), ("on", True), ("off", False)])
+def test_mubit_record_off_keeps_lines_out_of_the_keys_training(monkeypatch, setting, recorded):
+    made = []
+
+    class Mubit(FakeProvider):
+        def __init__(self, key, record=True):
+            super().__init__()
+            made.append(record)
+
+    monkeypatch.setattr(commentator, "MubitProvider", Mubit)
+    monkeypatch.setattr(commentator, "_provider", None)
+    monkeypatch.setenv("MUBIT_API_KEY", "test-key")
+    if setting is None:
+        monkeypatch.delenv("MUBIT_RECORD", raising=False)
+    else:
+        monkeypatch.setenv("MUBIT_RECORD", setting)
+    commentator.default_provider()
+    assert made == [recorded]

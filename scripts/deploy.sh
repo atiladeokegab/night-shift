@@ -42,6 +42,10 @@ MOUNTS="$(for s in $SECRETS; do printf '%s=%s:latest,' "$(tr 'a-z-' 'A-Z_' <<<"$
 # sourced: only VOICE_* lines are read from it, so no key can ride along. Vars are split on "@"
 # (gcloud's ^@^ escape), which no value may hold, so a label can have commas.
 VOICE_ENV=""
+# The live key is a teammate's, lent for the demo: its app must not train on our lines. The lead's
+# own key trains, from scripts/replay_matches.py. MUBIT_RECORD=on make deploy records live lines again.
+MUBIT_RECORD="${MUBIT_RECORD:-off}"
+[[ "$MUBIT_RECORD" =~ ^(on|off)$ ]] || { echo "deploy: MUBIT_RECORD must be on or off" >&2; exit 1; }
 for name in $( (compgen -e; [[ -f .env ]] && sed -n 's/^\(VOICE_[A-Z0-9_]*\)=.*/\1/p' .env) \
   | grep -E '^VOICE_[A-Z0-9_]+$' | sort -u); do
   value="${!name:-}"
@@ -68,7 +72,7 @@ done
 gcloud run deploy "$SERVICE" --source . --region "$REGION" --project "$PROJECT" \
   --allow-unauthenticated \
   --set-secrets "${MOUNTS%,}" \
-  --set-env-vars "^@^MODE=cloud@STORE_URL=gs://$STATE_BUCKET/$SERVICE$VOICE_ENV" \
+  --set-env-vars "^@^MODE=cloud@STORE_URL=gs://$STATE_BUCKET/$SERVICE@MUBIT_RECORD=$MUBIT_RECORD$VOICE_ENV" \
   --labels "commit=$COMMIT" \
   --min-instances "$MIN_INSTANCES" \
   --max-instances 1 \
