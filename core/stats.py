@@ -198,7 +198,9 @@ def stats(store) -> dict:
         "fixes_toward_next": sum(
             f.get("created_at", "") > since and f.get("reply_passed") is not False for f in recorded
         ),
-        "fixes_auto": len(store.all("auto_fixes")),  # the number check's own (#162), not a person's
+        # every correction the number check sent to Mubit (#162), not a person's; it also counts
+        # retries from before #204 stored `retried`, which autonomy's auto_fixed leaves out
+        "fixes_auto_sent": len(store.all("auto_fixes")),
         "spoken_from_fix": sum(1 for ln in lead if ln.get("fixed")),  # a producer's fix (#232)
         "voice_chars": sum(v.get("chars", 0) for v in voice),
         "autonomy": _autonomy(calls),
