@@ -155,6 +155,11 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   404 for an unknown line or voice; 503 with no `ELEVENLABS_API_KEY` or every attempt failed,
   and the page then uses browser speech. The key never reaches the browser; each call logs
   `voice line=<id> first_byte_ms=<n> model=<model>`. (core)
+- `GET /review` → `[{line_id, match_id, match, sport, moment_idx, clock, period, score, play, text,
+  wrong, later_check, lines, others}]`, newest first: the producer's fix queue, one entry per
+  mistake among the stored lead lines the number check flags, unfixed (`wrong` is the check's
+  reasons). Grouping and `later_check` are under `GET /stats` → `autonomy` below. (core,
+  `core/review.py`)
 - `GET /stats` → `{lines, fixes, mubit_requests, first_word_ms_p50, first_word_ms_p95,
   latency_ms_p50, latency_ms_p95, tokens_in, tokens_out, cost_per_line_usd, adapter, by_speaker,
   fixes_recorded, fixes_toward_next, voice_chars, matches_measured, cost_per_match_usd,

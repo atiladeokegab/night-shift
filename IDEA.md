@@ -33,7 +33,7 @@ has passed, and the app calls none.
 - Commentator agent: one generalist with one fixed system prompt and 2-4 tools, so every call in every
   sport is one Mubit task; the sport goes in the message. One line per key moment (shots, goals, cards,
   wickets, boundaries), not every pass or dot ball.
-- Live match page: the match's official highlights (embedded YouTube, muted) play as the stage; as each
+- Live match page: the match's broadcast highlights (embedded YouTube, muted; a re-upload where the official one won't embed) play as the stage; as each
   key moment plays, its line shows as a large subtitle and is spoken in an emotional commentator voice
   (a setting: Indian voice for cricket, British for football by default), with the score.
 - Producer fix: edit or reject a line on the page; the corrected line goes back through Mubit and is
