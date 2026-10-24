@@ -130,13 +130,26 @@ test('an off-air answer is a calm state with the Analyst chip, never a headline 
 })
 
 test('ON AIR names the speaker on air: the lead by the chosen voice, the analyst by the voice reading it (#153)', () => {
-  assert.match(render(), /class="who">Lead · Sam</)
+  assert.match(render(), /class="who" aria-hidden="true">Lead · Sam</)
   const analyst = { ...replay, lines: [{ ...line(3, 490.5, EARLY), speaker: 'analyst' as const }] }
   const voice = { status: 'on', chip: 'Sam', speaking: true }
-  assert.match(render({ replay: analyst, voice: { ...voice, analyst: 'George' } }), /class="who">Analyst · George</)
+  assert.match(render({ replay: analyst, voice: { ...voice, analyst: 'George' } }), /class="who" aria-hidden="true">Analyst · George</)
   assert.match(render({ replay: analyst, voice: { ...voice, chip: 'Browser voice', analyst: 'Browser voice' } }),
-    /class="who">Analyst · Browser voice</, 'browser speech reads the analyst too')
-  assert.match(render({ replay: analyst }), /class="who">Analyst</, 'no name rather than a wrong one')
+    /class="who" aria-hidden="true">Analyst · Browser voice</, 'browser speech reads the analyst too')
+  assert.match(render({ replay: analyst }), /class="who" aria-hidden="true">Analyst</, 'no name rather than a wrong one')
+})
+
+test('the ON AIR pill announces OFF AIR and VOICE OFF/UNAVAILABLE, never a speaker change while the voice is on', () => {
+  // What a screen reader hears from the status: its text minus anything aria-hidden.
+  const heard = (html: string) => html.match(/<span class="st" role="status">([\s\S]*?)<\/span><\/(?:span|button)>/)?.[1]
+    ?.replace(/<span[^>]*aria-hidden="true"[^>]*>[\s\S]*?<\/span>(?:<\/span>)*/g, '').replace(/<[^>]+>/g, '')
+  const analyst = { ...replay, lines: [{ ...line(3, 490.5, EARLY), speaker: 'analyst' as const }] }
+  const lead = heard(render())
+  assert.equal(lead, 'ON AIR')
+  assert.equal(heard(render({ replay: analyst, voice: { status: 'on', chip: 'Sam', speaking: true, analyst: 'George' } })), lead)
+  assert.equal(heard(render({ voice: { status: 'off', chip: 'Sam', speaking: false } })), 'VOICE OFFSubtitles only')
+  assert.equal(heard(render({ voice: { status: 'unavailable', chip: 'Sam', speaking: false } })), 'VOICE UNAVAILABLESubtitles carry on')
+  assert.match(heard(render({ replay: { ...replay, error: 'gone' } })) ?? '', /^OFF AIR/)
 })
 
 test('a final settled on penalties says the shoot-out at full time', () => {
