@@ -94,3 +94,55 @@ def test_threads_appending_and_reading_at_once_only_ever_see_whole_lines(tmp_pat
         t.join()
     assert errors == []
     assert sorted(r["line_id"] for r in store.all("lines")) == [f"l{i}" for i in range(8)]
+
+
+def test_a_replay_fetches_each_kind_once_and_stats_match_a_fresh_read(tmp_path):
+    """#243: stats() after every line used to read the whole store each time."""
+    import asyncio
+    from collections import Counter
+
+    from core.replay import Replay, run_replay
+    from core.stats import stats
+    from core.store import KINDS, Store
+
+    class Counted(Store):
+        reads: Counter = Counter()
+
+        def _read(self, kind):
+            self.reads[kind] += 1
+            return super()._read(kind)
+
+    store = Counted(tmp_path)
+    moments = [
+        {"sport": "football", "match_id": "m", "idx": i, "clock": f"{i:02d}:00", "type": "Shot"}
+        for i in range(20)
+    ]
+
+    def commentate(m, history):
+        return {"line_id": f"l{m['idx']}", "match_id": "m", "moment_idx": m["idx"], "text": "Shot!"}
+
+    r = Replay("m", 1e9)
+    asyncio.run(run_replay(r, moments, commentate, store))
+    assert len([e for e in r.events if e["event"] == "stats"]) == 20
+    assert stats(store) == stats(Store(tmp_path))  # what /stats says from cold
+    assert max(store.reads.values()) == 1 and set(store.reads) <= set(KINDS)
+
+
+def test_a_write_from_another_process_is_seen(tmp_path, monkeypatch):
+    from core.store import Store
+
+    a, b = Store(tmp_path), Store(tmp_path)
+    a.append("adapter", {"status": "not_trained"})
+    assert a.all("adapter") == [{"status": "not_trained"}]
+    b.append("adapter", {"status": "trained"})  # eval/record_adapter.py, say
+    assert a.all("adapter")[-1] == {"status": "trained"}
+    a.append("adapter", {"status": "again"})
+    assert [r["status"] for r in a.all("adapter")] == ["not_trained", "trained", "again"]
+
+    monkeypatch.setattr("google.api_core.exceptions.PreconditionFailed", PreconditionFailed)
+    client = FakeClient()
+    g, h = GcsStore("gs://b/p", client=client), GcsStore("gs://b/p", client=client)
+    g.append("lines", {"line_id": "a"})
+    assert len(g.all("lines")) == 1
+    h.append("lines", {"line_id": "b"})
+    assert [r["line_id"] for r in g.all("lines")] == ["a", "b"]
