@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { adapterGood, adapterRows, autonomyRows, checkText, consoleRow, exampleText, FALLBACK_NOTE, FLAG_NOTE, heldoutRow, linecheckRow, TRAINING_LABEL, voiceRow } from './proof.ts'
+import { adapterRows, autonomyRows, checkText, consoleRow, exampleText, FALLBACK_NOTE, FLAG_NOTE, heldoutRow, linecheckRow, TRAINING_LABEL, voiceRow } from './proof.ts'
 import type { ConsoleReading, HeldOut } from './types.ts'
 
 const all = { called: 10, first_time: 6, auto_fixed: 2, to_human: 2 }
@@ -22,40 +22,29 @@ test('a match with no calls yet counts zeros; no match, only all matches; no cou
 
 const record = { state: 'testing' as const, version: null, score: null, target: null, passed: null, kept: null, recorded_at: '2026-10-24T16:00:00+00:00' }
 
-test("one row per Mubit task, saying only what its latest record says", () => {
+test("Score check is the card's one Mubit task, saying only what its latest record says", () => {
   const rows = adapterRows({
-    line_check: { ...record, version: 1, score: 82, passed: true },
-    where_are_we: { ...record, state: 'collecting', kept: 0 },
+    commentary: { ...record, version: 1, score: 82, passed: true },
+    line_check: { ...record, state: 'collecting', kept: 0 },
   })
-  assert.deepEqual(rows, ['Commentary: not recorded', 'Where are we?: collecting, 0 kept', 'Line check: v1, 82%, Passed'])
+  assert.deepEqual(rows, ['Score check: no version recorded yet'])
+  assert.deepEqual(adapterRows({ score_check: { ...record, state: 'collecting', kept: 0 } }), ['Score check: collecting, 0 kept'])
 })
 
 test("a failed gate in the console's words; a ready version with no verdict never reads as passed", () => {
-  assert.deepEqual(
-    adapterRows({ where_are_we: { ...record, version: 1, score: 55.8, target: 95, passed: false } })[1],
-    'Where are we?: v1, 55.8%, below 95% target',
-  )
+  const sc = (a: Partial<typeof record>) => adapterRows({ score_check: { ...record, ...a } })[0]
+  assert.equal(sc({ version: 1, score: 55.8, target: 95, passed: false }), 'Score check: v1, 55.8%, below 95% target')
   // a failed verdict the score doesn't explain stays "Failed": no score, a score at the target, a 0 target
-  const failed = { ...record, version: 1, passed: false, target: 95 }
-  assert.equal(adapterRows({ line_check: { ...failed, score: null } })[2], 'Line check: v1, Failed')
-  assert.equal(adapterRows({ line_check: { ...failed, score: 95 } })[2], 'Line check: v1, 95%, Failed')
-  assert.equal(adapterRows({ line_check: { ...failed, score: 0, target: 0 } })[2], 'Line check: v1, 0%, Failed')
-  assert.deepEqual(adapterRows({ commentary: { ...record, version: 2, passed: false } })[0], 'Commentary: v2, Failed')
-  assert.deepEqual(adapterRows({ commentary: { ...record, version: 3, score: 64.5 } })[0], 'Commentary: v3, 64.5%, verdict not recorded')
-  assert.deepEqual(adapterRows({ commentary: { ...record, state: 'collecting' } })[0], 'Commentary: collecting')
+  const failed = { version: 1, passed: false, target: 95 }
+  assert.equal(sc({ ...failed, score: null }), 'Score check: v1, Failed')
+  assert.equal(sc({ ...failed, score: 95 }), 'Score check: v1, 95%, Failed')
+  assert.equal(sc({ ...failed, score: 0, target: 0 }), 'Score check: v1, 0%, Failed')
+  assert.equal(sc({ version: 3, score: 64.5 }), 'Score check: v3, 64.5%, verdict not recorded')
+  assert.equal(sc({ state: 'collecting' }), 'Score check: collecting')
 })
 
 test('before core reports adapters, no rows', () => {
   assert.deepEqual(adapterRows(undefined), [])
-})
-
-test('the Adapter row is green only for a recorded pass of the gate', () => {
-  const adapter = { state: 'testing' as const, summary: '', kept: 31, agree: 23, total: 25, cost_measurable: false }
-  assert.equal(adapterGood({ adapter: { ...adapter, state: 'passed' } }), true)
-  // a version with no verdict or a failed gate, still collecting, or no adapter from core: never green
-  assert.equal(adapterGood({ adapter }), false)
-  assert.equal(adapterGood({ adapter: { ...adapter, state: 'collecting' } }), false)
-  assert.equal(adapterGood({}), false)
 })
 
 test('the fix counts are headed as training data, never a bare "Training" that reads as under way', () => {
@@ -89,6 +78,24 @@ test("today's fix examples on the Proof row, and a fixed line's example in words
   assert.equal(exampleText({ ...ex, kind: 'error', mubit_request_id: null }), 'Line check example not sent')
   assert.equal(exampleText(null), null)
   for (const ex2 of [ex, { ...ex, kind: 'matched' as const }]) assert.doesNotMatch(exampleText(ex2)!, /updated|serves|trained/)
+})
+
+test("Score check's row keeps its earlier version, where it was read, and its examples and held-out scores (#321)", () => {
+  const v1 = { version: 1, version_id: 'ad_1', score: 88.5, target: 95, passed: false, recorded_at: null, source: null }
+  const v2 = { ...v1, version: 2, version_id: 'ad_2', score: 96, passed: true }
+  const sc = { ...record, version: 2, version_id: 'ad_2', score: 96, target: 95, passed: true, state: 'passed' as const, source: 'Mubit console', versions: [v1, v2] }
+  const rows = adapterRows({ score_check: sc }, {
+    seeded: 150,
+    from_fixes: 2,
+    from_fixes_by_kind: { corrected: 2 },
+    held_out: { 'Claude Sonnet 5.5 via API': { agree: 70, scored: 74, unparsed: 0, recorded_at: null } },
+  })
+  assert.deepEqual(rows, [
+    'Score check: v2 (ad_2), 96%, Passed · before: v1, 88.5%, below 95% target · Mubit console, 2026-10-24 16:00 UTC',
+    'Score check examples sent: 150 seeded, 2 from fixes (2 corrected)',
+    'Score check held-out (lines never sent): Claude Sonnet 5.5 via API, 70 of 74 match the data',
+  ])
+  for (const row of rows) assert.doesNotMatch(row, /serves|learns live|updated/)
 })
 
 test('the held-out row says Line check beside the rules in counts, never a percentage (#317)', () => {

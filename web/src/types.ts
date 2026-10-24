@@ -69,6 +69,7 @@ export interface Line {
   fix_id?: string
   served_by?: string | null // #250: the model Mubit's reply said answered; none before #250 or offline
   fill?: boolean // #297: the extra pair in a long quiet, dropped if the next moment comes first
+  retried?: boolean // #338: the first call failed the number check and the retry passed: auto-fixed
 }
 
 // GET /stats and the `stats` SSE event (CONTRACT.md); percentiles are null until there is a line.
@@ -107,6 +108,15 @@ export interface Stats {
   autonomy?: Autonomy
   autonomy_by_match?: Record<string, Autonomy>
   linecheck?: LineCheckStats // #298
+  scorecheck?: ScoreCheckStats // #321
+}
+
+// #321: Score check's examples sent to Mubit, and each model's latest score on its frozen held-out lines
+export interface ScoreCheckStats {
+  seeded: number
+  from_fixes: number
+  from_fixes_by_kind: Record<string, number>
+  held_out: Record<string, { agree: number; scored: number; unparsed: number; recorded_at: string | null }> // by model
 }
 
 // #298: Line check's second opinion on live lead lines; every flag is on a line the rules check passed
@@ -214,6 +224,19 @@ export interface TaskAdapter {
   passed: boolean | null // Mubit's gate: Passed or Failed
   kept: number | null // Mubit's kept examples from the console, never requests sent
   recorded_at: string | null
+  version_id?: string | null // #321: the version's ID as the console shows it
+  source?: string | null // #321: where the record was read, e.g. "Mubit console"
+  versions?: TaskVersion[] // #321: every version recorded, oldest first
+}
+
+export interface TaskVersion {
+  version: number
+  version_id: string | null
+  score: number | null
+  target: number | null
+  passed: boolean | null
+  recorded_at: string | null
+  source: string | null
 }
 
 // POST /lines/{line_id}/fix's answer and the `fixed` SSE event (CONTRACT.md).

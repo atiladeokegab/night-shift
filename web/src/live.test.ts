@@ -215,10 +215,17 @@ test('Close your eyes covers the picture and leaves the player playing under it 
   assert.match(shut, /class="bug"><div class="scorebar glass"/)
 })
 
-test('a match with no video has no Close your eyes button, and no cover (#277)', () => {
-  const html = render({ closed: true, match: { ...match, youtube_id: undefined } })
-  assert.ok(!html.includes('Close your eyes'))
-  assert.ok(!html.includes('class="eyes"'))
+test('with no video, Close your eyes still covers the page to its line and score (#338)', () => {
+  // a video that can't play here (a venue blocking YouTube) and a whole match with no video at all
+  for (const props of [{ video: 'unavailable' }, { match: { ...match, youtube_id: undefined } }]) {
+    const open = videoCard(render(props))
+    const shut = videoCard(render({ ...props, closed: true }))
+    assert.match(open, /aria-pressed="false"[^>]*aria-keyshortcuts="E"[^>]*>[\s\S]*?Close your eyes/)
+    assert.ok(!open.includes('class="eyes"'))
+    assert.match(shut, /aria-pressed="true"[^>]*>[\s\S]*?Close your eyes/)
+    assert.match(shut, new RegExp(`<div class="eyes" aria-hidden="true"><p>${EARLY}</p></div>`))
+    assert.match(shut, /class="bug"><div class="scorebar glass"/)
+  }
 })
 
 test('E toggles the cover, but not typed into Ask or with a modifier (#277)', () => {
@@ -277,4 +284,12 @@ test('while they watch, a chip says so with a Stop button, and a screen reader h
   assert.match(on, /<span class="chip"><b aria-hidden="true"><\/b>They&#x27;re watching<\/span><button class="ctl eyes-btn" aria-label="Stop: they stop watching"><span>Stop<\/span><\/button>/)
   const asking = renderToStaticMarkup(createElement(Watching, { on: false, asking: true, onStart: noop, onStop: noop }))
   assert.match(asking, /<span class="sr-only" role="status"><\/span><button class="ctl eyes-btn watch-btn" disabled=""/)
+})
+
+test('a line whose retry passed the number check is tagged Auto-fixed, with its reason for a screen reader (#338)', () => {
+  const html = render({ replay: { ...replay, now: 510, lines: [{ ...line(4, 508, LATER), retried: true }, line(3, 490.5, EARLY)] } })
+  const log = html.slice(html.indexOf('<ul class="log">'))
+  const li = (text: string) => log.slice(log.lastIndexOf('<li', log.indexOf(text)), log.indexOf('</li>', log.indexOf(text)))
+  assert.match(li(LATER), /<span class="pill fixed auto" title="[^"]+">Auto-fixed<span class="sr-only">: its first try failed the number check, and the retry passed<\/span><\/span>/)
+  assert.ok(!li(EARLY).includes('Auto-fixed'))
 })

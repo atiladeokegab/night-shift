@@ -1,4 +1,4 @@
-.PHONY: dev check smoke load demo-check bootstrap deploy
+.PHONY: dev check smoke load demo-check live-e2e bootstrap deploy
 
 PROJECT ?= hackathon-starter-ao
 
@@ -24,6 +24,11 @@ load:
 # Starts one short smoke replay; nothing else is written.
 demo-check:
 	uv run python scripts/demo_check.py $(URL)
+
+# After a deploy: a judge's path on the live site (or URL=...) in a real Chromium. Plays Chelsea v
+# Spurs, so it spends about one replay's model and voice cost.
+live-e2e:
+	cd web && LIVE_URL=$(URL) npx playwright test -c playwright.live.config.ts
 
 # One-time GCP setup: secrets from MUBIT_API_KEY and ELEVENLABS_API_KEY, the state bucket, IAM.
 bootstrap:

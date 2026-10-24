@@ -1,4 +1,4 @@
-import type { Autonomy, ConsoleReading, HeldOut, LineCheck, LineCheckExample, LineCheckStats, Stats, TaskAdapter, VoiceHealth } from './types'
+import type { Autonomy, ConsoleReading, HeldOut, LineCheck, LineCheckExample, LineCheckStats, ScoreCheckStats, Stats, TaskAdapter, TaskVersion, VoiceHealth } from './types'
 
 const NONE: Autonomy = { called: 0, first_time: 0, auto_fixed: 0, to_human: 0 }
 
@@ -71,33 +71,50 @@ export function exampleText(ex: LineCheckExample | null | undefined): string | n
   return `Sent to Mubit as a Line check example${request} · kind ${ex.kind.replace('_', ' ')}`
 }
 
-const TASKS: [string, string][] = [['commentary', 'Commentary'], ['where_are_we', 'Where are we?'], ['line_check', 'Line check']]
+// Score check is the one task trained on Mubit (#321): the commentary tasks are not on the card.
+const TASKS: [string, string][] = [['score_check', 'Score check']]
 
-// The Proof card's row per Mubit task (#209) in the console's words, e.g. "Line check: v1, 82%, Passed"
-// or "v1, 55.8%, below 95% target", from only what the task's latest record says. No record, or a
-// ready one without Mubit's verdict, reads "not recorded".
+// The Proof card's row per Mubit task (#209) in the console's words, e.g. "Score check: v1, 82%, Passed"
+// or "v1, 55.8%, below 95% target", from only what the task's latest record says. No record reads
+// "no version recorded yet"; a version without Mubit's verdict, "verdict not recorded".
 // None before core reports `adapters`.
-export function adapterRows(adapters: Record<string, TaskAdapter> | undefined): string[] {
+// Score check (#321) adds its earlier versions, where each was read, its examples by source and each
+// held-out score, e.g. "Score check held-out (lines never sent): Claude via API, 70 of 74 match the data".
+export function adapterRows(adapters: Record<string, TaskAdapter> | undefined, sc?: ScoreCheckStats): string[] {
   if (!adapters) return []
-  return TASKS.map(([task, label]) => `${label}: ${adapterRow(adapters[task])}`)
+  const rows = TASKS.map(([task, label]) => `${label}: ${adapterRow(adapters[task])}${history(adapters[task])}`)
+  if (!sc) return rows
+  const kinds = Object.entries(sc.from_fixes_by_kind).map(([kind, n]) => `${n} ${kind}`)
+  rows.push(`Score check examples sent: ${sc.seeded} seeded, ${sc.from_fixes} from fixes${kinds.length ? ` (${kinds.join(', ')})` : ''}`)
+  for (const [what, e] of Object.entries(sc.held_out)) rows.push(`Score check held-out (lines never sent): ${what}, ${e.agree} of ${e.scored} match the data`)
+  return rows
+}
+
+function verdictOf(a: Pick<TaskAdapter, 'score' | 'target' | 'passed'>, testing: boolean): string | null {
+  // the console's own wording only where the record shows it: a score under its target; else its verdict
+  const failed = a.score !== null && a.target !== null && a.score < a.target ? `below ${a.target}% target` : 'Failed'
+  return a.passed === null ? (testing ? 'verdict not recorded' : null) : a.passed ? 'Passed' : failed
 }
 
 function adapterRow(a: TaskAdapter | undefined): string {
-  if (!a) return 'not recorded'
-  // the console's own wording only where the record shows it: a score under its target; else its verdict
-  const failed = a.score !== null && a.target !== null && a.score < a.target ? `below ${a.target}% target` : 'Failed'
-  const verdict = a.passed === null ? (a.state === 'testing' ? 'verdict not recorded' : null) : a.passed ? 'Passed' : failed
+  if (!a) return 'no version recorded yet'
   return [
     a.state === 'collecting' ? 'collecting' : null,
-    a.version === null ? null : `v${a.version}`,
+    a.version === null ? null : `v${a.version}${a.version_id ? ` (${a.version_id})` : ''}`,
     a.score === null ? null : `${a.score}%`,
-    verdict,
+    verdictOf(a, a.state === 'testing'),
     a.kept === null ? null : `${a.kept.toLocaleString()} kept`,
   ].filter(Boolean).join(', ')
 }
 
+// " · before: v1, 88.5%, below 95% target · Mubit console, 25 Oct 06:10 UTC": only what records say
+function history(a: TaskAdapter | undefined): string {
+  if (!a) return ''
+  const earlier = (a.versions ?? []).filter((v: TaskVersion) => v.version !== a.version)
+  const before = earlier.map((v) => [`v${v.version}`, v.score === null ? null : `${v.score}%`, verdictOf(v, true)].filter(Boolean).join(', '))
+  const when = a.recorded_at ? `, ${new Date(a.recorded_at).toISOString().slice(0, 16).replace('T', ' ')} UTC` : ''
+  return (before.length ? ` · before: ${before.join('; ')}` : '') + (a.source ? ` · ${a.source}${when}` : '')
+}
+
 // The fix counts' heading: "Training" alone read as training under way; these are recorded data.
 export const TRAINING_LABEL = 'Training data'
-
-// The Adapter row's green dot: only a recorded pass of Mubit's gate, never one inferred from a status.
-export const adapterGood = (stats: Pick<Stats, 'adapter'>): boolean => stats.adapter?.state === 'passed'

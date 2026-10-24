@@ -97,6 +97,66 @@ def test_a_cache_only_replay_publishes_stored_lines_and_stores_nothing(tmp_path)
     assert stats(store) == before  # the Proof card does not move
 
 
+def test_a_stored_line_said_again_gets_one_line_check_ever(tmp_path):
+    """Judges watch stored lines: each checked one with no record is checked once, off its path."""
+    store = Store(tmp_path)
+    stored(store, checked=True)
+    store.append("linechecks", {"line_id": "old0", "wrong": [], "created_at": "earlier"})
+    checks, failed = [], []
+
+    def linecheck(line, m, past):
+        if line["line_id"] == "old2" and not failed:  # its first check fails: the next tries again
+            failed.append(line["line_id"])
+            raise TimeoutError
+        checks.append((line["line_id"], m["idx"], [p["idx"] for p in past]))
+        return {"labels": None, "wrong": [], "mubit_request_id": "lc"}
+
+    deps = Deps(lambda: [], lambda mid: MOMENTS, lambda m, h: None, linecheck=linecheck)
+    guard = Guard({}, lambda: NOON)
+    guard.busy = lambda live: True  # every replay plays the stored lines
+    client = TestClient(create_app(store=store, deps=deps, guard=guard))
+    with client:
+        first = read_stream(client, start(client).json()["replay_id"])
+        second = read_stream(client, start(client).json()["replay_id"])
+        third = read_stream(client, start(client).json()["replay_id"])
+    assert [d["text"] for n, d in first if n == "line"] == ["Stored 0", "Stored 1", "Stored 2"]
+    assert checks == [("old1", 1, [0]), ("old2", 2, [0, 1])] and failed == ["old2"]
+    assert [d["line_id"] for n, d in first + second + third if n == "linecheck"] == ["old1", "old2"]
+    rows = store.all("linechecks")[1:]
+    assert [(r["line_id"], r["match_id"], r["moment_idx"]) for r in rows] == [
+        ("old1", "7", 1),
+        ("old2", "7", 2),
+    ]
+    assert all(r["mubit_request_id"] == "lc" and r["created_at"] for r in rows)
+    assert len(store.all("lines")) == 3  # the stored lines, never stored again
+
+
+def test_two_viewings_at_once_check_a_stored_line_once(tmp_path):
+    store, entered, go, checks = Store(tmp_path), threading.Event(), threading.Event(), []
+    stored(store, checked=True)
+
+    def linecheck(line, m, past):
+        checks.append(line["line_id"])
+        if len(checks) == len(MOMENTS):
+            entered.set()
+        assert go.wait(5)  # the first viewing's checks are still in flight
+        return {"labels": None, "wrong": []}
+
+    deps = Deps(lambda: [], lambda mid: MOMENTS, lambda m, h: None, linecheck=linecheck)
+    guard = Guard({}, lambda: NOON)
+    guard.busy = lambda live: True
+    client = TestClient(create_app(store=store, deps=deps, guard=guard))
+    with client:
+        first = start(client).json()["replay_id"]
+        assert entered.wait(5)
+        second = start(client).json()["replay_id"]
+        read_stream(client, second)
+        go.set()
+        read_stream(client, first)
+    assert sorted(checks) == ["old0", "old1", "old2"]
+    assert sorted(r["line_id"] for r in store.all("linechecks")) == ["old0", "old1", "old2"]
+
+
 def test_a_client_gets_its_hourly_starts_then_429_with_retry_after(tmp_path):
     client, _ = app(Store(tmp_path), {"REPLAYS_PER_HOUR": "2"})
     with client:

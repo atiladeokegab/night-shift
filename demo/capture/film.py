@@ -225,7 +225,10 @@ def shoot(browser, name: str, base: str, out: Path, work: Path) -> None:
         ctx.route("**/lines/*/fix", lambda route: route.abort())
     elif token := os.environ.get("PRODUCER_TOKEN"):
         # Kept where the page keeps it after its first 401, so the take never shows the token field.
-        ctx.add_init_script(f"localStorage.setItem('producer-token', {json.dumps(token)})")
+        ctx.add_init_script(
+            f"if (window === window.top && location.origin === new URL({json.dumps(base)}).origin) "
+            f"localStorage.setItem('producer-token', {json.dumps(token)})"
+        )
     events: list[tuple[str, str, float]] = []
     ctx.expose_function("__filmPlay", lambda src: events.append(("play", src, time.time())))
     ctx.expose_function("__filmStop", lambda src: events.append(("stop", src, time.time())))

@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import re
+import threading
 import time
 import uuid
 from collections.abc import Callable
@@ -51,6 +52,8 @@ class Deps:
     # a frame of the viewer's shared screen (base64 JPEG) and the match's names: {"note"}, one note
     # or None, with the call's model and tokens. Set, commentate takes `seen=` too (#291)
     look: Callable[[str, list[str]], dict] | None = None
+    # a producer's fix as a Score check example (#321): (line, ids already sent) -> sent or None
+    score_teach: Callable[[dict, set[str]], dict | None] | None = None
 
 
 def with_fixes(commentate, store):
@@ -89,6 +92,7 @@ def default_deps() -> Deps:
         from agent.commentator import answer, commentate, correct
         from agent.linecheck import live_check, teach
         from agent.look import see
+        from agent.scorecheck import teach as score_teach
         from agent.status import status
         from data.matches import list_matches, load_moments, video_map
     except ImportError:
@@ -105,6 +109,7 @@ def default_deps() -> Deps:
         live_check,
         teach,
         see,
+        score_teach,
     )
 
 
@@ -225,7 +230,7 @@ def create_app(
         cached = off_air or guard.busy(len(live))
         if cached:  # the lines already stored, said again: no model or voice call, nothing stored
             commentate, speak, correct = cached_commentator(store, req.match_id), None, None
-            linecheck = None
+            linecheck = linecheck and checked_once(linecheck)  # a stored line is checked once too
             if commentate is None and off_air:
                 raise too_many(guard.until_tomorrow(), f"{OFF_TODAY}. Try again tomorrow.")
             if commentate is None:
@@ -274,6 +279,30 @@ def create_app(
 
         return call
 
+    checking: set[str] = set()  # stored lines whose line check is made or in flight
+    checking_lock = threading.Lock()  # checks run in worker threads
+
+    def checked_once(linecheck):
+        """Line check on a stored line said again: one per line ever, so only a line with no
+        record yet, and only once while its check is in flight. None: no call made."""
+
+        def call(line: dict, moment: dict, history: list[dict]) -> dict | None:
+            with checking_lock:
+                if line["line_id"] in checking:
+                    return None
+                checking.add(line["line_id"])
+            got = None
+            try:
+                if not any(c.get("line_id") == line["line_id"] for c in store.all("linechecks")):
+                    got = linecheck(line, moment, history)
+                return got
+            finally:
+                if got is None:  # failed or over the cap: the next viewing may try again
+                    with checking_lock:
+                        checking.discard(line["line_id"])
+
+        return call
+
     async def teach(line: dict) -> None:
         """A fix as one Line check example (#298), sent after the fix is answered."""
         try:
@@ -285,6 +314,19 @@ def create_app(
             at = datetime.now(UTC).isoformat(timespec="seconds")
             row = {"line_id": line["line_id"], **sent, "created_at": at}
             await asyncio.to_thread(store.append, "linecheck_fixes", row)
+
+    async def score_teach(line: dict) -> None:
+        """A fix as one Score check example (#321), unless that line was already sent."""
+        try:
+            done = {r["id"] for r in await asyncio.to_thread(store.all, "scorecheck_examples")}
+            sent = await asyncio.to_thread(need_deps().score_teach, line, done)
+        except Exception as exc:
+            log.warning("score check example for %s not sent: %s", line["line_id"], str(exc)[:300])
+            return
+        if sent and sent["kind"] != "error":
+            at = datetime.now(UTC).isoformat(timespec="seconds")
+            row = {**sent, "line_id": line["line_id"], "source": "fix", "created_at": at}
+            await asyncio.to_thread(store.append, "scorecheck_examples", row)
 
     def stop_later(replay: Replay) -> None:
         if replay.stopping:
@@ -416,6 +458,10 @@ def create_app(
                 await replay.publish("stats", await asyncio.to_thread(stats, store))
         if d.teach and req.reason in TEACHES:  # it passed the number check above
             task = asyncio.create_task(teach(line))
+            tasks.add(task)
+            task.add_done_callback(tasks.discard)
+        if d.score_teach and req.reason in TEACHES:
+            task = asyncio.create_task(score_teach(line))
             tasks.add(task)
             task.add_done_callback(tasks.discard)
         return fix
