@@ -20,6 +20,7 @@ PEAKS = {
     "1298150": 48,  # the last over
     "3869685": 59,  # the World Cup final shoot-out
     "3754092": 37,  # Hazard's equaliser
+    "3913122": 33,  # the 82nd-minute equaliser, then the 94th-minute winner
     "9636": 12,  # Verstappen into P1
 }
 
