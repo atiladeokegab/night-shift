@@ -13,7 +13,7 @@ import { Review } from './components/Review'
 import type { VideoState } from './components/VideoStage'
 import { VoiceSheet } from './components/VoiceSheet'
 import { Wall } from './components/Wall'
-import { chipName, defaultVoice } from './teams'
+import { chipName, defaultVoice, wallOrder } from './teams'
 import { SPORTS, type Line, type Match, type Moment, type Sport, type Voice } from './types'
 import { QuietSpell, WHERE } from './quiet'
 import { airAnswer, bigSoon, isBig, type Caption } from './turns'
@@ -84,7 +84,7 @@ export default function App() {
     listMatches()
       .then((all) => {
         // The design lists football first; the server sorts by file name.
-        setMatches([...all].sort((a, b) => SPORTS.indexOf(a.sport) - SPORTS.indexOf(b.sport)))
+        setMatches(wallOrder(all))
         setLoadFailed(false)
       })
       .catch(() => setLoadFailed(true))

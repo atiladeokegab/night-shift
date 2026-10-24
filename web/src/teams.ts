@@ -1,4 +1,4 @@
-import type { Match, Moment, Sport, Voice } from './types'
+import { SPORTS, type Match, type Moment, type Sport, type Voice } from './types.ts'
 
 // Team colours and crest ink from docs/design.md ("Tokens") and the mockup's crests; any other team
 // gets a neutral one.
@@ -66,7 +66,7 @@ export function cricketScore(match: Match, moment: Moment | null, moments: Momen
 // Card copy: the demo match from docs/design.md ("Copy"), and the iconic ones by what they are
 // remembered for, with names, dates and results from data/sample/. The design's "Highlights 4:56 · 4 key
 // moments" is a mockup placeholder (data/video/ maps 15 and 32 moments), so it is left out: no unmeasured figures.
-export const CARD_COPY: Record<string, { title: string; detail: string; result: string; crest?: string }> = {
+export const CARD_COPY: Record<string, { title: string; detail: string; result: string; crest?: string; note?: string }> = {
   '3869685': {
     title: 'Messi v Mbappé',
     detail: '2022 World Cup final · Argentina v France · 18 Dec 2022',
@@ -79,8 +79,10 @@ export const CARD_COPY: Record<string, { title: string; detail: string; result: 
   },
   '3913122': {
     title: 'Brighton v Bristol City', // the long tail: a league match, not a famous one
-    detail: "Women's Super League · Brighton v Bristol City · 21 Jan 2024",
+    detail: "Women's Super League · 21 Jan 2024",
     result: "Brighton 3–2 Bristol City, Terland's winner in stoppage time",
+    // Not "no description": Brighton's ground has in-stadium receivers; no broadcast or stream was described
+    note: 'No described broadcast',
   },
   '1298150': {
     title: 'India v Pakistan',
@@ -151,4 +153,10 @@ export function sheetVoices(voices: Voice[], sport: Sport, chosenId?: string): V
 
 export function defaultVoice(voices: Voice[], sport: Sport): Voice | null {
   return voices.find((v) => v.default_for === sport) ?? voices[0] ?? null
+}
+
+// The wall by sport; within one, the long tail (a card with a note) before the famous replays
+export function wallOrder(matches: Match[]): Match[] {
+  const rank = (m: Match) => SPORTS.indexOf(m.sport) * 2 + (CARD_COPY[m.match_id]?.note ? 0 : 1)
+  return [...matches].sort((a, b) => rank(a) - rank(b))
 }

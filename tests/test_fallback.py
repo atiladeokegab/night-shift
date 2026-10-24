@@ -29,6 +29,9 @@ SAID = {  # (match, idx): the line a listener hears
         56,
     ): "R Ashwin, one run. India win by four wickets. India one hundred and sixty for six.",
     ("3754092", 28): "Ryan Mason comes on for Son Heung-Min. Tottenham Hotspur lead two, one.",
+    # the club, never its "WFC" (#199)
+    ("3913122", 8): "Elisabeth Terland scores from twenty-two yards! "
+    "Brighton & Hove Albion lead one, nil.",
 }
 
 
