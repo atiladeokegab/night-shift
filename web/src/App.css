@@ -67,6 +67,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .card:hover .art svg { transform: scale(1.035); }
 /* The crests sit right of the text at any card shape; the phone puts them back on the stadium below. */
 .card .art .crests { position: absolute; right: 6%; top: 38%; width: 30%; height: auto; overflow: visible; }
+.card .art .by-label { display: none; }
 .card .art::after { content: ""; position: absolute; inset: 0;
   background: linear-gradient(90deg, rgba(6, 8, 15, .94) 0%, rgba(6, 8, 15, .72) 42%, rgba(6, 8, 15, .05) 78%); }
 .card-body { position: relative; height: 100%; max-width: 64%; padding: 32px; display: flex; flex-direction: column; gap: 10px; }
@@ -264,6 +265,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   .card { min-height: 0; }
   .card .art { bottom: auto; aspect-ratio: 8 / 5; }
   .card .art .crests { right: 8%; top: 30%; width: 32%; }
+  .card .art .by-label { display: inline; }
   .card .art::after { background: linear-gradient(0deg, #0A0E1A 0%, rgba(10, 14, 26, 0) 50%); }
   .card-body { max-width: none; padding: calc(62.5% - 24px) 22px 22px; }
   .card h2 { font-size: 1.8rem; }
