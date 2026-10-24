@@ -109,6 +109,20 @@ def test_the_same_words_after_normalising_strictly_agree(big, adapter):
 
 def test_normalising_is_case_punctuation_number_words_and_spaces_only():
     assert normalise("  Two-nil!  Mbappé's   NINETEEN… ") == "2 nil mbappé s 19"
+    assert normalise("1-0, +2 seconds, -0.5, 1.5 laps") == "1 0 +2 seconds -0.5 1.5 laps"
+
+
+# Prometheus's confirm of 201abf6: normalising must not make these the same.
+@pytest.mark.parametrize(
+    "big, adapter, why",
+    [
+        ("Hamilton leads by +2 seconds!", "Hamilton leads by -2 seconds!", "different words"),
+        ("!!!", "???", "no words to compare"),
+        ("Verstappen wins by 1.5 seconds!", "Verstappen wins by 1-5 seconds!", "different words"),
+    ],
+)
+def test_signs_decimals_and_empty_lines_never_strictly_agree(big, adapter, why):
+    assert strict(line(big), line(adapter)) == why
 
 
 @pytest.mark.parametrize(

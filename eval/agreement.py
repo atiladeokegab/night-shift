@@ -50,8 +50,10 @@ _DIGITS = {
 
 
 def normalise(text: str) -> str:
-    """Lowercased, punctuation stripped, number words as digits, whitespace collapsed; no more."""
-    words = re.sub(r"[^\w\s]|_", " ", text.lower()).split()
+    """Lowercased, punctuation stripped, number words as digits, whitespace collapsed; no more. A
+    number keeps its sign and decimal point ("+2", "1.5"), so "+2" and "-2", "1.5" and "1-5" differ;
+    a dash between numbers ("1-0") is punctuation."""
+    words = re.findall(r"(?<![\w.])[+-]?\d+(?:\.\d+)*|[^\W_]+", text.lower())
     return " ".join(_DIGITS.get(w, w) for w in words)
 
 
@@ -73,7 +75,10 @@ def strict(big: dict | None, adapter: dict | None) -> str | None:
     """None when the two lines strictly agree (the headline); otherwise why not."""
     if why := _unusable(big, adapter):
         return why
-    return None if normalise(adapter["text"]) == normalise(big["text"]) else "different words"
+    said, want = normalise(adapter["text"]), normalise(big["text"])
+    if not said or not want:  # "!!!" and "???" say nothing, so they can't agree
+        return "no words to compare"
+    return None if said == want else "different words"
 
 
 def _fold(text: str) -> str:
