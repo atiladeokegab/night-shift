@@ -36,7 +36,9 @@ class Store:
 
 
 class GcsStore(Store):
-    """Each kind is one GCS object; an append rewrites it, compare-and-swap on its generation."""
+    """Each kind is one GCS object; an append rewrites it, compare-and-swap on its generation. Each
+    kind's text is cached with its generation: a read costs one metadata call, and downloads only
+    when another writer changed the object."""
 
     # shortcut: every append rewrites the whole object (about one write a second per object);
     # a database if two producers edit at once (IDEA.md ceilings).
@@ -47,13 +49,34 @@ class GcsStore(Store):
         self.bucket = (client or storage.Client()).bucket(bucket)
         self.prefix = prefix.strip("/")
         self._lock = threading.Lock()
+        self._cache: dict[str, tuple[int, str]] = {}  # kind: (generation, text)
 
     def _blob(self, kind: str):
         return self.bucket.blob(f"{self.prefix}/{kind}.jsonl" if self.prefix else f"{kind}.jsonl")
 
+    def _fetch(self, kind: str) -> tuple[int, str]:
+        """The object's generation and text: the cached text while the generation is unchanged."""
+        from google.api_core.exceptions import PreconditionFailed
+
+        for _ in range(8):
+            # get_blob loads the generation; blob().exists() leaves it None, which read the
+            # object as empty and let the next append overwrite every earlier record
+            blob = self.bucket.get_blob(self._blob(kind).name)
+            if blob is None:
+                return 0, ""
+            cached = self._cache.get(kind)
+            if cached and cached[0] == blob.generation:
+                return cached
+            try:
+                got = blob.generation, blob.download_as_text(if_generation_match=blob.generation)
+            except PreconditionFailed:  # it changed between the two calls
+                continue
+            self._cache[kind] = got
+            return got
+        raise RuntimeError(f"store: {kind} kept changing under the read")
+
     def _read(self, kind: str) -> str:
-        blob = self._blob(kind)
-        return blob.download_as_text() if blob.exists() else ""
+        return self._fetch(kind)[1]
 
     def append(self, kind: str, record: dict) -> dict:
         from google.api_core.exceptions import PreconditionFailed
@@ -61,19 +84,17 @@ class GcsStore(Store):
         if kind not in KINDS:
             raise ValueError(f"unknown kind {kind!r}")
         with self._lock:
+            gen, text = self._cache.get(kind) or self._fetch(kind)
             for _ in range(8):
-                # get_blob loads the generation; blob().exists() leaves it None, which read
-                # the object as empty and let the next append overwrite every earlier record
-                blob = self.bucket.get_blob(self._blob(kind).name)
-                gen = blob.generation if blob else 0
+                blob, new = self._blob(kind), text + json.dumps(record) + "\n"
                 try:
-                    text = blob.download_as_text(if_generation_match=gen) if blob else ""
-                    self._blob(kind).upload_from_string(
-                        text + json.dumps(record) + "\n", if_generation_match=gen
-                    )
-                    return record
-                except PreconditionFailed:
+                    blob.upload_from_string(new, if_generation_match=gen)
+                except PreconditionFailed:  # another writer: start again from its text
+                    gen, text = self._fetch(kind)
                     continue
+                if blob.generation:  # never cache an unknown one: it would match any object
+                    self._cache[kind] = blob.generation, new
+                return record
         raise RuntimeError(f"store: {kind} kept changing under the append")
 
 
