@@ -243,8 +243,11 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   and `metadata.user_id`, so the same Mubit task and session) plus the line as the assistant turn
   and a correction turn (#245): "Producer correction: <reason>", the facts at the moment (score,
   leader, player total), "The producer's line: <text>" and "Say your line again, corrected". Only
-  the messages differ from the line's request. The provider writes the fixed line; `reply_passed`
-  records whether it passes the number check. An auto-fix gives the checker's own reasons. Mubit
+  the messages differ from the line's request. The provider writes the fixed line. The request goes
+  unrecorded first (`x-middleware-record: off`); only when that reply passes the number check is
+  the same request sent again on the owner's key, recorded. `reply_passed` is the recorded reply's
+  check (false, with nothing recorded, when the first reply failed). An auto-fix gives the
+  checker's own reasons. Mubit
   has no feedback API, so this turn is the training signal.
 - The commentator sees only moments up to the current one; a later event never reaches the model.
 - Answer (`agent.commentator.answer`): the request for the moment on screen with the system prompt

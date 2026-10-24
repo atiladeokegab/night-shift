@@ -45,8 +45,9 @@ correction, with no person involved; if it fails too, a line built from the matc
 instead. A producer fixes the rest from the page, and each fix goes to Mubit the same way.
 A correction is the next turn of the line's own call, so only the messages change, never the
 prompt, tools or model. It says what was wrong and gives the facts, and the commentator writes
-the fixed line itself. The fix counts toward the next Mubit version only if that reply passes
-the number check. The turn for a fix to Jordan's layup at 86-85 (Jazz v Bulls, 1998 NBA Finals Game 6), after
+the fixed line itself. The correction is sent unrecorded first. Only if the commentator's reply
+passes the number check is the same request sent again on the owner's key, recorded for training,
+so Mubit never trains on a correction that failed. The turn for a fix to Jordan's layup at 86-85 (Jazz v Bulls, 1998 NBA Finals Game 6), after
 the wrong line:
 
 ```text
