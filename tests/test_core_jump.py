@@ -26,7 +26,7 @@ def recording(called: list):
         return {
             "line_id": f"{moment['match_id']}-{n}",
             "moment_idx": moment["idx"],
-            "text": "Shot!",
+            "text": f"Call {n}.",
         }
 
     return commentate
@@ -86,6 +86,22 @@ def test_a_jump_lands_with_the_score_clock_and_lines_already_at_its_moment(tmp_p
     assert (
         called[0][0] == 22 and events[first][1]["moment_idx"] == 22
     )  # nothing before it is called
+
+
+def test_a_jump_shows_each_earlier_line_once_however_often_the_match_was_replayed(tmp_path):
+    store = Store(tmp_path)
+    for run in range(2):  # two earlier replays both called moments 18 to 21
+        for idx in range(18, 22):
+            line = {"line_id": f"r{run}-{idx}", "match_id": KOBE, "moment_idx": idx}
+            store.append("lines", {**line, "text": f"Run {run}, moment {idx}.", "speaker": "lead"})
+    deps = Deps(list_matches, load_moments, recording([]), video_map)
+    with TestClient(create_app(store, deps)) as client:
+        rid = client.post("/replays", json={"match_id": KOBE, "speed": 1e6, "start_idx": 22})
+        lines = [d for n, d in read_stream(client, rid.json()["replay_id"]) if n == "line"]
+    old = [ln["line_id"] for ln in lines if ln.get("history")]
+    assert old == ["r1-18", "r1-19", "r1-20", "r1-21"]  # the latest replay's line, once per moment
+    assert len({ln["line_id"] for ln in lines}) == len(lines)
+    assert len({ln["text"] for ln in lines}) == len(lines)
 
 
 def test_a_jump_to_an_unknown_moment_is_refused(tmp_path):
