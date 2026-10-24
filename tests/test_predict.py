@@ -1,11 +1,14 @@
 """Predictions (#119): profiles, next-to-score odds and shot points from the committed packs."""
 
 import copy
+import hashlib
+import json
 import re
 
 import pytest
 
-from agent.commentator import run_tool
+from agent import commentator
+from agent.commentator import FakeProvider, answer, line_for, run_tool
 from core import predict
 from data.matches import load_moments, match_header
 
@@ -68,7 +71,9 @@ def test_odds_sum_to_one_per_team(sport, match_id, who):
     pack, moments = load(sport, match_id)
     for idx in (0, len(moments) // 2, len(moments) - 1):
         odds = predict.next_score_odds(pack, moments, idx)
-        assert set(odds) == set(pack["teams"])
+        assert set(odds) <= set(pack["teams"])
+        if idx == len(moments) - 1:
+            assert set(odds) == set(pack["teams"])
         for rows in odds.values():
             assert sum(r["p"] for r in rows) == pytest.approx(1.0)
             assert all(0 <= r["p"] <= 1 for r in rows)
@@ -153,3 +158,47 @@ def test_no_pack_no_numbers():
         assert run_tool(tool, {"name": "x"}, header, past) == "No pre-match record for this event."
     cricket, balls = load("cricket", "1298150")
     assert "basketball and football" in predict.odds_text(cricket, balls, 3)
+
+
+def test_odds_name_only_players_on_so_far():
+    """A sub counts once they come on, and not after they go off; nobody else from the bench."""
+    pack, moments = load("football", "3869685")
+    on = {m["players"]["on"]: m["idx"] for m in moments if m["type"] == "Substitution"}
+    off = {m["players"]["off"]: m["idx"] for m in moments if m["type"] == "Substitution"}
+    assert pack["players"]["Lautaro Martínez"]["attempts"] >= 10  # he would rank if not filtered
+
+    def named(idx):
+        return {
+            r["player"]
+            for rows in predict.next_score_odds(pack, moments, idx).values()
+            for r in rows
+        }
+
+    assert "Lautaro Martínez" not in named(on["Lautaro Martínez"] - 1)
+    assert "Lautaro Martínez" in named(on["Lautaro Martínez"])
+    assert "Ángel Di María" in named(off["Ángel Di María"] - 1)
+    assert "Ángel Di María" not in named(off["Ángel Di María"])
+    for idx in range(len(moments)):
+        bench = {n for n, i in on.items() if i > idx}
+        assert not named(idx) & bench, idx
+    assert "France: nobody with a shot on record seen yet" in predict.odds_text(pack, moments, 0)
+
+
+LINE_TOOLS = ["get_score", "get_player", "get_recent_play"]
+# sha256 of the line tools as Mubit sees them: any change splits the recorded commentary task
+LINE_TOOLS_SHA = "abaa39c718a6484c60017e1dd290f981c971dc07802e820709e39a17246d9171"
+
+
+def test_lines_keep_the_old_three_tools_and_only_ask_gets_predictions():
+    header, moments = match_header("3869685"), load_moments("3869685")
+    lines = FakeProvider()
+    line_for(header, moments, 5, lines)
+    for request in lines.requests:
+        assert [t["name"] for t in request["tools"]] == LINE_TOOLS
+        digest = hashlib.sha256(json.dumps(request["tools"], sort_keys=True).encode()).hexdigest()
+        assert digest == LINE_TOOLS_SHA
+    asks = FakeProvider()
+    answer("Who scores next?", moments[:6], [], header, asks)
+    new = ["get_player_profile", "get_next_score_odds"]
+    assert [t["name"] for t in asks.requests[0]["tools"]] == LINE_TOOLS + new
+    assert commentator.ASK_TOOLS[:3] == commentator.TOOLS
