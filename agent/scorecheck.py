@@ -78,3 +78,36 @@ def parse(text: str) -> str | None:
     if not isinstance(out, dict) or list(out) != ["score"] or out["score"] not in LABELS:
         return None
     return out["score"]
+
+
+def teach(line: dict, sent: set[str] = frozenset(), provider=None) -> dict | None:
+    """A producer's fix (agent/linecheck.py TEACHES) as one recorded Score check example: the line
+    as first said and its score label from the event data, with the correction turn when Claude's
+    reply differs. None, and no call, when code can't label it, for a held-out match, a stat line,
+    an example already in `sent`, or no recorder (the owner's key, else the lines' provider)."""
+    from agent.commentator import correction_provider, default_provider
+    from data.matches import load_moments, match_header
+    from eval.linecheck import HELD_OUT, example_id, gold
+    from eval.seed_scorecheck import send
+
+    mid, idx, text = line.get("match_id"), line.get("moment_idx"), line.get("tried") or line["text"]
+    if mid in HELD_OUT or line.get("speaker") == "analyst" or "reply" in line or "insight" in line:
+        return None
+    if example_id(mid, idx, text) in sent:
+        return None
+    if provider is None:
+        provider = correction_provider() or default_provider()
+        if not getattr(provider, "record", False):
+            return None
+    try:
+        header, moments = match_header(mid), load_moments(mid)
+    except KeyError:  # not a bundled match: no facts to check against
+        return None
+    i = next((i for i, m in enumerate(moments) if m["idx"] == idx), None)
+    if i is None or moments[i]["sport"] not in SPORTS:
+        return None
+    key = gold(header, moments[i], moments[:i], text)
+    if key is None:
+        return None
+    ex = {"id": example_id(mid, idx, text), "match_id": mid, "idx": idx, "text": text}
+    return send({**ex, "gold": key["score"]}, provider)
