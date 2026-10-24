@@ -1,8 +1,10 @@
-"""#130: stat lines fill each quiet stretch of a video replay, from data up to the moment they
-follow only, through the same commentator request as every line, and cached per match."""
+"""#130: the analyst's stat lines, and now and then the lead's reply, fill each quiet stretch of a
+video replay, from data up to the moment they follow only, through the same commentator request as
+every line, and cached per match."""
 
 import asyncio
 import functools
+import uuid
 
 import pytest
 
@@ -17,10 +19,10 @@ from data.matches import load_moments, video_map
 KOBE, CHELSEA = "0020500591", "3754092"
 
 
-def replay(match_id, store, moments=None, video=True):
+def replay(match_id, store, moments=None, video=True, calls=None):
     fake = FakeProvider()
     r = Replay(match_id, 1e9)
-    calls = functools.partial(commentator.commentate, provider=fake)
+    calls = calls or functools.partial(commentator.commentate, provider=fake)
     moments = moments or load_moments(match_id)
     asyncio.run(run_replay(r, moments, calls, store, video_map(match_id) if video else None))
     assert not [e for e in r.events if e["event"] == "error"]
@@ -31,20 +33,38 @@ def stat_calls(fake):
     return [q for q in fake.requests if "\nEvent: Stat, " in q["messages"][0]["content"]]
 
 
-def test_kobe_every_quiet_stretch_is_filled_at_the_spacing_without_repeats(tmp_path):
-    store = Store(tmp_path)
-    replay(KOBE, store)  # the first viewing stops at the cap; the second fills every stretch
-    lines, _ = replay(KOBE, store)
+def gap(ln):
+    """The insight or reply key of a line in a quiet stretch, else {} for a moment's line."""
+    return ln.get("insight") or ln.get("reply") or {}
+
+
+class Sized:
+    """A commentator whose lines are 14 words, about a real line's length (13 on average)."""
+
+    def __init__(self):
+        self.stats = 0
+
+    def __call__(self, moment, history):
+        self.stats += moment["type"] == "Stat"
+        said = f"{moment['type']} {moment['idx']} " + "word " * 12
+        return {"line_id": uuid.uuid4().hex, "moment_idx": moment["idx"], "text": said.strip()}
+
+
+def test_kobe_one_viewing_fills_every_quiet_stretch_at_the_spacing_without_repeats(tmp_path):
+    store, sized = Store(tmp_path), Sized()
+    lines, _ = replay(KOBE, store, calls=sized)
+    assert 0 < sized.stats <= insight.MAX_CALLS
     times = [m["video_t"] for m in video_map(KOBE)["moments"]]
-    called = [ln for ln in lines if "insight" not in ln]
+    called = [ln for ln in lines if not gap(ln)]
     assert [ln["video_t"] for ln in called] == times
     filled = 0
     for line, end in zip(called, times[1:], strict=False):
-        after = [ln for ln in lines if ln.get("insight", {}).get("after_idx") == line["moment_idx"]]
+        after = [ln for ln in lines if gap(ln).get("after_idx") == line["moment_idx"]]
         assert line["speaker"] == "lead"
-        assert [ln["speaker"] for ln in after] == ["analyst", "lead"] * (len(after) // 2) + [
-            "analyst"
-        ] * (len(after) % 2)  # the analyst and the lead take turns
+        assert [gap(ln)["n"] for ln in after] == list(range(len(after)))
+        for n, ln in enumerate(after):  # the analyst, and every 4th line the lead's reply
+            reply = n % insight.REPLY_EVERY == insight.REPLY_EVERY - 1
+            assert ("reply" in ln, ln["speaker"]) == (reply, "lead" if reply else "analyst")
         t, said = line["video_t"], line["text"]
         for ln in after:  # each one due once the line before it has likely been spoken
             assert ln["video_t"] == pytest.approx(insight.due_after(t, said))
@@ -54,8 +74,10 @@ def test_kobe_every_quiet_stretch_is_filled_at_the_spacing_without_repeats(tmp_p
         filled += end - line["video_t"] >= 14
     assert filled >= 10
     details = [ln["insight"]["detail"] for ln in lines if "insight" in ln]
-    assert len(details) == len(set(details)) > 100
-    assert all(ln["text"] for ln in lines)  # FakeProvider calls a Stat moment like any other
+    assert len(details) == len(set(details)) > 60
+    sized.stats = 0
+    replay(KOBE, store, calls=sized)
+    assert sized.stats == 0  # the second viewing is all cache
 
 
 def test_a_later_event_never_reaches_the_insights_before_it(tmp_path, monkeypatch):
@@ -72,10 +94,10 @@ def test_a_later_event_never_reaches_the_insights_before_it(tmp_path, monkeypatc
     }
     lines, fake = replay(KOBE, Store(tmp_path), moments)
     planted = ("Planted", "990", "991", "977")
-    before = [ln for ln in lines if ln.get("insight", {}).get("after_idx", 99) <= 9]
+    before = [ln for ln in lines if gap(ln).get("after_idx", 99) <= 9]
     asked = [q["messages"][0]["content"] for q in stat_calls(fake)]
-    assert len(before) > 10 and len(asked) == len([ln for ln in lines if "insight" in ln])
-    assert not any(p in ln["insight"]["detail"] for ln in before for p in planted)
+    assert len(before) > 10 and len(asked) == len([ln for ln in lines if gap(ln)])
+    assert not any(p in gap(ln)["detail"] for ln in before for p in planted)
     early = asked[: len(before)]
     assert not any(p in q for q in early for p in planted)
     # the probe can go red: once the planted event is past, the insights do use it
@@ -99,14 +121,19 @@ def test_an_insight_request_is_a_normal_line_request(tmp_path):
         )
 
 
-def test_each_insight_hears_the_line_before_it(tmp_path):
-    lines, fake = replay(CHELSEA, Store(tmp_path))
+def test_each_insight_hears_the_line_before_it_and_the_lead_replies(tmp_path):
+    lines, fake = replay(KOBE, Store(tmp_path))
     asked = [q["messages"][0]["content"] for q in stat_calls(fake)]
-    heard = [prev["text"] for prev, ln in zip(lines, lines[1:], strict=False) if "insight" in ln]
-    assert len(asked) == len(heard) > 0
-    for q, before, ln in zip(asked, heard, [ln for ln in lines if "insight" in ln], strict=True):
+    pairs = [(prev, ln) for prev, ln in zip(lines, lines[1:], strict=False) if gap(ln)]
+    assert len(asked) == len(pairs) > 0
+    for q, (prev, ln) in zip(asked, pairs, strict=True):
         details = next(row for row in q.splitlines() if row.startswith("Details: "))
-        assert f"speaker: {ln['speaker']}" in details and f"after: {before}" in details
+        assert f"speaker: {ln['speaker']}, Partner just said: {prev['text']}" in details
+        assert ("stat: " in details) == ("insight" in ln)  # a reply brings no new number
+    replies = [(prev, ln) for prev, ln in pairs if "reply" in ln]
+    assert replies and all(prev["speaker"] == "analyst" for prev, _ in replies)
+    assert {ln["speaker"] for ln in lines if "insight" in ln} == {"analyst"}
+    assert {ln["speaker"] for ln in lines if not gap(ln)} == {"lead"}
 
 
 def test_a_pack_match_cites_the_pack_and_one_without_uses_tonight_only(tmp_path):
@@ -127,8 +154,8 @@ def test_a_second_replay_makes_no_new_insight_calls(tmp_path):
     assert 0 < len(stat_calls(fake)) < insight.MAX_CALLS
     again, fake = replay(CHELSEA, store)
     assert stat_calls(fake) == []
-    ids = [ln["line_id"] for ln in first if "insight" in ln]
-    assert [ln["line_id"] for ln in again if "insight" in ln] == ids
+    ids = [ln["line_id"] for ln in first if gap(ln)]
+    assert [ln["line_id"] for ln in again if gap(ln)] == ids
     assert len(store.all("lines")) == len(first) + len(again) - len(ids)  # nothing stored twice
 
 
@@ -136,10 +163,11 @@ def test_new_insight_calls_stop_at_the_cap(tmp_path):
     store = Store(tmp_path)
     counts = [len(stat_calls(replay(KOBE, store)[1])) for _ in range(3)]
     assert counts[0] == insight.MAX_CALLS == 120
-    assert 0 < counts[1] <= insight.MAX_CALLS and counts[2] == 0  # Kobe needs a little over 120
+    # FakeProvider's 7-word lines leave room for more than 120 on Kobe: the second viewing tops up
+    assert 0 < counts[1] <= insight.MAX_CALLS and counts[2] == 0
 
 
 def test_no_video_no_insights(tmp_path):
     lines, fake = replay(CHELSEA, Store(tmp_path), video=False)
-    assert lines and stat_calls(fake) == [] and not any("insight" in ln for ln in lines)
+    assert lines and stat_calls(fake) == [] and not any(gap(ln) for ln in lines)
     assert {ln["speaker"] for ln in lines} == {"lead"}
