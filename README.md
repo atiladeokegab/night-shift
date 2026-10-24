@@ -683,9 +683,9 @@ fails, it reads the packs.
 - **A fix is locked only where `PRODUCER_TOKEN` is set.** With it set, `POST /lines/{id}/fix` needs
   the header `X-Producer-Token` and answers 401 without it; unset, anyone can post a fix
   ([#240](https://github.com/atiladeokegab/night-shift/pull/240), [`core/app.py`](core/app.py)
-  `fix_line`). [`scripts/deploy.sh`](scripts/deploy.sh) passes it to Cloud Run from the deploy's
-  own environment (never `.env`), so the live service has it exactly when the deploy did; one set
-  on the service by hand is wiped by the next deploy. It is a plain Cloud Run env var, not a secret: it is visible in the service config, in the deployer's gcloud logs and under `bash -x`. Either way, a fix is number-checked against its
+  `fix_line`). [`scripts/deploy.sh`](scripts/deploy.sh) mounts it on Cloud Run from the Secret Manager
+  secret `producer-token` (latest version, checked ENABLED before the build), so it is not in the
+  service config as a plain env var; a `PRODUCER_TOKEN` in the deploy's own environment is ignored. Either way, a fix is number-checked against its
   moment before it is stored, and one that contradicts the data gets a 422 and is never sent to Mubit.
 - **Two files break the repo's own 1,000-line rule** ([AGENTS.md](AGENTS.md)): [`core/insight.py`](core/insight.py)
   at 1,728 lines and [`tests/test_core_voice.py`](tests/test_core_voice.py) at 1,001. Splitting them waits
