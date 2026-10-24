@@ -941,6 +941,10 @@ WANTED_SIX = re.compile(
     r"|\bfind(?:s|ing)? (?:a|another) six\b[^.!?,;]*\?",
     re.I,
 )
+# an earlier six recalled: "a dot ball after the six", "found a six last over"
+PAST_SIX = re.compile(
+    r"\bafter (?:the|that|his) six\b|\bsix (?:earlier|last (?:ball|over))\b", re.I
+)
 HOW_OUT = {
     "stumped": re.compile(r"\bstump(?:ed|ing)\b", re.I),
     "lbw": re.compile(r"\blbw\b|\bleg before\b", re.I),
@@ -960,7 +964,11 @@ def _wrong_cricket(text: str, m: dict) -> list[str]:
     if " win " in f" {d.get('chase', '')} " and TIE.search(text):  # "India win by 4 wickets"
         wrong.append(f"a tie is called, but {d['chase']}")
     # a wicket line may recall the bowler's earlier moments: "has a six and a last-ball two"
-    if kind != "Wicket" and m.get("outcome") != "6 runs" and SIX.search(WANTED_SIX.sub("", text)):
+    if (
+        kind != "Wicket"
+        and m.get("outcome") != "6 runs"
+        and SIX.search(PAST_SIX.sub("", WANTED_SIX.sub("", text)))
+    ):
         wrong.append(f"a six is called, but the ball was {m.get('outcome')}")
     if won := re.match(r"(.+?) win\b", d.get("chase", "")):
         wrong += _wrong_winner(text, m, won[1])
