@@ -186,10 +186,29 @@ def test_a_cricket_profile_is_the_part_for_the_players_role():
     moments = load_moments("1298150")
     k = next(i for i, m in enumerate(moments) if m["idx"] == 10)  # Iftikhar Ahmed bats, over 11
     pack = load_pack("cricket", "1298150")
-    said = {d.split(" (")[0]: d for d in insight._profiles(pack, moments[: k + 1])}
+    facts = insight._profiles(pack, moments[: k + 1])
     batter, bowler = (moments[k]["players"][r] for r in ("batter", "bowler"))
-    assert "- Batting, middle:" in said[batter] and "Bowling" not in said[batter]
-    assert "- Bowling:" in said[bowler] and "Batting" not in said[bowler]
+    bats = [d for d in facts if d.startswith(batter)]
+    bowls = [d for d in facts if d.startswith(bowler)]
+    assert bats and all(d.startswith(f"{batter} batting ") for d in bats)
+    assert bats[1].startswith(f"{batter} batting in the middle overs before tonight: ")
+    assert bowls and all(d.startswith(f"{bowler} bowling ") for d in bowls)
+
+
+def test_a_profile_is_one_short_fact_at_a_time():
+    for sport, match_id in (("football", "3869685"), ("basketball", KOBE), ("f1", "9636")):
+        moments = load_moments(match_id)
+        facts = insight._profiles(load_pack(sport, match_id), moments[:8])
+        assert facts and all(d.count(".") <= 2 and len(d.split()) <= 16 for d in facts), sport
+
+
+def test_the_analyst_model_is_a_setting_and_the_lines_model_never_moves(tmp_path, monkeypatch):
+    monkeypatch.setenv("ANALYST_MODEL", "claude-sonnet-test")
+    lines, fake = replay(CHELSEA, Store(tmp_path))
+    stats = stat_calls(fake)
+    assert stats and {q["model"] for q in stats} == {"claude-sonnet-test"}
+    assert {q["model"] for q in fake.requests if q not in stats} == {commentator.MODEL}
+    assert {ln["model"] for ln in lines if gap(ln)} == {"claude-sonnet-test"}
 
 
 def test_analyst_and_reply_lines_never_go_through_the_recorded_provider(tmp_path, monkeypatch):

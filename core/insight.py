@@ -28,13 +28,87 @@ def _who(m: dict) -> str | None:
     return next(iter((m.get("players") or {}).values()), None)
 
 
-CRICKET_PART = {"batter": "- Batting", "non_striker": "- Batting", "bowler": "- Bowling"}
+CRICKET_PART = {"batter": "batting", "non_striker": "batting", "bowler": "bowling"}
+
+
+def _n(count: int, what: str) -> str:
+    return f"{count} {what}" + ("" if count == 1 else "s")
+
+
+def _shot_facts(pack, name, tonight, part, over):
+    p, football = pack["players"][name], pack["sport"] == "football"
+    mine = [t for t in tonight if t["player"] == name]
+    if not (p["attempts"] or mine):  # a keeper's 0 from 0 says nothing
+        return []
+
+    def record(made, att):
+        if football:
+            return f"{_n(made, 'goal')} from {_n(att, 'shot')}"
+        return f"made {made} of {_n(att, 'shot')}"
+
+    small = " (a small sample)" if p["attempts"] < predict.SMALL else ""
+    pct = f" ({round(100 * p['made'] / p['attempts'])}%)" if p["attempts"] and not football else ""
+    out = [
+        f"{name} before tonight: {record(p['made'], p['attempts'])}{pct} "
+        f"in {p['games']} games{small}."
+    ]
+    if mine:
+        out.append(f"{name} tonight: {record(sum(t['made'] for t in mine), len(mine))}.")
+    for z, c in sorted(p["zones"].items(), key=lambda zc: -zc[1]["att"])[:3]:
+        if c["att"]:
+            out.append(f"{name} before tonight, {z}: {record(c['made'], c['att'])}.")
+    return out
+
+
+def _cricket_facts(pack, name, tonight, part, over):
+    p, bat, bowl = pack["players"][name], [], []
+    mine = [t for t in tonight if t["batter"] == name]
+    if mine:
+        bat.append(f"{name} batting tonight: {sum(t['runs'] for t in mine)} off {len(mine)} balls.")
+    for ph in sorted(("powerplay", "middle", "death"), key=lambda ph: ph != phase(over)):
+        b = p["batting"].get(ph) or {}
+        if b.get("balls"):
+            bat.append(
+                f"{name} batting in the {ph} overs before tonight: "
+                f"{b['runs']} off {b['balls']} balls."
+            )
+    mine = [t for t in tonight if t["bowler"] == name]
+    if mine:
+        runs, wickets = sum(t["runs"] for t in mine), sum(bool(t["out"]) for t in mine)
+        bowl.append(
+            f"{name} bowling tonight: {_n(wickets, 'wicket')} for {_n(runs, 'run')} "
+            f"off {_n(len(mine), 'ball')}."
+        )
+    bw = p["bowling"]
+    if bw["balls"]:
+        bowl.append(
+            f"{name} bowling before tonight: {_n(bw['wickets'], 'wicket')} in {bw['balls']} balls."
+        )
+    if bw.get("economy") is not None:
+        bowl.append(f"{name} bowling before tonight: economy {bw['economy']} runs an over.")
+    return {"batting": bat, "bowling": bowl}.get(part, bat + bowl)
+
+
+def _f1_facts(pack, name, tonight, part, over):
+    p = pack["players"][name]
+    if not p["finishes"]:
+        return [f"{name} before tonight: no finishes in {_n(p['games'], 'race')}."]
+    g = p["avg_gained"]
+    return [
+        f"{name} before tonight: {_n(p['wins'], 'win')} in {_n(p['games'], 'race')}.",
+        f"{name} before tonight: average finish {p['avg_finish']}.",
+        f"{name} before tonight: {abs(g):.1f} places {'gained' if g >= 0 else 'lost'} a race "
+        "on average from the grid.",
+    ]
+
+
+FACTS = {"cricket": _cricket_facts, "f1": _f1_facts}
 
 
 def _profiles(pack, past):
+    """One short fact per detail, so the analyst has nothing to add up or merge."""
     if not pack:
         return []
-    out, zones = [], []
     # the latest role each player had: a batter's profile is their batting, a bowler's bowling
     role = {}
     for m in reversed(past):
@@ -42,30 +116,31 @@ def _profiles(pack, past):
             role.setdefault(n, r)
     # then the rest of the roster: a pre-match record is known before the match starts
     rest = sorted(pack["players"], key=lambda n: -pack["players"][n].get("games", 0))
+    tonight = [t for t in pack.get("tonight") or [] if t["idx"] <= past[-1]["idx"]]
+    cricket = pack["sport"] == "cricket"  # its clock is the over: 11.3
+    over = int(str(past[-1].get("clock") or "0").split(".")[0]) if cricket else 0
+    out = []
     for name in dict.fromkeys([*role, *rest]):
-        text = predict.profile_text(pack, past, len(past) - 1, name).splitlines()
-        if text[0].startswith("No pre-match"):
+        try:
+            key = predict.find(pack, name)
+        except KeyError:
             continue
-        part = CRICKET_PART.get(role.get(name))
-        if part:
-            rows = [row for row in text[1:] if row.startswith(part)]
-            if not rows:  # nothing on record for the role they are playing
-                continue
-            # this over's phase last, so the summary below is the batting that matters now
-            now = f"- Batting, {phase(int(str(past[-1].get('clock', '0')).split('.')[0]))}:"
-            text = text[:1] + sorted(rows, key=lambda row: row.startswith(now))
-        out.append(" ".join(dict.fromkeys([text[0], text[-1]])))  # the record and tonight
-        who = text[0].split(" (")[0]
-        zones += [f"{who}, {row.lstrip('- ')}" for row in text[1:] if row.startswith("- ")]
-    return out + zones  # then each zone (or cricket phase) on its own, for the long stretches
+        facts = FACTS.get(pack["sport"], _shot_facts)
+        out += facts(pack, key, tonight, CRICKET_PART.get(role.get(name)), over)
+    return list(dict.fromkeys(out))
 
 
 def _odds(pack, past):
     if not pack or pack["sport"] not in predict.SHOTS:
         return []
-    rows = predict.odds_text(pack, past, len(past) - 1).splitlines()[1:]
-    rows.sort(key=lambda r: not r.startswith(f"{past[-1].get('team')}:"))  # this team first
-    return [f"Next to score, pre-match record blended with tonight: {r}" for r in rows if "%" in r]
+    what = "goal" if pack["sport"] == "football" else "basket"
+    odds = predict.next_score_odds(pack, past, len(past) - 1)
+    teams = sorted(odds, key=lambda t: t != past[-1].get("team"))  # this team first
+    return [
+        f"Chance {r['player']} scores the next {team} {what}: {round(100 * r['p'])}%."
+        for team in teams
+        for r in odds[team][: predict.TOP]
+    ]
 
 
 def _tallies(pack, past):
@@ -140,10 +215,13 @@ def _positions(pack, past):
         return []
     out = []
     gaps = [
-        f"P{c['pos']} {c['driver']} {c['gap']}" for c in top if c.get("gap") not in ("", "leader")
+        f"{c['driver']} is P{c['pos']}, {c['gap']} behind the leader."
+        for c in top
+        if c.get("gap") not in ("", "leader")
     ]
-    if gaps:
-        out.append(f"Lap {s.get('lap')} of {s.get('laps')}, gaps to the leader: " + ", ".join(gaps))
+    if s.get("lap"):
+        out.append(f"Lap {s.get('lap')} of {s.get('laps')}.")
+    out += gaps
     first = {c["driver"]: c["pos"] for c in (past[0].get("score") or {}).get("top") or []}
     for c in top:
         start = (
