@@ -86,7 +86,7 @@ export function Converse({ sport, matchId, momentIdx, paused, getReplayId, onPau
   useLayoutEffect(() => () => over(), [identity])
 
   return (
-    <button type="button" className={`btn sm${phase === 'idle' ? '' : ' primary'}`} aria-pressed={phase !== 'idle'}
+    <button type="button" className={`btn sm${phase === 'idle' ? '' : ' primary'}`} aria-pressed={phase !== 'idle'} aria-busy={phase === 'starting'}
       disabled={phase === 'starting' || (phase === 'idle' && momentIdx === null)}
       onClick={phase === 'talking' ? over : start}
       title={phase === 'talking' ? 'End the talk and resume the match (or press Escape)' : 'Pause the match and talk with the commentator'}>

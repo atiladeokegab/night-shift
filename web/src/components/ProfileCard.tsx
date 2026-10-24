@@ -60,6 +60,7 @@ export function ProfileCard({ name, replayKey, momentIdx, load, onShots, onUnfol
 // Batting by phase: runs off balls before tonight and tonight, the bar the strike rate (200 fills it).
 function Phases({ p }: { p: Profile }) {
   const sr = (runs: number, balls: number) => (balls ? Math.round((runs / balls) * 100) : 0)
+  const nb = (s: string) => s.replaceAll(' ', '\u00a0') // a narrow card wraps at the ' · ', never inside '0 off 1'
   return (
     <table className="zones">
       <caption className="label">Batting by phase</caption>
@@ -71,7 +72,7 @@ function Phases({ p }: { p: Profile }) {
           return (
             <tr key={ph}>
               <th scope="row">{ph[0].toUpperCase() + ph.slice(1)}</th>
-              <td className="num">{b.runs} off {b.balls}{t.balls ? ` · ${t.runs} off ${t.balls} tonight` : ''}</td>
+              <td className="num">{nb(`${b.runs} off ${b.balls}`)}{t.balls ? ` · ${nb(`${t.runs} off ${t.balls} tonight`)}` : ''}</td>
               <td className="num rate"><span style={{ width: `${Math.min(100, rate / 2)}%` }} />SR {rate}</td>
             </tr>
           )
