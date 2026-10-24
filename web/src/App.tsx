@@ -15,6 +15,7 @@ import { commentatorName, defaultVoice, voiceName } from './teams'
 import { SPORTS, type Line, type Match, type Sport, type Voice } from './types'
 import { useReplay } from './useReplay'
 import { useSpeech } from './useSpeech'
+import { viewOf } from './view'
 
 const TOAST_MS = 2400
 
@@ -70,6 +71,11 @@ export default function App() {
   }, [])
 
   useEffect(load, [load])
+  // A new screen or match opens at its top, not at the scroll the wall was left at.
+  const view = viewOf(screen, current?.key)
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [view])
   useEffect(() => {
     listVoices().then(setVoices)
   }, [])
