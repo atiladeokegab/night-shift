@@ -65,7 +65,7 @@ def _name(obj) -> str:
 
 
 def _side(name) -> str:
-    return _s(name).removesuffix(" Women's")  # lines and the score bar say "Spain", not "Spain Women's"
+    return _s(name).removesuffix(" Women's")  # "Spain" in lines and the score bar
 
 
 # --- football -----------------------------------------------------------------------------
