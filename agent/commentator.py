@@ -360,7 +360,8 @@ def goals_so_far(past: list[dict]) -> list[dict]:
     return [
         p
         for p in past
-        if p["type"] == "Shot" and p["outcome"] == "Goal" and "shootout" not in p["detail"]
+        if (p.get("type"), p.get("outcome")) == ("Shot", "Goal")
+        and "shootout" not in (p.get("detail") or {})
     ]
 
 
