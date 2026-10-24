@@ -15,6 +15,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from string import Template
 
+from core import predict
+
 AGENT = Path(__file__).resolve().parent
 SYSTEM = (AGENT / "prompt.md").read_text(encoding="utf-8")
 MESSAGE = (AGENT / "message.md").read_text(encoding="utf-8")
@@ -131,6 +133,13 @@ def run_tool(name: str, args: dict, header: dict, past: list[dict]) -> str:
         count = (args or {}).get("count", 3)
         count = max(1, min(10, count if isinstance(count, int) else 3))
         return "\n".join(describe(p) for p in past[-count - 1 : -1]) or "No earlier moments."
+    if name in ("get_player_profile", "get_next_score_odds"):
+        pack = predict.load_pack(header["sport"], header["match_id"])
+        if pack is None:
+            return "No pre-match record for this event."
+        if name == "get_next_score_odds":
+            return predict.odds_text(pack, past, len(past) - 1)
+        return predict.profile_text(pack, past, len(past) - 1, str((args or {}).get("name", "")))
     return f"Unknown tool {name}."
 
 
