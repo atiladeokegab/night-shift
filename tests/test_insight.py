@@ -1,6 +1,6 @@
-"""#130: the analyst's stat lines, and now and then the lead's reply, fill each quiet stretch of a
-video replay, from data up to the moment they follow only, through the analyst's own request
-(a line's message, agent/analyst.md, never recorded), and cached per match."""
+"""#130: the analyst's stat lines, and the lead's comebacks between them (#288), fill each quiet
+stretch of a video replay, from data up to the moment they follow only, through the analyst's
+own request (a line's message, agent/analyst.md, never recorded), and cached per match."""
 
 import asyncio
 import functools
@@ -100,17 +100,19 @@ def test_kobe_one_viewing_fills_each_quiet_stretch_up_to_the_cap_without_repeats
         after = [ln for ln in lines if gap(ln).get("after_idx") == line["moment_idx"]]
         assert line["speaker"] == "lead"
         assert [gap(ln)["n"] for ln in after] == list(range(len(after)))
-        assert len(after) <= insight.PER_GAP  # two analyst lines a gap, then the reply (#162)
-        for n, ln in enumerate(after):  # the analyst, and every 3rd line the lead's reply
-            reply = n % insight.REPLY_EVERY == insight.REPLY_EVERY - 1
+        assert len(after) <= insight.PER_GAP  # the analyst, the lead's comeback, the analyst (#288)
+        for n, ln in enumerate(after):  # the voices alternate after the lead's call
+            reply = n % 2 == 1
             assert ("reply" in ln, ln["speaker"]) == (reply, "lead" if reply else "analyst")
         t, said = line["video_t"], line["text"]
         for ln in after:  # each one due once the line before it has likely been spoken
-            assert ln["video_t"] == pytest.approx(insight.due_after(t, said))
+            assert ln["video_t"] == pytest.approx(insight.due_after(t, said, insight.TURN_S))
             assert ln["video_t"] <= end - insight.CLEAR_S
             t, said = ln["video_t"], ln["text"]
         full = len(after) == insight.PER_GAP
-        assert full or insight.due_after(t, said) > end - insight.CLEAR_S, "left quiet"
+        assert full or insight.due_after(t, said, insight.TURN_S) > end - insight.CLEAR_S, (
+            "left quiet"
+        )
         filled += full
     assert filled >= 10
     details = [ln["insight"]["detail"] for ln in lines if "insight" in ln]
@@ -644,3 +646,93 @@ def test_the_ball_is_said_again_though_it_reads_like_the_last_ball_line(tmp_path
     }
     with_ball = [idx for idx in first if idx in balls(FINAL)]
     assert len(with_ball) >= 5 and {first[idx] for idx in with_ball} == {"orientation"}
+
+
+def test_after_the_call_the_voices_alternate_and_each_answers_the_other(tmp_path):
+    # #288: lead, analyst, lead, analyst at a moment, never one voice twice in a row
+    lines, _ = replay(CHELSEA, Store(tmp_path))
+    said = [ln for ln in lines if "open" not in ln]
+    runs = [[ln] for ln in said if not gap(ln)]  # each moment's call, then its stretch
+    for ln in said:
+        if gap(ln):
+            next(r for r in runs if r[0]["moment_idx"] == gap(ln)["after_idx"]).append(ln)
+    assert max(len(r) for r in runs) == 1 + insight.PER_GAP
+    for run in runs:
+        speakers = [ln["speaker"] for ln in run]
+        assert speakers == ["lead", "analyst", "lead", "analyst"][: len(run)]
+        for prev, ln in itertools.pairwise(run):  # each heard the other voice's line
+            assert gap(ln)["heard"] == prev["text"] or gap(ln)["n"] == 0
+            assert gap(ln)["by"] == prev["speaker"]
+
+
+def test_the_comeback_is_told_what_the_analyst_answers_with(tmp_path):
+    lines, fake = replay(KOBE, Store(tmp_path))
+    asked = {
+        q["messages"][0]["content"]
+        .split("Event: Stat, the lead answers the analyst, who just said: ")[1]
+        .split("\n")[0]: q["messages"][0]["content"]
+        for q in stat_calls(fake)
+        if "the lead answers the analyst" in q["messages"][0]["content"]
+    }
+    pairs = [(a, b) for a, b in itertools.pairwise(lines) if "reply" in a and "insight" in b]
+    topics = [(a, b) for a, b in pairs if "next" in a["reply"]]
+    assert len(topics) >= 5
+    for reply, answer in topics:
+        # the lead may ask about it; the analyst's next line is that stat, said to the question
+        assert answer["insight"]["kind"] == reply["reply"]["next"]
+        assert answer["insight"]["heard"] == reply["text"]
+        q = asked[reply["reply"]["heard"]]
+        assert f"{NAMES['analyst']}'s next point is about: {reply['reply']['next']}" in q
+
+
+@pytest.mark.parametrize("match_id", [KOBE, CHELSEA])
+def test_a_question_from_the_lead_is_never_left_unanswered(tmp_path, match_id):
+    # #288: the lead asks whenever it can; the analyst's answer to a question fails twice
+    count = itertools.count()
+    asked = f"{NAMES['analyst']}'s next point is about"
+
+    def asking(moment, history):
+        detail, i = moment["detail"], next(count)
+        words = " ".join(letters(10 * i + k) for k in range(6))
+        if moment["type"] == "Stat" and str(detail.get(f"{NAMES['lead']} just said")).endswith("?"):
+            words = ""  # the answer: an empty line, the next kind's too
+        elif asked in detail:
+            words += f", {NAMES['analyst']}?"
+        return {"line_id": uuid.uuid4().hex, "moment_idx": moment["idx"], "text": words}
+
+    lines, _ = replay(match_id, Store(tmp_path), calls=asking)
+    stored = [ln for ln in Store(tmp_path).all("lines") if (ln.get("reply") or {}).get("next")]
+    assert stored  # questions were asked, and none of them answered
+    said = [ln["text"] for ln in lines]
+    assert not [q for q in said if q.endswith("?")]
+
+
+@pytest.mark.parametrize(
+    ("line", "recent", "echo"),
+    [
+        ("Chelsea have a lot to find.", ["Spurs lead, and Chelsea have a lot to find."], True),
+        ("Two shots, Jim: one on target.", ["Clinical, that. Tottenham lead one-nil."], False),
+        ("Chelsea have a lot to find.", ["Chelsea have a lot to find.", "a", "b", "c"], False),
+    ],
+)
+def test_a_line_echoes_a_phrase_from_the_last_three(line, recent, echo):
+    assert bool(insight.echoes(line, recent)) is echo
+
+
+def test_no_voice_says_a_phrase_a_recent_line_said(tmp_path):
+    # every stat line ends on the same phrase: asked once more, told it, then the line is dropped
+    asked = []
+
+    def echoing(moment, history):
+        asked.append(moment)
+        words = " ".join(letters(10 * len(asked) + i) for i in range(6))  # never a near repeat
+        tail = " chelsea have a lot to find" if moment["type"] == "Stat" else ""
+        return {"line_id": uuid.uuid4().hex, "moment_idx": moment["idx"], "text": words + tail}
+
+    lines, _ = replay(CHELSEA, Store(tmp_path), calls=echoing)
+    said = [ln["text"] for ln in lines if "open" not in ln]
+    assert any("chelsea have a lot to find" in t for t in said)
+    for i, text in enumerate(said):
+        assert not insight.echoes(text, said[max(0, i - insight.RECENT_LINES) : i])
+    told = [m["detail"].get("never say") for m in asked if m["type"] == "Stat"]
+    assert "chelsea have a lot to" in told
