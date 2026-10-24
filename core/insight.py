@@ -39,7 +39,7 @@ OPENING = (  # who says each line of it and what to do: short, so even a read-ba
     ),
     ("analyst", "one light line back to your partner"),
 )
-OPEN_S = 15.0  # the whole cold open is spoken within this
+OPEN_WORDS = 12  # agent/analyst.md's most for a cold open line; less when less fits (#297)
 # how often a stretch line may use the partner's name: the lead's comeback, the analyst (#297)
 NAMED = {"lead": 1 / 3, "analyst": 1 / 4}
 ANALYST_WORDS = 18  # the analyst's line is asked to keep to this many words
@@ -576,13 +576,14 @@ class Gaps:
         `before` it, the analyst adds one light line, else the replay goes on into a stretch over
         the last of them, so the analyst's reply is a fact (#297). Said over the last moment
         `before` it, else over `first` with no score yet, so its play never reaches the request.
-        Cached like the insights; a line, cached or new, is said only if it ends a turn before the
-        first call and the open's speech stays within OPEN_S, else the open ends there.
+        Each new line is asked to fit what is left before the first call; a line, cached or new,
+        is said only if it ends a turn before it, else the open ends there.
         [(Stat moment, stored Line)] in order."""
         m, history, kickoff = (before[-1], before, False) if before else (first, [], True)
-        out, heard, spoken = [], "", 0.0  # spoken: seconds of speech so far, turns not counted
+        out, heard = [], ""
         for n, (speaker, ask) in enumerate(OPENING[:1] if before else OPENING):
             lead = speaker == "lead"
+            words = int(min(OPEN_WORDS, room(t, first_t)))
             ln = self.cached.get((m["idx"], n, True))
             said_as = (
                 ln["open"]
@@ -594,6 +595,7 @@ class Gaps:
                     "by": "lead",
                     "named": True,  # they greet each other by name
                     "kickoff": kickoff,
+                    "words": words,
                     "v": VERSION,
                 }
             )
@@ -604,10 +606,10 @@ class Gaps:
             if ln is not None and (
                 said_as["heard"] != heard or self.wrong(ln.get("text") or "", stat, history)
             ):
-                ln, said_as = None, {**said_as, "heard": heard}
+                ln, said_as = None, {**said_as, "heard": heard, "words": words}
                 stat = stat_moment(m, said_as, lead)
             if ln is None:
-                if room(t, first_t) < MIN_WORDS:
+                if words < MIN_WORDS:
                     break
                 said = None
                 for retry in (False, True):  # a wrong number: asked once more, then the open ends
@@ -632,8 +634,7 @@ class Gaps:
                     },
                 )
             done = due_after(t, ln.get("text"), 0)  # when it has been said: a turn is no speech
-            spoken += done - t
-            if done > first_t - TURN_S or spoken > OPEN_S:
+            if done > first_t - TURN_S:
                 break
             if not lead:
                 self.openers.add(opener(ln["text"]))

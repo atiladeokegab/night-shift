@@ -14,7 +14,9 @@ from pathlib import Path
 SAMPLE = Path(__file__).resolve().parent / "sample"
 VIDEO = Path(__file__).resolve().parent / "video"
 VIDEO_LEAD_S = 10  # the video starts this long before its first mapped moment: time for v3
-VIDEO_OPEN_S = 25  # from the start, room for the cold open (#221) too; a jump keeps VIDEO_LEAD_S
+VIDEO_OPEN_S = (
+    12  # from the start, room for the two cold open lines (#221, #297); a jump keeps VIDEO_LEAD_S
+)
 # StatsBomb's women's sides: "Bristol City WFC", "Spain Women's"; said "Bristol City", "Spain"
 CLUB_SUFFIX = re.compile(r"\s+(?:WFC|LFC|FC|Women's|Women)$", re.I)
 # "Jump to the big moment" (#163): the moment each jump starts at, a beat before its peak.

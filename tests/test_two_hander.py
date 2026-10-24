@@ -64,7 +64,7 @@ def test_the_leads_recorded_prompt_and_tools_are_byte_identical():
 
 def test_the_cold_open_is_said_once_before_the_first_call_then_cached(tmp_path):
     store = Store(tmp_path)
-    lines, fake, vmap = replay(KOBE, store)  # the bundled map: 25 s before the first call
+    lines, fake, vmap = replay(KOBE, store)  # the bundled map: 12 s before the first call
     first_t, start = min(m["video_t"] for m in vmap["moments"]), vmap["start"]
     opened = [ln for ln in lines if "open" in ln]
     # the lead's welcome, untimed so it plays at once (#297), then a stretch over the moments
@@ -185,7 +185,7 @@ def test_which_videos_open_on_both_cold_open_lines(tmp_path):
     assert said == {
         "0020500591": jim,
         "0049700088": jim,
-        "3869685": both,  # from kick-off, 25 s
+        "3869685": both,  # from kick-off, 12 s
         WSL: jim,
         "1298150": jim,  # from kick-off, 9.0 s in
         "9636": both,  # from the start, 9.9 s in
@@ -306,7 +306,7 @@ def test_a_kickoff_open_hears_both_lines_at_a_real_lines_length(tmp_path):
         text = KEYED[moment["detail"]["speaker"]]
         return {"line_id": uuid.uuid4().hex, "moment_idx": moment["idx"], "text": text}
 
-    final, store = "3869685", Store(tmp_path)  # its first mapped moment is its first, 25 s in
+    final, store = "3869685", Store(tmp_path)  # its first mapped moment is its first, 12 s in
     r = Replay(final, 1e9)
     asyncio.run(run_replay(r, load_moments(final), keyed, store, video_map(final)))
     said = before_first([e["data"] for e in r.events if e["event"] == "line"], store)
@@ -357,3 +357,28 @@ def test_a_fix_on_the_kickoff_welcome_is_never_said_as_the_first_call(tmp_path):
     again, _, _ = replay(CRICKET, store)
     call = next(ln for ln in again if "open" not in ln and ln["moment_idx"] == first)
     assert not call.get("fixed") and "Welcome, fixed." not in [ln["text"] for ln in again]
+
+
+def test_a_kickoff_open_leaves_no_quiet_before_the_first_call(tmp_path):
+    # #297: a line asked to fit what is left, and the video starting no earlier than two lines
+    # need, so a kick-off open runs up to the first call: 14 s of quiet were left on 3869685
+    asked = []
+
+    def obeys(moment, history):
+        if not moment["outcome"].startswith(insight.OPEN):
+            return None
+        most = int(moment["detail"]["length"].split()[2])  # "at most N words"
+        asked.append(most)
+        text = " ".join(["word"] * most)
+        return {"line_id": uuid.uuid4().hex, "moment_idx": moment["idx"], "text": text}
+
+    for match_id in ("3869685", "9636", CRICKET):
+        store, vmap = Store(tmp_path / match_id), video_map(match_id)
+        r = Replay(match_id, 1e9)
+        asyncio.run(run_replay(r, load_moments(match_id), obeys, store, vmap))
+        said = before_first([e["data"] for e in r.events if e["event"] == "line"], store)
+        first_t = min(m["video_t"] for m in vmap["moments"])
+        end = insight.due_after(said[-1]["video_t"], said[-1]["text"], 0)
+        assert end <= first_t - insight.TURN_S, match_id
+        assert insight.room(end + insight.TURN_S, first_t) < insight.MIN_WORDS, match_id
+    assert asked and max(asked) == insight.OPEN_WORDS and min(asked) >= insight.MIN_WORDS
