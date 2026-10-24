@@ -53,3 +53,50 @@ def test_the_voice_records_the_characters_of_each_call_that_spoke(monkeypatch, t
     assert store.all("voice") == [
         {"line_id": "x", "replay_id": "r1", "model": "eleven_flash_v2_5", "chars": 5}
     ]
+
+
+def seeded(tmp_path):
+    """Two full replays with known tokens and characters, plus spend that is not a full match."""
+    store = Store(tmp_path)
+    for rid in ("a", "b"):
+        store.append("replays", {"replay_id": rid, "match_id": "f1"})
+    haiku = {"model": "claude-haiku-4-5", "replay_id": "a"}
+    store.append("lines", {**haiku, "tokens_in": 1_000_000, "tokens_out": 100_000})  # $1.50
+    store.append("voice", {"replay_id": "a", "model": "eleven_v3", "chars": 10_000})  # $0.80
+    sonnet = {"model": "claude-sonnet-5-5", "replay_id": "b"}
+    store.append("lines", {**sonnet, "tokens_in": 500_000, "tokens_out": 50_000})  # $1.50
+    answer = {"model": "claude-haiku-4-5", "replay_id": "b", "tokens_in": 200_000, "tokens_out": 0}
+    store.append("answers", answer)  # $0.20
+    store.append("voice", {"replay_id": "b", "model": "eleven_flash_v2_5", "chars": 25_000})  # $1
+    # a jump and a line from before #174: neither is a full match
+    store.append("lines", {**haiku, "replay_id": "jump", "tokens_in": 9_000_000})
+    store.append("voice", {"replay_id": "jump", "model": "eleven_v3", "chars": 99_000})
+    store.append("lines", {"model": "claude-haiku-4-5", "tokens_in": 9_000_000})
+    return store
+
+
+def test_cost_per_match_is_the_mean_of_full_replays_model_and_voice(tmp_path):
+    from core.stats import stats
+
+    out = stats(seeded(tmp_path))
+    assert out["matches_measured"] == 2
+    assert round(out["model_cost_per_match_usd"], 2) == 1.60  # (1.50 + 1.50 + 0.20) / 2
+    assert round(out["voice_cost_per_match_usd"], 2) == 0.90  # (0.80 + 1.00) / 2
+    assert round(out["cost_per_match_usd"], 2) == 2.50
+    assert out["voice_chars"] == 134_000  # every voice record, the jump's too
+
+
+def test_cost_per_match_is_null_when_it_cannot_be_measured(tmp_path):
+    from core.stats import stats
+
+    store = Store(tmp_path)
+    out = stats(store)  # no full replay yet
+    assert (out["matches_measured"], out["cost_per_match_usd"], out["voice_chars"]) == (0, None, 0)
+    store.append("replays", {"replay_id": "a", "match_id": "f1"})
+    line = {"model": "claude-haiku-4-5", "replay_id": "a", "tokens_in": 1000, "tokens_out": 0}
+    store.append("lines", line)
+    out = stats(store)  # no voice record: the voice part is unmeasured, so is the total
+    assert out["model_cost_per_match_usd"] == 0.001
+    assert out["voice_cost_per_match_usd"] is None and out["cost_per_match_usd"] is None
+    store.append("voice", {"replay_id": "a", "model": "eleven_unknown", "chars": 10})
+    assert stats(store)["voice_cost_per_match_usd"] is None  # a model with no known price
