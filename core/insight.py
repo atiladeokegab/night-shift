@@ -30,6 +30,7 @@ MAX_CALLS = 240  # new insight calls per replay, enough to fill the longest vide
 # until the next mapped moment (#297): a line starts only with room for MIN_WORDS before it
 MIN_WORDS = 8  # about 3 s: a shorter leftover stays quiet
 MISSES = 1  # dropped lines a stretch survives: that voice tries again on its next turn
+STRETCH_TURNS = 4  # most turns a quiet stretch takes: one moment never talks in a loop
 # stored insights of another version are never reused (v1 re-called the play, v2 tallied counts,
 # v3 opened cold on the stat with no names, v4 gave the analyst two lines in a row, v5 named by
 # position and stopped after three lines)
@@ -361,6 +362,7 @@ class Gaps:
         self.skip: str | None = None  # a kind whose line was just dropped: the slot goes to another
         self.focused: set[str] = set()  # players already talked about this replay
         self.asked = None  # what the lead's last comeback asked the analyst about
+        self.asks: list[set[str]] = []  # the lead's questions this replay, newest last
         self.calls = 0
         self.overran = False  # the last line was dropped for running into the next moment (#297)
         self._pack = None
@@ -462,12 +464,31 @@ class Gaps:
             for n in pack["players"]
         }
         if self.focus is None:
-            fresh = {n: fs for n, fs in by.items() if len(fs) >= 2 and n not in self.focused}
+            # a player with a pre-match profile: no data, nothing to say (a bare tally is no talk)
+            fresh = {
+                n: fs
+                for n, fs in by.items()
+                if len(fs) >= 2
+                and n not in self.focused
+                and any(k == "player profile" for k, _ in fs)
+            }
             self.focus = max(fresh, key=lambda n: len(fresh[n]), default="")  # the longest talk
             self.focused.add(self.focus)
         if self.focus and by.get(self.focus):
             return by[self.focus][0]
         self.focus = ""  # out of facts: the rest of the stretch rotates, it never moves to another
+        return None
+
+    def re_asked(self, text: str, said_as: dict) -> str | None:
+        """Why a lead's question is not asked: it repeats one of the last ASKS, or asks about the
+        season when the analyst has no season fact to answer with; else None."""
+        for q in questions(text):
+            if q and any(len(q & a) / len(q | a) >= SAME for a in self.asks[-ASKS:]):
+                return " ".join(sorted(q))
+            if SEASON.search(" ".join(q)) and not said_as.get("season"):
+                return "season"
+            if TONIGHT.search(" ".join(q)) and not said_as.get("tonight"):
+                return "tonight"  # asked about tonight, answered with a season number
         return None
 
     def peek(self, past: list[dict], first: bool = False) -> tuple[str, str] | None:
@@ -520,9 +541,19 @@ class Gaps:
                 return None
             if said_as["kind"] != "orientation" and repeats(ln.get("text") or "", list(recent)):
                 return None
-            if said_as["kind"] != "orientation" and echoes(ln.get("text") or "", list(recent)):
-                ln = None  # says a phrase a recent line said: made again
-            if self.wrong(ln.get("text") or "", stat_moment(m, said_as, reply), past):
+            if (text := unprefix(ln.get("text") or "")) != ln.get("text"):
+                ln = {**ln, "text": text}  # stored with a spoken "Julian, answering:"
+            if (
+                said_as["kind"] != "orientation"
+                and echoes(ln.get("text") or "", list(recent))
+                or reply
+                and self.re_asked(
+                    ln.get("text") or "", {"season": True, "tonight": True, **said_as}
+                )
+                or admits(ln.get("text") or "")
+            ):
+                ln = None  # says a phrase a recent line said, or asks again: made again
+            elif self.wrong(ln.get("text") or "", stat_moment(m, said_as, reply), past):
                 ln = None  # stored before the check (or a newer check fails it): made again
             elif not reply and not ln.get("fallback") and self.stale(ln.get("text") or ""):
                 ln = None  # opens like an earlier line this replay: made again
@@ -564,6 +595,8 @@ class Gaps:
                 and (topic := self.peek(past, first=bool(ball)))
             ):
                 said_as["next"] = topic[0]
+                said_as["season"] = bool(HAS_SEASON.search(topic[1]))
+                said_as["tonight"] = bool(TONIGHT.search(topic[1]))
         if ln is None:
             failed = outage = False  # a try had a wrong number or a used opener; the model raised
             for retry in (False, True):
@@ -581,7 +614,9 @@ class Gaps:
                 if said and said.get("text"):  # the checks below see what is said
                     said = {
                         **said,
-                        "text": cut(said["text"], int(min(CUT_WORDS, room(video_t, end)))),
+                        "text": cut(
+                            unprefix(said["text"]), int(min(CUT_WORDS, room(video_t, end)))
+                        ),
                     }
                 # where the ball is now is news, though it reads like where it was before; its own
                 # check (wrong_orientation, below) falls back to the data's line, never drops it
@@ -595,6 +630,8 @@ class Gaps:
                     stale = not reply and self.stale(said["text"])
                     # nor does either voice say a recent line's phrase: asked once more, told it
                     echo = None if fresh else echoes(said["text"], list(recent))
+                    echo = echo or (self.re_asked(said["text"], said_as) if reply else None)
+                    echo = echo or admits(said["text"])
                     # and it ends before the next moment: a longer one is asked once more (#297)
                     fits = len(said["text"].split()) <= room(video_t, end)
                     if right and not echo and fits and (not stale or retry and fresh):
@@ -667,6 +704,7 @@ class Gaps:
             )
         if reply:
             self.asked = said_as.get("next")  # the analyst answers it next
+            self.asks += questions(ln.get("text") or "")
         else:
             self.used.add(said_as["detail"])
             if not ln.get("fallback"):  # the data's ball line is not the analyst's opener
@@ -808,6 +846,45 @@ ABBREVIATIONS = {
     "v",
     "no",
 }  # a full stop after these ends no sentence
+
+
+META = re.compile(r"^\s*(?:[A-Z][\w'’-]*,?\s+)?answering\s*[:,–-]\s*", re.I)
+
+
+def unprefix(text: str) -> str:
+    """The line without a meta prefix the model spoke aloud ("Julian, answering: ...")."""
+    return META.sub("", text, count=1) or text
+
+
+ASKS = 8  # the lead never asks what it asked in its last this-many questions
+SEASON = re.compile(r"\bseason\b", re.I)
+HAS_SEASON = re.compile(r"this (?:season|year|world cup)|at this world cup", re.I)
+
+
+# a line that admits it has no data ("Jim, I only have tonight", "Career numbers I don't have")
+ADMITS = re.compile(
+    r"\b(?:i|we) (?:only |just )?(?:have|got) (?:only |just )?(?:tonight|nothing|no\b)"
+    r"|\b(?:don't|do not|doesn't|haven't|can't) (?:have|say|tell)\b"
+    r"|\bnothing (?:on|more|else)\b"
+    r"|\bno (?:season|career|other|more|further) (?:numbers|stats|data)\b"
+    r"|\bno data\b|\bcareer numbers\b|\bi only have\b",
+    re.I,
+)
+TONIGHT = re.compile(r"\btonight\b", re.I)
+
+
+def admits(text: str) -> str | None:
+    return "that you lack data" if ADMITS.search(text) else None
+
+
+def questions(text: str) -> list[set[str]]:
+    """The content words of each question in the line, partner names left out."""
+    names = {n.lower() for n in NAMES.values()}
+    return [
+        {w for w, _ in _words(q) if w not in names}
+        for q in re.findall(r"[^.!?]*\?", text)
+        if q.strip()
+    ]
 
 
 def cut(text: str, most: int = CUT_WORDS) -> str:

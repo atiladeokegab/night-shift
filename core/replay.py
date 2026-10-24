@@ -213,7 +213,7 @@ async def run_replay(
         spoken, while one still fits (#297). A dropped line leaves the turn to that voice's next."""
         n, misses = 0, 0
         held = []  # the lead's question, said only once the analyst's answer is made
-        while end is not None:
+        while end is not None and n < insight.STRETCH_TURNS:
             # each voice as the other ends; the page holds a line until the one on air ends
             at = insight.due_after(*(held[-1][2:] if held else (t, said)), insight.TURN_S)
             if insight.room(at, end) < insight.MIN_WORDS:
