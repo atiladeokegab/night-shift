@@ -1,6 +1,8 @@
 """GcsStore against an in-memory stand-in that behaves like google-cloud-storage: a fresh
 `bucket.blob(name)` knows no generation until it is loaded, and writes check if_generation_match."""
 
+import json
+
 from core.store import GcsStore
 
 
@@ -16,26 +18,37 @@ class FakeBlob:
         return self.name in self.objects
 
     def download_as_text(self, if_generation_match=None):
+        self.objects.calls.append("download")
         text, gen = self.objects[self.name]
         if if_generation_match is not None and if_generation_match != gen:
             raise PreconditionFailed()
         return text
 
     def upload_from_string(self, text, if_generation_match=None):
+        self.objects.calls.append("upload")
         gen = self.objects.get(self.name, ("", 0))[1]
         if if_generation_match is not None and if_generation_match != gen:
             raise PreconditionFailed()
         self.objects[self.name] = (text, gen + 1)
+        self.generation = gen + 1  # the real client loads the new generation from the response
+
+
+class Objects(dict):
+    """name: (text, generation), and every GCS call made, in order."""
+
+    calls: list[str]
 
 
 class FakeBucket:
     def __init__(self):
-        self.objects = {}
+        self.objects = Objects()
+        self.objects.calls = []
 
     def blob(self, name):
         return FakeBlob(self.objects, name)
 
     def get_blob(self, name):
+        self.objects.calls.append("metadata")
         if name not in self.objects:
             return None
         return FakeBlob(self.objects, name, self.objects[name][1])
@@ -140,12 +153,45 @@ def test_a_write_from_another_process_is_seen(tmp_path, monkeypatch):
     assert [r["status"] for r in a.all("adapter")] == ["not_trained", "trained", "again"]
 
     monkeypatch.setattr("google.api_core.exceptions.PreconditionFailed", PreconditionFailed)
-    client = FakeClient()
-    g, h = GcsStore("gs://b/p", client=client), GcsStore("gs://b/p", client=client)
+    client, now = FakeClient(), [0.0]
+    g = GcsStore("gs://b/p", client=client, clock=lambda: now[0])
+    h = GcsStore("gs://b/p", client=client)
     g.append("lines", {"line_id": "a"})
     assert len(g.all("lines")) == 1
     h.append("lines", {"line_id": "b"})
+    assert len(g.all("lines")) == 1  # within FRESH_S another process's write may not show yet
+    now[0] += GcsStore.FRESH_S
     assert [r["line_id"] for r in g.all("lines")] == ["a", "b"]
+
+
+def test_gcs_reads_and_appends_reuse_the_cached_text(monkeypatch):
+    # #156: stats() read every kind after each line (a metadata call each), and every append
+    # downloaded the whole object before uploading it again
+    monkeypatch.setattr("google.api_core.exceptions.PreconditionFailed", PreconditionFailed)
+    client, now = FakeClient(), [0.0]
+    calls = client.b.objects.calls
+    store = GcsStore("gs://b/p", client=client, clock=lambda: now[0])
+    store.append("lines", {"line_id": "a"})
+    calls.clear()
+    for i in range(5):  # a replay's lines, each followed by its stats read
+        store.append("lines", {"line_id": f"l{i}"})
+        assert len(store.all("lines")) == i + 2
+    assert calls == ["upload"] * 5  # no download, and no metadata call while fresh
+    now[0] += GcsStore.FRESH_S
+    calls.clear()
+    assert len(store.all("lines")) == 6 and calls == ["metadata"]  # unchanged: no download
+
+
+def test_a_gcs_append_over_another_writers_change_keeps_both(monkeypatch):
+    monkeypatch.setattr("google.api_core.exceptions.PreconditionFailed", PreconditionFailed)
+    client = FakeClient()
+    ours, theirs = GcsStore("gs://b/p", client=client), GcsStore("gs://b/p", client=client)
+    ours.append("fixes", {"line_id": "a"})
+    theirs.append("fixes", {"line_id": "b"})  # our cached generation is now stale
+    ours.append("fixes", {"line_id": "c"})  # the upload is refused, so it fetches theirs first
+    text, _ = client.b.objects["p/fixes.jsonl"]
+    assert [json.loads(r)["line_id"] for r in text.splitlines()] == ["a", "b", "c"]
+    assert [r["line_id"] for r in ours.all("fixes")] == ["a", "b", "c"]
 
 
 def test_another_process_appending_inside_our_append_is_not_lost(tmp_path):

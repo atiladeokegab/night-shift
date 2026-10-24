@@ -1,0 +1,17 @@
+{
+ "source": "Mubit console",
+ "read_at": "2026-10-24T19:15:00Z",
+ "how": "read by hand off the console overview, as README.md's table; not live data",
+ "tasks": 8,
+ "adapters": 7,
+ "serving": 0,
+ "target": 95,
+ "listed": {
+  "Live television commentator 5": {"status": "Collecting examples", "examples": 269, "quality": 14.3},
+  "Live sports commentator": {"status": "Testing", "examples": 155, "quality": 5.9},
+  "Live sports commentator 2": {"status": "Testing", "examples": 141, "quality": 58.3},
+  "Live television commentator 3": {"status": "Testing", "examples": 132, "quality": 55.8},
+  "Live television commentator": {"status": "Collecting examples", "examples": 118, "quality": 0.0},
+  "Live television commentator 2": {"status": "Testing", "examples": 111, "quality": 25.0}
+ }
+}
