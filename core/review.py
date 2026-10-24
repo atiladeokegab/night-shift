@@ -32,6 +32,12 @@ def queue(store, deps) -> list[dict]:
     lines = store.all("lines")
     fixes = {f["line_id"]: f.get("created_at") or "" for f in store.all("fixes")}
     fixed = {_key(ln) for ln in lines if ln["line_id"] in fixes}
+    # Line check's flags on lines the number check passed (#298): queued for the producer too
+    flags = {
+        c["line_id"]: [f"Checker model: {f.replace('_', ' ')} may be wrong" for f in c["wrong"]]
+        for c in store.all("linechecks")
+        if c.get("wrong")
+    }
     matches: dict = {}  # filled only when a line is new to the cache
 
     def check(line):
@@ -53,7 +59,10 @@ def queue(store, deps) -> list[dict]:
         if k in seen or k in fixed:
             continue
         seen.add(k)
-        if not (e := check(line)):
+        e = check(line)
+        if e is None and line["line_id"] in flags:
+            e = _entry(line, matches, deps, flags[line["line_id"]])
+        if not e:
             continue
         g = _group(e)
         if g in cleared and (line.get("created_at") or "") <= cleared[g]:
@@ -74,8 +83,9 @@ def wrong(line: dict, text: str, deps) -> list[str]:
     return entry["wrong"] if entry else []
 
 
-def _entry(line: dict, matches: dict, deps) -> dict | None:
-    """The line's queue entry, or None when its numbers match its moment."""
+def _entry(line: dict, matches: dict, deps, flags: list[str] = ()) -> dict | None:
+    """The line's queue entry, or None when its numbers match its moment and `flags` (Line
+    check's, #298) is empty."""
     from agent.commentator import _score
     from data.matches import match_header
 
@@ -109,6 +119,7 @@ def _entry(line: dict, matches: dict, deps) -> dict | None:
     else:
         text = line["text"]
         wrong = [w for w in insight.wrong_numbers(text, m, header, past) if UNSAID not in w]
+    wrong = wrong or list(flags)
     if not wrong:
         return None
     d = m.get("detail") or {}

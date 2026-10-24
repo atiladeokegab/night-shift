@@ -46,10 +46,13 @@ class Limiter:
 
 
 def spent(store, day: str) -> float:
-    """Model + voice USD of the lines and answers created on `day` (UTC, YYYY-MM-DD), priced as
-    /stats prices them. A voice record has no time: it counts on its line's day."""
+    """Model + voice USD of the lines, answers and Line checks (#298) created on `day` (UTC,
+    YYYY-MM-DD), priced as /stats prices them. A voice record has no time: it counts on its line's
+    day."""
     said = [
-        x for x in store.all("lines") + store.all("answers") if x.get("created_at", "")[:10] == day
+        x
+        for x in store.all("lines") + store.all("answers") + store.all("linechecks")
+        if x.get("created_at", "")[:10] == day
     ]
     ids = {x.get("line_id") for x in said}
     model = sum(_cost(x) or 0.0 for x in said)

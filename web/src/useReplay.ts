@@ -2,7 +2,7 @@ import { useCallback, useEffect, useReducer, useRef } from 'react'
 import { Refused } from './ask'
 import { askCommentator, createReplay, followReplay, getPlayers, getProfile, getShots, type StreamStatus } from './api'
 import { release, replayClock, speaks } from './gate'
-import type { Answer, Fix, Line, Moment, Stats } from './types'
+import type { Answer, Fix, Line, LineCheck, Moment, Stats } from './types'
 
 export interface ReplayState {
   phase: 'idle' | 'starting' | 'live' | 'failed'
@@ -20,6 +20,7 @@ export interface ReplayState {
   refused: string | null // why the server turned the start away (#244): shown in place of the failure
   stats: Stats | null // the latest `stats` event; store-wide, so it outlives a single replay
   fixes: Record<string, Fix> // by line_id: from the `fixed` event or the fix request's answer
+  checks: Record<string, LineCheck> // by line_id: Line check's second opinion (#298)
   answers: Answer[] // viewers' questions and the commentator's answers, newest first (#117)
 }
 
@@ -32,6 +33,7 @@ type Action =
   | { type: 'tick'; t: number; playing: boolean; duration: number }
   | { type: 'stats'; stats: Stats }
   | { type: 'fixed'; fix: Fix }
+  | { type: 'linecheck'; check: LineCheck }
   | { type: 'answer'; answer: Answer }
   | { type: 'stream'; status: StreamStatus }
   | { type: 'error'; detail: string }
@@ -39,7 +41,7 @@ type Action =
 
 const initial: ReplayState = {
   phase: 'idle', stream: 'ok', gated: false, now: 0, duration: 0, moments: [], lines: [], late: [], queuedMoments: [], queuedLines: [],
-  ended: false, error: null, refused: null, stats: null, fixes: {}, answers: [],
+  ended: false, error: null, refused: null, stats: null, fixes: {}, checks: {}, answers: [],
 }
 
 const waits = (s: ReplayState, item: { video_t?: number }) => s.gated && item.video_t !== undefined
@@ -85,6 +87,7 @@ function reduce(s: ReplayState, a: Action): ReplayState {
       }
     }
     case 'fixed': return { ...s, fixes: { ...s.fixes, [a.fix.line_id]: a.fix } }
+    case 'linecheck': return { ...s, checks: { ...s.checks, [a.check.line_id]: a.check } }
     case 'answer':
       return s.answers.some((x) => x.line_id === a.answer.line_id) ? s : { ...s, answers: [a.answer, ...s.answers] }
     case 'stream': return { ...s, stream: a.status }
@@ -178,6 +181,7 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
         if (e.type === 'line') dispatch({ type: 'line', line: e.line })
         if (e.type === 'stats') dispatch({ type: 'stats', stats: e.stats })
         if (e.type === 'fixed') dispatch({ type: 'fixed', fix: e.fix })
+        if (e.type === 'linecheck') dispatch({ type: 'linecheck', check: e.check })
         if (e.type === 'answer') dispatch({ type: 'answer', answer: e.answer })
         if (e.type === 'error') dispatch({ type: 'error', detail: e.detail })
         if (e.type === 'end') dispatch({ type: 'end' })

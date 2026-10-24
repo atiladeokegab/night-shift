@@ -44,6 +44,8 @@ class Deps:
     ask: Callable[[str, list[dict], list[dict]], dict] | None = None
     status: Callable[[list[dict]], dict] | None = None
     fixes: bool = False  # commentate takes `fixes=`: the match's producer fixes go in each request
+    linecheck: Callable[[dict, dict, list[dict]], dict] | None = None  # the second opinion (#298)
+    teach: Callable[[dict], dict | None] | None = None  # a producer's fix as a Line check example
 
 
 def with_fixes(commentate, store):
@@ -68,11 +70,23 @@ def default_deps() -> Deps:
     routes say 503."""
     try:
         from agent.commentator import answer, commentate, correct
+        from agent.linecheck import live_check, teach
         from agent.status import status
         from data.matches import list_matches, load_moments, video_map
     except ImportError:
         return None
-    return Deps(list_matches, load_moments, commentate, video_map, correct, answer, status, True)
+    return Deps(
+        list_matches,
+        load_moments,
+        commentate,
+        video_map,
+        correct,
+        answer,
+        status,
+        True,
+        live_check,
+        teach,
+    )
 
 
 class ReplayRequest(BaseModel):
@@ -167,6 +181,8 @@ def create_app(
         if jump is not None and not any(m["idx"] == jump for m in moments):
             raise HTTPException(422, f"no moment {jump} in {req.match_id!r}")
         commentate, speak, correct = d.commentate, speaker.prepare, d.correct
+        # the deploy's live smoke stays cheap: no second opinion
+        linecheck = checked_under_cap(d.linecheck) if d.linecheck and not req.smoke else None
         if d.fixes:  # a fix applies to the next lines straight away, this replay's too
             commentate = with_fixes(d.commentate, store)
         # shortcut: the cap is checked only as a replay starts, so a running replay can overshoot
@@ -175,6 +191,7 @@ def create_app(
         cached = off_air or guard.busy(len(live))
         if cached:  # the lines already stored, said again: no model or voice call, nothing stored
             commentate, speak, correct = cached_commentator(store, req.match_id), None, None
+            linecheck = None
             if commentate is None and off_air:
                 raise too_many(guard.until_tomorrow(), f"{OFF_TODAY}. Try again tomorrow.")
             if commentate is None:
@@ -194,6 +211,7 @@ def create_app(
                 speak,
                 jump or 0,
                 correct,
+                linecheck,
             )
         )
         if cached:
@@ -208,6 +226,26 @@ def create_app(
         task.add_done_callback(lambda _: forget_later(replay))
         stop_later(replay)  # in case no stream ever opens
         return {"replay_id": replay.id}
+
+    def checked_under_cap(linecheck):
+        """Line check on a live replay's line, counted toward the daily cap: none over it."""
+
+        def call(line: dict, moment: dict, history: list[dict]) -> dict | None:
+            return None if guard.off_air(store) else linecheck(line, moment, history)
+
+        return call
+
+    async def teach(line: dict) -> None:
+        """A fix as one Line check example (#298), sent after the fix is answered."""
+        try:
+            sent = await asyncio.to_thread(need_deps().teach, line)
+        except Exception as exc:
+            log.warning("line check example for %s not sent: %s", line["line_id"], str(exc)[:300])
+            return
+        if sent:
+            at = datetime.now(UTC).isoformat(timespec="seconds")
+            row = {"line_id": line["line_id"], **sent, "created_at": at}
+            await asyncio.to_thread(store.append, "linecheck_fixes", row)
 
     def stop_later(replay: Replay) -> None:
         if replay.stopping:
@@ -289,6 +327,7 @@ def create_app(
             raise HTTPException(401, "producer token needed")
         d = need_deps()
         from agent.commentator import fix_context
+        from agent.linecheck import TEACHES
 
         lines = await asyncio.to_thread(store.all, "lines")
         line = next((ln for ln in lines if ln.get("line_id") == line_id), None)
@@ -329,6 +368,10 @@ def create_app(
             ):
                 await replay.publish("fixed", fix)
                 await replay.publish("stats", await asyncio.to_thread(stats, store))
+        if d.teach and req.reason in TEACHES:  # it passed the number check above
+            task = asyncio.create_task(teach(line))
+            tasks.add(task)
+            task.add_done_callback(tasks.discard)
         return fix
 
     @app.post("/replays/{replay_id}/ask")
