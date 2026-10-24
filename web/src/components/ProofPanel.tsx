@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getStats } from '../api'
 import type { Adapter, Stats } from '../types'
+import { SideBySide } from './SideBySide'
 
 interface Props {
   live: Stats | null // the latest `stats` event from the replay, newer than the first GET /stats
@@ -8,7 +9,7 @@ interface Props {
 
 // The Proof card (docs/design.md): the model's first-text-word latency, cost per line, lines, fixes and
 // the adapter, all from GET /stats, then updated with every `stats` event. Nothing here is computed in
-// the browser. The labels name what is measured (#37 review), not the mockup's "first word".
+// the browser. "First word" is the model's first text word; the footnote says what it measures (#37, #154).
 export function ProofPanel({ live }: Props) {
   const [fetched, setFetched] = useState<Stats | null>(null)
   const [failed, setFailed] = useState(false)
@@ -28,35 +29,33 @@ export function ProofPanel({ live }: Props) {
     body = (
       <>
         <dl className="stats">
-          <Figure label="Model first text word p50" value={v(seconds(stats.first_word_ms_p50))} />
-          <Figure label="Model first text word p95" value={v(seconds(stats.first_word_ms_p95))} />
+          <Figure label="First word · median" value={v(seconds(stats.first_word_ms_p50))} />
+          <Figure label="First word · p95" value={v(seconds(stats.first_word_ms_p95))} />
           <Figure label="Cost per line" value={v(dollars(stats.cost_per_line_usd))} />
-          <Figure label="Lines" value={v(String(stats.lines))} />
+          <Figure label="Lines · all matches" value={v(stats.lines.toLocaleString())} />
           <Figure label="Fixes" value={v(String(stats.fixes))} />
           <div className="wide">
             <dt className="label">Adapter</dt>
             <dd className={adapter?.status === 'ready' ? 'good' : undefined}>{adapterText(adapter)}</dd>
           </div>
-          {adapter && !adapter.cost_measurable && (
-            <div className="wide">
-              <dt className="label">Adapter cost</dt>
-              <dd>Not measurable. <span className="hint">Mubit doesn't report the adapter's cost to the app.</span></dd>
-            </div>
-          )}
         </dl>
         {empty && <p className="small">No lines yet.</p>}
       </>
     )
   }
   return (
-    <section className="panel glass" aria-label="Proof" aria-live="polite">
-      <div className="panel-h"><h3>Proof</h3></div>
-      {body}
-      <p className="small">
-        Model first text word: time from the moment to the first word of the model's text reply, measured through
-        Mubit. Finishing the line, speech synthesis and playback are not included.
-      </p>
-    </section>
+    <>
+      <section className="panel glass" aria-label="Proof" aria-live="polite">
+        <div className="panel-h"><h3>Proof</h3></div>
+        {body}
+        <p className="small">
+          First word: time from the moment to the first word of the model's text reply, measured through
+          Mubit. Finishing the line, speech synthesis and playback are not included.
+          {stats?.adapter && !stats.adapter.cost_measurable && " Adapter cost: not measurable; Mubit doesn't report it to the app."}
+        </p>
+      </section>
+      <SideBySide />
+    </>
   )
 }
 

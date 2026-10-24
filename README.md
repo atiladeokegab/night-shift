@@ -14,10 +14,10 @@
 
 [**Try it live**](https://night-shift-5zvig7nbvq-ew.a.run.app) · [**For judges**](#for-judges) · [**Real numbers**](#real-numbers) · [**Architecture**](docs/ARCHITECTURE.md) · [**Known limitations**](#known-limitations) · [**Run it**](#run-it) · [**Demo script**](docs/demo.md)
 
-<img src="docs/img/live.png" alt="The live page (old layout) calling Kobe Bryant's 81-point game. Top left, the score bar reads LAK 65-75 RAP, 06:22, Q3, REPLAY, and an ON AIR pill names the voice, Sam. The large subtitle reads: Kobe Bryant from 26 feet, three! Lakers down ten, 65 to 75, but Bryant's got 41 already. Under it, a dock with Wall, the four sports, Voice and Next match. On the right, the Lines card with an Ask box, a Shot map chip for Kobe Bryant and each line with a Fix button and its model first-text-word time, and the Proof card with first text word p50 0.53 s and p95 0.74 s, $0.0018 a line, the lines count, 0 fixes, and the adapter as not trained yet (captured before 13:04 UTC)." width="100%">
+<img src="docs/img/live.png" alt="The live page calling the 1998 NBA Finals Game 6, Michael Jordan's last shot as a Bull. Above the video card, the sport bar with Wall, the four sports, Voice: Sam and Next match. On the video card, the score bug JAZ 70-70 BUL, 08:05, Q4, an ON AIR pill naming Sam, and playback controls along the bottom. Under the card, the docked caption, marked ANALYST and 08:05 3 POINTS: Level at 70, and the numbers say there's a 44% chance Michael Jordan scores Chicago's next basket. That's the best single option on the floor. On the right, the Lines card, newest first, all at 08:05: at the top the analyst's prediction line, the same as the caption; below it the analyst's stat line, Kukoc came in shooting 46 percent this season, 481 of 1044 over 94 games. Chicago needed that, with the game all square.; and below that the lead's call, Kukoc from deep! Toni Kukoc with the three from twenty-five feet, and it's tied at seventy! Each line has a Fix button and its model first-text-word time. Below, the Proof card." width="100%">
 
-<sub>The live site on 24 October 2026, captured in headless Chrome: Kobe Bryant's 81 against Toronto
-being called. YouTube won't play in a headless browser, so the video area is empty and the page says
+<sub>The live site on 24 October 2026 at 13:20 UTC, captured in headless Chrome: the 1998 NBA Finals Game 6, Jordan's last shot as a Bull,
+with the lead calling Kukoc's three and the analyst's stat lines in the gap after it. YouTube won't play in a headless browser, so the video area is empty and the page says
 so; the lines, voice timing and numbers are live.</sub>
 
 </div>
@@ -48,13 +48,13 @@ Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026. Track: Own
 | Feature | Status | Proof in the code |
 |---|---|---|
 | [The six matches](#the-six-matches) | Live | [`GET /matches`](https://night-shift-5zvig7nbvq-ew.a.run.app/matches), [`agent/feed.py`](agent/feed.py) |
-| [Two commentators: lead and analyst](#two-commentators-lead-and-analyst) | Live; analyst lines saying the stat itself in progress (#142) | [`core/insight.py`](core/insight.py), [`core/replay.py`](core/replay.py) |
+| [Two commentators: lead and analyst](#two-commentators-lead-and-analyst) | Live (#130, #142) | [`core/insight.py`](core/insight.py), [`core/replay.py`](core/replay.py) |
 | [Ask, by typing](#ask-by-typing-or-by-voice) | Live | [`POST /replays/{id}/ask`](core/app.py), [`agent/ask.md`](agent/ask.md) |
 | [Ask, by voice](#ask-by-typing-or-by-voice) | Live (#145) | [`web/src/voice.ts`](web/src/voice.ts), [`web/src/components/MicButton.tsx`](web/src/components/MicButton.tsx), [`web/src/voice.test.ts`](web/src/voice.test.ts) |
 | [Follow a player: shot map](#follow-a-player) | Live | [`GET /replays/{id}/players/{name}/shots`](core/app.py), [`web/src/components/ShotMap.tsx`](web/src/components/ShotMap.tsx) |
 | [Follow a player: picker and profile card](#follow-a-player) | In progress (#140) | |
 | [Producer fixes](#producer-fixes) | Live | [`POST /lines/{id}/fix`](core/app.py), [`tests/test_core_fix.py`](tests/test_core_fix.py) |
-| [Big model vs ours](#big-model-vs-ours) | Recorded and merged (#144, #147); the panel isn't on any page until its hook-up lands after #146 | [`data/side_by_side.json`](data/side_by_side.json), [`eval/side_by_side.py`](eval/side_by_side.py) |
+| [Big model vs ours](#big-model-vs-ours) | Live under the Proof card (#144, #147, #150) | [`data/side_by_side.json`](data/side_by_side.json), [`eval/side_by_side.py`](eval/side_by_side.py) |
 | [The Proof panel](#the-proof-panel) | Live | [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats), [`core/stats.py`](core/stats.py) |
 | Live screen layout: the video in a card, Lines and Proof beside it, playback controls | Live (#132) | [`web/src/components/Live.tsx`](web/src/components/Live.tsx) |
 
@@ -71,7 +71,7 @@ moment reaches the picture: the YouTube player's clock gates it ([`web/src/gate.
 | The Battle of the Bridge: Chelsea 2-2 Tottenham, 2016 | Football, StatsBomb | British Football Announcer | The four goals, Hazard's equaliser that made Leicester champions |
 | Argentina v France, 2022 World Cup final | Football, StatsBomb | British Football Announcer | Messi's two goals, Di María, Mbappé's three, the shoot-out |
 | India v Pakistan, 2022 T20 World Cup | Cricket, Cricsheet | Raju | The wickets, the sixes, Kohli's two sixes off Rauf, the last ball |
-| Michael Jordan's last shot, 1998 NBA Finals Game 6 | Basketball, NBA play-by-play | Sam | The fourth quarter's baskets, Jordan's steal from Malone, the winning shot, the buzzer |
+| Michael Jordan's last shot as a Bull, 1998 NBA Finals Game 6 | Basketball, NBA play-by-play | Sam | The fourth quarter's baskets, Jordan's steal from Malone, the winning shot, the buzzer |
 | Kobe Bryant's 81 against Toronto, 2006 | Basketball, NBA play-by-play | Sam | His baskets through the second half, the record-breaking points, the buzzer |
 | Max Verstappen from 17th to win the 2024 São Paulo Grand Prix | F1, OpenF1 timing | British Football Announcer | The rain, the safety car, the red flag, Verstappen taking the lead, the flag |
 
@@ -85,9 +85,11 @@ stat line built only from the pre-match pack and the match so far, in a calmer s
 fourth line, the lead replies ([`core/insight.py`](core/insight.py)). Stat lines are stored and reused
 by later replays of the same match.
 
-**In progress (#142):** on the live site the analyst often repeats the play instead of saying the
-number. #142 gives the analyst its own prompt with the stat as the event, kept unrecorded so it never
-splits the commentator's Mubit task.
+Since #142 the analyst has its own prompt ([`agent/analyst.md`](agent/analyst.md)) with the stat
+as the event, and each fact states its period, such as "this season before tonight". Analyst lines
+and the lead's replies run on `claude-sonnet-5-5` with its lowest thinking setting
+(`between_tools`), unrecorded, so they never split the moment lines' Mubit task
+([`agent/commentator.py`](agent/commentator.py)).
 
 #### Ask, by typing or by voice
 
@@ -133,9 +135,11 @@ training), recorded through Mubit with recording off, with each line's latency a
 [`tests/test_side_by_side.py`](tests/test_side_by_side.py)). Until an adapter version passes Mubit's test,
 those lines stand as the baseline ours must match, and the panel says why there is no line of ours:
 Mubit serves an adapter only once a version passes, and only in its console's Try models, never to
-the app by API. The panel that shows it
-([`web/src/components/SideBySide.tsx`](web/src/components/SideBySide.tsx)) is merged but isn't shown on
-any page until its hook-up lands after #146.
+the app by API. The panel
+([`web/src/components/SideBySide.tsx`](web/src/components/SideBySide.tsx)) sits under the Proof card on
+every live page.
+
+<img src="docs/img/side-by-side.png" alt="The Big model vs ours panel, marked RECORDED: Our model isn't ready yet. Here's the big model it has to match. Our commentator: training on Mubit. 6 adapter versions so far, best 55.8% on Mubit's test; not yet passing it, so it isn't served. A cost bar: Big model $0.0017 per line; Ours, training, not yet measured. Then claude-haiku-4-5, recorded 24 Oct 2026, held-out moments, and three of the big model's lines from England v United States, 2022, each with its first-word time, total time and cost, such as Harry Kane with a chance in the opening moments, but it's blocked away! at 944 ms first word, 1165 ms total, $0.0016." width="384">
 
 #### The Proof panel
 
@@ -172,9 +176,11 @@ Each criterion weighs the same; one line each, with where to check it.
 ## Real numbers
 
 Read from the live service's [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats) on
-24 October 2026 at 13:04 UTC, adapter status included. They move as people use the site.
+24 October 2026 at 13:04 UTC, adapter status included. They move as people use the site. At 13:04
+every line was a `claude-haiku-4-5` call; since #142, analyst lines and replies run on
+`claude-sonnet-5-5`, and `/stats` counts them in the same figures, priced at Sonnet's rate.
 
-| | Big model (`claude-haiku-4-5` via Mubit) | Our trained commentator (Mubit adapter) |
+| | Big model (`claude-haiku-4-5` moment lines via Mubit) | Our trained commentator (Mubit adapter) |
 |---|---|---|
 | Lines called | 4,715 (4,836 Mubit calls, counted by their request ids) | none: not callable by the app |
 | First word of the model's text, p50 / p95 | 534 ms / 779 ms | not measured |
@@ -219,8 +225,9 @@ line, as a correction for the commentator's next training.
 Every LLM call goes through Mubit, and Mubit trains a small commentator model on our recorded traffic;
 producer fixes go into the same task as corrections. That smaller model is what would make a commentator for every match affordable.
 
-1. **Every call goes through Mubit.** Each line is one call to Mubit's Anthropic endpoint
-   (`claude-haiku-4-5`), or two when the agent uses its one permitted round of tools. There is one
+1. **Every call goes through Mubit.** Each moment line is one call to Mubit's Anthropic endpoint
+   (`claude-haiku-4-5`, recorded), or two when the agent uses its one permitted round of tools. The
+   analyst's stat lines and the lead's replies are one call each to `claude-sonnet-5-5`, unrecorded. There is one
    session per match, and no model is called from the browser
    ([`agent/commentator.py`](agent/commentator.py)).
 2. **One task for every sport.** The system prompt, message template, tools and model are the same,
