@@ -13,6 +13,7 @@ PAUSE_S = 2.0  # then this breath before the next insight
 CLEAR_S = 6.0  # no insight starts closer than this to the next mapped moment
 MAX_CALLS = 160  # new insight calls per replay; cached ones are free
 REPLY_EVERY = 4  # every 4th line in a quiet stretch is the lead replying to the analyst
+VERSION = 2  # stored insights of another version are never reused (v1 re-called the play)
 RECENT = 6  # the key moments that count as recent play for momentum
 
 
@@ -156,7 +157,9 @@ class Gaps:
         self.cached = {
             (i["after_idx"], i["n"]): ln
             for ln in store.all("lines")
-            if (i := ln.get("insight") or ln.get("reply")) and i.get("match_id") == match_id
+            if (i := ln.get("insight") or ln.get("reply"))
+            and i.get("match_id") == match_id
+            and i.get("v") == VERSION
         }
         self.used: set[str] = set()
         self.turn = 0
@@ -201,7 +204,7 @@ class Gaps:
             picked = ("reply", heard) if reply else self.next_stat(past)
             if not picked:
                 return None
-            said_as = {"kind": picked[0], "detail": picked[1], "heard": heard}
+            said_as = {"kind": picked[0], "detail": picked[1], "heard": heard, "v": VERSION}
         stat = stat_moment(m, said_as, reply)
         if ln is None:
             self.calls += 1
@@ -219,13 +222,18 @@ class Gaps:
 
 
 def stat_moment(m: dict, said_as: dict, reply: bool) -> dict:
-    """The synthetic Stat moment an insight or reply is said over: moment m's team, players and
-    score, with Details of who speaks, the line it hears and (not for a reply) the stat."""
-    # m's own detail stays out (it would be called again); the score line needs these
+    """The synthetic Stat moment an insight or reply is said over: moment m's team and score, with
+    the stat itself (or, for the lead's reply, what the analyst just said) as the Event, so the
+    model calls the stat rather than m's play again. m's players stay out for the same reason."""
+    # m's own detail stays out too; the score line needs these
     keep = {k: v for k, v in (m.get("detail") or {}).items() if k in ("balls_left", "shootout")}
     said_to = {"speaker": "lead" if reply else "analyst", "Partner just said": said_as["heard"]}
-    stat = {} if reply else {"stat": said_as["detail"]}
-    return {**m, "type": "Stat", "outcome": said_as["kind"], "detail": {**keep, **said_to, **stat}}
+    event = (
+        f"the lead answers the analyst, who just said: {said_as['heard']}"
+        if reply
+        else f"{said_as['kind']}: {said_as['detail']}"
+    )
+    return {**m, "type": "Stat", "outcome": event, "players": {}, "detail": {**keep, **said_to}}
 
 
 def said_over(line: dict, load_moments) -> list[dict] | None:
