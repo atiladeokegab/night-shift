@@ -469,7 +469,7 @@ class Speaker:
                         params={"output_format": "mp3_44100_128"},
                         headers={"xi-api-key": key, "accept": "audio/mpeg"},
                         json={"text": text, "model_id": model},
-                        timeout=left,
+                        timeout=V3_TIMEOUT_S,
                     ) as resp,
                 ):
                     if resp.status_code != 200:
