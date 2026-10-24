@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { transformSync } from 'rolldown/experimental'
+import { eyesKey } from './eyes.ts'
 import { setPlaying, shownCaption, type Transport } from './player.ts'
 import type { Line, Match, Moment } from './types.ts'
 import type { ReplayState } from './useReplay.ts'
@@ -196,4 +197,38 @@ test("an answer shows its own time, and dims on the caption and in the log once 
   assert.match(later, /class="caption glass stale"/)
   assert.match(later, /class="qa stale"/)
   assert.match(later, /Where are we\?<span class="at"> · at 06:12<\/span>/)
+})
+
+test('Close your eyes covers the picture and leaves the player playing under it (#277)', () => {
+  const open = videoCard(render())
+  const shut = videoCard(render({ closed: true }))
+  // The cover only adds itself: the player's markup is the same (never paused, hidden or unmounted),
+  // and the play button still offers Pause.
+  const player = (html: string) => html.slice(html.indexOf('<div id="video"'), html.indexOf('<div class="bug"'))
+  assert.equal(player(shut).replace(/<div class="eyes"[\s\S]*?<\/div>/, ''), player(open))
+  assert.match(shut, /aria-label="Pause"/)
+  assert.match(shut, /aria-pressed="true"[^>]*>[\s\S]*?Close your eyes/)
+  assert.match(open, /aria-pressed="false"[^>]*>[\s\S]*?Close your eyes/)
+  // The cover shows the line on screen and keeps the score; the shown line, never a later one (A-6.4).
+  assert.match(shut, new RegExp(`<div class="eyes" aria-hidden="true"><p>${EARLY}</p></div>`))
+  assert.ok(!shut.includes(LATER))
+  assert.match(shut, /class="bug"><div class="scorebar glass"/)
+})
+
+test('a match with no video has no Close your eyes button, and no cover (#277)', () => {
+  const html = render({ closed: true, match: { ...match, youtube_id: undefined } })
+  assert.ok(!html.includes('Close your eyes'))
+  assert.ok(!html.includes('class="eyes"'))
+})
+
+test('E toggles the cover, but not typed into Ask or with a modifier (#277)', () => {
+  const key = (k: string, target: unknown = null, mods = {}) =>
+    eyesKey({ key: k, repeat: false, ctrlKey: false, metaKey: false, altKey: false, target: target as EventTarget, ...mods })
+  const field = { closest: (sel: string) => (sel.includes('input') ? {} : null) }
+  const page = { closest: () => null }
+  assert.equal(key('e', page), true)
+  assert.equal(key('E', page), true)
+  assert.equal(key('e', field), false)
+  assert.equal(key('e', page, { ctrlKey: true }), false)
+  assert.equal(key('w', page), false)
 })
