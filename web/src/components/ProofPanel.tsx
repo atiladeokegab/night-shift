@@ -162,15 +162,7 @@ function Figure({ label, value, className }: { label: ReactNode; value: string; 
 
 // The adapter as its latest record says it, in core's words; "–" until core reports the adapter.
 function adapterText(adapter?: Adapter | null): string {
-  if (adapter?.summary) return adapter.summary
-  // a core from before `summary`: say only what is recorded, never that training is under way
-  if (adapter?.status === 'not_trained' || adapter?.status === 'training') {
-    return 'Collecting: fixes that pass the number check are recorded in Mubit as training data.'
-  }
-  if (adapter?.status === 'ready' && adapter.agree !== null && adapter.total !== null) {
-    return `Agrees with the big model on ${adapter.agree} of ${adapter.total} test moments.`
-  }
-  return '–'
+  return adapter?.summary ?? '–'
 }
 
 function seconds(ms: number | null): string {

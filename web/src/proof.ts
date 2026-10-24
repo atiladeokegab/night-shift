@@ -25,14 +25,14 @@ function adapterRow(a: TaskAdapter | undefined): string {
   if (!a) return 'not recorded'
   // the console's own wording only where the record shows it: a score under its target; else its verdict
   const failed = a.score !== null && a.target !== null && a.score < a.target ? `below ${a.target}% target` : 'Failed'
-  const verdict = a.passed === null ? (a.status === 'ready' ? 'verdict not recorded' : null) : a.passed ? 'Passed' : failed
+  const verdict = a.passed === null ? (a.state === 'testing' ? 'verdict not recorded' : null) : a.passed ? 'Passed' : failed
   return [
-    a.status === 'ready' ? null : a.status === 'training' ? 'training' : 'not trained',
+    a.state === 'collecting' ? 'collecting' : null,
     a.version === null ? null : `v${a.version}`,
     a.score === null ? null : `${a.score}%`,
     verdict,
     a.kept === null ? null : `${a.kept.toLocaleString()} kept`,
-  ].filter(Boolean).join(', ') || 'ready'
+  ].filter(Boolean).join(', ')
 }
 
 // The Adapter row's green dot: only a recorded pass of Mubit's gate, never one inferred from a status.

@@ -18,14 +18,14 @@ test('a match with no calls yet counts zeros; no match, only all matches; no cou
   assert.deepEqual(autonomyRows({}, '9636'), [])
 })
 
-const record = { status: 'ready' as const, version: null, score: null, target: null, passed: null, kept: null, recorded_at: '2026-10-24T16:00:00+00:00' }
+const record = { state: 'testing' as const, version: null, score: null, target: null, passed: null, kept: null, recorded_at: '2026-10-24T16:00:00+00:00' }
 
 test("one row per Mubit task, saying only what its latest record says", () => {
   const rows = adapterRows({
     line_check: { ...record, version: 1, score: 82, passed: true },
-    where_are_we: { ...record, status: 'training', kept: 0 },
+    where_are_we: { ...record, state: 'collecting', kept: 0 },
   })
-  assert.deepEqual(rows, ['Commentary: not recorded', 'Where are we?: training, 0 kept', 'Line check: v1, 82%, Passed'])
+  assert.deepEqual(rows, ['Commentary: not recorded', 'Where are we?: collecting, 0 kept', 'Line check: v1, 82%, Passed'])
 })
 
 test("a failed gate in the console's words; a ready version with no verdict never reads as passed", () => {
@@ -40,7 +40,7 @@ test("a failed gate in the console's words; a ready version with no verdict neve
   assert.equal(adapterRows({ line_check: { ...failed, score: 0, target: 0 } })[2], 'Line check: v1, 0%, Failed')
   assert.deepEqual(adapterRows({ commentary: { ...record, version: 2, passed: false } })[0], 'Commentary: v2, Failed')
   assert.deepEqual(adapterRows({ commentary: { ...record, version: 3, score: 64.5 } })[0], 'Commentary: v3, 64.5%, verdict not recorded')
-  assert.deepEqual(adapterRows({ commentary: { ...record, status: 'not_trained' } })[0], 'Commentary: not trained')
+  assert.deepEqual(adapterRows({ commentary: { ...record, state: 'collecting' } })[0], 'Commentary: collecting')
 })
 
 test('before core reports adapters, no rows', () => {
@@ -48,11 +48,10 @@ test('before core reports adapters, no rows', () => {
 })
 
 test('the Adapter row is green only for a recorded pass of the gate', () => {
-  const adapter = { status: 'ready' as const, kept: 31, agree: 23, total: 25, cost_measurable: false }
+  const adapter = { state: 'testing' as const, summary: '', kept: 31, agree: 23, total: 25, cost_measurable: false }
   assert.equal(adapterGood({ adapter: { ...adapter, state: 'passed' } }), true)
-  // ready with no verdict, a failed gate, still collecting, or no state from core: never green
-  assert.equal(adapterGood({ adapter: { ...adapter, state: 'testing' } }), false)
-  assert.equal(adapterGood({ adapter: { ...adapter, status: 'training', state: 'collecting' } }), false)
+  // a version with no verdict or a failed gate, still collecting, or no adapter from core: never green
   assert.equal(adapterGood({ adapter }), false)
+  assert.equal(adapterGood({ adapter: { ...adapter, state: 'collecting' } }), false)
   assert.equal(adapterGood({}), false)
 })
