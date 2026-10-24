@@ -69,6 +69,7 @@ export interface Line {
   fix_id?: string
   served_by?: string | null // #250: the model Mubit's reply said answered; none before #250 or offline
   fill?: boolean // #297: the extra pair in a long quiet, dropped if the next moment comes first
+  retried?: boolean // #338: the first call failed the number check and the retry passed: auto-fixed
 }
 
 // GET /stats and the `stats` SSE event (CONTRACT.md); percentiles are null until there is a line.

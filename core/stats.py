@@ -56,6 +56,7 @@ def _state(r: dict) -> tuple[str, str]:
     score, target = r.get("score"), r.get("target")
     of = f" of a {target:g}% target" if target is not None else ""
     best = f"{score:g}%{of}" if score is not None else ""
+    # a pass names the version that passed (#333): a versionless pass reads as testing, never passed
     if r.get("passed") is True and r.get("version") is not None:
         scored = f", {best}" if best else ""
         return "passed", f"Passed Mubit's test (v{r['version']}){scored}{as_of}."

@@ -116,7 +116,7 @@ AT = "2026-10-24T13:04:32.564923+00:00"
         ),
         (
             {"status": "ready", "score": 96, "target": 95, "passed": True},
-            "testing",  # a pass with no version is about no adapter (#321 review)
+            "testing",  # a pass that names no version is not shown as passed (#333)
             "Testing: no version passed; best 96% of a 95% target.",
         ),
     ],
