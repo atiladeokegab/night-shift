@@ -93,6 +93,9 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   For a match with a video map, only mapped moments are called, the `moment` and `line` events carry
   `video_t` (seconds), and they are sent as soon as each line is ready rather than paced by `speed`:
   the page shows and speaks each line when the player reaches `video_t`.
+- `POST /replays/{id}/seen` → 204 (core, #156): the page's heartbeat every 20 s once the stream has
+  ended, playing or paused; 404 once forgotten. A finished replay is forgotten after FORGET_S (60 s)
+  with no stream open and no request naming it (stream, seen, ask, players, shots, profile, fix).
 - `GET /lines/{line_id}` → the stored Line, 404 if none (core): the live smoke checks each line it
   streamed was stored.
 - `POST /lines/{line_id}/fix {corrected_text, reason?}` → Fix (core): stores the Fix in `fixes`
