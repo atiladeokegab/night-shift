@@ -44,7 +44,10 @@ and refuses to start without `STORE_URL=gs://bucket/prefix`.
 - **Line** (agent/): `{line_id, sport, match_id, moment_idx, text, model, latency_ms,
   first_word_ms, tokens_in, tokens_out, mubit_request_ids: [], tool_calls: [], created_at}`; tokens
   and latency summed over the whole tool loop; each id from `x-middleware-request-id`. A Line a
-  replay stores carries its `replay_id` (#174; none before).
+  replay stores carries its `replay_id` (#174; none before). `served_by` (#250): the `model` of
+  Mubit's last reply, what answered rather than what was asked (`model`): the provider model, or an
+  adapter once Mubit routes the call to one; none before #250 or offline. The provider reply also
+  keeps every `x-middleware-*` response header (`middleware`); the line stores only `served_by`.
 - **Cost records** (core/, #174): `voice` `{line_id, replay_id, model, chars}` for each ElevenLabs call
   that returned audio (`chars`: the text sent, tag included), and `replays` `{replay_id, match_id,
   line_ids}` for each replay played from its first moment to its last (not a jump, not the deploy's
@@ -165,9 +168,10 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   latency_ms_p50, latency_ms_p95, tokens_in, tokens_out, cost_per_line_usd, adapter, by_speaker,
   fixes_recorded, fixes_toward_next, voice_chars, matches_measured, cost_per_match_usd,
   model_cost_per_match_usd, voice_cost_per_match_usd, fixes_auto, spoken_from_fix, autonomy, autonomy_by_match}` (core). The `stats` SSE event carries the same object.
-  - `by_speaker: {lead, analyst}`, each `{model, lines, first_word_ms_p50, first_word_ms_p95,
-    cost_per_line_usd}`: the lead's calls and the analyst's stat lines apart (a line with no
-    `speaker` is the lead's).
+  - `by_speaker: {lead, analyst}`, each `{model, served_by, lines, first_word_ms_p50,
+    first_word_ms_p95, cost_per_line_usd}`: the lead's calls and the analyst's stat lines apart (a
+    line with no `speaker` is the lead's). `served_by` (#250): the lines' `served_by` values,
+    comma-separated; the Proof card shows it as "Served by ...", or `model` when it is empty.
   - `fixes_recorded: int`: fixes with `recorded: true`; `fixes` counts every stored fix.
   - `fixes_auto: int`: the `auto_fixes` records, fixes the number check sent itself (reason
     `auto: number check`): a lead line's rejected first try, corrected to its accepted retry (#162).

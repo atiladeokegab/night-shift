@@ -67,6 +67,7 @@ export interface Line {
   history?: boolean // #163: said in an earlier replay, before a jump's moment: shown, never spoken
   fixed?: boolean // #232: said in a producer's fixed words, not called; `fix_id` is the line it fixed
   fix_id?: string
+  served_by?: string | null // #250: the model Mubit's reply said answered; none before #250 or offline
 }
 
 // GET /stats and the `stats` SSE event (CONTRACT.md); percentiles are null until there is a line.
@@ -126,6 +127,7 @@ export interface ReviewItem {
 
 export interface SpeakerStats {
   model: string // the models seen, comma-separated
+  served_by?: string // #250: the models Mubit said answered, comma-separated; '' before #250
   lines: number
   first_word_ms_p50: number | null
   first_word_ms_p95: number | null

@@ -90,6 +90,7 @@ export function LineLog({ lines, late, fixes, moments, onFix, answers, onAsk, sh
                     : l.fixed
                       ? <span className="num">Not called</span> // a producer's fix (#232): no model, so no timing
                       : <span className="num" title={`${firstWord ? 'model first text word' : 'model reply'} ${took}`}>{took}</span>}
+                  {l.served_by && <span className="pill served" title="Served by: the model Mubit's reply said answered">{l.served_by}</span>}
                   {mine && <span className="pill follow">{shortName(followed!)}</span>}
                   {fix && <span className="pill fixed">Fixed</span>}
                   {l.fixed && !fix && <span className="pill fixed producer">Fixed by producer</span>}
