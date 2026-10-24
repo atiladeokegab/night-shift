@@ -348,3 +348,30 @@ def test_a_replay_started_while_a_fix_counts_stats_does_not_break_the_fix(tmp_pa
             return (await fix).status_code
 
     assert asyncio.run(run()) == 200
+
+
+def test_a_video_replay_is_kept_until_its_video_has_played_out(tmp_path, monkeypatch):
+    # every mapped line is sent ahead, so the task ends long before the viewer reaches the end
+    import asyncio
+
+    import httpx
+
+    from core import app as core_app
+
+    monkeypatch.setattr(core_app, "REJOIN_S", 0.05)
+    monkeypatch.setattr(core_app, "FORGET_S", 0.05)
+    video = {"start": 0, "moments": [{"idx": 0, "video_t": 0.0}, {"idx": 1, "video_t": 0.6}]}
+    deps = Deps(lambda: [], lambda mid: LONG[:2], fake_commentate, video_map=lambda mid: video)
+    app = create_app(Store(tmp_path), deps)
+
+    async def run():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://t") as c:
+            rid = (await c.post("/replays", json={"match_id": "long"})).json()["replay_id"]
+            await sse(app, rid)  # every line sent: the replay's task is done
+            await asyncio.sleep(0.3)  # the video is still playing
+            mid_video = (await c.get(f"/replays/{rid}/stream")).status_code
+            await asyncio.sleep(0.6)  # past the last moment, REJOIN_S and FORGET_S
+            return mid_video, (await c.get(f"/replays/{rid}/stream")).status_code
+
+    assert asyncio.run(run()) == (200, 404)
