@@ -452,10 +452,8 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .hero-go .btn { height: 48px; padding: 0 22px; font-size: 1rem; }
 .pill.checked { color: var(--live); border: 1px solid currentColor; text-transform: none; letter-spacing: 0; font-weight: 500; }
 @media (max-width: 760px) {
-  /* 44px tap targets with no change to the layout: an invisible hit area round the small buttons */
-  .tile-yt::after, .log .btn.sm::after { content: ""; position: absolute; inset: -8px -2px; }
-  .log .btn.sm { position: relative; }
-  .controls .ctl { width: 44px; height: 44px; }
+  /* with Let them watch in the bar (desktop browsers only) the clock goes, or Fullscreen is clipped off the card */
+  .controls:has(.watch-btn) .time { display: none; }
   /* the score never gives way to the voice pill: the pill's name is cut short instead */
   .bug .scorebar { flex: none; }
   .bug .onair { flex: 0 1 auto; min-width: 0; }
