@@ -12,6 +12,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 
 from core import insight, review
+from core.look import screened
 from core.stats import stats
 
 log = logging.getLogger("touchline.replay")
@@ -280,10 +281,12 @@ async def run_replay(
                 said_line = await asyncio.to_thread(store.append, "lines", said_line)
                 await say(said_line, moment)
                 recent.append(line.get("text") or "")
-                if linecheck and line.get("checked") and not line.get("fallback"):
+                screen = screened(line)  # a screen note's line is never checked or fixed (#291)
+                if linecheck and line.get("checked") and not line.get("fallback") and not screen:
                     args = (replay, store, linecheck, said_line, moment, history[:-1])
                     fixes.append(asyncio.create_task(second_opinion(*args)))
-                if rejected and correct:  # after the kept line is out: never on its path
+                # after the kept line is out: never on its path
+                if rejected and correct and not screen and not screened(rejected):
                     fixes.append(asyncio.create_task(auto_fix(store, correct, rejected, line)))
             if not tag:
                 continue

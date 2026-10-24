@@ -15,12 +15,14 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from core import insight, predict, review
 from core.guard import OFF_TODAY, Guard, SayOnly, cached_commentator, client_ip
+from core.look import Looks, Unshared
 from core.predict import load_pack, shot_points
 from core.replay import OFF_AIR, Replay, run_replay
 from core.stats import stats
@@ -46,6 +48,9 @@ class Deps:
     fixes: bool = False  # commentate takes `fixes=`: the match's producer fixes go in each request
     linecheck: Callable[[dict, dict, list[dict]], dict] | None = None  # the second opinion (#298)
     teach: Callable[[dict], dict | None] | None = None  # a producer's fix as a Line check example
+    # a frame of the viewer's shared screen (base64 JPEG) and the match's names: {"note"}, one note
+    # or None, with the call's model and tokens. Set, commentate takes `seen=` too (#291)
+    look: Callable[[str, list[str]], dict] | None = None
 
 
 def with_fixes(commentate, store):
@@ -54,13 +59,25 @@ def with_fixes(commentate, store):
 
     known: dict = {}  # old fix rows' lines, read once
 
-    def call(moment: dict, history: list[dict]) -> dict:
+    def call(moment: dict, history: list[dict], **kw) -> dict:
         try:
             fixes = match_fixes(store, moment["match_id"], known)
         except Exception as exc:  # an unreadable store never takes the commentator off air
             log.warning("fixes not read for %s: %s", moment["match_id"], str(exc)[:300])
             fixes = []
-        return commentate(moment, history, fixes=fixes)
+        return commentate(moment, history, fixes=fixes, **kw)
+
+    return call
+
+
+def with_look(commentate, take: Callable[[dict], str | None]):
+    """`commentate` given the viewer's latest screen note (#291), when `take` has one for the
+    moment."""
+
+    def call(moment: dict, history: list[dict], **kw) -> dict:
+        if seen := take(moment):
+            kw["seen"] = seen
+        return commentate(moment, history, **kw)
 
     return call
 
@@ -71,6 +88,7 @@ def default_deps() -> Deps:
     try:
         from agent.commentator import answer, commentate, correct
         from agent.linecheck import live_check, teach
+        from agent.look import see
         from agent.status import status
         from data.matches import list_matches, load_moments, video_map
     except ImportError:
@@ -86,6 +104,7 @@ def default_deps() -> Deps:
         True,
         live_check,
         teach,
+        see,
     )
 
 
@@ -100,6 +119,15 @@ class FixRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
     corrected_text: str = Field(min_length=1, max_length=200)
     reason: str = Field("", max_length=200)  # it goes in later prompts
+
+
+LOOK_BYTES = 420_000  # a frame's request body: the image's 400 kB and the JSON around it
+
+
+class LookRequest(BaseModel):
+    # one frame of the shared tab, about 512 px wide: base64 JPEG ("/9j/" is its first bytes)
+    image: str = Field(min_length=100, max_length=400_000, pattern=r"^/9j/[A-Za-z0-9+/]+={0,2}$")
+    t: float = Field(0.0, ge=0)  # the video time it was taken at
 
 
 class AskRequest(BaseModel):
@@ -132,7 +160,11 @@ def asked_so_far(replay: Replay, moments: list[dict], on_screen: int | None):
 
 
 def create_app(
-    store=None, deps: Deps | None = None, tts_transport=None, guard: Guard | None = None
+    store=None,
+    deps: Deps | None = None,
+    tts_transport=None,
+    guard: Guard | None = None,
+    looks: Looks | None = None,
 ) -> FastAPI:
     app = FastAPI(title="Touchline")
     store = store or open_store()
@@ -143,6 +175,7 @@ def create_app(
     running: dict[str, asyncio.Task] = {}  # replay id: its run_replay task, until it ends
     asking: set[str] = set()  # replay ids with a viewer's question in flight
     guard = guard or Guard()
+    looks = looks or Looks()  # #291: frames sent and the latest screen note, per replay
     live: set[str] = set()  # replay ids generating new lines, at most guard.max_live (#244)
     said_again: set[str] = set()  # replay ids playing stored lines: no voice is made for them
 
@@ -201,12 +234,17 @@ def create_app(
         replays[replay.id] = replay
         # a jump starts the video just before its moment (#163), as GET /matches' peak_video_start
         video = d.video_map(req.match_id) if jump is None else d.video_map(req.match_id, jump)
+        said_to = SayOnly(store) if cached else store
+        if d.look and not cached and video:  # a frame's note goes in the next line (#291)
+            due = {m["idx"]: m["video_t"] for m in video["moments"]}
+            commentate = with_look(commentate, lambda m: looks.take(replay.id, due.get(m["idx"])))
+            said_to = Unshared(store)  # that line is this viewer's only
         task = asyncio.create_task(
             run_replay(
                 replay,
                 moments,
                 commentate,
-                SayOnly(store) if cached else store,
+                said_to,
                 video,
                 speak,
                 jump or 0,
@@ -266,6 +304,7 @@ def create_app(
         else:
             replays.pop(replay.id, None)
             said_again.discard(replay.id)
+            looks.forget(replay.id)
 
     def viewed(replay_id: str) -> Replay:
         """The replay a viewer's request names, marked as still watched."""
@@ -373,6 +412,54 @@ def create_app(
             tasks.add(task)
             task.add_done_callback(tasks.discard)
         return fix
+
+    @app.post("/replays/{replay_id}/look")
+    async def look(replay_id: str, request: Request):
+        """One frame of the viewer's shared tab (#291): its note goes in the replay's next line. The
+        frame is never stored or logged."""
+        size = request.headers.get("content-length", "")
+        if size and (not size.isdigit() or int(size) > LOOK_BYTES):
+            raise HTTPException(413, "That frame is too big.")
+        body = bytearray()
+        # a hard limit too: Content-Length can lie or be absent
+        async for chunk in request.stream():
+            body += chunk
+            if len(body) > LOOK_BYTES:
+                raise HTTPException(413, "That frame is too big.")
+        try:
+            req = LookRequest.model_validate_json(bytes(body))
+        except ValidationError as exc:  # never the input: it is the frame
+            raise RequestValidationError(
+                exc.errors(include_url=False, include_input=False)
+            ) from None
+        d = need_deps()
+        replay = viewed(replay_id)
+        if d.look is None or replay_id not in live:  # stored lines said again, or the replay ended
+            raise HTTPException(410, "the commentators are not watching this replay")
+        if looks.over(replay_id):
+            raise HTTPException(410, "That's every frame for this replay.")
+        if wait := looks.hit(replay_id):
+            raise too_many(wait, "One frame every few seconds.")
+        if await asyncio.to_thread(guard.off_air, store):
+            raise too_many(guard.until_tomorrow(), f"{OFF_TODAY}. Try again tomorrow.")
+        moments = d.load_moments(replay.match_id)
+        names = [m.get("team") for m in moments] + [
+            n for m in moments for n in m["players"].values()
+        ]
+        try:
+            seen = await asyncio.to_thread(d.look, req.image, names)
+        except Exception as exc:  # the type only: nothing of the frame reaches the log
+            log.warning("look %s: no note: %s", replay.match_id, type(exc).__name__)
+            seen = {"note": None}
+        note = seen["note"]
+        if "model" in seen:  # a call was made: its cost counts toward the daily cap, not the frame
+            cost = {k: seen[k] for k in ("model", "tokens_in", "tokens_out")}
+            created_at = datetime.now(UTC).isoformat(timespec="seconds")
+            record = {"match_id": replay.match_id, "replay_id": replay_id, **cost}
+            await asyncio.to_thread(store.append, "looks", {**record, "created_at": created_at})
+        if note:
+            looks.keep(replay_id, note, req.t)
+        return {"note": note}
 
     @app.post("/replays/{replay_id}/ask")
     async def ask(replay_id: str, req: AskRequest, request: Request):

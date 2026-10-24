@@ -17,6 +17,7 @@ KINDS = (
     "replays",
     "linechecks",  # Line check's second opinion on a live line (#298)
     "linecheck_fixes",  # producer fixes sent to Line check as examples (#298)
+    "looks",  # frame calls and screen-note lines: that viewer's only (#291)
 )
 
 
