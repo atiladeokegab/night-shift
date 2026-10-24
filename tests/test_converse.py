@@ -328,8 +328,8 @@ def test_off_air_a_turn_makes_no_model_call(tmp_path, monkeypatch):
 class ToolClient(SlowClient):
     """A first call that asks for a tool, a second that answers: two model calls, counted."""
 
-    def __init__(self):
-        super().__init__([(0, "Player1 scored for the Reds.")])
+    def __init__(self, pieces=((0, "Player1 scored for the Reds."),)):
+        super().__init__(list(pieces))
         self.calls = 0
 
     def stream(self, **request):
@@ -358,3 +358,28 @@ def test_an_answer_that_used_a_tool_costs_two_model_calls_not_three():
     client = ToolClient()
     said = asyncio.run(sentences(SimpleNamespace(client=client, call=None)))
     assert said == ["Player1 scored for the Reds."] and client.calls == 2
+
+
+def test_the_final_round_after_a_tool_streams_its_first_sentence_early():
+    async def run():
+        client, start = ToolClient(SLOW), time.monotonic()
+        ask = partial(answer, header=HEADER)
+        spoken = converse.speak(ask, SimpleNamespace(client=client), "Who scored?", MOMENTS[:2], [])
+        first = await anext(spoken)
+        at_first = time.monotonic() - start
+        rest = [s async for s in spoken]
+        return first, at_first, rest, time.monotonic() - start, client.calls
+
+    first, at_first, rest, whole, calls = asyncio.run(run())
+    # before, a tool question was said only when the whole chain had finished
+    assert first == "Player1 scored for the Reds." and rest == ["A fine finish by Player1."]
+    assert at_first < whole / 2 and calls == 2
+    print(f"tool question: first sentence {at_first:.2f} s, whole reply {whole:.2f} s")
+
+
+def test_a_final_round_sentence_is_checked_against_the_tools_outputs():
+    text = "Reds 7, Blues 0."
+    given = converse.checked({"text": text}, "Who scored?", MOMENTS[:2], [])
+    tool = {"text": text, "tool_calls": [{"output": "Reds 7, Blues 0"}]}
+    with_tool = converse.checked(tool, "Who scored?", MOMENTS[:2], [])
+    assert not given and with_tool

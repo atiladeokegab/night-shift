@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react'
 import { Refused } from './ask'
 import { askCommentator, createReplay, followReplay, getPlayers, getProfile, getShots, lookAt, waitForExample, type StreamStatus } from './api'
-import { release, replayClock, speaks } from './gate'
+import { fresh, release, replayClock } from './gate'
 import { ENDED, gone } from './ended'
 import { TEACHES } from './proof'
 import type { Answer, Fix, Line, LineCheck, LineCheckExample, Moment, Stats } from './types'
@@ -132,17 +132,16 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
   }, [onLine, onRewind])
 
   // Speak each newly presented line once, unless it was released late or said before a jump (#163).
-  const spoken = useRef<string | null>(null)
+  // Every line new in a render goes to the speaking queue, oldest first: it drops a fill, never a call.
+  const seen = useRef(new Set<string>())
   const spokenAt = useRef<number | null>(null) // video time of the line being spoken
-  const newest = state.lines[0]
   useEffect(() => {
-    if (!newest || newest.line_id === spoken.current) return
-    spoken.current = newest.line_id
-    if (speaks(newest, state.late)) {
-      spokenAt.current = newest.video_t ?? null
-      said.current(newest)
+    if (!state.lines.length) seen.current.clear() // a new replay
+    for (const line of fresh(state.lines, seen.current, state.late)) {
+      spokenAt.current = line.video_t ?? null
+      said.current(line)
     }
-  }, [newest, state.late])
+  }, [state.lines, state.late])
 
   // Seeking back before the line being spoken stops the voice: it would describe the future.
   const at = useRef(0) // where the picture was at the last tick
@@ -201,6 +200,7 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
       const token = ++run.current
       stop.current?.()
       stop.current = null
+      replayId.current = null
       clock.current = null
       origin.current = from
       at.current = 0
@@ -238,6 +238,8 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
   useEffect(() => {
     const on = (e: Event) => {
       if ((e as CustomEvent<string>).detail !== replayId.current) return
+      replayId.current = null
+      run.current++
       stop.current?.()
       stop.current = null
       dispatch({ type: 'failed', refused: ENDED })

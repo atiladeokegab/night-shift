@@ -1,0 +1,17 @@
+{
+  "label": "before",
+  "at": "2026-10-24T23:21:08+00:00",
+  "match_id": "3754092",
+  "idx": 26,
+  "line": "Gary Cahill! Chelsea pull one back with a half volley, but Tottenham still lead one-nil in this second half!",
+  "key": "wrong",
+  "answer": "{\"score\":\"wrong\"}",
+  "label_parsed": "wrong",
+  "matches_key": true,
+  "mubit_request_id": "mreq_01a17037ca2b7a438fadd70bbe1be883",
+  "served_by": "claude-sonnet-5-5",
+  "middleware": {
+    "x-middleware-request-id": "mreq_01a17037ca2b7a438fadd70bbe1be883"
+  },
+  "record": false
+}

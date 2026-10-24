@@ -23,7 +23,7 @@ export function SideBySide() {
       )}
       <p className="hint">
         <strong>Our commentator: {view.ours}.</strong> {adapter.adapters}{' '}
-        adapter versions so far, best {adapter.best_match_pct}% on Mubit's test
+        adapters on Mubit's console so far, best {adapter.best_match_pct}% on its test
         {view.paired
           ? ` (${adapter.status}).`
           : "; not yet passing it, so it isn't served. Lines appear here beside the big model's once a version passes."}

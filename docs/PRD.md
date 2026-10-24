@@ -117,7 +117,7 @@ Why: The track asks for quality, cost and latency side by side
 
 ### R-8 [P2 · Eval] Measure whether our trained model agrees with the big one
 rank 8 · state proposed · needs R-1 · touches `eval/`
-Why: Technical execution: the goal is an adapter that matches the big one; this measures it rather than claiming it. Best so far 55.8% on Mubit's test, none of 6 versions passed
+Why: Technical execution: the goal is an adapter that matches the big one; this measures it rather than claiming it. Best so far 58.3% on Mubit's test, none of 7 adapters passed (console, 24 Oct 19:15 UTC)
 - A-8.1@1 Scenario: eval/agreement.py on held-out matches reports adapter-vs-provider agreement, counting empty, skipped or late lines as disagreements, or says 'not tested' with the reason; seeded with one known-bad line it reports a disagreement (check: `tests/test_eval_agreement.py::test_seeded_with_one_known_bad_line_it_reports_one_disagreement`, `::test_a_wrong_empty_skipped_or_late_adapter_line_disagrees`, `::test_an_untrained_adapter_is_not_tested_and_nothing_is_called`)
 
 ### R-9 [P3 · Submission] README, demo script and recording
