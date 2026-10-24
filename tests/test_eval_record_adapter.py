@@ -9,8 +9,8 @@ def test_records_the_try_models_result_and_stats_shows_it(tmp_path):
     env = {"STORE_DIR": str(tmp_path)}
     main(["--status", "ready", "--kept", "31", "--agree", "23", "--total", "25"], env)
     adapter = stats(Store(tmp_path))["adapter"]
-    assert (adapter["status"], adapter["kept"], adapter["agree"], adapter["total"]) == (
-        "ready",
+    assert (adapter["state"], adapter["kept"], adapter["agree"], adapter["total"]) == (
+        "collecting",  # ready, but no version or verdict recorded
         31,
         23,
         25,
@@ -20,7 +20,7 @@ def test_records_the_try_models_result_and_stats_shows_it(tmp_path):
 
 def test_training_needs_no_counts(tmp_path):
     main(["--status", "training"], {"STORE_DIR": str(tmp_path)})
-    assert stats(Store(tmp_path))["adapter"]["status"] == "training"
+    assert stats(Store(tmp_path))["adapter"]["state"] == "collecting"
 
 
 @pytest.mark.parametrize(
@@ -67,7 +67,6 @@ def test_each_task_keeps_its_own_latest_record_and_adapter_stays_commentary(tmp_
     line_check = s["adapters"]["line_check"]
     assert line_check["recorded_at"] == store.all("adapter")[-2]["created_at"]
     assert {k: v for k, v in line_check.items() if k != "recorded_at"} == {
-        "status": "ready",
         "state": "passed",  # Mubit's gate was recorded as passed
         "version": 1,
         "score": 82.0,
@@ -84,14 +83,15 @@ def test_each_task_keeps_its_own_latest_record_and_adapter_stays_commentary(tmp_
     )
     assert where["kept"] == 0  # the console's kept count, recorded as 0: not None, not requests
     assert s["adapters"]["commentary"]["kept"] == 25
-    assert (s["adapter"]["status"], s["adapter"]["kept"]) == ("training", 25)
+    assert (s["adapter"]["state"], s["adapter"]["kept"]) == ("collecting", 25)
 
 
 def test_a_task_with_no_record_is_absent_not_guessed(tmp_path):
     main(["--task", "line_check", "--status", "training"], {"STORE_DIR": str(tmp_path)})
     s = stats(Store(tmp_path))
     assert list(s["adapters"]) == ["line_check"]
-    assert s["adapter"]["status"] == "not_trained"  # no commentary record yet
+    # no commentary record yet: no as-of time
+    assert s["adapter"]["summary"] == "Collecting: no adapter version recorded yet."
     assert s["adapters"]["line_check"]["passed"] is None
 
 
