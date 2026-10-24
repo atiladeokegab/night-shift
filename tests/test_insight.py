@@ -612,3 +612,13 @@ def test_a_dropped_orientation_hands_its_slot_to_a_stat_at_the_moments_time(tmp_
     assert first["insight"]["kind"] != "orientation"
     stat = insight.said_over(first, load_moments)[-1]
     assert stat["clock"] == load_moments(FINAL)[5]["clock"] == "22:24"
+
+
+def test_the_ball_is_said_again_though_it_reads_like_the_last_ball_line(tmp_path):
+    # the fake reads the stat back, "Stat, orientation: France have the ball ...", so ball lines
+    # read alike; each is still where the ball is now, so each gap with a ball opens on it
+    calls = functools.partial(commentator.commentate, provider=FakeProvider())
+    lines, _ = replay(FINAL, Store(tmp_path), calls=calls)
+    first = {gap(ln)["after_idx"]: gap(ln)["kind"] for ln in lines if gap(ln).get("n") == 0}
+    with_ball = [idx for idx in first if idx in balls(FINAL)]
+    assert len(with_ball) >= 5 and {first[idx] for idx in with_ball} == {"orientation"}
