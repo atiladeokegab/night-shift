@@ -207,3 +207,25 @@ def test_a_he_answer_is_retried_with_the_question_s_player():
     ask, asked = model("He hasn't scored yet.", RIGHT)
     assert checked_answer(ask, ASKED, past, lines)["text"] == RIGHT
     assert "Lionel Messi has scored 1 so far" in asked[1]
+
+
+def test_a_goal_claimed_for_a_player_with_none_is_wrong_and_true_scorers_pass():
+    # #352: the keyed Ask run said this at Orlando v Courage idx 20, Mathias's shot off target
+    orlando = load_moments("7457")
+    said = (
+        "The Courage have had eighteen shots so far, and they've just added another with Merritt"
+        " Mathias finding the net to make it one-nil!"
+    )
+    asked = "How many shots have the Courage had?"
+    assert wrong_claims(said, orlando[:21], asked) == ["Merritt Mathias has not scored so far"]
+    for idx, true in (
+        (14, "Jessica McDonald has just scored for the Courage with a volley from seven yards!"),
+        (14, "Jessica McDonald finds the net for North Carolina Courage, one-nil!"),
+        (38, "Rachel Hill has scored for Orlando Pride, and it's three all!"),
+        (42, "That was an own goal by Poliana of Orlando Pride in the 89th minute."),
+        (42, "Poliana scored an own goal, and the Courage lead 4-3."),
+        (20, "Merritt Mathias is looking to score, but that one flew off target."),
+        (20, "Merritt Mathias could have found the net there!"),
+        (20, "Merritt Mathias hasn't scored yet."),
+    ):
+        assert wrong_claims(true, orlando[: idx + 1], asked) == [], true

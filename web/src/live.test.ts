@@ -130,13 +130,26 @@ test('an off-air answer is a calm state with the Analyst chip, never a headline 
 })
 
 test('ON AIR names the speaker on air: the lead by the chosen voice, the analyst by the voice reading it (#153)', () => {
-  assert.match(render(), /class="who">Lead · Sam</)
+  assert.match(render(), /class="who" aria-hidden="true">Lead · Sam</)
   const analyst = { ...replay, lines: [{ ...line(3, 490.5, EARLY), speaker: 'analyst' as const }] }
   const voice = { status: 'on', chip: 'Sam', speaking: true }
-  assert.match(render({ replay: analyst, voice: { ...voice, analyst: 'George' } }), /class="who">Analyst · George</)
+  assert.match(render({ replay: analyst, voice: { ...voice, analyst: 'George' } }), /class="who" aria-hidden="true">Analyst · George</)
   assert.match(render({ replay: analyst, voice: { ...voice, chip: 'Browser voice', analyst: 'Browser voice' } }),
-    /class="who">Analyst · Browser voice</, 'browser speech reads the analyst too')
-  assert.match(render({ replay: analyst }), /class="who">Analyst</, 'no name rather than a wrong one')
+    /class="who" aria-hidden="true">Analyst · Browser voice</, 'browser speech reads the analyst too')
+  assert.match(render({ replay: analyst }), /class="who" aria-hidden="true">Analyst</, 'no name rather than a wrong one')
+})
+
+test('the ON AIR pill announces OFF AIR and VOICE OFF/UNAVAILABLE, never a speaker change while the voice is on', () => {
+  // What a screen reader hears from the status: its text minus anything aria-hidden.
+  const heard = (html: string) => html.match(/<span class="st" role="status">([\s\S]*?)<\/span><\/(?:span|button)>/)?.[1]
+    ?.replace(/<span[^>]*aria-hidden="true"[^>]*>[\s\S]*?<\/span>(?:<\/span>)*/g, '').replace(/<[^>]+>/g, '')
+  const analyst = { ...replay, lines: [{ ...line(3, 490.5, EARLY), speaker: 'analyst' as const }] }
+  const lead = heard(render())
+  assert.equal(lead, 'ON AIR')
+  assert.equal(heard(render({ replay: analyst, voice: { status: 'on', chip: 'Sam', speaking: true, analyst: 'George' } })), lead)
+  assert.equal(heard(render({ voice: { status: 'off', chip: 'Sam', speaking: false } })), 'VOICE OFFSubtitles only')
+  assert.equal(heard(render({ voice: { status: 'unavailable', chip: 'Sam', speaking: false } })), 'VOICE UNAVAILABLESubtitles carry on')
+  assert.match(heard(render({ replay: { ...replay, error: 'gone' } })) ?? '', /^OFF AIR/)
 })
 
 test('a final settled on penalties says the shoot-out at full time', () => {
@@ -292,4 +305,20 @@ test('a line whose retry passed the number check is tagged Auto-fixed, with its 
   const li = (text: string) => log.slice(log.lastIndexOf('<li', log.indexOf(text)), log.indexOf('</li>', log.indexOf(text)))
   assert.match(li(LATER), /<span class="pill fixed auto" title="[^"]+">Auto-fixed<span class="sr-only">: its first try failed the number check, and the retry passed<\/span><\/span>/)
   assert.ok(!li(EARLY).includes('Auto-fixed'))
+})
+
+test('the live page has one h1, the match title, for screen readers', () => {
+  const html = render()
+  assert.equal(html.match(/<h1[\s>]/g)?.length, 1)
+  assert.match(html, /<h1 class="sr-only">Kobe&#x27;s 81 v Toronto<\/h1>/)
+})
+
+test('each Fix button has its own name: the speaker, the clock and the first words of the line', () => {
+  // A lead line and the analyst's on the same moment used to share "Fix the line at 06:12".
+  const both = { ...replay, lines: [line(3, 490.5, EARLY), { ...line(3, 491, LATER), line_id: 'a3', speaker: 'analyst' as const }] }
+  const names = [...render({ replay: both }).matchAll(/<button class="btn sm"[^>]*aria-label="([^"]+)">Fix</g)].map((m) => m[1])
+  assert.equal(names.length, 2)
+  assert.equal(new Set(names).size, 2)
+  assert.ok(names.includes('Fix the lead line at 06:12: Kobe pulls up from the elbow…'), names.join(' | '))
+  assert.ok(names.includes('Fix the analyst line at 06:12: Kobe again! That is forty for…'), names.join(' | '))
 })

@@ -1601,6 +1601,15 @@ NTH = re.compile(
     r"(brace|hat[- ]trick)\b",
     re.I,
 )
+# a goal said to have happened, the named player's own: "with Merritt Mathias finding the net" on
+# her shot off target (#352). Never a wish ("looking to score", "could find the net"), the noun
+# ("the scores are level"), a denial (NOT_SCORED) or an own goal, whose scorer has no shot goal
+SCORED = re.compile(
+    r"\b(?:scored|scores|nets|netted|(?:find|finds|finding|found) the (?:back of the )?net"
+    r"|on the score ?sheet)\b",
+    re.I,
+)
+NOT_YET = re.compile(r"\b(?:to|could|would|can|will|might|may|should|if|the)\s+(?:\w+\s+)?$", re.I)
 NTH_GOAL = {"first": 1, "second": 2, "third": 3, "fourth": 4, "brace": 2}
 HALVES_SAID = {"second half": 2, "first half of extra time": 3, "second half of extra time": 4}
 NOW_IN = r"\b(?:we're|we are|it's|it is|deep|now|already)\s+(?:\w+\s+)?(?:in|into)\s+the\s+"
@@ -1628,6 +1637,8 @@ def wrong_claims(text: str, past: list[dict], question: str = "") -> list[str]:
         if period > m.get("period", period) and re.search(rf"{NOW_IN}{part}\b", text, re.I)
     ]
     goals = Counter(p["players"].get("shooter") for p in goals_so_far(past) if p.get("players"))
+    # a claimed goal (SCORED) may be a shootout kick: "Argentina lead after Paulo Dybala scores"
+    netted = {p["players"].get("shooter") for p in past if p.get("outcome") == "Goal"}
     names = {n for p in past for n in (p.get("players") or {}).values() if isinstance(n, str)}
     surnames = Counter(n.split()[-1] for n in names)
     said = {n: n if surnames[n.split()[-1]] > 1 else n.split()[-1] for n in names}  # two Martínez
@@ -1678,6 +1689,16 @@ def wrong_claims(text: str, past: list[dict], question: str = "") -> list[str]:
             n = NTH_GOAL.get(next(g for g in hit.groups() if g).lower(), 3)
             if (name := _named_before(named, hit.start())) and n > goals[name]:
                 wrong.append(f"{name} has scored {goals[name]} so far, not {n}")
+        denied = [hit.span() for hit in NOT_SCORED.finditer(clause)]
+        for hit in SCORED.finditer(clause):
+            if (
+                re.search(r"\bown goal\b", clause, re.I)
+                or NOT_YET.search(clause[: hit.start()])
+                or any(a <= hit.start() < b for a, b in denied)
+            ):
+                continue
+            if (name := _named_before(named, hit.start())) and name not in netted:
+                wrong.append(f"{name} has not scored so far")
     return wrong
 
 
