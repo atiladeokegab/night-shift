@@ -2,6 +2,7 @@
 
 import json
 from datetime import timedelta
+from pathlib import Path
 
 from agent import feed
 
@@ -371,6 +372,17 @@ def red_flag_rows():
 def test_f1_a_tyre_change_under_a_red_flag_is_not_a_pit_stop():
     stops = [m for m in feed.f1_moments(RACE, red_flag_rows()) if m["type"] == "Pit stop"]
     assert [(m["players"]["driver"], m["clock"]) for m in stops] == [("Lando Norris", "02:09")]
+
+
+def test_f1_monaco_2024_red_flag_tyre_changes_are_not_pit_stops():
+    # Real OpenF1 rows from session 9523: the top three, the lap-1 red flag, the restart, and
+    # each car's tyre change in the parked pit lane (2358 s), once called as stops on lap 30.
+    rows = json.loads(
+        (Path(__file__).parent / "fixtures" / "openf1-9523-red-flag.json").read_text()
+    )
+    race = {"sport": "f1", "match_id": "9523", "laps": 78}
+    ms = feed.f1_moments(race, rows)
+    assert [m["type"] for m in ms] == ["Lights out", "Red flag"]
 
 
 def test_f1_standing_puts_a_pitting_car_in_the_pit_lane_without_reading_ahead():
