@@ -119,6 +119,10 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 #video.off .player { display: none; }
 /* An embed-blocked video's poster: a still, darkened so the no-video caption reads over it. */
 #video .still { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .3; }
+/* Close your eyes (#277): black over the picture, the player still running under it; only the line and the score show. */
+.eyes { position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; padding: 64px 6%; background: #000; pointer-events: none; }
+.eyes p { margin: 0; max-width: 30ch; text-align: center; color: #fff; font: 600 clamp(1.25rem, 3.2vw, 2.4rem)/1.3 var(--display); text-wrap: balance; }
+.frame[data-eyes] .onair, .frame[data-eyes] .bug::before { visibility: hidden; }
 /* The score bug and ON AIR pill: small, inside the card's top edge, and the only things on the picture. */
 .bug { position: absolute; top: 10px; left: 10px; right: 10px; z-index: 2; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; pointer-events: none; }
 /* A shade behind the bug, so the video's own title never shows through it (#153). */
@@ -162,6 +166,8 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .ctl { flex: none; display: inline-grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 10px; background: none; color: var(--fg); }
 .ctl:hover:not(:disabled) { background: rgba(255, 255, 255, .08); }
 .ctl svg { width: 16px; height: 16px; }
+.ctl.eyes-btn { width: auto; display: inline-flex; gap: 6px; padding: 0 10px; font: inherit; color: var(--fg); white-space: nowrap; }
+.ctl.eyes-btn[aria-pressed="true"] { background: var(--amber); color: var(--on-amber); }
 .controls .time { flex: none; min-width: 74px; }
 /* The scrubber: the moment track drawn under a transparent range input that takes the seeks. */
 .scrub { position: relative; flex: 1; min-width: 60px; height: 36px; display: flex; align-items: center; }
@@ -395,6 +401,8 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   .controls { gap: 4px; padding: 4px 6px; }
   .controls .time { min-width: 0; }
   .controls .vol { display: none; } /* a phone's own buttons set the volume; mute stays */
+  .ctl.eyes-btn { width: 44px; height: 44px; padding: 0; justify-content: center; }
+  .ctl.eyes-btn span { display: none; } /* the icon alone; its name stays "Close your eyes" */
   .caption { padding: 12px 14px; min-height: 84px; }
   /* six tracks: figures in pairs, the per-match costs and each speaker's figures in thirds */
   .stats { grid-template-columns: repeat(6, 1fr); }
