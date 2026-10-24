@@ -4,6 +4,8 @@ would. Every one passes the number check on its own moment, and none is longer t
 
 import re
 
+from data.matches import CLUB_SUFFIX
+
 UNITS = (
     "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen "
     "fifteen sixteen seventeen eighteen nineteen"
@@ -56,8 +58,8 @@ def _score(header: dict, m: dict, say=words) -> str:
         return drawn.strip() or "Goalless."
     if h == a:
         return f"Level at {say(h)} all{shootout and ' in the shootout'}.{drawn}"
-    side = "home" if h > a else "away"
-    return f"{header[side]} lead{shootout} {say(max(h, a))}, {say(min(h, a))}.{drawn}"
+    leader = CLUB_SUFFIX.sub("", header["home" if h > a else "away"])
+    return f"{leader} lead{shootout} {say(max(h, a))}, {say(min(h, a))}.{drawn}"
 
 
 def _nil(n: int) -> str:
