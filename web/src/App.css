@@ -430,9 +430,6 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   padding: 0; text-align: left; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 30px 80px -40px rgba(0, 0, 0, .9); transition: transform .5s var(--ease), border-color .3s; }
 .tile:hover { transform: translateY(-3px); border-color: var(--line-hi); }
 .tile-wrap { position: relative; display: grid; }
-.tile-wrap.hero { grid-column: 1 / -1; }
-.hero .tile { aspect-ratio: 21 / 9; }
-.hero .tile-title { font-size: 2.25rem; }
 .tile-yt { position: absolute; top: 12px; right: 12px; z-index: 1; padding: 7px 11px; border-radius: 999px; font: 500 .75rem/1 var(--body); color: var(--fg);
   text-decoration: none; background: rgba(6, 8, 15, .92); border: 1px solid var(--line-hi); }
 .tile-yt:hover, .tile-yt:focus-visible { border-color: var(--amber); color: var(--amber); }
@@ -449,7 +446,11 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .tile-title { font: 600 1.5rem/1.1 var(--display); letter-spacing: -.02em; }
 .tile-detail { color: var(--muted); font-size: .85rem; }
 .tile-cta { color: var(--amber); font: 600 .85rem/1.35 var(--body); margin-top: 4px; }
-@media (max-width: 760px) { .wall { grid-template-columns: 1fr; gap: 14px; } .tile-title, .hero .tile-title { font-size: 1.3rem; } .hero .tile { aspect-ratio: 16 / 9; } }
+@media (max-width: 760px) { .wall { grid-template-columns: 1fr; gap: 14px; } .tile-title { font-size: 1.3rem; } }
+/* A whole match has no video (#246): its tile shows the picker card's stadium; a short tile has no room for crests. */
+.tile .art { position: absolute; inset: 0; }
+.tile .art svg { width: 100%; height: 100%; display: block; }
+.tile .art .crests { display: none; }
 
 /* The shot map (#120): faint dots before tonight, bright ones tonight (made filled, missed a ring), hit rate per zone. */
 .panel.lines .shots-open { align-self: flex-start; margin-bottom: 12px; }

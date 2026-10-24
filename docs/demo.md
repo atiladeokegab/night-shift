@@ -1,7 +1,7 @@
 # The demo
 
 **Touchline: the describer that checks itself. For the match nobody described.** The story opens on a
-Women's Super League match that had no described broadcast, shows the describer catching its own
+Women's Super League match that had no described broadcast that we could find, shows the describer catching its own
 mistakes, sends one it couldn't fix to a producer, and ends on what it costs. About 2:45, on the live
 URL, with the sound on. Anything shown outside our product, such as Mubit's console, is said aloud
 as such. Every number spoken is read off the live [`/stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats)
@@ -24,7 +24,7 @@ commentary still plays on the match's own clock.
 
 | # | Time | On screen | Say |
 |---|---|---|---|
-| 1 | 0:00 | Black, then the wall. Tap **Brighton v Bristol City**, the wide tile marked "No described broadcast" | Nothing for ten seconds: let the room hear it. Then: "That match had no described broadcast. Touchline described it from the match data, in a replay, as if live." |
+| 1 | 0:00 | Black, then the wall. Tap **Brighton v Bristol City**, the tile marked "No described broadcast that we could find" | Nothing for ten seconds: let the room hear it. Then: "That match had no described broadcast. Touchline described it from the match data, in a replay, as if live." |
 | 2 | 0:20 | The **Proof** card: First time, Auto-fixed, To a human | "Before it speaks, it checks every number against the data. When a call is wrong, it tries again; this count is the calls it fixed itself, before anyone heard them." |
 | 3 | 0:40 | **Review**: a line the retry couldn't fix, with the check's reasons | "When the retry still fails, it doesn't guess. It says a line built from the data, and sends the call to a producer, with the reason." |
 | 4 | 1:00 | Press **Fix** on that line, type the right line, save | "A producer fixes it in one line. A wrong leader is the error that breaks a blind fan's trust." |

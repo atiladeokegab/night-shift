@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { CARD_COPY } from '../teams'
-import { SPORT_NAMES, type Match } from '../types'
+import { getStats } from '../api'
+import { cardArt } from '../art'
+import { CARD_COPY, coverage, matchTeams } from '../teams'
+import { SPORT_NAMES, type Match, type Stats } from '../types'
 import { Nav, type Screen } from './Nav'
 import { embeds, loadYouTube, mountPlayer, posterUrl, watchUrl } from '../player'
 
@@ -18,6 +20,9 @@ interface Props {
 // The match wall (A-6.5): the home page, one tile per match, each playing its highlights muted with no
 // commentary. Tapping a tile opens it on the full live stage, where the commentator calls it.
 export function Wall({ matches, error, onRetry, onOpen, onJump, onGo }: Props) {
+  const [stats, setStats] = useState<Stats | null>(null)
+  useEffect(() => { getStats().then(setStats, () => {}) }, []) // no cost figure is better than a stuck page
+  const perMatch = stats?.cost_per_match_usd
   let body
   if (error) {
     body = (
@@ -43,13 +48,24 @@ export function Wall({ matches, error, onRetry, onOpen, onJump, onGo }: Props) {
       <Nav current="wall" onGo={onGo} />
       <main className="wrap">
         <p className="eyebrow">Touchline: the describer that checks itself</p>
-        <h1>The match nobody described</h1>
+        <h1>Every match deserves to be described.</h1>
+        {/* #246: the pitch the film makes, audio description for blind and low-vision fans */}
+        <p className="status-line" style={{ maxWidth: '65ch', color: 'var(--fg)', fontSize: '1.15rem' }}>
+          Most matches have no audio description. A blind or low-vision fan following one gets no description.
+        </p>
         {/* #206's pitch, word for word */}
         <p className="status-line" style={{ maxWidth: '65ch' }}>
           Touchline describes the matches a platform streams with nobody describing them. It checks every number before
           it speaks, fixes what it can itself, sends the rest to a producer, and every fix trains that platform's own
           describer in Mubit. The matches below are replays, as if live.
         </p>
+        {/* #246: what a match costs to describe, measured live (GET /stats, #174) */}
+        {typeof perMatch === 'number' && (
+          <p className="status-line" style={{ maxWidth: '65ch' }}>
+            A full replay, mostly highlights, costs ${perMatch.toFixed(2)} on average. A whole match calls every moment, so it
+            costs more.
+          </p>
+        )}
         {body}
         {/* --muted: .foot's --faint is 3.77:1 at 13 px, under WCAG AA (#154); App.css is #153's until it merges */}
         <p className="foot" style={{ color: 'var(--muted)' }}>
@@ -103,11 +119,14 @@ function Tile({ match, onOpen, onJump }: { match: Match; onOpen: (m: Match) => v
   }, [plays, match.youtube_id, match.video_start])
 
   return (
-    // The long-tail match (a card with a note) is the wide hero, so the famous six sit in an even grid below it
-    <div className={note ? 'tile-wrap hero' : 'tile-wrap'}>
+    // The three long-tail matches (#246) fill the first row, so the famous six sit in an even grid below them
+    <div className="tile-wrap">
     <button className="tile" onClick={() => onOpen(match)}>
-      {match.youtube_id && (
+      {match.youtube_id ? (
         <img className="poster" alt="" loading="lazy" onError={(e) => { e.currentTarget.hidden = true }} src={posterUrl(match.youtube_id, note ? 'maxresdefault' : 'hqdefault')} />
+      ) : (
+        // a whole match has no video (#246): the picker card's stadium stands in
+        <div className="art" dangerouslySetInnerHTML={{ __html: cardArt(match.sport, ...matchTeams(match)) }} />
       )}
       <div className={`clip${playing && !broken ? ' on' : ''}`} ref={host} aria-hidden />
       <span className="tile-shade" />
@@ -115,7 +134,7 @@ function Tile({ match, onOpen, onJump }: { match: Match; onOpen: (m: Match) => v
         <span className="label">{SPORT_NAMES[match.sport]}{note && ` · ${note}`}</span>
         <span className="tile-title">{title}</span>
         {detail && <span className="tile-detail">{phrases(detail)}</span>}
-        <span className="tile-cta">{phrases(blocked ? 'Commentary only · Tap to hear it called →' : 'Tap to hear it called →')}</span>
+        <span className="tile-cta">{phrases(`${blocked ? 'Commentary only' : coverage(match)} · Tap to hear it called →`)}</span>
       </span>
     </button>
     {/* A sibling, not inside the button: a link can't sit inside another control. */}
