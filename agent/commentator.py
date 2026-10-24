@@ -131,27 +131,43 @@ def _fixes(past: list[dict], fixes) -> str:
     return "\n".join(
         f"- {_period(at[f['moment_idx']])}, {at[f['moment_idx']]['clock']}: you said "
         f"{json.dumps(f['said'], ensure_ascii=False)}"
-        + (f" ({' '.join(f['reason'].split())})" if f.get("reason") else "")
+        + (f" ({json.dumps(f['reason'][:200], ensure_ascii=False)})" if f.get("reason") else "")
         + f"; the producer's line: {json.dumps(f['fixed'], ensure_ascii=False)}"
         for f in kept
     )
 
 
-def match_fixes(store, match_id: str) -> list[dict]:
+def fix_context(line: dict) -> dict:
+    """What a fix to `line` carries into later requests, stamped on the fix row when it is posted,
+    so a line's request reads only "fixes"."""
+    return {
+        "match_id": line.get("match_id"),
+        "moment_idx": line.get("moment_idx"),
+        # a line built from the data was spoken in place of a failed try: that try, and why
+        "said": line.get("tried") or line.get("text") or "",
+        "wrong": line.get("wrong") or [],
+    }
+
+
+def match_fixes(store, match_id: str, known: dict | None = None) -> list[dict]:
     """This match's stored producer fixes, oldest first and the newest per line, as `build_request`
-    takes them; read as GET /lines/{id} and the replay read them."""
-    lines = {ln["line_id"]: ln for ln in store.all("lines") if ln.get("match_id") == match_id}
+    takes them. A fix stored before rows were stamped is resolved from "lines" once and kept in
+    `known` by line id (a line never changes), so later calls read only "fixes"."""
+    known = {} if known is None else known
+    fixes = store.all("fixes")
+    if old := {f.get("line_id") for f in fixes if "match_id" not in f} - known.keys():
+        lines = {ln.get("line_id"): ln for ln in store.all("lines") if ln.get("line_id") in old}
+        known.update({i: fix_context(lines[i]) if i in lines else None for i in old})
     out: dict[str, dict] = {}
-    for f in store.all("fixes"):
-        ln = lines.get(f.get("line_id"))
-        if ln is None or ln.get("moment_idx") is None:
+    for f in fixes:
+        at = f if "match_id" in f else known.get(f.get("line_id"))
+        if not at or at["match_id"] != match_id or at["moment_idx"] is None:
             continue
-        out.pop(ln["line_id"], None)  # a later fix to the same line replaces it, and moves last
-        out[ln["line_id"]] = {
-            "moment_idx": ln["moment_idx"],
-            # a line built from the data was spoken in place of a failed try: that try, and why
-            "said": ln.get("tried") or ln.get("text") or "",
-            "reason": "; ".join(ln.get("wrong") or []) or f.get("reason") or "",
+        out.pop(f["line_id"], None)  # a later fix to the same line replaces it, and moves last
+        out[f["line_id"]] = {
+            "moment_idx": at["moment_idx"],
+            "said": at["said"],
+            "reason": "; ".join(at.get("wrong") or []) or f.get("reason") or "",
             "fixed": f["corrected_text"],
         }
     return list(out.values())

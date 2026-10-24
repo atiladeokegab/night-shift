@@ -50,9 +50,11 @@ def with_fixes(commentate, store):
     """`commentate` given the match's stored producer fixes on every call, read then."""
     from agent.commentator import match_fixes
 
+    known: dict = {}  # old fix rows' lines, read once
+
     def call(moment: dict, history: list[dict]) -> dict:
         try:
-            fixes = match_fixes(store, moment["match_id"])
+            fixes = match_fixes(store, moment["match_id"], known)
         except Exception as exc:  # an unreadable store never takes the commentator off air
             log.warning("fixes not read for %s: %s", moment["match_id"], str(exc)[:300])
             fixes = []
@@ -83,7 +85,7 @@ class ReplayRequest(BaseModel):
 class FixRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
     corrected_text: str = Field(min_length=1, max_length=200)
-    reason: str = ""
+    reason: str = Field("", max_length=200)  # it goes in later prompts
 
 
 class AskRequest(BaseModel):
@@ -286,6 +288,8 @@ def create_app(
         if token and not hmac.compare_digest(x_producer_token.encode(), token.encode()):
             raise HTTPException(401, "producer token needed")
         d = need_deps()
+        from agent.commentator import fix_context
+
         lines = await asyncio.to_thread(store.all, "lines")
         line = next((ln for ln in lines if ln.get("line_id") == line_id), None)
         if line is None:
@@ -311,6 +315,7 @@ def create_app(
                 "line_id": line_id,
                 "corrected_text": req.corrected_text,
                 "reason": req.reason,
+                **fix_context(line),  # what later lines' requests carry, without reading "lines"
                 "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
                 "mubit_request_id": sent.get("mubit_request_id"),  # the correction call's (#239)
                 "correction": sent.get("correction"),  # the turn Mubit was given (#245)
