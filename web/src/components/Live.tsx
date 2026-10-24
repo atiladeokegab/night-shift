@@ -1,6 +1,6 @@
 import { Component, lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { answeredAt, isStale } from '../ask'
-import { clockText, momentTag } from '../moment'
+import { clockText, momentOf, momentTag } from '../moment'
 import { eyesKey } from '../eyes'
 import { embeds, posterUrl, setPlaying, showNoVideoCaption, shownCaption, watchUrl, type Transport } from '../player'
 import type { Caption as CaptionData } from '../turns'
@@ -189,7 +189,7 @@ export function Live(props: Props) {
   const caption = shownCaption(pending === undefined ? props.caption : null, live.map(said))
   const line = caption?.kind === 'line' ? live.find((l) => said(l) === caption.text) : undefined
   const answer = caption?.kind === 'answer' ? replay.answers.find((a) => a.text === caption.text) : undefined
-  const tagged = shown.moments.find((m) => m.idx === (line ?? answer)?.moment_idx) ?? (caption?.kind === 'line' ? undefined : moment)
+  const tagged = (line ? momentOf(shown.moments, line) : shown.moments.find((m) => m.idx === answer?.moment_idx)) ?? (caption?.kind === 'line' ? undefined : moment)
   const marks = [...replay.moments, ...replay.queuedMoments].filter((m) => m.video_t !== undefined)
     .map((m) => ({ t: m.video_t!, done: m.video_t! <= replay.now }))
   const canPlay = !!transport && video === 'ok' && !busy

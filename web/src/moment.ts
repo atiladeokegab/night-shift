@@ -1,5 +1,14 @@
 // Display helpers over the contract's Moment, shared by the score bar, subtitle and line log.
-import type { Moment } from './types'
+import type { Line, Moment } from './types'
+
+// A video match's cold open (#221) is a Stat moment with the first mapped moment's idx, and an analyst's
+// stat line has the idx of the moment it follows: the video time tells them apart (the cold open has none).
+export const sameMoment = (a: Pick<Moment, 'idx' | 'video_t'>, b: Pick<Moment, 'idx' | 'video_t'>) =>
+  a.idx === b.idx && a.video_t === b.video_t
+
+// The moment a line was said over: the one with its idx and video time, else the first with its idx.
+export const momentOf = <M extends Pick<Moment, 'idx' | 'video_t'>>(moments: M[], l: Pick<Line, 'moment_idx' | 'video_t'>): M | undefined =>
+  moments.find((m) => sameMoment(m, { idx: l.moment_idx, video_t: l.video_t })) ?? moments.find((m) => m.idx === l.moment_idx)
 
 // The design's clock: football "28:29", cricket "Over 18.5" (the line log drops the "Over"); basketball
 // the time left in the quarter; f1 the lap.
