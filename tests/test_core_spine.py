@@ -288,3 +288,27 @@ def test_health_answers_fast_while_a_slow_store_appends_lines(tmp_path):
 
     took = asyncio.run(run())
     assert max(took) < 0.1, took
+
+
+def test_a_finished_replay_is_forgotten_after_rejoin_s_and_its_margin(tmp_path, monkeypatch):
+    import asyncio
+
+    import httpx
+
+    from core import app as core_app
+
+    monkeypatch.setattr(core_app, "REJOIN_S", 0.05)
+    monkeypatch.setattr(core_app, "FORGET_S", 0.05)
+    deps = Deps(lambda: [], lambda mid: LONG[:3], fake_commentate)
+    app = create_app(Store(tmp_path), deps)
+
+    async def run():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://t") as c:
+            rid = (await c.post("/replays", json={"match_id": "long", "speed": 1e6})).json()
+            body = await sse(app, rid["replay_id"])
+            await asyncio.sleep(0.3)
+            return body, (await c.get(f"/replays/{rid['replay_id']}/stream")).status_code
+
+    body, status = asyncio.run(run())
+    assert body.count(b"event: line") == 3 and status == 404

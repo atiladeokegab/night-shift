@@ -24,6 +24,7 @@ from core.voice import Speaker, voice_router
 
 log = logging.getLogger("night_shift.app")
 REJOIN_S = 10.0  # a replay with no open stream this long is stopped: its lines cost model calls
+FORGET_S = 60.0  # a finished replay is forgotten this long after REJOIN_S, once nobody streams it
 
 WEB = Path(__file__).resolve().parent.parent / "web" / "dist"
 
@@ -119,6 +120,7 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
         task.add_done_callback(tasks.discard)
         running[replay.id] = task
         task.add_done_callback(lambda _: running.pop(replay.id, None))
+        task.add_done_callback(lambda _: forget_later(replay))
         stop_later(replay)  # in case no stream ever opens
         return {"replay_id": replay.id}
 
@@ -126,6 +128,16 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
         if replay.stopping:
             replay.stopping.cancel()
         replay.stopping = asyncio.get_running_loop().call_later(REJOIN_S, abandon, replay)
+
+    def forget_later(replay: Replay) -> None:
+        asyncio.get_running_loop().call_later(REJOIN_S + FORGET_S, forget, replay)
+
+    def forget(replay: Replay) -> None:
+        """Drop a finished replay's events from memory; one still streamed waits another round."""
+        if replay.listeners:
+            forget_later(replay)
+        else:
+            replays.pop(replay.id, None)
 
     def abandon(replay: Replay) -> None:
         """Stop a replay nobody follows, and its voice jobs, so they free the 3 shared slots."""

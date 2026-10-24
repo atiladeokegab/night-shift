@@ -25,6 +25,7 @@ FALLBACK_MIN_S = 1.5  # flash always gets this long once it has a slot: a little
 LIVE_BUDGET_S = 4.0  # a line with no video time is spoken as it arrives
 PREPARED_V3_S = 7.0  # v3's least time for a line made before its moment: late v3 beats flat flash
 CONCURRENCY = 3  # a whole match's lines arrive in seconds; ElevenLabs caps concurrent requests
+KEEP_JOBS = 500  # finished audio kept, least recently asked first out: ~25 MB at ~50 KB a line
 
 # The page's voice setting. ids are ours; eleven_id never leaves the server. VOICE_<SPORT> takes an
 # id here or any ElevenLabs voice id (all_voices) as the sport's default: the lead's pick from
@@ -171,8 +172,8 @@ class Speaker:
     """Each line's audio per voice, made once and kept. The tag goes into the TTS text only, never
     into the stored line or anything sent to Mubit."""
 
-    # shortcut: audio is kept in this process's memory (~50 KB a line); a bucket if a session
-    # outgrows it or Cloud Run runs more than one instance.
+    # shortcut: the last KEEP_JOBS lines' audio is kept in this process's memory; a bucket if
+    # older lines must replay with ElevenLabs audio or Cloud Run runs more than one instance.
     def __init__(self, transport: httpx.AsyncBaseTransport | None = None):
         self.transport = transport
         self.jobs: dict[tuple[str, str], asyncio.Task] = {}
@@ -214,6 +215,12 @@ class Speaker:
         key = (line["line_id"], voice["id"])
         if key not in self.jobs:
             self.jobs[key] = asyncio.create_task(self._make(line, voice, deadline))
+        self.jobs[key] = self.jobs.pop(key)  # most recently asked last
+        over = max(0, len(self.jobs) - KEEP_JOBS)
+        for old in [k for k, job in self.jobs.items() if job.done()][:over]:
+            del self.jobs[old]
+        while len(self.tags) > KEEP_JOBS * 4:  # a dropped tag only flattens a re-made line
+            del self.tags[next(iter(self.tags))]
         return self.jobs[key]
 
     async def _make(self, line: dict, voice: dict, deadline: float | None):

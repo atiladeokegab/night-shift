@@ -732,3 +732,22 @@ def test_the_page_gets_an_analyst_line_in_the_analyst_voice(tmp_path, monkeypatc
         "eleven_flash_v2_5",
         "Six fours.",
     )
+
+
+def test_only_the_last_keep_jobs_lines_audio_stays_in_memory(monkeypatch):
+    import asyncio
+
+    from core import voice
+    from core.voice import VOICES, Speaker
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    monkeypatch.setattr(voice, "KEEP_JOBS", 3)
+    speaker = Speaker(upstream())
+
+    async def run():
+        for i in range(6):
+            line = {"line_id": f"l{i}", "sport": "football", "text": "Goal!"}
+            assert await speaker.audio(line, VOICES[1]) == (AUDIO, "eleven_v3")
+
+    asyncio.run(run())
+    assert [k[0] for k in speaker.jobs] == ["l3", "l4", "l5"]
