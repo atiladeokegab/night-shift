@@ -1,7 +1,9 @@
 """The commentator's voice: each stored line read aloud by ElevenLabs, made when the line is created
 so it is ready before the video reaches its moment. eleven_v3 with an audio tag for the moment's
 kind; one retry, then eleven_flash_v2_5; with no key or every attempt failed the route answers 503
-and the page uses browser speech instead. The key stays on the server."""
+and the page uses browser speech instead. ElevenLabs streams the audio and the route passes it on
+from the first chunk, so the page starts playing before the whole file is made. The key stays on
+the server."""
 
 import asyncio
 import logging
@@ -12,7 +14,7 @@ from datetime import UTC, datetime
 
 import httpx
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import Response
+from fastapi.responses import Response, StreamingResponse
 
 log = logging.getLogger("touchline.voice")
 
@@ -30,6 +32,7 @@ FALLBACK_MIN_S = 1.5  # flash always gets this long once it has a slot: a little
 LIVE_BUDGET_S = 4.0  # a line with no video time is spoken as it arrives
 PREPARED_V3_S = 7.0  # v3's least time for a line made before its moment: late v3 beats flat flash
 CONCURRENCY = 3  # a whole match's lines arrive in seconds; ElevenLabs caps concurrent requests
+BREAKER_S = 20.0  # after a 429, no TTS call this long: queued lines go straight to subtitles
 KEEP_JOBS = 500  # finished audio kept, least recently asked first out: ~25 MB at ~50 KB a line
 
 # The page's voice setting. ids are ours; eleven_id never leaves the server. VOICE_<SPORT> takes an
@@ -188,6 +191,49 @@ def backup_keys(env=os.environ) -> list[str]:
     return [k.strip() for k in env.get("ELEVENLABS_API_KEY_FALLBACKS", "").split(",") if k.strip()]
 
 
+class Clip:
+    """One line's audio as ElevenLabs streams it: the page starts playing at the first chunk while
+    the rest arrives, instead of waiting for the whole file."""
+
+    def __init__(self):
+        self.chunks: list[bytes] = []
+        self.model: str | None = None
+        self.first_at: float | None = None  # time.monotonic() of the first chunk
+        self.whole = False  # every chunk arrived
+        self.ready = asyncio.Event()  # the first chunk is here, or the job ended without one
+        self.ended = asyncio.Event()
+        self._more = asyncio.Event()  # set, then replaced, at each chunk and at the end
+
+    def add(self, chunk: bytes, model: str) -> None:
+        if self.first_at is None:
+            self.first_at, self.model = time.monotonic(), model
+            self.ready.set()
+        self.chunks.append(chunk)
+        self._wake()
+
+    def end(self, job: asyncio.Task) -> None:
+        self.whole = not job.cancelled() and job.exception() is None and job.result() is not None
+        self.ended.set()
+        self.ready.set()
+        self._wake()
+
+    def _wake(self) -> None:
+        self._more.set()
+        self._more = asyncio.Event()
+
+    async def follow(self):
+        """Every chunk so far, then each as it arrives, until the job ends."""
+        sent = 0
+        while True:
+            more = self._more
+            while sent < len(self.chunks):
+                yield self.chunks[sent]
+                sent += 1
+            if self.ended.is_set() and sent == len(self.chunks):
+                return
+            await more.wait()
+
+
 def voice_of(line: dict) -> dict:
     """Who reads a line when the page picks no voice: the analyst's lines in the analyst voice."""
     if line.get("speaker") == "analyst":
@@ -205,8 +251,10 @@ class Speaker:
         self.transport = transport
         self.store = store  # gets a `voice` record per line spoken: the characters billed (#174)
         self.jobs: dict[tuple[str, str], asyncio.Task] = {}
+        self.clips: dict[tuple[str, str], Clip] = {}  # each job's audio as it streams in
         self.tags: dict[str, str | None] = {}
         self.slots = asyncio.Semaphore(CONCURRENCY)
+        self.closed_until = 0.0  # time.monotonic() the 429 breaker lets calls through again
         # shortcut: per process; one Cloud Run instance today, a shared store if it ever runs more
         self.failing: dict | None = (
             None  # {last_error, since} until ElevenLabs answers again (#306)
@@ -260,49 +308,68 @@ class Speaker:
         if os.environ.get("ELEVENLABS_API_KEY"):
             self._job(line, voice_of(line), deadline)
 
-    async def audio(self, line: dict, voice: dict, retry=True) -> tuple[bytes, str] | None:
+    async def audio(self, line: dict, voice: dict) -> tuple[bytes, str] | None:
+        """The line's whole audio and the model that spoke it; None if it failed."""
+        clip = await self.stream(line, voice)
+        if clip is None:
+            return None
+        await clip.ended.wait()
+        return (b"".join(clip.chunks), clip.model) if clip.whole else None
+
+    async def stream(self, line: dict, voice: dict, retry=True) -> Clip | None:
+        """The line's audio as soon as its first chunk is here, the rest following; None if it
+        failed before any audio."""
         key = (line["line_id"], voice["id"])
         early = retry and key in self.jobs  # made as the line arrived (prepare)
         job = self._job(line, voice, None)
-        try:
-            made = await asyncio.shield(job)
-        except asyncio.CancelledError:
-            if not job.cancelled():  # this request was cancelled, not the job (drop)
-                raise
-            made = None
-        if made is None:  # the next request tries again
-            if self.jobs.get(key) is job:  # another waiter may have started the retry already
-                del self.jobs[key]
-            if early:  # its budget began when the line arrived, not when the page asked (/stage)
-                return await self.audio(line, voice, retry=False)
-        return made
+        clip = self.clips[key]
+        await clip.ready.wait()
+        if clip.chunks:
+            return clip
+        if not job.cancelled():  # cancelled by drop: no audio
+            job.result()  # raises what the job raised
+        if early:  # its budget began when the line arrived, not when the page asked (/stage)
+            return await self.stream(line, voice, retry=False)
+        return None
 
     def drop(self, line_ids: set[str]) -> None:
         """Cancel these lines' unfinished jobs: an abandoned replay's audio nobody will hear."""
         for key, job in list(self.jobs.items()):
             if key[0] in line_ids and not job.done():
                 job.cancel()
-                del self.jobs[key]
+                self._forget(key)
 
     def _job(self, line: dict, voice: dict, deadline: float | None) -> asyncio.Task:
         key = (line["line_id"], voice["id"])
         job = self.jobs.pop(key, None)
         if job is None:
-            job = asyncio.create_task(self._make(line, voice, deadline))
-            job.add_done_callback(lambda _: self._trim())  # pending jobs may have filled the cap
+            clip = self.clips[key] = Clip()
+            job = asyncio.create_task(self._make(line, voice, deadline, clip))
+            job.add_done_callback(lambda done: self._ended(key, done, clip))
         self.jobs[key] = job  # most recently asked last
         self._trim(keep=key)
         while len(self.tags) > KEEP_JOBS * 4:  # a dropped tag only flattens a re-made line
             del self.tags[next(iter(self.tags))]
         return job
 
+    def _ended(self, key: tuple[str, str], job: asyncio.Task, clip: Clip) -> None:
+        clip.end(job)
+        # no audio, or cut off mid-stream: the next request makes it again
+        if not clip.whole and self.jobs.get(key) is job:  # unless a retry has started already
+            self._forget(key)
+        self._trim()  # pending jobs may have filled the cap
+
     def _trim(self, keep: tuple[str, str] | None = None) -> None:
         """Forget the least recently asked finished audio past KEEP_JOBS; never unfinished jobs."""
         over = max(0, len(self.jobs) - KEEP_JOBS)
         for old in [k for k, job in self.jobs.items() if job.done() and k != keep][:over]:
-            del self.jobs[old]
+            self._forget(old)
 
-    async def _make(self, line: dict, voice: dict, deadline: float | None):
+    def _forget(self, key: tuple[str, str]) -> None:
+        del self.jobs[key]
+        self.clips.pop(key, None)
+
+    async def _make(self, line: dict, voice: dict, deadline: float | None, clip: Clip):
         key = os.environ.get("ELEVENLABS_API_KEY")
         if not key:
             return None
@@ -324,37 +391,40 @@ class Speaker:
                 for _ in range(1 if ahead else 2):  # a cold first request can time out; retry warm
                     until = min(end - FALLBACK_RESERVE_S, time.monotonic() + V3_TIMEOUT_S)
                     least = PREPARED_V3_S if ahead else 0.0
-                    audio = await self._tts(client, key, voice, model, text, until, least)
+                    audio = await self._tts(client, key, voice, model, text, until, least, clip)
                     if audio:
-                        await self._spent(line, model, text)
+                        await self._spent(line, model, text, clip)
                         return audio, model
+                    if clip.chunks:  # cut off mid-stream: the page has played part of it
+                        return None
             until = min(end, time.monotonic() + FALLBACK_TIMEOUT_S)
             audio = await self._tts(
-                client, key, voice, FALLBACK_MODEL, line["text"], until, FALLBACK_MIN_S
+                client, key, voice, FALLBACK_MODEL, line["text"], until, FALLBACK_MIN_S, clip
             )
             if not audio:
                 return None
-            await self._spent(line, FALLBACK_MODEL, line["text"])
+            await self._spent(line, FALLBACK_MODEL, line["text"], clip)
             return audio, FALLBACK_MODEL
 
-    async def _spent(self, line: dict, model: str, text: str) -> None:
+    async def _spent(self, line: dict, model: str, text: str, clip: Clip) -> None:
         # shortcut: counts calls that returned audio; a timed-out call ElevenLabs still bills is
         # missed, so voice cost is a floor. Its usage API per request if that gap matters.
         if self.store is not None:
             said = {"line_id": line["line_id"], "replay_id": line.get("replay_id")}
-            # moment published to this audio ready (#233): the number check, retries and fallback
-            # all fall inside it; a line the page asked for again carries no moment_at
+            # moment published to its first audio chunk, when the page can start playing (#233):
+            # the number check, retries and fallback all fall inside it; a line the page asked
+            # for again carries no moment_at
             if line.get("moment_at") is not None:
-                said["audio_first_ms"] = round((time.monotonic() - line["moment_at"]) * 1000)
+                said["audio_first_ms"] = round((clip.first_at - line["moment_at"]) * 1000)
             await asyncio.to_thread(
                 self.store.append, "voice", {**said, "model": model, "chars": len(text)}
             )
 
-    async def _tts(self, client, key, voice, model, text, until, least=0.0) -> bytes | None:
+    async def _tts(self, client, key, voice, model, text, until, least, clip) -> bytes | None:
         # shortcut: every call tries the main key first, so a spent key costs one quick 401 a line
         # and credits added come back at once; remember the working key if that 401 ever matters
         for backup, k in enumerate([key, *backup_keys()]):
-            resp = await self._post(client, k, voice["eleven_id"], model, text, until, least)
+            resp = await self._post(client, k, voice["eleven_id"], model, text, until, least, clip)
             if (
                 backup
                 and resp is not None
@@ -362,36 +432,53 @@ class Speaker:
                 and voice["eleven_id"] != GEORGE
             ):
                 # a free-plan backup key can't speak library voices: once more as George
-                resp = await self._post(client, k, GEORGE, model, text, until, least)
+                resp = await self._post(client, k, GEORGE, model, text, until, least, clip)
             if resp is None:
                 return None
             if failure(resp) != "quota_exceeded":
                 break
-        if resp.status_code != 200 or not resp.content:
+        if resp.status_code != 200 or not clip.chunks:
             log.warning("voice %s answered %d", model, resp.status_code)
+            if resp.status_code == 429:  # every key tried: more calls now would only pile up
+                self.closed_until = time.monotonic() + BREAKER_S
             self._failed(failure(resp))
             return None
         self.failing = None
-        return resp.content
+        return b"".join(clip.chunks)
 
     async def _post(
-        self, client, key, eleven_id, model, text, until, least
+        self, client, key, eleven_id, model, text, until, least, clip
     ) -> httpx.Response | None:
+        """One TTS call, streamed into `clip` chunk by chunk; the response, read only when it
+        failed (failure() reads its body), or None when it timed out or the network failed."""
         async with self.slots:
             left = max(until - time.monotonic(), least)
             if left <= 0:  # it would land after the moment
                 log.warning("voice %s skipped: out of time", model)
                 return None
+            if time.monotonic() < self.closed_until:
+                log.warning("voice %s skipped: ElevenLabs rate limit", model)
+                return None
             try:
-                # httpx's timeout is per read: only this bounds the request plus every chunk
-                async with asyncio.timeout(left):
-                    resp = await client.post(
-                        TTS_URL.format(voice=eleven_id),
+                # httpx's timeout is per read: only this bounds the wait for the first chunk
+                async with (
+                    asyncio.timeout(left) as bound,
+                    client.stream(
+                        "POST",
+                        TTS_URL.format(voice=eleven_id) + "/stream",
                         params={"output_format": "mp3_44100_128"},
                         headers={"xi-api-key": key, "accept": "audio/mpeg"},
                         json={"text": text, "model_id": model},
                         timeout=left,
-                    )
+                    ) as resp,
+                ):
+                    if resp.status_code != 200:
+                        await resp.aread()
+                        return resp
+                    async for chunk in resp.aiter_bytes():
+                        if not clip.chunks:  # playing from here, so the rest may run past `until`
+                            bound.reschedule(asyncio.get_running_loop().time() + V3_TIMEOUT_S)
+                        clip.add(chunk, model)
             except (httpx.HTTPError, TimeoutError) as exc:
                 log.warning("voice %s failed: %s", model, type(exc).__name__)
                 timeout = isinstance(exc, (TimeoutError, httpx.TimeoutException))
@@ -483,13 +570,14 @@ def voice_router(store, speaker: Speaker) -> APIRouter:
         if not os.environ.get("ELEVENLABS_API_KEY"):
             raise HTTPException(503, "voice not configured")
         started = time.perf_counter()
-        made = await speaker.audio(line, chosen)
-        if made is None:
+        clip = await speaker.stream(line, chosen)
+        if clip is None:
             raise HTTPException(503, "voice upstream failed")
-        audio, model = made
         ms = (time.perf_counter() - started) * 1000
-        log.info("voice line=%s first_byte_ms=%d model=%s", line_id, ms, model)
-        return Response(audio, media_type="audio/mpeg")
+        log.info("voice line=%s first_byte_ms=%d model=%s", line_id, ms, clip.model)
+        if clip.whole:  # made already: a plain file, with its length
+            return Response(b"".join(clip.chunks), media_type="audio/mpeg")
+        return StreamingResponse(clip.follow(), media_type="audio/mpeg")
 
     return router
 
