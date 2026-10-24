@@ -242,7 +242,9 @@ def default_provider():
     global _provider
     if _provider is None:
         key = os.environ.get("MUBIT_API_KEY")
-        _provider = MubitProvider(key) if key else FakeProvider()
+        # MUBIT_RECORD=off: the key's app pays for lines but trains on none (a lent demo key)
+        record = os.environ.get("MUBIT_RECORD", "on") != "off"
+        _provider = MubitProvider(key, record=record) if key else FakeProvider()
     return _provider
 
 

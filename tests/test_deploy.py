@@ -47,7 +47,11 @@ def env_vars(deployed):
 def test_unset_voice_vars_keep_the_code_defaults(tmp_path):
     done, deployed = deploy(tmp_path, "MUBIT_API_KEY=sk-LEAK42\nVOICE_FOOTBALL=\n")
     assert done.returncode == 0, done.stderr
-    assert env_vars(deployed) == ["MODE=cloud", "STORE_URL=gs://p-state/night-shift"]
+    assert env_vars(deployed) == [
+        "MODE=cloud",
+        "STORE_URL=gs://p-state/night-shift",
+        "MUBIT_RECORD=off",
+    ]
 
 
 def test_voice_vars_come_from_env_or_dotenv_and_no_key_rides_along(tmp_path):
@@ -59,11 +63,23 @@ def test_voice_vars_come_from_env_or_dotenv_and_no_key_rides_along(tmp_path):
     assert set(env_vars(deployed)) == {
         "MODE=cloud",
         "STORE_URL=gs://p-state/night-shift",
+        "MUBIT_RECORD=off",  # a lent key: its app trains on none of our lines
         "VOICE_CRICKET=viraj",  # from .env
         "VOICE_FOOTBALL=gU0LNdkMOQCOrPrwtbee",  # the environment wins over .env
         "VOICE_MODEL_BASKETBALL=eleven_v3",
     }
     assert "sk-LEAK42" not in deployed
+
+
+def test_live_recording_is_off_unless_asked_for(tmp_path):
+    done, deployed = deploy(tmp_path, MUBIT_RECORD="on")
+    assert done.returncode == 0, done.stderr
+    assert "MUBIT_RECORD=on" in env_vars(deployed)
+
+
+def test_a_bad_recording_setting_stops_the_deploy(tmp_path):
+    done, _ = deploy(tmp_path, MUBIT_RECORD="maybe")
+    assert done.returncode != 0 and "MUBIT_RECORD must be on or off" in done.stderr
 
 
 def test_a_label_keeps_its_spaces_and_commas(tmp_path):
