@@ -689,7 +689,35 @@ def test_audio_the_request_started_is_not_tried_twice(monkeypatch):
     speaker = Speaker(upstream(500, b"", seen=seen))
     line = {"line_id": "x", "sport": "football", "text": "Goal!"}
     assert asyncio.run(speaker.audio(line, VOICES[1])) is None
-    assert len(seen) == 3  # v3, v3, flash: then 503, and the next request tries again
+    # v3, v3, flash, then flash once more: then 503, and the next request tries again
+    assert [json.loads(r.content)["model_id"] for r in seen] == [
+        "eleven_v3",
+        "eleven_v3",
+        "eleven_flash_v2_5",
+        "eleven_flash_v2_5",
+    ]
+
+
+def test_a_line_that_failed_before_any_audio_gets_one_short_flash_try_before_the_503(
+    tmp_path, monkeypatch
+):
+    # a demo line dropped to browser speech when every call timed out once (24 Oct)
+    from core import voice
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    calls, timeouts = [], []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        calls.append(json.loads(request.content)["model_id"])
+        return httpx.Response(500 if len(calls) <= 3 else 200, content=AUDIO)  # v3, v3, flash fail
+
+    real = voice.asyncio.timeout
+    monkeypatch.setattr(voice.asyncio, "timeout", lambda s: timeouts.append(s) or real(s))
+    with client_for(tmp_path, httpx.MockTransport(handle)) as client:
+        resp = client.get("/lines/l1/audio")
+    assert resp.status_code == 200 and resp.content == AUDIO
+    assert calls[3:] == ["eleven_flash_v2_5"]
+    assert timeouts[3] <= voice.RETRY_S  # brief: it holds one of the three TTS slots
 
 
 def test_a_request_that_joins_a_prepared_job_still_running_gets_a_fresh_try(monkeypatch):

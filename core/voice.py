@@ -1,9 +1,9 @@
 """The commentator's voice: each stored line read aloud by ElevenLabs, made when the line is created
 so it is ready before the video reaches its moment. eleven_v3 with an audio tag for the moment's
-kind; one retry, then eleven_flash_v2_5; with no key or every attempt failed the route answers 503
-and the page uses browser speech instead. ElevenLabs streams the audio and the route passes it on
-from the first chunk, so the page starts playing before the whole file is made. The key stays on
-the server."""
+kind; one retry, then eleven_flash_v2_5, then (a timeout or upstream error) one short flash call
+more; with no key or every attempt failed the route answers 503 and the page uses browser speech
+instead. ElevenLabs streams the audio and the route passes it on from the first chunk, so the page
+starts playing before the whole file is made. The key stays on the server."""
 
 import asyncio
 import logging
@@ -30,6 +30,8 @@ FALLBACK_TIMEOUT_S = 10.0
 FALLBACK_RESERVE_S = 1.5  # v3 stops this long before the moment, so flash still lands in time
 FALLBACK_MIN_S = 1.5  # flash always gets this long once it has a slot: a little late beats silence
 LIVE_BUDGET_S = 4.0  # a line with no video time is spoken as it arrives
+RETRY_S = 3.0  # a page's line that failed before any audio: one flash call this long, then 503
+TRANSIENT = ("timeout", "network", "empty")  # failures a second try may get past, as do 5xx
 PREPARED_V3_S = 7.0  # v3's least time for a line made before its moment: late v3 beats flat flash
 CONCURRENCY = 3  # a whole match's lines arrive in seconds; ElevenLabs caps concurrent requests
 BREAKER_S = 20.0  # after a 429, no TTS call this long: queued lines go straight to subtitles
@@ -200,6 +202,7 @@ class Clip:
         self.model: str | None = None
         self.first_at: float | None = None  # time.monotonic() of the first chunk
         self.whole = False  # every chunk arrived
+        self.failed: str | None = None  # why the last call gave no audio, as failure() names it
         self.ready = asyncio.Event()  # the first chunk is here, or the job ended without one
         self.ended = asyncio.Event()
         self._more = asyncio.Event()  # set, then replaced, at each chunk and at the end
@@ -330,6 +333,11 @@ class Speaker:
             job.result()  # raises what the job raised
         if early:  # its budget began when the line arrived, not when the page asked (/stage)
             return await self.stream(line, voice, retry=False)
+        # failed before any audio, and a try might help (never a spent quota or a bad key): flash
+        # once more, briefly, before the browser speaks
+        if retry and clip.failed and (clip.failed in TRANSIENT or clip.failed.startswith("5")):
+            self._job(line, voice, None, again=True)
+            return await self.stream(line, voice, retry=False)
         return None
 
     def drop(self, line_ids: set[str]) -> None:
@@ -339,12 +347,14 @@ class Speaker:
                 job.cancel()
                 self._forget(key)
 
-    def _job(self, line: dict, voice: dict, deadline: float | None) -> asyncio.Task:
+    def _job(
+        self, line: dict, voice: dict, deadline: float | None, again: bool = False
+    ) -> asyncio.Task:
         key = (line["line_id"], voice["id"])
         job = self.jobs.pop(key, None)
         if job is None:
             clip = self.clips[key] = Clip()
-            job = asyncio.create_task(self._make(line, voice, deadline, clip))
+            job = asyncio.create_task(self._make(line, voice, deadline, clip, again))
             job.add_done_callback(lambda done: self._ended(key, done, clip))
         self.jobs[key] = job  # most recently asked last
         self._trim(keep=key)
@@ -369,12 +379,17 @@ class Speaker:
         del self.jobs[key]
         self.clips.pop(key, None)
 
-    async def _make(self, line: dict, voice: dict, deadline: float | None, clip: Clip):
+    async def _make(
+        self, line: dict, voice: dict, deadline: float | None, clip: Clip, again: bool = False
+    ):
         key = os.environ.get("ELEVENLABS_API_KEY")
         if not key:
             return None
-        end = deadline if deadline is not None else time.monotonic() + LIVE_BUDGET_S
-        model = model_for(line.get("sport"))
+        if again:
+            end = time.monotonic() + RETRY_S
+        else:
+            end = deadline if deadline is not None else time.monotonic() + LIVE_BUDGET_S
+        model = FALLBACK_MODEL if again else model_for(line.get("sport"))
         # a viewer's answer (it carries its question) is spoken live, like a call
         if "question" in line:
             said = ANSWER_TAG
@@ -441,7 +456,8 @@ class Speaker:
             log.warning("voice %s answered %d", model, resp.status_code)
             if resp.status_code == 429:  # every key tried: more calls now would only pile up
                 self.closed_until = time.monotonic() + BREAKER_S
-            self._failed(failure(resp))
+            clip.failed = failure(resp)
+            self._failed(clip.failed)
             return None
         self.failing = None
         return b"".join(clip.chunks)
@@ -482,7 +498,8 @@ class Speaker:
             except (httpx.HTTPError, TimeoutError) as exc:
                 log.warning("voice %s failed: %s", model, type(exc).__name__)
                 timeout = isinstance(exc, (TimeoutError, httpx.TimeoutException))
-                self._failed("timeout" if timeout else "network")
+                clip.failed = "timeout" if timeout else "network"
+                self._failed(clip.failed)
                 return None
         return resp
 
