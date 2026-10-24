@@ -186,8 +186,19 @@ async def speak(ask, inner, question: str, past: list[dict], lines: list[dict]):
             break
     if said:
         return
-    # nothing was said: no text event we know, a failed sentence or call, a tool round. Ask's own
-    # path answers, so the fan is never left in silence
+    # nothing was said. A tool round held its sentences back (the checks need the tool's output):
+    # the answer that call chain already made is checked whole and said, with no second model call
+    try:
+        made = await task
+    except Exception:  # logged by the done-callback
+        made = None
+    if made and not (
+        insight.wrong_answer(made, question, past, lines)
+        + insight.wrong_claims(made["text"], past, question)
+    ):
+        yield made["text"]
+        return
+    # no text event we know, a failed answer or call: Ask's own path, so the fan is never in silence
     try:
         safe = await asyncio.to_thread(insight.checked_answer, ask, question, past, lines)
     except Exception as exc:  # the status line, never the provider's error
