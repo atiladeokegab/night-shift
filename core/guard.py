@@ -60,9 +60,8 @@ def spent(store, day: str) -> float:
 
 
 def cached_commentator(store, match_id: str):
-    """A commentate that gives each moment's stored line back, marked `cached` so run_replay never
-    stores it again, or None for a moment with none and for every stat line: no model call. None:
-    nothing stored."""
+    """A commentate that gives each moment's stored line back, marked `cached`, or None for a moment
+    with none and for every stat line: no model call. None: nothing stored."""
     said = {
         ln["moment_idx"]: ln
         for ln in store.all("lines")
@@ -85,13 +84,28 @@ def cached_commentator(store, match_id: str):
     return commentate
 
 
+class SayOnly:
+    """The store a cached replay runs on: it reads as the store does, but a line it says is never
+    stored again, so the Proof card's counts do not move. A fix due on the replay (#232) is read
+    from `fixes` and said, not stored as a new line."""
+
+    def __init__(self, store):
+        self.store = store
+
+    def __getattr__(self, name):
+        return getattr(self.store, name)
+
+    def append(self, kind: str, record: dict) -> dict:
+        return record if kind == "lines" else self.store.append(kind, record)
+
+
 class Guard:
     def __init__(self, env=os.environ, clock=time.time):
         self.clock = clock
         self.max_live = int(env.get("MAX_LIVE_REPLAYS") or 4)
         self.replays = Limiter(int(env.get("REPLAYS_PER_HOUR") or 10), clock)
         self.asks = Limiter(int(env.get("ASKS_PER_HOUR") or 20), clock)
-        self.budget = float(env.get("DAILY_BUDGET_USD") or 25)
+        self.budget = float(env.get("DAILY_BUDGET_USD") or 50)
         self._spent: tuple[str, float, float] | None = None  # (day, read at, USD)
 
     def now(self) -> datetime:

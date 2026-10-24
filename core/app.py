@@ -20,7 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 
 from core import insight, predict, review
-from core.guard import OFF_TODAY, Guard, cached_commentator, client_ip
+from core.guard import OFF_TODAY, Guard, SayOnly, cached_commentator, client_ip
 from core.predict import load_pack, shot_points
 from core.replay import OFF_AIR, Replay, run_replay
 from core.stats import stats
@@ -112,6 +112,7 @@ def create_app(
     asking: set[str] = set()  # replay ids with a viewer's question in flight
     guard = guard or Guard()
     live: set[str] = set()  # replay ids generating new lines, at most guard.max_live (#244)
+    said_again: set[str] = set()  # replay ids playing stored lines: no voice is made for them
 
     def need_deps() -> Deps:
         if deps is None:
@@ -162,9 +163,20 @@ def create_app(
         # a jump starts the video just before its moment (#163), as GET /matches' peak_video_start
         video = d.video_map(req.match_id) if jump is None else d.video_map(req.match_id, jump)
         task = asyncio.create_task(
-            run_replay(replay, moments, commentate, store, video, speak, jump or 0, correct)
+            run_replay(
+                replay,
+                moments,
+                commentate,
+                SayOnly(store) if cached else store,
+                video,
+                speak,
+                jump or 0,
+                correct,
+            )
         )
-        if not cached:
+        if cached:
+            said_again.add(replay.id)
+        else:
             live.add(replay.id)
             task.add_done_callback(lambda _: live.discard(replay.id))
         tasks.add(task)
@@ -193,6 +205,7 @@ def create_app(
             asyncio.get_running_loop().call_later(wait, forget, replay)
         else:
             replays.pop(replay.id, None)
+            said_again.discard(replay.id)
 
     def viewed(replay_id: str) -> Replay:
         """The replay a viewer's request names, marked as still watched."""
@@ -398,8 +411,18 @@ def create_app(
         return FileResponse(Path(__file__).with_name("stage.html"), media_type="text/html")
 
     async def voice_on(request: Request) -> None:
-        """Over the daily cap no new voice is made: 503, and the page uses browser speech."""
-        if request.url.path.endswith("/audio") and await asyncio.to_thread(guard.off_air, store):
+        """No new voice over the daily cap, nor for a line a cached replay says: 503, and the page
+        uses browser speech."""
+        if not request.url.path.endswith("/audio"):
+            return
+        line_id = request.path_params.get("line_id")
+        if any(
+            e["event"] == "line" and e["data"].get("line_id") == line_id
+            for rid in list(said_again)
+            for e in (replays[rid].events if rid in replays else [])
+        ):
+            raise HTTPException(503, "voice off for a replay of stored lines")
+        if await asyncio.to_thread(guard.off_air, store):
             raise HTTPException(503, "voice off air for today")
 
     app.include_router(voice_router(store, speaker), dependencies=[Depends(voice_on)])

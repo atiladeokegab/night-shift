@@ -4,6 +4,7 @@ an hour, and the daily spend cap, each with the clock injected."""
 import threading
 from datetime import UTC, datetime
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
@@ -52,7 +53,7 @@ def stored(store, day="2026-10-24", **cost):
         )
 
 
-def app(store, env, commentate=None, ask=None, clock=lambda: NOON):
+def app(store, env, commentate=None, ask=None, clock=lambda: NOON, tts=None):
     calls = []
 
     def said(m, history):
@@ -61,7 +62,7 @@ def app(store, env, commentate=None, ask=None, clock=lambda: NOON):
 
     deps = Deps(lambda: [], lambda mid: MOMENTS, commentate or said, ask=ask)
     guard = Guard(env, clock)
-    return TestClient(create_app(store=store, deps=deps, guard=guard)), calls
+    return TestClient(create_app(store=store, deps=deps, tts_transport=tts, guard=guard)), calls
 
 
 def start(client, match_id="7", ip="1.1.1.1"):
@@ -77,13 +78,20 @@ def texts(client, replay_id):
 def test_a_cache_only_replay_publishes_stored_lines_and_stores_nothing(tmp_path):
     store = Store(tmp_path)
     stored(store, model="claude-haiku-4-5", tokens_in=1000)
+    store.append(
+        "fixes", {"line_id": "old1", "corrected_text": "Fixed, well saved", "recorded": True}
+    )
     before = stats(store)
     client, calls = app(store, {"DAILY_BUDGET_USD": "0.001"})  # $0.003 today: past the cap
     with client:
         events = read_stream(client, start(client).json()["replay_id"])
-    ids = [d["line_id"] for n, d in events if n == "line"]
-    assert ids == ["old0", "old1", "old2"] and calls == []
+    said = [(d["line_id"], d["text"]) for n, d in events if n == "line"]
+    assert said[0] == ("old0", "Stored 0") and said[2] == ("old2", "Stored 2") and calls == []
+    assert (
+        said[1][1] == "Fixed, well saved"
+    )  # the producer's fix is heard (#232), read from `fixes`
     assert len(store.all("lines")) == 3 and store.all("replays") == []
+    assert len(store.all("fixes")) == 1
     assert stats(store) == before  # the Proof card does not move
 
 
@@ -127,7 +135,10 @@ def test_asks_over_the_hourly_limit_get_429(tmp_path):
     assert second.status_code == 429 and second.headers["retry-after"]
 
 
-def test_beyond_max_live_a_replay_plays_stored_lines_or_429(tmp_path):
+def test_beyond_max_live_a_replay_plays_stored_lines_or_429(tmp_path, monkeypatch):
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "test")
+    voiced = []
+    tts = httpx.MockTransport(lambda req: voiced.append(req) or httpx.Response(200, content=b"mp3"))
     store, gate, calls = Store(tmp_path), threading.Event(), []
     stored(store)
 
@@ -136,11 +147,13 @@ def test_beyond_max_live_a_replay_plays_stored_lines_or_429(tmp_path):
         gate.wait(5)
         return {"line_id": f"new{m['idx']}", "match_id": "7", "moment_idx": m["idx"], "text": "New"}
 
-    client, _ = app(store, {"MAX_LIVE_REPLAYS": "1"}, commentate=slow)
+    client, _ = app(store, {"MAX_LIVE_REPLAYS": "1"}, commentate=slow, tts=tts)
     with client:
         first = start(client).json()["replay_id"]
         second = start(client).json()["replay_id"]
         cached = texts(client, second)
+        audio = [client.get(f"/lines/old{i}/audio").status_code for i in range(3)]
+        assert voiced == [] and audio == [503] * 3  # browser speech: no ElevenLabs call
         unknown = start(client, match_id="8")  # nothing stored for it
         gate.set()
         read_stream(client, first)
@@ -153,6 +166,7 @@ def test_beyond_max_live_a_replay_plays_stored_lines_or_429(tmp_path):
 def test_over_the_daily_cap_lines_replay_from_the_store_and_ask_is_off_air(tmp_path):
     store = Store(tmp_path)
     stored(store, model="claude-haiku-4-5", tokens_in=1_000_000)  # $1 a line, $3 today
+    store.append("lines", {"line_id": "other", "match_id": "9", "moment_idx": 0, "text": "Hi"})
     asked = []
     client, calls = app(store, {"DAILY_BUDGET_USD": "2"}, ask=lambda *a: asked.append(a))
     with client:
@@ -160,7 +174,7 @@ def test_over_the_daily_cap_lines_replay_from_the_store_and_ask_is_off_air(tmp_p
         rid = start(client).json()["replay_id"]
         lines = texts(client, rid)
         answer = client.post(f"/replays/{rid}/ask", json={"question": "Who?"}).json()
-        audio = client.get("/lines/old0/audio")
+        audio = client.get("/lines/other/audio")  # in no cached replay: the cap stops its voice
         unknown = start(client, match_id="8")
     assert budget == {"daily_budget_usd": 2.0, "spent_today_usd": 3.0, "off_air": True}
     assert lines == ["Stored 0", "Stored 1", "Stored 2"] and calls == []
@@ -170,7 +184,7 @@ def test_over_the_daily_cap_lines_replay_from_the_store_and_ask_is_off_air(tmp_p
     assert audio.status_code == 503 and audio.json()["detail"] == "voice off air for today"
     assert unknown.status_code == 429
     assert int(unknown.headers["retry-after"]) == 12 * 3600  # noon to midnight UTC
-    assert len(store.all("lines")) == 3 and spent(store, "2026-10-24") == 3.0
+    assert len(store.all("lines")) == 4 and spent(store, "2026-10-24") == 3.0
 
 
 def test_spend_counts_only_today_with_its_voice(tmp_path):

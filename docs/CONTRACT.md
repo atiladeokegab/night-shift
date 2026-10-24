@@ -107,7 +107,7 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   (shown, never spoken), then that line's latest `fixed` if it has one. 422 if no such moment.
   The budget guard (#244, core/guard.py): 429 with `Retry-After` past `REPLAYS_PER_HOUR` starts
   from one client (the first `X-Forwarded-For` hop) in an hour. With `MAX_LIVE_REPLAYS` replays
-  already making lines, or today's spend past `DAILY_BUDGET_USD`, the replay plays each moment's
+  already making lines, or today's spend past `DAILY_BUDGET_USD` (default 50), the replay plays each moment's
   stored line again as it was stored (its own `line_id`, `cached: true`), with no model or voice call, nothing
   stored and never counted as a full replay; 429 `{detail}` if the match has no stored lines. A 429's
   `detail` is viewer-safe: the page shows it.
@@ -180,8 +180,8 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   for the moment's kind (in the TTS text only, never the stored line); one retry, then
   `eleven_flash_v2_5` without the tag; `VOICE_MODEL_<SPORT>` overrides the model. The audio is
   made when the replay stores the line and cached, due before the video reaches its moment.
-  404 for an unknown line or voice; 503 with no `ELEVENLABS_API_KEY`, every attempt failed or
-  today's spend past `DAILY_BUDGET_USD`,
+  404 for an unknown line or voice; 503 with no `ELEVENLABS_API_KEY`, every attempt failed,
+  today's spend past `DAILY_BUDGET_USD` or a line a cached replay (#244) is saying,
   and the page then uses browser speech. The key never reaches the browser; each call logs
   `voice line=<id> first_byte_ms=<n> model=<model>`. (core)
 - `GET /review` → `[{line_id, match_id, match, sport, moment_idx, clock, period, score, play, text,
