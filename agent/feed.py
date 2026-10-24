@@ -10,7 +10,6 @@ import csv
 import hashlib
 import io
 import json
-import math
 import tarfile
 import time
 import zipfile
@@ -205,18 +204,16 @@ def football_moments(
         if kind == "Full time":
             break  # both sides log the whistle
     for m, (period, t), nxt in zip(moments, ats, [*ats[1:], None], strict=False):
-        last = nxt[1] - BALL_BEFORE_S if nxt and nxt[0] == period else math.inf
-        if last + BALL_BEFORE_S - t < BALL_GAP_S:  # a short gap needs no orientation
-            continue
-        gap = (b for p, s, b in _plays(events) if p == period and t + BALL_AFTER_S <= s <= last)
-        if ball := next(gap, None):
+        later = ((p, s, b) for p, s, b in _plays(events) if p == period and s >= t + BALL_AFTER_S)
+        p, s, ball = next(later, (0, 0, None))
+        # only what is known by the ball's own time: no key moment came before it (A-1.4)
+        if ball and (nxt is None or (p, s) < nxt):
             m["ball"] = ball
     return moments
 
 
-# the ball between key moments (#205): who has it a beat after a moment, well before the next,
-# in a quiet spell of 3 minutes or more
-BALL_AFTER_S, BALL_BEFORE_S, BALL_GAP_S = 20, 30, 180
+# the ball between key moments (#205): who has it a beat after a moment
+BALL_AFTER_S = 20
 
 
 def _at(ev: dict) -> tuple[int, int]:

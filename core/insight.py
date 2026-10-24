@@ -289,6 +289,17 @@ class Gaps:
         self.calls = 0
         self._pack = None
         self._header = None
+        self._balls = None
+
+    def balls(self) -> dict[int, dict]:
+        if self._balls is None:
+            from data.matches import balls
+
+            try:
+                self._balls = balls(self.match_id)
+            except KeyError:  # not a bundled match: no ball data
+                self._balls = {}
+        return self._balls
 
     def header(self) -> dict:
         if self._header is None:
@@ -339,10 +350,11 @@ class Gaps:
         m = past[-1]
         if n >= PER_GAP:
             return None
+        ball = self.balls().get(m["idx"])
         reply = n % REPLY_EVERY == REPLY_EVERY - 1
         role, speaker = ("reply", "lead") if reply else ("insight", "analyst")
         ln = self.cached.get((m["idx"], n))
-        if n == 0 and "ball" in m and (ln or {}).get("insight", {}).get("kind") != "orientation":
+        if n == 0 and ball and (ln or {}).get("insight", {}).get("kind") != "orientation":
             ln = None  # stored before #205: the gap now opens on the ball
         if ln is not None and role in ln:
             said_as = ln[role]
@@ -358,15 +370,17 @@ class Gaps:
             heard = " ".join(str(before or "").split())  # one line: it must not forge a field
             if reply:
                 picked = ("reply", heard)
-            elif n == 0 and "ball" in m:  # a football stretch opens on who has the ball (#205)
+            elif n == 0 and ball:  # a football stretch opens on who has the ball (#205)
                 from data.matches import orientation
 
-                picked = ("orientation", orientation(self.header(), past))
+                picked = ("orientation", orientation(self.header(), past, ball))
             else:  # after the ball, the next line is the stretch's first stat
-                picked = self.next_stat(past, first=n == 0 or (n == 1 and "ball" in m))
+                picked = self.next_stat(past, first=n == 0 or (n == 1 and bool(ball)))
             if not picked:
                 return None
             said_as = {"kind": picked[0], "detail": picked[1], "heard": heard, "v": VERSION}
+            if picked[0] == "orientation":  # said at the ball's time, the latest it reads (A-1.4)
+                said_as["clock"] = ball["clock"]
         if ln is None:
             for retry in (False, True):
                 self.calls += 1
@@ -383,6 +397,7 @@ class Gaps:
                 if not picked:
                     return None
                 said_as = {**said_as, "kind": picked[0], "detail": picked[1]}
+                said_as.pop("clock", None)  # a stat is said at its moment's time
             if said_as["kind"] == "orientation" and wrong_orientation(
                 said["text"], m, said_as, self.header(), past
             ):
@@ -792,7 +807,15 @@ def stat_moment(m: dict, said_as: dict, reply: bool) -> dict:
         if reply
         else f"{said_as['kind']}: {said_as['detail']}"
     )
-    return {**m, "type": "Stat", "outcome": event, "players": {}, "detail": {**keep, **said_to}}
+    clock = said_as.get("clock", m.get("clock"))  # an orientation line's is the ball's (#205)
+    return {
+        **m,
+        "clock": clock,
+        "type": "Stat",
+        "outcome": event,
+        "players": {},
+        "detail": {**keep, **said_to},
+    }
 
 
 def said_over(line: dict, load_moments) -> list[dict] | None:

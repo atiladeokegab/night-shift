@@ -496,12 +496,12 @@ def test_football_full_time_is_called_at_the_whistle_that_ends_the_match():
     assert called("Group Stage", whistle(2, 93)) == [(2, "93:05")]  # a group draw ends at 90
 
 
-def test_a_football_quiet_spell_of_3_minutes_carries_the_ball_never_its_end():
+def test_a_football_moment_carries_the_ball_a_beat_after_it_from_play_up_to_then():
     def play(kind, team, minute, second, holder=None, **extra):
         return ev(
             kind,
             team=team,
-            id=f"{kind}{minute}{second}",
+            id=f"{kind}{minute:02d}:{second:02d}",
             minute=minute,
             second=second,
             possession_team={"name": holder or team},
@@ -512,17 +512,24 @@ def test_a_football_quiet_spell_of_3_minutes_carries_the_ball_never_its_end():
     shot = {"shot": {"outcome": {"name": "Off T"}}}
     events = [
         play("Shot", "Reds", 10, 0, **shot),
-        play("Pass", "Blues", 10, 10),  # too soon after the shot
+        play("Carry", "Blues", 10, 10),  # too soon after the shot
         play("Dispossessed", "Blues", 10, 30),  # losing the ball, not having it
         play("Pass", "Reds", 10, 40, holder="Blues"),  # the side without the ball
-        play("Carry", "Blues", 10, 45),
+        play("Pass", "Blues", 10, 45),
         play("Shot", "Blues", 13, 30, **shot),
-        play("Pass", "Reds", 13, 55),  # a gap of 90 s: no quiet spell
-        play("Shot", "Reds", 15, 0, **shot),
-        play("Pass", "Blues", 18, 10),  # 20 s before the next moment: its build-up
-        play("Shot", "Blues", 18, 30, **shot),
+        play("Shot", "Reds", 13, 45, **shot),  # a key moment before any pass 20 s on: no ball
+        play("Pass", "Blues", 14, 10),
+        play("Shot", "Reds", 44, 50, **shot),
         play("Pass", "Reds", 46, 0, period=2),  # the next period's play
     ]
-    first, short, built_up, last = feed.football_moments(HEADER, events)
+    first, busy, third, last = feed.football_moments(HEADER, events)
     assert first["ball"] == {"clock": "10:45", "team": "Blues", "x": 61.6, "y": 7.7}
-    assert not any("ball" in m for m in (short, built_up, last))
+    assert third["ball"]["clock"] == "14:10"
+    assert "ball" not in busy and "ball" not in last
+    # A-1.4: a key moment planted 1 s after each ball, or the feed cut at it, changes nothing
+    for m in (first, third):
+        at = next(i for i, e in enumerate(events) if e["id"] == f"Pass{m['ball']['clock']}")
+        mm, ss = (int(x) for x in m["ball"]["clock"].split(":"))
+        planted = play("Shot", "Reds", mm, ss + 1, **shot)
+        for feed_now in (events[: at + 1], [*events[: at + 1], planted, *events[at + 1 :]]):
+            assert feed.football_moments(HEADER, feed_now)[m["idx"]]["ball"] == m["ball"]
