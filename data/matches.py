@@ -42,7 +42,39 @@ def list_matches() -> list[dict]:
 
 
 def load_moments(match_id: str) -> list[dict]:
-    return _read(match_id)["moments"]
+    data = _read(match_id)
+    return _stated(data["header"], data["moments"])
+
+
+def _stated(header: dict, moments: list[dict]) -> list[dict]:
+    """Each moment with the numbers a climax line gets wrong said outright in its detail: a cricket
+    chase's state (or its result) and a basketball shooter's points milestone. Built from each
+    moment's own score and the ones before it, so no later moment leaks in."""
+    best: dict[str, int] = {}
+    for m in moments:
+        s, d = m["score"], m["detail"]
+        if m["sport"] == "cricket" and "target" in s and "balls_left" in d:
+            d["chase"] = _chase(header, m)
+        pts, who = d.get("player_points"), (m["players"] or {}).get("shooter")
+        if m["sport"] == "basketball" and pts is not None and who:
+            before = best.get(who, 0)
+            if pts >= 50 or (pts >= 30 and pts // 10 > before // 10):
+                d["milestone"] = f"{who} has {pts} points tonight"
+            best[who] = max(before, pts)
+    return moments
+
+
+def _chase(header: dict, m: dict) -> str:
+    s, left, team = m["score"], m["detail"]["balls_left"], m["team"]
+    need = s["target"] - s["runs"]
+    if need <= 0:
+        return f"{team} win by {10 - s['wickets']} wickets"
+    if left == 0 or s["wickets"] == 10:
+        other = header["home"] if team == header["away"] else header["away"]
+        return "the match is tied" if need == 1 else f"{other} win by {need - 1} runs"
+    runs = f"{need} run{'s' * (need > 1)}"
+    balls = "the final ball" if left == 1 else f"the last {left} balls"
+    return f"{team} need {runs} from {balls}"
 
 
 def video_map(match_id: str) -> dict | None:
