@@ -20,18 +20,21 @@ def deploy(tmp_path, dotenv="", **env):
     (repo / "scripts").mkdir(parents=True)
     bin_.mkdir()
     shutil.copy(SCRIPT, repo / "scripts" / "deploy.sh")
-    (repo / ".gitignore").write_text(".env\n")
-    (repo / ".env").write_text(dotenv)
+    # newline="\n": bash reads a CRLF stub's shebang as `bash\r` on Windows
+    (repo / ".gitignore").write_text(".env\n", newline="\n")
+    (repo / ".env").write_text(dotenv, newline="\n")
     for tool in ("gcloud", "curl", "uv"):
-        (bin_ / tool).write_text(STUB)
+        (bin_ / tool).write_text(STUB, newline="\n")
         (bin_ / tool).chmod(0o755)
     git = ["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t"]
     subprocess.run([*git, "init", "-q"], check=True)
     subprocess.run([*git, "add", "-A"], check=True)
     subprocess.run([*git, "commit", "-qm", "x"], check=True)
     calls = tmp_path / "calls"
-    base = {k: v for k, v in os.environ.items() if not k.startswith(("VOICE_", "GIT_"))}
-    run_env = {**base, "PATH": f"{bin_}:{os.environ['PATH']}", "CALLS": str(calls)}
+    base = {
+        k: v for k, v in os.environ.items() if not k.startswith(("VOICE_", "GIT_", "PRODUCER_"))
+    }
+    run_env = {**base, "PATH": f"{bin_}{os.pathsep}{os.environ['PATH']}", "CALLS": str(calls)}
     run_env |= {"PROJECT": "p", "DEPLOY_AS_SELF": "1", **env}
     done = subprocess.run(
         ["bash", "scripts/deploy.sh"], cwd=repo, env=run_env, capture_output=True, text=True
@@ -126,3 +129,19 @@ def test_one_instance_with_a_gibibyte(tmp_path):
     done, deployed = deploy(tmp_path)
     assert done.returncode == 0, done.stderr
     assert "--max-instances 1 " in deployed and "--memory 1Gi " in deployed
+
+
+def test_the_producer_token_rides_along_only_when_the_deploy_has_it(tmp_path):
+    # #255: --set-env-vars replaces every var, so a token set by hand would go at the next deploy
+    done, deployed = deploy(tmp_path, PRODUCER_TOKEN="Zk3-x_9.Q/a+b=")
+    assert done.returncode == 0, done.stderr
+    assert "PRODUCER_TOKEN=Zk3-x_9.Q/a+b=" in env_vars(deployed)
+    done, deployed = deploy(tmp_path / "unset", "PRODUCER_TOKEN=from-dotenv\n")
+    assert done.returncode == 0, done.stderr
+    assert not [v for v in env_vars(deployed) if v.startswith("PRODUCER_TOKEN")]
+
+
+def test_a_producer_token_that_could_inject_another_var_stops_the_deploy(tmp_path):
+    done, deployed = deploy(tmp_path, PRODUCER_TOKEN="ab@MUBIT_RECORD=on")
+    assert done.returncode == 1 and "PRODUCER_TOKEN" in done.stderr and not deployed
+    assert "ab@MUBIT" not in done.stderr + done.stdout

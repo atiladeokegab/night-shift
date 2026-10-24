@@ -43,6 +43,21 @@ margin, the players' counts and, in football, what kind of event it was ([`core/
 A line that fails is tried once more. If the retry passes, the failed try is sent to Mubit as a
 correction, with no person involved; if it fails too, a line built from the match data is spoken
 instead. A producer fixes the rest from the page, and each fix goes to Mubit the same way.
+A correction is the next turn of the line's own call, so only the messages change, never the
+prompt, tools or model. It says what was wrong and gives the facts, and the commentator writes
+the fixed line itself. A correction is recorded only after an unrecorded try passes the number
+check. If the recorded reply still fails, it is marked and does not count toward the next version.
+The turn for a fix to Jordan's layup at 86-85 (Jazz v Bulls, 1998 NBA Finals Game 6), after
+the wrong line:
+
+```text
+Producer correction: Wrong leader
+The facts at this moment. Score: Utah Jazz 86, Chicago Bulls 85. Leader: Utah Jazz lead 86-85. Player total: Michael Jordan, 43 points tonight.
+The producer's line: Jordan drives and lays it in, his 43rd! Utah still lead 86-85.
+Say your line again, corrected: the line alone, at most 20 words.
+```
+
+Each fix stores this turn as `correction`, with `reply_passed`.
 The analyst's stat lines, the lead's replies to them and Ask answers get the same number check,
 against the stat and the match so far: a wrong number is tried once more, then the line is dropped
 and never said (an answer becomes the off-air line).
@@ -72,30 +87,32 @@ count only calls made since the check started marking lines; older stored lines 
 
 **Why a correction is a follow-up turn.** Mubit has no feedback API: it learns from the calls it
 records. So a correction is sent, on purpose, as the next turn of the wrong line's own call, in the
-same task and session: the original request, the line the model said, then "Producer correction.
-Reply with exactly this line: …" with the corrected line. Mubit records that call, so the corrected
-line is training data for the next version ([`agent/commentator.py`](agent/commentator.py)
+same task and session: the original request, the line the model said, then the correction turn
+above (the reason, the facts, the producer's line). Mubit records the commentator's corrected
+reply, so it is training data for the next version ([`agent/commentator.py`](agent/commentator.py)
 `correct`, [`tests/test_core_fix.py`](tests/test_core_fix.py)).
 
-**What a correction teaches, and its limit.** The recorded example holds the moment's own request
-and ends on the corrected line, but its last turn asks for that line word for word, so a version
-trained on it may learn to repeat an instruction rather than to make the right call. We can't yet
-say which: no version trained on corrections has been tested.
+**What a correction teaches, and its limit.** The recorded example holds the moment's own request,
+a wrong call, what was wrong with it and the right call, written by the model itself. Fixes made
+before #245 asked for the producer's line word for word instead. We can't yet say what a version
+trained on either learns: no version trained on corrections has been tested.
 
 **Anatomy of a fix.** One real correction from the review queue to Mubit. The fix stores the
-correction call's Mubit request id, and `GET /lines/{line_id}` returns it under `fix`.
+correction call's Mubit request id and the exact correction turn, and `GET /lines/{line_id}`
+returns them under `fix`.
 
-<!-- ANATOMY OF A FIX PLACEHOLDER (#239): fill every TBD from one real fix after deploy, from
-GET /lines/{line_id} and the next replay of the same moment. State the date read. -->
+Read 24 Oct 2026 from one real fix (Bulls v Jazz 1998, the Jordan layup).
 
 | Step | Value |
 |---|---|
-| The wrong line | TBD |
-| The checker's reason | TBD |
-| The producer's fix | TBD |
-| Mubit request id | TBD |
-| Recorded for training | TBD |
-| What the next replay said | TBD |
+| The wrong line | The model said "Jordan with the driving layup! Chicago Bulls take the lead, 85-86!" Utah led 86-85. The number check caught it before air: a safe line built from the data was spoken instead ("Michael Jordan with the driving layup. Utah Jazz lead eighty-six, eighty-five."), and the line went to the fix queue |
+| The checker's reason | "Chicago Bulls do not lead" |
+| The producer's fix | "Michael Jordan with the driving layup, forty-three for him! Utah still lead, eighty-six to eighty-five." (reason: Wrong score) |
+| What Mubit was given (`fix.correction`, #245) | Not in this fix: it predates #245 |
+| The commentator's corrected reply, and whether it passed the number check (`fix.reply_passed`) | Not in this fix: it predates #245 |
+| Mubit request id | `mreq_01a16eb90c9076f0b88abe5089b47e1e` |
+| Recorded for training | Yes: `recorded: true`, and the model's reply matched the fix |
+| What the next replay said | At 16:23:09 UTC, five seconds after the fix, the producer's line, marked fixed, with no model call (line `3ccce616bff14206bd6b3c8126343b88`) |
 
 ---
 
@@ -292,9 +309,9 @@ The overall p95 (1,413 ms) is above the lead's (919 ms) because the analyst's li
 
 "First word" is the time from the moment to the first word of the model's text reply, not the audio:
 speech synthesis and playback come after it. "Audio first" (`audio_first_ms_p50` / `p95` over
-`audio_lines`, in the lead's block only, since #233) is what a listener waits for: from the moment
-to its line's audio being ready on the server, the number check, its retry and the voice's retry or
-fallback included. It leaves out the browser's own playback start, lines with no audio, and lead
+`audio_lines`, in the lead's block only, since #233) runs from the moment until its line's full
+audio clip is ready on the server, not until the listener hears it, with the number check, its retry
+and the voice's retry or fallback included. It leaves out the browser's own playback start, lines with no audio, and lead
 lines voiced only when the page asked again after the audio made ahead failed (that retry starts
 from the stored line, which carries no moment time). The analyst has no such figure: its stat line
 is called and checked before its moment is published, and its audio is made ahead of its slot, so
@@ -529,8 +546,9 @@ The commentator's tools and the shot map read per-match stats packs ([`data/pack
 - **A fix is locked only where `PRODUCER_TOKEN` is set.** With it set, `POST /lines/{id}/fix` needs
   the header `X-Producer-Token` and answers 401 without it; unset, anyone can post a fix
   ([#240](https://github.com/atiladeokegab/night-shift/pull/240), [`core/app.py`](core/app.py)
-  `fix_line`). [`scripts/deploy.sh`](scripts/deploy.sh) doesn't set it, so the live service has it
-  only if it was set on the service by hand. Either way, a fix is number-checked against its
+  `fix_line`). [`scripts/deploy.sh`](scripts/deploy.sh) passes it to Cloud Run from the deploy's
+  own environment (never `.env`), so the live service has it exactly when the deploy did; one set
+  on the service by hand is wiped by the next deploy. It is a plain Cloud Run env var, not a secret: it is visible in the service config, in the deployer's gcloud logs and under `bash -x`. Either way, a fix is number-checked against its
   moment before it is stored, and one that contradicts the data gets a 422 and is never sent to Mubit.
 - **One instance.** The service runs with `--max-instances 1` ([`scripts/deploy.sh`](scripts/deploy.sh)):
   replays and voice clips live in that process's memory
@@ -559,7 +577,7 @@ The commentator's tools and the shot map read per-match stats packs ([`data/pack
 
 | What | Count | Runs |
 |---|---|---|
-| Python tests: the number check, replay timing, the store, Mubit and ElevenLabs calls against fakes, the deploy script | 754 | `make check`, offline; and in `make smoke` |
+| Python tests: the number check, replay timing, the store, Mubit and ElevenLabs calls against fakes, the deploy script | 773 | `make check`, offline; and in `make smoke` |
 | Web unit tests: the live page, the Proof card, Fix, Ask, captions | 89 | `npm test` in `web/` |
 | Offline smoke: every sample match replayed end to end through the real server with a fake model | 7 matches | `make smoke`; in CI on every PR into `integration` ([`.github/workflows/smoke.yml`](.github/workflows/smoke.yml)), which also builds the container and imports the app inside it |
 | Live smoke on the real URL: one replay streams moments and lines, and the service's store grows by the lines it streamed | 1 replay | after every deploy, in [`scripts/deploy.sh`](scripts/deploy.sh) (`BASE_URL=<url> python -m core.smoke`) |
