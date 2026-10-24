@@ -5,7 +5,7 @@ import type { ReviewItem } from '../types'
 import { FixSheet, type FixPhase } from './FixSheet'
 import { Nav, type Screen } from './Nav'
 
-// #171: stored lines the number check flags, newest first. Each is fixed with the same fix as a replay's
+// #171: stored lines the number check flags, newest first, one card per mistake (#227). Each is fixed with the same fix as a replay's
 // (POST /lines/{id}/fix), so Mubit records it for training the same way (#161), and its card leaves.
 export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
   const [items, setItems] = useState<ReviewItem[] | null>(null)
@@ -68,8 +68,20 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
               </ul>
             </div>
             <div className="field">
-              <span className="label">Touchline said</span>
+              <span className="label">Touchline said{item.lines > 1 ? ` · ×${item.lines}` : ''}</span>
               <div className="said">{item.text}</div>
+              {item.others.length > 0 && (
+                <details className="others">
+                  <summary>
+                    {item.others.length} more wording{item.others.length === 1 ? '' : 's'} of this mistake
+                  </summary>
+                  <ul>
+                    {item.others.map((t) => (
+                      <li key={t}>{t}</li>
+                    ))}
+                  </ul>
+                </details>
+              )}
             </div>
             <button className="btn primary" onClick={() => setFixing({ item, phase: 'edit' })}
               aria-label={`Fix the line at ${when(item)}, ${item.match}`}>
@@ -86,7 +98,7 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
       <main className="wrap review">
         <p className="eyebrow">Review</p>
         <h1 ref={heading} tabIndex={-1}>
-          {items?.length ? `${items.length} line${items.length === 1 ? '' : 's'} to fix` : 'Lines to fix'}
+          {items?.length ? queueTitle(items) : 'Lines to fix'}
         </h1>
         <p className="lede">
           The number check found these stored lines saying a number their moment's data doesn't. Fix each by hand: the
@@ -101,6 +113,12 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
       )}
     </div>
   )
+}
+
+// "25 mistakes to fix · 87 lines": each card is one mistake, maybe said in several wordings (#227).
+function queueTitle(items: ReviewItem[]): string {
+  const lines = items.reduce((n, x) => n + x.lines, 0)
+  return `${items.length} mistake${items.length === 1 ? '' : 's'} to fix · ${lines} line${lines === 1 ? '' : 's'}`
 }
 
 // "Q3 06:22", "Over 19.6", "Lap 28", "41:02": where in the match the moment is.
