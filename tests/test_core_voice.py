@@ -831,6 +831,7 @@ def test_stats_say_when_the_voice_falls_back_and_why(tmp_path, monkeypatch):
             "provider": "elevenlabs",
             "last_error": None,
             "since": None,
+            "characters_left": None,  # this fake answers the meter with the quota error too
         }
         assert client.get("/lines/l1/audio").status_code == 503
         voice = client.get("/stats").json()["voice"]
@@ -874,7 +875,12 @@ def test_no_key_is_browser_speech(tmp_path, monkeypatch):
     monkeypatch.delenv("ELEVENLABS_API_KEY", raising=False)
     with client_for(tmp_path, upstream()) as client:
         voice = client.get("/stats").json()["voice"]
-    assert voice == {"provider": "browser", "last_error": "not_configured", "since": None}
+    assert voice == {
+        "provider": "browser",
+        "last_error": "not_configured",
+        "since": None,
+        "characters_left": None,
+    }
 
 
 def test_warm_says_loudly_when_the_quota_is_gone(caplog):
@@ -888,3 +894,108 @@ def test_warm_says_loudly_when_the_quota_is_gone(caplog):
     caplog.clear()
     warm(KEY, transport=upstream(401, b'{"detail": {"status": "invalid_api_key"}}'))
     assert not [r for r in caplog.records if r.levelno == logging.ERROR]
+
+
+BACKUP, BACKUP2 = "sk-test-backup-one", "sk-test-backup-two"
+CONNOR, GEORGE = "xtw8E1CXDMtNKx4sgP7u", "JBFqnCBsd6RMkjVDRZzb"  # football's lead; free plan
+GOAL = {"line_id": "g1", "sport": "football", "text": "Messi scores!"}
+PAID = b'{"detail": {"status": "paid_plan_required", "message": "Free users can\'t use these."}}'
+
+
+def keyed(answers, seen):
+    """A fake ElevenLabs: answers[(key, voice id)] -> (status, body), audio for anything else."""
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        if "/text-to-speech/" not in request.url.path:
+            return httpx.Response(404)
+        call = (request.headers["xi-api-key"], request.url.path.rsplit("/", 1)[1])
+        seen.append((*call, json.loads(request.content)["model_id"]))
+        status, body = answers.get(call, (200, AUDIO))
+        return httpx.Response(status, content=body)
+
+    return httpx.MockTransport(handle)
+
+
+@pytest.mark.parametrize("backups", [None, "", " , "])
+def test_with_no_backup_keys_a_spent_quota_calls_only_the_main_key_as_before(
+    tmp_path, monkeypatch, backups
+):
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    if backups is None:
+        monkeypatch.delenv("ELEVENLABS_API_KEY_FALLBACKS", raising=False)
+    else:
+        monkeypatch.setenv("ELEVENLABS_API_KEY_FALLBACKS", backups)
+    seen = []
+    with client_for(tmp_path, keyed({(KEY, CONNOR): (401, QUOTA)}, seen), GOAL) as client:
+        assert client.get("/lines/g1/audio").status_code == 503
+        assert client.get("/stats").json()["voice"]["last_error"] == "quota_exceeded"
+    v3 = (KEY, CONNOR, "eleven_v3")
+    assert seen == [v3, v3, (KEY, CONNOR, "eleven_flash_v2_5")]
+
+
+def test_a_spent_quota_moves_to_the_backup_keys_and_a_free_plan_one_speaks_as_george(
+    tmp_path, monkeypatch, caplog
+):
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    monkeypatch.setenv("ELEVENLABS_API_KEY_FALLBACKS", f"{BACKUP}, {BACKUP2}")
+    caplog.set_level(logging.DEBUG)
+    answers = {
+        (KEY, CONNOR): (401, QUOTA),
+        (BACKUP, CONNOR): (402, PAID),
+        (BACKUP, GEORGE): (401, QUOTA),  # the first backup is spent too
+        (BACKUP2, CONNOR): (402, PAID),
+    }
+    seen = []
+    with client_for(tmp_path, keyed(answers, seen), GOAL) as client:
+        resp = client.get("/lines/g1/audio")
+        stats = client.get("/stats").text
+    assert resp.status_code == 200 and resp.content == AUDIO
+    assert seen == [
+        (KEY, CONNOR, "eleven_v3"),
+        (BACKUP, CONNOR, "eleven_v3"),
+        (BACKUP, GEORGE, "eleven_v3"),
+        (BACKUP2, CONNOR, "eleven_v3"),
+        (BACKUP2, GEORGE, "eleven_v3"),
+    ]
+    assert '"provider":"elevenlabs"' in stats
+    for secret in (KEY, BACKUP, BACKUP2):
+        assert secret not in stats and secret not in caplog.text
+
+
+def test_only_a_backup_key_retries_a_402_as_george(tmp_path, monkeypatch):
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    monkeypatch.setenv("ELEVENLABS_API_KEY_FALLBACKS", BACKUP)
+    seen = []
+    with client_for(tmp_path, keyed({(KEY, CONNOR): (402, PAID)}, seen), GOAL) as client:
+        assert client.get("/lines/g1/audio").status_code == 503
+    assert {k for k, *_ in seen} == {KEY} and GEORGE not in {v for _, v, _ in seen}
+
+
+def test_stats_show_the_characters_left_read_at_most_every_five_minutes(
+    tmp_path, monkeypatch, caplog
+):
+    from core import voice
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    caplog.set_level(logging.DEBUG)
+    reads, answer = (
+        [],
+        [httpx.Response(200, json={"character_limit": 100_000, "character_count": 72_500})],
+    )
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        assert request.url == voice.METER_URL and request.headers["xi-api-key"] == KEY
+        reads.append(request)
+        return answer[0]
+
+    now = [1000.0]
+    monkeypatch.setattr(voice.time, "monotonic", lambda: now[0])
+    with client_for(tmp_path, httpx.MockTransport(handle)) as client:
+        assert client.get("/stats").json()["voice"]["characters_left"] == 27_500
+        answer[0] = httpx.Response(500)
+        assert client.get("/stats").json()["voice"]["characters_left"] == 27_500  # cached
+        assert len(reads) == 1
+        now[0] += voice.METER_TTL_S
+        body = client.get("/stats").text
+    assert '"characters_left":null' in body and len(reads) == 2  # unreadable: null, never an error
+    assert KEY not in body and KEY not in caplog.text

@@ -12,7 +12,8 @@ MOMENTS = [
 ]
 VIDEO = {
     "youtube_id": "abcdefghijk",
-    "moments": [{"idx": 0, "video_t": 5.0}, {"idx": 1, "video_t": 9.0}],
+    # too close for a cold open or a stretch line (#297): the two moments' lines alone
+    "moments": [{"idx": 0, "video_t": 1.0}, {"idx": 1, "video_t": 3.0}],
 }
 
 

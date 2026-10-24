@@ -17,6 +17,9 @@ export const isDecisive = (m: Pick<Moment, 'type' | 'outcome'> | undefined): boo
 // A held line spoken later than this after it was due is shown, never spoken: it would trail the picture.
 export const HOLD_MAX_MS = 5000
 
+// Mic on heard the viewer: no fill line starts for this long, or until their answer goes on air (#297).
+export const VIEWER_MS = 12_000
+
 // A viewer's answer is not started while a big moment is due within this many seconds (#139).
 export const BIG_SOON_S = 3
 
@@ -29,17 +32,20 @@ export interface Turn {
   answer?: boolean // a viewer's answer: only a decisive moment cuts it off, and it waits for a gap
   big?: boolean
   decisive?: boolean
+  fill?: boolean // a line in a quiet stretch (#297): any other line cuts it, so a moment is never late
 }
 
 // The floor: one voice at a time. A line by the same speaker cuts off the one before it, so the voice
 // never falls behind the match; a line never cuts off the other speaker unless it is a big moment; and
 // only a decisive moment cuts off an answer (`onCut` hears which). A line that may not cut in waits (the newest only) for the turn on air
 // to end. A viewer's answer waits for a gap (#139): the commentary goes on until the line on air ends
-// with no big moment due (`bigDue`), then the answer takes the floor. Times are in ms on one clock.
+// with no big moment due (`bigDue`), then the answer takes the floor. While the viewer talks and their
+// answer waits, no fill line starts (#297): it is dropped, so the booth answers next. Times are in ms on one clock.
 export class Floor<T extends Turn> {
   private on: T | null = null
   private held: { item: T; due: number } | null = null
   private asked: T | null = null // the answer waiting for a gap
+  private quietUntil = 0 // the viewer is talking: no fill line before this
   bigDue: () => boolean = () => false
   onCut: (answer: T) => void = () => {}
 
@@ -49,8 +55,9 @@ export class Floor<T extends Turn> {
       this.asked = item
       return this.gap() === item
     }
+    if (item.fill && (this.asked || now < this.quietUntil)) return false
     const on = this.on
-    const waits = !!on && (on.answer ? !item.decisive : on.speaker !== item.speaker && !item.big)
+    const waits = !!on && (on.answer ? !item.decisive : on.speaker !== item.speaker && !item.big && !(on.fill && !item.fill))
     if (waits) {
       this.held = { item, due: now }
       return false
@@ -79,14 +86,21 @@ export class Floor<T extends Turn> {
     const answer = this.asked
     if (!answer || this.on || this.bigDue()) return null
     this.asked = null
+    this.quietUntil = 0
     this.on = answer
     return answer
+  }
+
+  // Mic on heard the viewer at `now`: the booth stops starting fill lines for them.
+  viewer(now: number) {
+    this.quietUntil = now + VIEWER_MS
   }
 
   clear() {
     this.on = null
     this.held = null
     this.asked = null
+    this.quietUntil = 0
   }
 }
 
