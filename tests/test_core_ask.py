@@ -109,13 +109,14 @@ def test_answers_go_through_mubit_with_recording_off(monkeypatch):
     made = []
 
     class Mubit(FakeProvider):
-        def __init__(self, key, record=True):
+        def __init__(self, key, record=True, fallback=None):
             super().__init__()
             made.append(record)
 
     monkeypatch.setattr(commentator, "MubitProvider", Mubit)
     monkeypatch.setattr(commentator, "_unrecorded", None)
     monkeypatch.setenv("MUBIT_API_KEY", "test-key")
+    monkeypatch.delenv("MUBIT_FALLBACK_KEY", raising=False)
     said = answer("Who leads?", MOMENTS[:2], [], HEADER)
     assert made == [False] and said["text"] == "So far, Reds 1, Blues 0."
 
