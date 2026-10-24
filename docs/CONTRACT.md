@@ -183,7 +183,10 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   wins, finishes, avg_finish, avg_gained and `tonight` `laps: [{lap, pos}]` while in the top five.
   `n` is the pre-match sample (attempts, balls or races), `small_sample` when n < 10, `text` the
   commentator's `get_player_profile`. Names resolve like the tool (accents, initials). No LLM.
-  404 unknown replay, pack or player; 409 no moment sent yet.
+  Optional `library: [{match_id, title, date, team, teammates: [name]}]` (#300), from the player
+  graph, only when non-empty: the player's other bundled matches, oldest first, never this one, and
+  who played on their side in each. Absent when the graph is off. 404 unknown replay, pack or
+  player; 409 no moment sent yet.
 - `GET /stage` → the backup live page (`core/stage.html`, static HTML over the routes here) (core)
 - `GET /voices` → `[{id, label, default_for: "cricket"|"football"|"basketball"|"f1"|null, lang: "en-IN"|"en-GB"|"en-US"}]`, the page's voice
   setting: an Indian English commentator for cricket, a British one for football, an American
