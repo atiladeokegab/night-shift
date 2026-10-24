@@ -74,34 +74,31 @@ const smallTargets = (page: Page) => page.evaluate(() => {
   return out
 })
 
+// Low-vision visitors swap fonts and enlarge text: with the fallback font (what a blocked web font gives, and
+// wider), then text at 200%, the bars may wrap, but no control's 44 px target may land on another's.
+// In the same page, so no replay starts beyond the test's own.
+async function heldUnderFallbackAndZoom(page: Page, screen: string) {
+  const fallback = await page.addStyleTag({ content: ':root { --display: ui-sans-serif, system-ui, sans-serif; --body: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif }' })
+  expect(await smallTargets(page), `${screen}, fallback font`).toEqual([])
+  const zoom = await page.addStyleTag({ content: 'html { font-size: 200% }' })
+  expect(await smallTargets(page), `${screen}, fallback font, text at 200%`).toEqual([])
+  await zoom.evaluate((e) => e.remove())
+  await fallback.evaluate((e) => e.remove())
+}
+
 for (const width of WIDTHS) {
-  test(`axe and 44 px targets on the wall and the live screen at ${width}`, async ({ page }) => {
+  test(`axe and 44 px targets on the wall and the live screen at ${width}, also with the fallback font and text at 200%`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     await page.goto('/')
     await expect(page.getByRole('button', { name: KOBE })).toBeVisible()
     expect(await serious(page), 'wall').toEqual([])
     expect(await smallTargets(page), 'wall').toEqual([])
+    await heldUnderFallbackAndZoom(page, 'wall')
     await openLive(page)
     expect(await serious(page), 'live').toEqual([])
     expect(await smallTargets(page), 'live').toEqual([])
+    await heldUnderFallbackAndZoom(page, 'live')
   })
-}
-
-// Low-vision visitors swap fonts and enlarge text: with the web fonts blocked (the fallback is wider), and again
-// with text at 200%, the bars may wrap, but no control's 44 px target may land on another's.
-for (const width of WIDTHS) {
-  for (const zoom of [100, 200]) {
-    test(`44 px targets hold with the web fonts blocked, text at ${zoom}%, at ${width}`, async ({ page }) => {
-      await page.route(/\.woff2?(\?|$)/, (r) => r.abort())
-      if (zoom !== 100) await page.addInitScript((z) => addEventListener('DOMContentLoaded', () => { document.documentElement.style.fontSize = `${z}%` }), zoom)
-      await page.setViewportSize({ width, height: 900 })
-      await page.goto('/')
-      await expect(page.getByRole('button', { name: KOBE })).toBeVisible()
-      expect(await smallTargets(page), 'wall').toEqual([])
-      await openLive(page)
-      expect(await smallTargets(page), 'live').toEqual([])
-    })
-  }
 }
 
 test('axe on the review queue: each Fix button says its visible words first', async ({ page }) => {
