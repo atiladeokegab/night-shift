@@ -20,7 +20,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from core import insight, predict, review
+from core import graph, insight, predict, review
 from core.guard import OFF_TODAY, Guard, SayOnly, cached_commentator, client_ip
 from core.look import Looks, Unshared
 from core.predict import load_pack, shot_points
@@ -167,6 +167,7 @@ def create_app(
     looks: Looks | None = None,
 ) -> FastAPI:
     app = FastAPI(title="Touchline")
+    graph.start()  # once per process; when it fails, Follow a player reads the packs
     store = store or open_store()
     deps = deps or default_deps()
     replays: dict[str, Replay] = {}
@@ -355,7 +356,13 @@ def create_app(
             raise HTTPException(404, f"no line {line_id!r}")
         # its latest fix, Mubit request id included: one correction traced end to end (#239)
         fix = next((f for f in reversed(store.all("fixes")) if f.get("line_id") == line_id), None)
-        return {**line, "fix": fix} if fix else line
+        # the fix sent to Line check as a training example (#305), once it is sent
+        sent = [x for x in store.all("linecheck_fixes") if x.get("line_id") == line_id]
+        return {
+            **line,
+            **({"fix": fix} if fix else {}),
+            **({"linecheck_example": sent[-1]} if sent else {}),
+        }
 
     @app.post("/lines/{line_id}/fix")
     async def fix_line(line_id: str, req: FixRequest, x_producer_token: str = Header(default="")):
@@ -523,12 +530,14 @@ def create_app(
             raise HTTPException(404, f"no shot map for {name!r} in this match") from exc
 
     def pack_so_far(replay_id: str, moment_idx: int | None) -> tuple[dict, list[dict]]:
-        """The replay's pack and its moments up to the one on screen, cut like the shot map's."""
+        """The replay's pack, from the graph or else data/packs, and its moments up to the one on
+        screen, cut like the shot map's."""
         d = need_deps()
         replay = viewed(replay_id)
         moments = d.load_moments(replay.match_id)
-        pack = load_pack(moments[0]["sport"], replay.match_id) if moments else None
-        if pack is None:
+        sport = moments[0]["sport"] if moments else None
+        pack = sport and (graph.pack(replay.match_id) or load_pack(sport, replay.match_id))
+        if not pack:
             raise HTTPException(404, "no pre-match pack for this match")
         return pack, asked_so_far(replay, moments, moment_idx)[0]
 
@@ -550,7 +559,10 @@ def create_app(
         except KeyError:  # named in a moment but not in the pack: tonight only
             if name not in {p["name"] for p in predict.players(pack, past)}:
                 raise HTTPException(404, "no such player in this match") from None
-        return predict.profile(pack, past, len(past) - 1, name)
+        out = predict.profile(pack, past, len(past) - 1, name)
+        if also := graph.library(pack["sport"], pack["match_id"], name):
+            out["library"] = also  # the player's other matches: never this one
+        return out
 
     @app.get("/review")
     def get_review():

@@ -22,8 +22,9 @@ one short spoken line, with the model's first word in about half a second (media
 over a replay of iconic real moments. It checks the numbers in each moment's line before it speaks. A producer fixes any line that's wrong, and the fix is sent back
 through Mubit, so the commentator is trained on corrected calls. Every call goes through Mubit, which
 trains a small commentator model on the recorded calls. The aim is one that gives the same calls as
-the big one at lower cost; 6 versions have been trained, the best scored 55.8% on Mubit's test, none
-has passed, and the app calls none.
+the big one at lower cost. Each prompt change started a new Mubit task: the console shows 8 tasks,
+7 adapters and 0 serving, the best commentary task at 58.3% against a 95% target; none has passed,
+and the app calls no adapter.
 
 ## What we build
 
@@ -53,7 +54,7 @@ has passed, and the app calls none.
 - Sports beyond football, cricket, basketball and F1 this weekend, and any sport without real event data.
 - Unsourced statistics in the pitch.
 - Our own fine-tuning or model hosting: Mubit trains the model.
-- Any claim that our model beats the big one, or matches it: none of its versions has passed Mubit's test yet.
+- Any claim that our model beats the big one, or matches it: no adapter has passed Mubit's 95% target yet.
 - Betting or betting odds. Predictions are in scope (the lead, 2026-10-24) only as rates from each player's pre-match record plus the match so far, never from a later moment.
 
 ## The demo, in one line

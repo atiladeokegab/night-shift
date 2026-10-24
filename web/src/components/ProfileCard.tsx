@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { answerFor, PHASES, recordLine, sampleNote, tonightLine, type Asked, type Profile } from '../follow'
+import { answerFor, libraryLine, PHASES, recordLine, sampleNote, tonightLine, type Asked, type Profile } from '../follow'
 
 interface Props {
   name: string
@@ -45,6 +45,7 @@ export function ProfileCard({ name, replayKey, momentIdx, load, onShots, onUnfol
           <dl className="stat-lines">
             {p.before && <><dt className="label">Before tonight</dt><dd className="num">{recordLine(p)}</dd></>}
             <dt className="label">Tonight</dt><dd className="num">{tonightLine(p)}</dd>
+            {p.library?.length ? <><dt className="label">Also in our library</dt>{p.library.map((m) => <dd key={m.match_id}>{libraryLine(m)}</dd>)}</> : null}
           </dl>
           {note && <p className="hint">{note}</p>}
           {p.sport === 'cricket' && <Phases p={p} />}

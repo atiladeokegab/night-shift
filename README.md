@@ -18,9 +18,9 @@
 
 Touchline describes the matches a platform streams with nobody describing them. It checks the score, the leader and the key numbers against the match data before it speaks, fixes what it can itself, sends the rest to a producer, and each fix that passes the number check is recorded in Mubit as training data for that platform's own describer.
 
-What you hear are **replays, as if live**: real matches' event data played back over their broadcast highlights, each line called at its moment as if the match were on now. Sky Sports now describes [about 109 Premier League games a season](#the-problem) aloud, and none below the top flight.
+What you hear are **replays, as if live**: real matches' event data played back over their broadcast highlights, each line called at its moment as if the match were on now. From 10 October 2026 Sky Sports runs live descriptive audio commentary on [about 109 Premier League games a season](#the-problem), one match a day each game week ([ISPreview](https://www.ispreview.co.uk/index.php/2026/10/sky-sports-to-introduce-live-subtitles-and-live-descriptive-audio-commentary.html), [What Hi-Fi?](https://www.whathifi.com/streaming-entertainment/tv-streaming-services/sky-announces-a-significant-step-forward-for-its-accessible-premier-league-coverage-and-its-a-promising-move)). Touchline describes any match with event data, with a **Close your eyes** mode (#277), for about $0.35 per key-moments replay, voice included.
 
-**Who it is for:** a blind or low-vision fan following a match with no described commentary. Two whole matches lead the page, every key moment from start to finish with no video: Orlando Pride v North Carolina Courage (NWSL, 2018) and Netherlands v Nepal (Women's T20 World Cup Qualifier, 2026). A full replay, mostly highlights, costs $0.37 on average, $0.09 model and $0.28 voice, over the 23 measured on the live [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats) on 24 October 2026 at 16:15 UTC. A whole match calls every moment, so it costs more.
+**Who it is for:** a blind or low-vision fan following a match with no described commentary. Two whole matches lead the page, every key moment from start to finish with no video: Orlando Pride v North Carolina Courage (NWSL, 2018) and Netherlands v Nepal (Women's T20 World Cup Qualifier, 2026). A key-moments replay costs $0.35 on average, voice included: $0.09 model and $0.26 voice, over the 37 measured on the live [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats) on 24 October 2026 at 19:19 UTC (`cost_per_match_usd`). That is not the price of a full 90 minutes: a whole match calls every moment, so it costs more.
 
 <!-- DEMO GIF SLOT (build-140): the demo GIF, full width, with a one-line caption under it. -->
 
@@ -31,7 +31,7 @@ lines the rules were written against it catches 14 of 15, a tuned-on score. Smal
 
 [**Try it live**](https://night-shift-5zvig7nbvq-ew.a.run.app) · [**Correction loop**](#correction-loop-with-evidence) · [**For judges**](#for-judges) · [**Real numbers**](#real-numbers) · [**Architecture**](docs/ARCHITECTURE.md) · [**Known limitations**](#known-limitations) · [**Checks**](#checks) · [**Run it**](#run-it) · [**Demo script**](docs/demo.md)
 
-<img src="docs/img/live.png" alt="The live page calling the 1998 NBA Finals Game 6, Michael Jordan's last shot as a Bull. Above the video card, the sport bar with Wall, the four sports, Voice: Sam and Next match. On the video card, the score bug JAZ 70-70 BUL, 08:05, Q4, an ON AIR pill naming Sam, and playback controls along the bottom. Under the card, the docked caption, marked ANALYST and 08:05 3 POINTS: Level at 70, and the numbers say there's a 44% chance Michael Jordan scores Chicago's next basket. That's the best single option on the floor. On the right, the Lines card, newest first, all at 08:05: at the top the analyst's prediction line, the same as the caption; below it the analyst's stat line, Kukoc came in shooting 46 percent this season, 481 of 1044 over 94 games. Chicago needed that, with the game all square.; and below that the lead's call, Kukoc from deep! Toni Kukoc with the three from twenty-five feet, and it's tied at seventy! Each line has a Fix button and its model first-text-word time. Below, the Proof card." width="100%">
+<img src="docs/img/live.png" alt="An earlier screenshot of the live page, from before the booth was named Jim and Julian, calling the 1998 NBA Finals Game 6, Michael Jordan's last shot as a Bull. Top left the amber Touchline. wordmark; top right the links Live (with a green dot), Fixtures and About. Above the video card, the sport bar: Wall, the four sports with Basketball selected, Voice: Sam and Next match. On the video card, the score bug JAZ 70-70 BUL, 08:05, Q4, an ON AIR pill naming Sam, the note Highlights can't play here. Commentary carries on, timed to the replay., and playback controls along the bottom at 6:28. Under the card, the docked caption, marked ANALYST and 08:05 3 POINTS: Level at 70, and the numbers say there's a 44% chance Michael Jordan scores Chicago's next basket. That's the best single option on the floor. On the right, the Lines card, 3 CALLED, with an Ask the commentator box, a microphone button and Ask; then the lines, newest first, all at 08:05: the analyst's prediction line, the same as the caption; the analyst's stat line, Kukoc came in shooting 46 percent this season, 481 of 1044 over 94 games. Chicago needed that, with the game all square.; and the lead's call, Kukoc from deep! Toni Kukoc with the three from twenty-five feet, and it's tied at seventy! Each line has a Fix button and its model first text word time. Below, the Proof card: model first text word p50 0.54 s, p95 0.80 s, cost per line $0.0018, 4952 lines, 0 fixes." width="100%">
 
 <sub>The live site on 24 October 2026 at 13:20 UTC, captured in headless Chrome: the 1998 NBA Finals Game 6, Jordan's last shot as a Bull,
 with the lead calling Kukoc's three and the analyst's stat lines in the gap after it. YouTube won't play in a headless browser, so the video area is empty and the page says
@@ -78,14 +78,33 @@ The analyst's stat lines, the lead's replies to them and Ask answers get the sam
 against the stat and the match so far: a wrong number is tried once more, then the line is dropped
 and never said (an answer becomes the off-air line).
 
-Mubit's versions of our commentator, copied from Mubit's console into
-[`data/side_by_side.json`](data/side_by_side.json), and the corrections waiting for the next one, from the live [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats) on
-24 October 2026 at 17:12 UTC:
+**Mubit, exactly as its console shows it.** Mubit's console overview, read on 24 October 2026 at
+about 19:15 UTC, shows 8 tasks, 7 adapters and 0 serving. Mubit keys a task on its fingerprint: the
+system prompt, the tools, the output format and the model. Each prompt change started a new task, so
+our recorded commentary is split across six separate tasks rather than one. The overview lists these
+six, as they are; the other 2 tasks, Line check among them, aren't listed on it. None has passed
+Mubit's 95% target and no adapter serves.
 
-| Mubit version | Trained on | Score on Mubit's test | Passed |
+| Task | Status | Examples | Quality |
 |---|---|---|---|
-| Versions 1 to 6 | Our recorded commentary lines | Best 55.8% | No, none of the 6 |
-| Next version | 67 corrections recorded for training, the team's, from the number-check fix list; only a fix whose recorded reply passes the number check counts toward the next version (`fixes_toward_next`: 67), plus 27 automatic correction attempts by the number check (`fixes_auto_sent`) | Collecting: no adapter version recorded yet, as of 24 Oct 2026 13:04 UTC (`adapter.summary`) | Not yet |
+| Live television commentator 5 (current) | Collecting examples | 269 | 14.3% |
+| Live sports commentator | Testing | 155 | 5.9% |
+| Live sports commentator 2 | Testing | 141 | 58.3% |
+| Live television commentator 3 | Testing | 132 | 55.8% |
+| Live television commentator | Collecting examples | 118 | 0.0% |
+| Live television commentator 2 | Testing | 111 | 25.0% |
+
+What we did about it: [Line check](#how-it-uses-mubit), one frozen task whose answer key comes from
+code, with its recorded checks and the producers' fixes. It runs live beside the rules (#298); its
+flags go to the producer's fix queue ([how well it works](#line-check-beside-the-rules)).
+[`data/side_by_side.json`](data/side_by_side.json) and `/stats` still hold an earlier hand-copied
+read, best 55.8%.
+
+The corrections waiting, from the live [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats) on 24 October 2026 at 17:12 UTC:
+67 recorded for training, the team's, from the number-check fix list; only a fix whose recorded
+reply passes the number check counts (`fixes_toward_next`: 67). Beside them, 27 automatic correction
+attempts by the number check (`fixes_auto_sent`). `adapter.summary`: "Collecting: no adapter version
+recorded yet, as of 24 Oct 2026 13:04 UTC."
 
 How the check left the lead's calls, from the same read (`autonomy`, `autonomy_by_match`). These
 count only calls made since the check started marking lines; older stored lines aren't in them.
@@ -176,19 +195,20 @@ and called by the same commentator with the same prompt. The two whole matches h
 rest play over their broadcast highlights. A line is never shown or spoken before its moment reaches the picture: the YouTube player's clock gates it
 ([`web/src/gate.ts`](web/src/gate.ts)).
 
-| Match | Sport and data | Voice | What it calls |
-|---|---|---|---|
-| The long tail: Brighton 3-2 Bristol City, Women's Super League, 2024 | Football, StatsBomb | British Football Announcer | The five goals: Bristol City come level twice, then Terland's winner in stoppage time |
-| Orlando Pride v North Carolina Courage, NWSL 2018 | Football, StatsBomb | British Football Announcer | The whole match, every key moment from kick-off to full time: the shots, the substitutions, an own goal, Courage winning 4-3 |
-| Netherlands v Nepal, Women's T20 WC Qualifier 2026 | Cricket, Cricsheet | Raju | The whole match, every key moment: the wickets, the boundaries, Nepal's chase of 141 to the last ball |
-| The Battle of the Bridge: Chelsea 2-2 Tottenham, 2016 | Football, StatsBomb | British Football Announcer | The four goals, Hazard's equaliser that made Leicester champions |
-| Argentina v France, 2022 World Cup final | Football, StatsBomb | British Football Announcer | Messi's two goals, Di María, Mbappé's three, the shoot-out |
-| India v Pakistan, 2022 T20 World Cup | Cricket, Cricsheet | Raju | The wickets, the sixes, Kohli's two sixes off Rauf, the last ball |
-| Michael Jordan's last shot as a Bull, 1998 NBA Finals Game 6 | Basketball, NBA play-by-play | Sam | The fourth quarter's baskets, Jordan's steal from Malone, the winning shot, the buzzer |
-| Kobe Bryant's 81 against Toronto, 2006 | Basketball, NBA play-by-play | Sam | His baskets through the second half, the record-breaking points, the buzzer |
-| Max Verstappen from 17th to win the 2024 São Paulo Grand Prix | F1, OpenF1 timing | British Football Announcer | The rain, the safety car, the red flag, Verstappen taking the lead, the flag |
+| Match | Sport and data | What it calls |
+|---|---|---|
+| The long tail: Brighton 3-2 Bristol City, Women's Super League, 2024 | Football, StatsBomb | The five goals: Bristol City come level twice, then Terland's winner in stoppage time |
+| Orlando Pride v North Carolina Courage, NWSL 2018 | Football, StatsBomb | The whole match, every key moment from kick-off to full time: the shots, the substitutions, an own goal, Courage winning 4-3 |
+| Netherlands v Nepal, Women's T20 WC Qualifier 2026 | Cricket, Cricsheet | The whole match, every key moment: the wickets, the boundaries, Nepal's chase of 141 to the last ball |
+| The Battle of the Bridge: Chelsea 2-2 Tottenham, 2016 | Football, StatsBomb | The four goals, Hazard's equaliser that made Leicester champions |
+| Argentina v France, 2022 World Cup final | Football, StatsBomb | Messi's two goals, Di María, Mbappé's three, the shoot-out |
+| India v Pakistan, 2022 T20 World Cup | Cricket, Cricsheet | The wickets, the sixes, Kohli's two sixes off Rauf, the last ball |
+| Michael Jordan's last shot as a Bull, 1998 NBA Finals Game 6 | Basketball, NBA play-by-play | The fourth quarter's baskets, Jordan's steal from Malone, the winning shot, the buzzer |
+| Kobe Bryant's 81 against Toronto, 2006 | Basketball, NBA play-by-play | His baskets through the second half, the record-breaking points, the buzzer |
+| Max Verstappen from 17th to win the 2024 São Paulo Grand Prix | F1, OpenF1 timing | The rain, the safety car, the red flag, Verstappen taking the lead, the flag |
 
-Lines are voiced by ElevenLabs `eleven_v3` with an audio tag per moment: shouting for a goal or a
+The booth is two commentators: Jim, the lead, and Julian, the analyst, who call each other by name
+([`core/voice.py`](core/voice.py) `NAMES`). Lines are voiced by ElevenLabs `eleven_v3` with an audio tag per moment: shouting for a goal or a
 wicket, hushed for the build-up ([`core/voice.py`](core/voice.py), [docs/voice.md](docs/voice.md)).
 
 #### Two commentators: lead and analyst
@@ -261,7 +281,7 @@ the app by API. The panel
 ([`web/src/components/SideBySide.tsx`](web/src/components/SideBySide.tsx)) sits under the Proof card on
 every live page.
 
-<img src="docs/img/side-by-side.png" alt="The Big model vs ours panel, marked RECORDED: Our model isn't ready yet. Here's the big model it has to match. Our commentator: training on Mubit. 6 adapter versions so far, best 55.8% on Mubit's test; not yet passing it, so it isn't served. A cost bar: Big model $0.0017 per line; Ours, training, not yet measured. Then claude-haiku-4-5, recorded 24 Oct 2026, held-out moments, and three of the big model's lines from England v United States, 2022, each with its first-word time, total time and cost, such as Harry Kane with a chance in the opening moments, but it's blocked away! at 944 ms first word, 1165 ms total, $0.0016." width="384">
+<img src="docs/img/side-by-side.png" alt="An earlier screenshot, recorded 24 Oct 2026, of the Big model vs ours panel, marked RECORDED; the Mubit numbers on it are an earlier read, not the console now (see Correction loop, with evidence). It reads: Our model isn't ready yet. Here's the big model it has to match. Our commentator: training on Mubit. 6 adapter versions so far, best 55.8% on Mubit's test; not yet passing it, so it isn't served. Lines appear here beside the big model's once a version passes. A cost bar: Big model $0.0017/line; Ours, training, not yet measured. Then claude-haiku-4-5, recorded 24 Oct 2026, held-out moments, and three of the big model's lines from England v United States, 2022, each with its first-word time, total time and cost: Harry Kane with a chance in the opening moments, but it's blocked away! (944 ms first word, 1165 ms total, $0.0016); Saka with the left foot from open play, but it's off target and stays level at nil-nil. (573 ms, 1023 ms, $0.0017); and Jordan Pickford down, the England goalkeeper receiving treatment on the pitch. (541 ms, 787 ms, $0.0017)." width="384">
 
 #### The Proof panel
 
@@ -276,7 +296,7 @@ the same numbers as `GET /stats` (its `by_speaker`) ([`web/src/components/ProofP
 
 Each criterion weighs the same; one line each, with where to check it.
 
-- **Use of Mubit (a correction recorded for the next model version):** every call goes through one Mubit task; its recorded lines have trained [6 adapter versions](#real-numbers) so far (none passed yet), and a producer's [fix](#producer-fixes) is stored beside the line as the correction for the next version: 67 corrections recorded for training so far, the team's, from the number-check fix list.
+- **Use of Mubit (a correction recorded for the next model version):** every call goes through Mubit; each prompt change started a new task, so the console shows [six commentary tasks](#correction-loop-with-evidence), best 58.3% against a 95% target, 0 adapters serving; and a producer's [fix](#producer-fixes) is stored beside the line as the correction for the next version: 67 corrections recorded for training so far, the team's, from the number-check fix list.
 - **Usefulness (a real recurring task):** a major broadcaster now describes [only some Premier League games (about 109 of 380)](#the-problem), and elsewhere live audio description is voluntary and patchy; Touchline speaks the key moments of [nine real matches in four sports](#the-nine-matches) from their real event data.
 - **Technical execution:** a line in [547 ms to its first word](#real-numbers) (median), gated on the video's clock, an offline test suite (`make check`) and a live smoke test on every deploy; [architecture](docs/ARCHITECTURE.md) and [known limitations](#known-limitations).
 - **Demo:** about 2:45 on the live URL, opening on the WSL match nobody described, scripted in [docs/demo.md](docs/demo.md); the [60-second path](#the-60-second-path) above is the short version.
@@ -296,7 +316,7 @@ Each criterion weighs the same; one line each, with where to check it.
   event data's own locations (#172).
 - **The fan layer.** Ask by typing or voice, a choice of voices, and Follow a player, on any match.
 - **At scale,** Redis fans each match's lines out to every viewer and caches them across instances,
-  and SurrealDB holds players, teams, matches and seasons as a graph
+  and SurrealDB, already the graph behind Follow a player, takes over every pack
   ([docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#at-scale-a-plan-not-built)).
 
 ## Real numbers
@@ -335,10 +355,10 @@ from the stored line, which carries no moment time). The analyst has no such fig
 is called and checked before its moment is published, and its audio is made ahead of its slot, so
 the wait would not be a listener's. Same read: p50 3.6 s, p95 10.5 s, over 177 lead lines.
 
-**One match, voice included: $0.37 on average.** `/stats` measures every full replay on the live
-site (one played from kick-off): the model cost of every line it said and every answer, plus its
-voice characters, at list prices. Over the 26 full replays it has measured, that is $0.09 of model
-and $0.28 of voice a match (`cost_per_match_usd`, `model_cost_per_match_usd` and
+**One key-moments replay, voice included: $0.35 on average.** That is not the price of a full 90
+minutes. `/stats` measures every replay played from kick-off on the live site: the model cost of
+every line it said and every answer, plus its voice characters, at list prices. Over the 37 it had
+measured on 24 October 2026 at 19:19 UTC, that is $0.09 of model and $0.26 of voice a replay (`cost_per_match_usd`, `model_cost_per_match_usd` and
 `voice_cost_per_match_usd`; [`core/stats.py`](core/stats.py) `_per_match`,
 [`tests/test_match_cost.py`](tests/test_match_cost.py)). An earlier figure, $0.70, was one keyed run
 of Kobe's 81 highlights alone: 60 lines, all 60 spoken, $0.15 of model and $0.54 of voice (6,909
@@ -346,12 +366,13 @@ characters) ([#181](https://github.com/atiladeokegab/night-shift/pull/181)). The
 different replays; `/stats` is the one that updates. The voice price assumes an ElevenLabs
 subscription tier, $0.08 per 1,000 characters for `eleven_v3`; pay-as-you-go is $0.10.
 
-**The adapter, exactly as it stands.** Mubit has trained 6 adapter versions on our task's recorded lines. All 6 are "not
-ready": none has passed Mubit's test yet, and the best scored 55.8% on Mubit's test. That is the record in [`data/side_by_side.json`](data/side_by_side.json), copied by hand from
-Mubit's console on 24 October 2026. We make no claim that the adapter matches the big model until a
-result shows it. `/stats` reports the adapter's status as `training` (at 17:12 UTC), recorded from
-the console with [`eval/record_adapter.py`](eval/record_adapter.py); it reports no agreement result,
-because no version has passed.
+**The adapter, exactly as it stands.** Mubit's console shows 8 tasks, 7 adapters and 0 serving
+(24 October 2026, about 19:15 UTC). Each prompt change started a new commentary task; the best of
+the six scores 58.3% against a 95% target ([the six](#correction-loop-with-evidence)). No adapter
+serves or has passed, and we make no claim that one matches the big model.
+[`data/side_by_side.json`](data/side_by_side.json) and `/stats` (at 17:12 UTC) hold an earlier
+hand-copied read, recorded with [`eval/record_adapter.py`](eval/record_adapter.py), best 55.8%; they
+report no agreement result.
 
 ## How well the check works
 
@@ -458,13 +479,28 @@ Rerun it with `uv run python -m eval.checker_eval` (the first set) and
 measured today on either set. [`tests/test_recall_classes.py`](tests/test_recall_classes.py) holds a
 wrong and a right line for each of the six rules.
 
+### Line check beside the rules
+
+The same labelled lines, lead lines only, through Line check: a keyed run of
+[`eval/linecheck_eval.py`](eval/linecheck_eval.py), recording off, on integration `b4d4cf4`. On
+unseen lines Line check caught 3 of 5 wrong lines, against 1 of 5 for the rules, and it flagged 5
+right ones. A Line check flag only sends the line to the producer's fix queue; it never stops the line
+being said. The samples are small: one catch moves these a lot.
+
+| Set | Checker | Flagged | Caught | Wrong lines |
+|---|---|---|---|---|
+| First set (287 lead lines) | rules | 8 | 8 | 15 |
+| First set | Line check | 18 | 10 | 15 |
+| Held-out (288 lead lines) | rules (before #301) | 1 | 1 | 5 |
+| Held-out | Line check | 8 | 3 | 5 |
+
 ## The problem
 
 On 10 October 2026 Sky Sports launched live descriptive audio commentary for the Premier League:
 one match a day each game week, about 109 of the league's 380 games a season
 ([ISPreview](https://www.ispreview.co.uk/index.php/2026/10/sky-sports-to-introduce-live-subtitles-and-live-descriptive-audio-commentary.html)).
-A major broadcaster now ships audio description for live football, but only for the top flight, and
-none below it. Touchline is for every other match with a data feed.
+A major broadcaster now ships audio description for live football, for about 109 of the Premier
+League's 380 games ([What Hi-Fi?](https://www.whathifi.com/streaming-entertainment/tv-streaming-services/sky-announces-a-significant-step-forward-for-its-accessible-premier-league-coverage-and-its-a-promising-move)). Touchline is for every match with a data feed.
 
 At least 2.2 billion people have a near or distance vision impairment
 ([WHO](https://www.who.int/news-room/fact-sheets/detail/blindness-and-visual-impairment)). For a fan
@@ -532,21 +568,23 @@ Mubit's test, and none has yet (the Next version row in [Correction loop](#corre
    with recording on, whatever `MUBIT_RECORD` says. One that fails is stored with `recorded: false`,
    and a fix to an analyst's stat line stays unrecorded, like those lines. The Proof card shows the fixes recorded and how many count toward the next
    adapter. `/stats` shows 67 corrections recorded for training: the team's, from the number-check
-   fix list. No adapter version trained on them is recorded yet; the 6 so far were trained on
-   recorded commentary.
+   fix list. No adapter version trained on them is recorded yet.
 6. **Mubit request ids we stored.** Each line stores the Mubit request id of every call it made,
    and `GET /stats` counts calls from those ids; nothing checks them against Mubit's console.
-7. **The trained model is measured, not assumed.** 6 adapter versions trained, none has passed Mubit's
-   test yet (best 55.8%), and the app does not call an adapter ([Real numbers](#real-numbers)). The
+7. **The trained model is measured, not assumed.** Each prompt change started a new task: six
+   commentary tasks, best 58.3% against a 95% target, 0 adapters serving, and the app does not
+   call an adapter ([the six](#correction-loop-with-evidence)). The
    aim is that one matches the big model at lower cost; we make no claim that any does.
-8. **Line check, a task with exact answers.** A second recorded task checks a stored line against
+8. **Line check, a task with exact answers.** A separate, frozen recorded task checks a stored line against
    its moment's facts and answers one JSON object: score, leader, player total and event, each
    `ok`, `wrong` or `not_said` ([`eval/linecheck.py`](eval/linecheck.py),
    [`eval/seed_linecheck.py`](eval/seed_linecheck.py)). The answer key comes from code, never a
    model, and a line code can't decide is left out. Some examples are **planted**: a right line with
    one field changed so it is wrong, marked `planted: true`. They balance the labels; they are not
    real errors the commentator made. Every line of the WSL match (3913122) and the F1 race (9636)
-   is held out and never sent to Mubit.
+   is held out and never sent to Mubit. It now runs live beside the rules (#298): a flag sends the
+   line to the producer's fix queue and never stops it being said
+   ([how well it works](#line-check-beside-the-rules)).
 
 ## Architecture
 
@@ -588,14 +626,18 @@ page ([`web/`](web)). It replays a match's event feed, asks the commentator agen
 ([`agent/`](agent)) for each line through Mubit, has ElevenLabs voice it, keeps lines and fixes as
 JSON lines on Cloud Storage, and streams moments and lines to the browser over server-sent events.
 The commentator's tools and the shot map read per-match stats packs ([`data/packs/`](data/packs)).
+Follow a player reads the same packs as a graph in embedded SurrealDB (players, teams, matches and
+seasons, loaded in memory at startup in about a second), which also answers "Also in our library":
+the player's other matches and teammates. If the graph fails, it reads the packs.
 
 **At scale (a plan, not built).**
 
 - **Redis** as a shared cache of lines, stat lines and voice clips across instances (today each
   replay pays for its own lines, and voice clips sit in one instance's memory); pub/sub fan-out of
   each match's lines to thousands of viewers; per-viewer Ask limits.
-- **SurrealDB** for players, teams, matches and seasons as a graph, behind the commentator's tools,
-  Follow a player and the heat maps, replacing per-match JSON packs at thousands of matches.
+- **SurrealDB** as its own service behind the commentator's tools and the heat maps too, replacing
+  per-match JSON packs at thousands of matches. Built so far: the embedded graph behind Follow a
+  player.
 - **What stays:** Mubit for every model call and the trained adapter, and Cloud Run as the host.
 
 ## Known limitations
@@ -608,7 +650,7 @@ The commentator's tools and the shot map read per-match stats packs ([`data/pack
   server: p50 3.6 s, p95 10.5 s over 177 lead lines (`/stats` `by_speaker.lead.audio_first_ms`, 24
   October 2026 at 17:12 UTC). The text's first word is out in about half a second.
 
-- **The adapter isn't ready or callable.** 6 adapters, none ready, best 55.8% on Mubit's test. Mubit
+- **The adapter isn't ready or callable.** Six commentary tasks, 0 adapters serving, best 58.3% against a 95% target. Mubit
   serves an adapter only in its console, so the app can't call one, and its cost per line isn't
   measurable.
 - **The Proof card counts the moment lines only.** The analyst's lines and Ask answers are

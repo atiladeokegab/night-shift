@@ -1,13 +1,13 @@
 // The only module that talks to the match server (docs/CONTRACT.md, 'HTTP'):
 // GET /matches, GET /matches/{id}/start?at=, POST /replays {match_id, speed} -> {replay_id},
 // GET /replays/{id}/stream (SSE: moment, line, stats per moment; error; end last),
-// GET /stats, GET /voices, POST /lines/{id}/fix, POST /replays/{id}/ask, POST /replays/{id}/seen, POST /replays/{id}/look, GET /replays/{id}/players, .../players/{name}/shots and .../profile and GET /lines/{id}/audio?voice=<id>
+// GET /stats, GET /voices, POST /lines/{id}/fix, GET /lines/{id}, POST /replays/{id}/ask, POST /replays/{id}/seen, POST /replays/{id}/look, GET /replays/{id}/players, .../players/{name}/shots and .../profile and GET /lines/{id}/audio?voice=<id>
 // (ElevenLabs; 503 when the voice isn't configured).
 import { demoMatches, demoStats, streamDemo } from './demo'
 import { offAir, Refused, refused } from './ask'
 import { playersUrl, type Player, type Profile } from './follow'
 import type { Shots } from './shots'
-import type { Answer, Fix, Line, LineCheck, Match, Moment, ReviewItem, Stats, StreamEvent, Voice } from './types'
+import type { Answer, Fix, Line, LineCheck, LineCheckExample, Match, Moment, ReviewItem, Stats, StreamEvent, Voice } from './types'
 
 export const isDemo = new URLSearchParams(window.location.search).has('demo')
 
@@ -115,6 +115,20 @@ export class FixError extends Error {
     this.status = status
     this.wrong = wrong
   }
+}
+
+// GET /lines/{id} → the Line check example a fix sent (#305). Core sends it after answering the fix, so
+// it is asked for every 2 s for up to a minute; only one made since the fix counts. Null if none comes.
+export async function waitForExample(fix: Fix, tries = 30, every = 2000): Promise<LineCheckExample | null> {
+  if (isDemo) return null
+  const since = typeof fix.created_at === 'string' ? fix.created_at : ''
+  for (let i = 0; i < tries; i++) {
+    await new Promise((r) => setTimeout(r, every))
+    const res = await fetch(`/lines/${encodeURIComponent(fix.line_id)}`).catch(() => null)
+    const ex: LineCheckExample | undefined = res?.ok ? (await res.json()).linecheck_example : undefined
+    if (ex && ex.created_at >= since) return ex
+  }
+  return null
 }
 
 // GET /review (#171): stored lines the number check flags. The demo has no store, so nothing.

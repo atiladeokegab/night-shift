@@ -18,6 +18,7 @@ flowchart LR
         app["Match server<br/>[Container: FastAPI, Python 3.12]<br/>core/app.py: replays, SSE stream, Ask, Fix, /stats"]
         agent["Commentator agent<br/>[Component: Python]<br/>agent/commentator.py, one fixed prompt and tools"]
         packs[("Per-match stats packs<br/>[Files: JSON]<br/>data/packs, built offline")]
+        graph[("Player graph<br/>[SurrealDB, embedded, in memory]<br/>core/graph.py: players, teams,<br/>matches, seasons")]
         feeds[("Match event feeds<br/>[Files: JSON]<br/>data/sample, built offline from StatsBomb, Cricsheet, NBA, OpenF1")]
     end
 
@@ -34,6 +35,8 @@ flowchart LR
     app --> agent
     agent -->|"one call per line, two after a tool round<br/>HTTPS"| mubit
     agent -->|"tool lookups"| packs
+    app -->|"Follow a player; the packs if it fails"| graph
+    graph -->|"loaded once at startup"| packs
     app -->|"reads moments, never ahead"| feeds
     app -->|"append and read<br/>compare-and-swap"| store
     app -->|"one clip per line, ahead of its moment"| eleven
@@ -46,6 +49,7 @@ flowchart LR
 | Commentator agent | One system prompt and one tool set for every sport, so Mubit sees one task. Sees only moments up to the one it calls | [`agent/commentator.py`](../agent/commentator.py), [`agent/prompt.md`](../agent/prompt.md), [`agent/tools.json`](../agent/tools.json) |
 | Stat lines | Fill the quiet stretches between big moments with numbers from the pack and the match so far | [`core/insight.py`](../core/insight.py) |
 | Stats packs | Each player's record before the match: shots by zone, runs by phase. Used by the tools, the stat lines and the shot map | [`agent/packs.py`](../agent/packs.py), [`core/predict.py`](../core/predict.py), [`data/packs/`](../data/packs) |
+| Player graph | Embedded SurrealDB in the app's process, in memory, loaded at startup from the packs and feeds: `player`, `team`, `match` and `season` records with `plays_for`, `played_in` and `competed` edges. Serves Follow a player and its "Also in our library" traversal; on any error it logs the type and the packs answer | [`core/graph.py`](../core/graph.py) |
 | Moment picker | Turns each feed into key moments | [`agent/feed.py`](../agent/feed.py) |
 | Store | JSON lines on Cloud Storage; each append rewrites the object under a generation check | [`core/store.py`](../core/store.py) |
 | Voice | ElevenLabs `eleven_v3` with an audio tag per moment; the lead and the analyst have their own voices | [`core/voice.py`](../core/voice.py) |
@@ -95,7 +99,7 @@ flowchart LR
     end
 
     redis[("Redis<br/>[Planned]<br/>line and stat-line cache,<br/>pub/sub per match, Ask limits")]
-    surreal[("SurrealDB<br/>[Planned]<br/>players, teams, matches, seasons<br/>as a graph")]
+    surreal[("SurrealDB service<br/>[Planned; embedded today]<br/>players, teams, matches, seasons<br/>as a graph")]
     mubit["Mubit<br/>[Kept]<br/>big model and the trained adapter"]
     store[("Cloud Storage<br/>[Kept]<br/>lines and fixes, the record")]
 
@@ -121,10 +125,12 @@ clips sit in the instance's memory ([`core/voice.py`](../core/voice.py)). With R
   subscribes to it, so a thousand viewers cost one line, not a thousand;
 - per-viewer limits on Ask, so one viewer can't spend the budget.
 
-**SurrealDB.** Today each match has a JSON pack built offline
-([`data/packs/`](../data/packs)). At thousands of matches that becomes a graph: players, teams,
-matches and seasons as records, with edges for "played in" and "shot in". The commentator's tools,
-Follow a player and the shot and heat maps would query it, instead of loading one file per match.
+**SurrealDB.** Built: Follow a player reads players, teams, matches and seasons as a graph in
+SurrealDB's embedded engine, in the app's own process ([`core/graph.py`](../core/graph.py)), loaded
+from the JSON packs ([`data/packs/`](../data/packs)) at startup. Still planned: at thousands of
+matches the graph moves to a SurrealDB service shared by every instance, with edges for "shot in",
+and the commentator's tools and the shot and heat maps query it too, instead of loading one file
+per match.
 
 **What stays.** Mubit stays the only way to the model: every line still goes through its endpoint,
 and the trained adapter takes over from the big model once a version passes Mubit's tests. Cloud Run
