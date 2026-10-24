@@ -124,6 +124,8 @@ def build_request(header: dict, past: list[dict]) -> dict:
     }
     if past[-1]["type"] == "Stat":
         request["system"] = ANALYST
+        # unrecorded, so its model is free to differ from the lines' (one Mubit task)
+        request["model"] = os.environ.get("ANALYST_MODEL") or MODEL
         del request["tools"], request["tool_choice"]
     return request
 
@@ -286,7 +288,8 @@ def line_for(header: dict, moments: list[dict], idx: int, provider) -> dict:
     """One Line for moments[idx], with at most one tool round."""
     past = moments[: idx + 1]  # never anything later than this moment
     start = time.monotonic()
-    reply, replies, tool_calls, offset = _call(provider, build_request(header, past), header, past)
+    request = build_request(header, past)
+    reply, replies, tool_calls, offset = _call(provider, request, header, past)
     limit = ANALYST_WORDS if past[-1]["type"] == "Stat" else MAX_WORDS
     text = spoken(" ".join(b["text"] for b in reply["content"] if b["type"] == "text"), limit)
     if not text:  # a tool-only or preamble-only reply: no line beats a blank or a wrong one
@@ -298,7 +301,7 @@ def line_for(header: dict, moments: list[dict], idx: int, provider) -> dict:
         "match_id": header["match_id"],
         "moment_idx": past[-1]["idx"],
         "text": text,
-        "model": MODEL,
+        "model": request["model"],
         "latency_ms": round((time.monotonic() - start) * 1000),
         "first_word_ms": round(offset + first) if first is not None else None,
         "tokens_in": sum(r["usage"]["input_tokens"] for r in replies),
