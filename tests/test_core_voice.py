@@ -1238,3 +1238,19 @@ def test_a_goal_is_more_intense_than_a_pass_and_the_pair_is_voiced_to_match(monk
         ("[excited] Two.", {"stability": 0.0}),
         ("[warmly] Two.", {"stability": 0.5}),
     ]
+
+
+def test_a_football_goal_is_as_big_as_the_game_state_makes_it():
+    from core.voice import intensity, tag_for
+
+    def goal(home, away, clock="30:00"):
+        return {
+            "sport": "football", "type": "Shot", "outcome": "Goal", "clock": clock,
+            "score": {"home": home, "away": away}, "detail": {},
+        }  # fmt: skip
+
+    assert intensity(goal(1, 1)) == "high"  # an equaliser
+    assert intensity(goal(1, 0)) == "high"  # the go-ahead
+    assert intensity(goal(2, 0, "85:00")) == "high"  # late, still a game
+    assert intensity(goal(4, 0)) == "medium" and tag_for(goal(4, 0)) == "[excited]"
+    assert tag_for(goal(1, 1)) == "[shouting]"

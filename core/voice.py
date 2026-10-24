@@ -134,11 +134,28 @@ def _call_tag(moment: dict) -> str | None:
     return TAGS.get(moment.get("type"))
 
 
+def _goal_stakes(m: dict) -> str | None:
+    """A football goal from the state of the game: level, a go-ahead or a one-goal game is high, a
+    goal in a late two-goal game too; a goal that makes it three or more is medium (#378)."""
+    score = m.get("score") or {}
+    if m.get("sport") != "football" or m.get("outcome") != "Goal" or "home" not in score:
+        return None
+    margin = abs(score["home"] - score["away"])
+    try:
+        late = int(str(m.get("clock")).split(":")[0]) >= 80
+    except ValueError:
+        late = False
+    return "high" if margin <= 1 or (late and margin == 2) else "medium"
+
+
 def intensity(moment: dict) -> str:
-    """How big a moment is, from the tag its call gets; a stat line carries its moment's (#378)."""
+    """How big a moment is: the tag its call gets, and for a football goal the game's state; a stat
+    line carries its moment's (#378)."""
     if moment.get("type") == "Stat":
         return (moment.get("detail") or {}).get("intensity", "calm")
-    return {"[shouting]": "high", "[excited]": "medium"}.get(_call_tag(moment), "calm")
+    return _goal_stakes(moment) or {"[shouting]": "high", "[excited]": "medium"}.get(
+        _call_tag(moment), "calm"
+    )
 
 
 # How the pair sounds at each intensity: one tag for both voices, so they share a pitch and tone
@@ -151,7 +168,8 @@ STABILITY = {"high": 0.0, "medium": 0.5, "calm": 0.5}
 def tag_for(moment: dict) -> str | None:
     if moment.get("type") == "Stat":  # a stat line or comeback: its moment's intensity, by speaker
         return PAIR_TAG[intensity(moment)]
-    return _call_tag(moment)
+    tag = _call_tag(moment)
+    return "[excited]" if tag == "[shouting]" and intensity(moment) == "medium" else tag
 
 
 def all_voices(env=os.environ) -> list[dict]:
