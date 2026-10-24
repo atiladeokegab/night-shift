@@ -53,6 +53,10 @@ export function Wall({ matches, error, onRetry, onOpen, onGo }: Props) {
   )
 }
 
+// "18 Dec 2022" or "Tap for commentary" never breaks across lines on a phone; the line breaks at a " · ".
+const phrases = (text: string) =>
+  text.split(' · ').map((part, i) => <span key={i}>{i > 0 && ' · '}<span className="nw">{part}</span></span>)
+
 function Tile({ match, onOpen }: { match: Match; onOpen: (m: Match) => void }) {
   const host = useRef<HTMLDivElement>(null)
   const [playing, setPlaying] = useState(false)
@@ -96,8 +100,8 @@ function Tile({ match, onOpen }: { match: Match; onOpen: (m: Match) => void }) {
       <span className="tile-body">
         <span className="label">{SPORT_NAMES[match.sport]}</span>
         <span className="tile-title">{title}</span>
-        {detail && <span className="tile-detail">{detail}</span>}
-        <span className="tile-cta">{broken ? 'Highlights unavailable here · Tap for commentary' : 'Tap to hear it called →'}</span>
+        {detail && <span className="tile-detail">{phrases(detail)}</span>}
+        <span className="tile-cta">{phrases(broken ? 'Highlights unavailable here · Tap for commentary' : 'Tap to hear it called →')}</span>
       </span>
     </button>
   )
