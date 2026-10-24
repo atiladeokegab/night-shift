@@ -99,7 +99,7 @@ def test_every_demo_match_has_a_map():
 
 
 def test_only_the_embed_blocked_videos_say_so():
-    # FOM blocks embedding and the ITV re-upload is gone; the pages show a poster and a YouTube link.
+    # FOM blocks embedding and the ITV re-upload is gone: a poster and a YouTube link instead.
     assert {m["match_id"]: m.get("embed") for m in list_matches()} == {
         "3906390": False,
         "1298150": None,
