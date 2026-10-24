@@ -460,7 +460,11 @@ class Gaps:
         return stat_moment(m, said_as, reply), ln
 
     def wrong_open(self, text: str, stat: dict, past: list[dict]) -> list[str]:
-        return wrong_numbers(text, stat, self.header(), past)
+        try:
+            header = self.header()
+        except KeyError:  # not a bundled match: its numbers are still checked
+            header = None
+        return wrong_numbers(text, stat, header, past)
 
     def cold_open(
         self, before: list[dict], first: dict, t: float, first_t: float, commentate
