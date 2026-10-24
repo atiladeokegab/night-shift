@@ -426,6 +426,18 @@ def test_the_same_shapes_stay_wrong_when_false(i, text):
     assert insight.wrong_numbers(text, m, match_header(said_as["match_id"]), past)
 
 
+def test_a_lead_after_a_score_is_still_a_claim():
+    line = "At 86-85 Utah lead by one."
+    assert (
+        insight.wrong_numbers(line, moment(JORDAN, 30), match_header(JORDAN), before(JORDAN, 30))
+        == []
+    )
+    wrong = insight.wrong_numbers(
+        line, moment(JORDAN, 32), match_header(JORDAN), before(JORDAN, 32)
+    )
+    assert "Utah Jazz do not lead" in wrong  # 86-87: the Bulls lead
+
+
 def test_in_front_of_a_crowd_is_no_lead():
     m = moment(JORDAN, 23)
     line = "Rodman ties it at 77, the Jazz in front of a stunned home crowd."

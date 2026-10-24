@@ -569,8 +569,6 @@ LEADS = (  # a claim that a team is in front now; "led" and questions are no cla
     r"|leads?(?!\s+(?:has|had|is|was|became|of|over|to)\b)|go ahead|goes ahead|ahead"
     r"|in front(?!\s+of\b))\b"
 )
-# "a 66-62 Jazz lead has become 77-77": the noun after "a" or a score, a lead that was
-NOUN_LEAD = re.compile(r"(?:\b(?:a|an)|\d|-\w+)\s+$", re.I)
 
 
 def _sides(header: dict) -> tuple[dict[str, str], str]:
@@ -591,11 +589,10 @@ def _false_lead(text: str, m: dict, header: dict) -> list[str]:
 
     side, names = _sides(header)
     claims = {
-        side[c[1].lower()]
+        side[c.lower()]
         for sentence in re.split(r"(?<=[.!?])\s+", text)
         if not sentence.rstrip().endswith("?")
-        for c in re.finditer(rf"\b({names}){LEADS}", sentence, re.I)
-        if not NOUN_LEAD.search(sentence[: c.start()])
+        for c in re.findall(rf"\b({names}){LEADS}", sentence, re.I)
     }
     return [f"{header[s]} do not lead" for s in sorted(claims) if s != leader(m)]
 
@@ -624,17 +621,6 @@ def _wrong_margin(text: str, m: dict, header: dict) -> list[str]:
     return wrong
 
 
-def _run(m: dict, past: list[dict]) -> int:
-    """How many key moments in a row, up to this one, the latest basketball shooter scored: "three
-    straight buckets" is true at or below it."""
-    plays = [p for p in [*past, m] if p.get("type") != "Stat"]
-    who = m.get("sport") == "basketball" and plays and plays[-1]["players"].get("shooter")
-    k = 0
-    while who and k < len(plays) and plays[-1 - k]["players"].get("shooter") == who:
-        k += 1
-    return k
-
-
 def wrong_numbers(
     text: str, m: dict, header: dict | None = None, past: list[dict] = ()
 ) -> list[str]:
@@ -644,19 +630,11 @@ def wrong_numbers(
     given = _given(m, header) | _streaks(m, past)
     if m.get("type") == "Stat" and past:  # said just after that moment: "two free throws" on 2 of 2
         given |= _given(past[-1], header)
-    words, run = said(text), _run(m, past)
-    heard = [  # "Number 23" names a player, it is no stat; nor is a run he did make
+    words = said(text)
+    heard = [  # "Number 23" names a player, it is no stat
         n
-        for i, n in enumerate(words)
-        if isinstance(n, float)
-        and words[i - 1 : i] != ["number"]
-        and not (
-            n <= run
-            and (
-                words[i + 1 : i + 2] in (["straight"], ["consecutive"])
-                or words[i + 1 : i + 4] == ["in", "a", "row"]
-            )
-        )
+        for prev, n in zip(["", *words], words, strict=False)
+        if isinstance(n, float) and prev != "number"
     ]
     wrong = [f"{n:g} is not in the moment" for n in heard if n not in given]
     if talks_to_itself(text):
