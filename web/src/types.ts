@@ -82,7 +82,8 @@ export interface Stats {
   tokens_in: number
   tokens_out: number
   cost_per_line_usd?: number | null
-  adapter?: Adapter | null
+  adapter?: Adapter | null // the commentary task's
+  adapters?: Record<string, TaskAdapter> // #209: each Mubit task's latest record, by task
   by_speaker?: { lead: SpeakerStats; analyst: SpeakerStats } // #161: Haiku's calls apart from Sonnet's stat lines
   fixes_recorded?: number // fixes Mubit recorded for training; `fixes` counts every stored fix
   fixes_toward_next?: number // recorded fixes since the latest adapter record (#161)
@@ -141,6 +142,17 @@ export interface Adapter {
   cost_measurable: boolean
 }
 
+// One Mubit task's latest adapter record (#209), as the lead read it off Mubit's console; null where it didn't say.
+export interface TaskAdapter {
+  status: 'not_trained' | 'training' | 'ready'
+  version: number | null
+  score: number | null // "matched N% of the provider model's answers", 0 to 100
+  target: number | null // the console's target for score, e.g. 95
+  passed: boolean | null // Mubit's gate: Passed or Failed
+  kept: number | null // Mubit's kept examples from the console, never requests sent
+  recorded_at: string | null
+}
+
 // POST /lines/{line_id}/fix's answer and the `fixed` SSE event (CONTRACT.md).
 export interface Fix {
   line_id: string
@@ -149,6 +161,7 @@ export interface Fix {
   created_at?: number | string
   reply_matched?: boolean
   recorded?: boolean // Mubit recorded it for training (#161)
+  mubit_request_id?: string | null // the correction call's request id (#239)
 }
 
 // POST /replays/{id}/ask's answer and the `answer` SSE event (#117). `line_id` so it is spoken like a line;

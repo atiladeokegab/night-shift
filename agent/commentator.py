@@ -258,7 +258,7 @@ def correct(
     # the echo, not a spoken line: untrimmed, so a correction over 20 words can still match
     said = " ".join(b["text"] for b in reply["content"] if b["type"] == "text").split()
     return {
-        "mubit_request_id": reply["request_id"],
+        "mubit_request_id": reply.get("request_id"),  # None when the provider gives none
         "reply_matched": said == corrected_text.split(),
         # True only when Mubit records it for training (FakeProvider never does)
         "recorded": getattr(provider, "record", False),
