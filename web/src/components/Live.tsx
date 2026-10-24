@@ -4,11 +4,14 @@ import { embeds, posterUrl, setPlaying, showNoVideoCaption, shownCaption, watchU
 import type { Caption as CaptionData } from '../turns'
 import { SPORT_NAMES, type Line, type Match, type Sport } from '../types'
 import { onScreen, type Clock, type ReplayState } from '../useReplay'
+import type { Player, Profile } from '../follow'
 import { latestShooter, MAPPED, pickedFor, type Picked, type Shots } from '../shots'
 import { Caption } from './Caption'
 import { Controls } from './Controls'
+import { FollowPicker } from './FollowPicker'
 import { LineLog } from './LineLog'
 import { Nav, type Screen } from './Nav'
+import { ProfileCard } from './ProfileCard'
 import { ProofPanel } from './ProofPanel'
 import { ScoreBar } from './ScoreBar'
 import { ShotMap } from './ShotMap'
@@ -32,6 +35,8 @@ interface Props {
   onFix: (line: Line) => void
   onAsk: (question: string, momentIdx: number) => Promise<void>
   onShots: (name: string, momentIdx: number) => Promise<Shots | null>
+  onPlayers: (momentIdx?: number) => Promise<Player[]> // #140: everyone in the match so far
+  onProfile: (name: string, momentIdx: number) => Promise<Profile | null>
   onRetry: () => void
   onReconnect: () => void
   onGo: (screen: Screen) => void
@@ -50,7 +55,7 @@ interface Props {
 // docked under it, the sport and match bar above it, and Lines and Proof in a scrollable sidebar (below 900px
 // one column, with a tab bar for them). Only the score bug and the ON AIR pill sit on the picture.
 export function Live(props: Props) {
-  const { match, replay, replayKey, switching, sports, voice, video, onVideo, onClock, onSport, onNext, onVoiceSheet, onFix, onAsk, onShots, onRetry, onReconnect, onGo } = props
+  const { match, replay, replayKey, switching, sports, voice, video, onVideo, onClock, onSport, onNext, onVoiceSheet, onFix, onAsk, onShots, onPlayers, onProfile, onRetry, onReconnect, onGo } = props
   const shown = onScreen(replay)
   const moment = shown.moments.at(-1) ?? null
   const busy = replay.phase !== 'live'
@@ -64,6 +69,10 @@ export function Live(props: Props) {
   const mapped = MAPPED.includes(match.sport)
   const shooter = mapped ? latestShooter(shown.moments) : null
   const openMap = (name: string) => setPicked({ name, replay: replayKey })
+  // The followed player (#140) belongs to its replay, like the map: their lines stand out, the map pins to them.
+  const [follow, setFollow] = useState<Picked>(null)
+  const followed = pickedFor(follow, replayKey)
+  const mapFor = followed ?? shooter
 
   // Play, pause and seek reach the player once it is ready; a new player starts playing.
   const card = useRef<HTMLElement>(null)
@@ -89,7 +98,7 @@ export function Live(props: Props) {
     setLocalVolume({ volume: v, muted: m })
     props.onVolume?.(v, m)
   }
-  const [chosenTab, setTab] = useState<'lines' | 'proof' | 'shots'>('lines')
+  const [chosenTab, setTab] = useState<'follow' | 'lines' | 'proof' | 'shots'>('lines')
   const tab = chosenTab === 'shots' && !mapped ? 'lines' : chosenTab // a sport with no shot map shows Lines
 
   let overlay = null
@@ -199,13 +208,23 @@ export function Live(props: Props) {
         </main>
         <aside className="side" aria-label="Lines and proof">
           <div className="tabs" role="tablist" aria-label="Lines and proof">
+            <button role="tab" id="tab-follow" aria-controls="pane-follow" aria-selected={tab === 'follow'} onClick={() => setTab('follow')}>Follow</button>
             <button role="tab" id="tab-lines" aria-controls="pane-lines" aria-selected={tab === 'lines'} onClick={() => setTab('lines')}>Lines</button>
             <button role="tab" id="tab-proof" aria-controls="pane-proof" aria-selected={tab === 'proof'} onClick={() => setTab('proof')}>Proof</button>
             {mapped && <button role="tab" id="tab-shots" aria-controls="pane-shots" aria-selected={tab === 'shots'} onClick={() => setTab('shots')}>Shot map</button>}
           </div>
+          <div className="pane" role="tabpanel" id="pane-follow" aria-labelledby="tab-follow" data-on={tab === 'follow'}>
+            {followed ? (
+              moment ? <ProfileCard name={followed} replayKey={replayKey} momentIdx={moment.idx} load={onProfile}
+                onShots={mapped ? openMap : null} onUnfollow={() => setFollow(null)} />
+                : <section className="panel glass"><p className="hint">Following {followed}: the card shows with the first moment.</p></section>
+            ) : (
+              <FollowPicker replayKey={replayKey} momentIdx={moment?.idx ?? null} load={onPlayers} onFollow={(name) => setFollow({ name, replay: replayKey })} />
+            )}
+          </div>
           <div className="pane lines-pane" role="tabpanel" id="pane-lines" aria-labelledby="tab-lines" data-on={tab === 'lines'}>
             <LineLog lines={shown.lines} late={replay.late} fixes={replay.fixes} moments={shown.moments} onFix={onFix}
-              answers={replay.answers} onAsk={moment ? (q) => onAsk(q, moment.idx) : null} shooter={null} onShots={openMap} />
+              answers={replay.answers} onAsk={moment ? (q) => onAsk(q, moment.idx) : null} shooter={null} onShots={openMap} followed={followed} />
           </div>
           <div className="pane" role="tabpanel" id="pane-proof" aria-labelledby="tab-proof" data-on={tab === 'proof'}>
             <ProofPanel live={replay.stats} />
@@ -214,7 +233,7 @@ export function Live(props: Props) {
             <div className="pane" role="tabpanel" id="pane-shots" aria-labelledby="tab-shots" data-on={tab === 'shots'}>
               <section className="panel glass shots-card" aria-label="Shot map">
                 <h3>Shot map</h3>
-                {shooter ? <button className="btn sm" onClick={() => openMap(shooter)}>Shot map · {shooter}</button>
+                {mapFor ? <button className="btn sm" onClick={() => openMap(mapFor)}>Shot map · {mapFor}</button>
                   : <p className="hint">Opens with the first shot on screen.</p>}
               </section>
             </div>
