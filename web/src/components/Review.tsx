@@ -10,7 +10,7 @@ import { Nav, type Screen } from './Nav'
 export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
   const [items, setItems] = useState<ReviewItem[] | null>(null)
   const [failed, setFailed] = useState(false)
-  const [fixing, setFixing] = useState<{ item: ReviewItem; phase: FixPhase } | null>(null)
+  const [fixing, setFixing] = useState<{ item: ReviewItem; phase: FixPhase; wrong?: string[] } | null>(null)
   const [said, setSaid] = useState('')
   const heading = useRef<HTMLHeadingElement>(null)
 
@@ -35,7 +35,7 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
         heading.current?.focus() // its card is gone: focus goes back to the top of the queue
       },
       // A 503 stores nothing (CONTRACT.md): the sheet stays open with the text to send again.
-      () => setFixing({ item, phase: 'error' }),
+      (wrong) => setFixing({ item, phase: 'error', wrong }),
     )
   }
 
@@ -96,7 +96,7 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
         {body}
       </main>
       {fixing && (
-        <FixSheet key={fixing.item.line_id} line={fixing.item} phase={fixing.phase} onSend={send}
+        <FixSheet key={fixing.item.line_id} line={fixing.item} phase={fixing.phase} wrong={fixing.wrong} onSend={send}
           onCancel={() => setFixing(null)} />
       )}
     </div>

@@ -32,7 +32,7 @@ export default function App() {
   // A-6.3@1: a voice picked for a sport sticks to that sport; otherwise its default_for voice.
   const [picked, setPicked] = useState<Partial<Record<Sport, string>>>({})
   const [video, setVideo] = useState<VideoState>('loading')
-  const [fixing, setFixing] = useState<{ line: Line; phase: FixPhase } | null>(null)
+  const [fixing, setFixing] = useState<{ line: Line; phase: FixPhase; wrong?: string[] } | null>(null)
   const [voiceSheet, setVoiceSheet] = useState(false)
   const [toast, setToast] = useState('')
   // #131: a viewer's question, then its answer, takes the caption from the lines while it is on
@@ -215,8 +215,8 @@ export default function App() {
         setFixing((f) => (mine(f) ? null : f))
         say('Fix sent. Kept beside the original.')
       },
-      // A 503 stores nothing (CONTRACT.md), so the sheet stays open with the text to send again.
-      () => setFixing((f) => (mine(f) ? { line, phase: 'error' } : f)),
+      // A 503 or 422 stores nothing (CONTRACT.md), so the sheet stays open with the text to send again.
+      (wrong) => setFixing((f) => (mine(f) ? { line, phase: 'error', wrong } : f)),
     )
   }
 
@@ -340,7 +340,7 @@ export default function App() {
         />
       )}
       {fixing && (
-        <FixSheet key={fixing.line.line_id} line={fixing.line} phase={fixing.phase} onSend={sendFix}
+        <FixSheet key={fixing.line.line_id} line={fixing.line} phase={fixing.phase} wrong={fixing.wrong} onSend={sendFix}
           onCancel={() => setFixing(null)} />
       )}
       {voiceSheet && (

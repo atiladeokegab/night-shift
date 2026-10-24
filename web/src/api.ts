@@ -102,11 +102,14 @@ export function followReplay(
 }
 
 // POST /lines/{id}/fix. A 503 means the Mubit call failed and nothing was stored, so it can be sent again.
+// A 422 with `wrong` means the number check refused the fix (#232): nothing stored, edit and send again.
 export class FixError extends Error {
   status: number
-  constructor(status: number) {
+  wrong: string[]
+  constructor(status: number, wrong: string[] = []) {
     super(`POST /lines/{id}/fix failed (${status})`)
     this.status = status
+    this.wrong = wrong
   }
 }
 
@@ -125,7 +128,10 @@ export async function postFix(lineId: string, correctedText: string, reason: str
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ corrected_text: correctedText, reason }),
   })
-  if (!res.ok) throw new FixError(res.status)
+  if (!res.ok) {
+    const detail = res.status === 422 ? (await res.json().catch(() => null))?.detail : null
+    throw new FixError(res.status, Array.isArray(detail?.wrong) ? detail.wrong : [])
+  }
   return res.json()
 }
 

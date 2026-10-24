@@ -9,13 +9,14 @@ export type FixPhase = 'edit' | 'sending' | 'error'
 interface Props {
   line: Pick<Line, 'text'> // a replay's line, or a Review card's (#171)
   phase: FixPhase
+  wrong?: string[] // the number check's reasons for refusing the fix (#232)
   onSend: (text: string, reason: string) => void
   onCancel: () => void
 }
 
 // The producer fix (docs/design.md "Fix sheet"; POST /lines/{id}/fix, A-4.1). On a failed send the
 // sheet stays open with the producer's text, so it can be sent again: a 503 stores nothing.
-export function FixSheet({ line, phase, onSend, onCancel }: Props) {
+export function FixSheet({ line, phase, wrong = [], onSend, onCancel }: Props) {
   const [text, setText] = useState(line.text)
   const unchanged = !text.trim() || text.trim() === line.text.trim() // nothing to send yet
   const [reason, setReason] = useState(REASONS[0])
@@ -41,7 +42,7 @@ export function FixSheet({ line, phase, onSend, onCancel }: Props) {
         </div>
         <div className="field">
           <label className="label" htmlFor="fix-text">Corrected line</label>
-          <textarea id="fix-text" ref={box} value={text} disabled={sending} onChange={(e) => setText(e.target.value)} />
+          <textarea id="fix-text" ref={box} value={text} maxLength={200} disabled={sending} onChange={(e) => setText(e.target.value)} />
           {unchanged && <p className="hint">Type the corrected line.</p>}
         </div>
         <div className="field">
@@ -55,7 +56,13 @@ export function FixSheet({ line, phase, onSend, onCancel }: Props) {
             ))}
           </div>
         </div>
-        {phase === 'error' && <p className="err-text" role="alert">Fix not saved. Check the connection and send again.</p>}
+        {phase === 'error' && (
+          <p className="err-text" role="alert">
+            {wrong.length
+              ? `Not saved: the match data says otherwise (${wrong.join('; ')}). Edit the line and send again.`
+              : 'Fix not saved. Check the connection and send again.'}
+          </p>
+        )}
         <div className="actions">
           <button className="btn primary" disabled={sending || unchanged} onClick={() => onSend(text.trim(), reason)}>
             {sending ? <><span className="spin sm" />Sending fix…</> : 'Send fix'}
