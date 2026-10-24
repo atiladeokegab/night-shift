@@ -276,13 +276,25 @@ def _result(f: dict, team: str) -> dict:
 
 FIXTURES = """SELECT * FROM fixture WHERE sport = $s AND start < $b
   AND (home = $t OR away = $t) {more} ORDER BY start DESC LIMIT $n"""
+GENDERED = " AND gender = $g"  # Cricsheet files men's and women's sides under one team name
+
+
+def _gender(sport: str, team: str, cut: str) -> str | None:
+    """The gender of the team's latest match before the cut (None where a sport has none): a team
+    name alone cannot say which side is meant, and the match on screen is its next one."""
+    # shortcut: the latest match stands for the side on screen; wrong if a team's men's and women's
+    # games alternate within days. Upgrade by passing the match's gender in from the caller.
+    last = _rows(FIXTURES.format(more=""), {"s": sport, "t": team, "b": cut, "n": 1})
+    return last[0].get("gender") if last else None
 
 
 def team_form(sport: str, team: str, before: str, n: int = 5) -> list[dict]:
     """The team's last `n` matches before `before`, newest first, score as the team's own."""
     if (cut := _utc(before)) is None:
         return []
-    found = _rows(FIXTURES.format(more=""), {"s": sport, "t": team, "b": cut, "n": n})
+    g = _gender(sport, team, cut)
+    more, extra = (GENDERED, {"g": g}) if g else ("", {})
+    found = _rows(FIXTURES.format(more=more), {"s": sport, "t": team, "b": cut, "n": n, **extra})
     return [_result(f, team) for f in found or []]
 
 
@@ -290,8 +302,9 @@ def head_to_head(sport: str, a: str, b: str, before: str, n: int = 5) -> list[di
     """The last `n` meetings of a and b before `before`, newest first, seen from a."""
     if (cut := _utc(before)) is None:
         return []
-    sql = FIXTURES.format(more="AND (home = $o OR away = $o)")
-    found = _rows(sql, {"s": sport, "t": a, "o": b, "b": cut, "n": n})
+    g = _gender(sport, a, cut)
+    sql = FIXTURES.format(more="AND (home = $o OR away = $o)" + (GENDERED if g else ""))
+    found = _rows(sql, {"s": sport, "t": a, "o": b, "b": cut, "n": n, **({"g": g} if g else {})})
     return [_result(f, a) for f in found or []]
 
 
@@ -308,6 +321,7 @@ def _games(sport: str, who: str, w: str, before: str) -> list[dict] | None:
         (
             {
                 **{k: r[k] for k in ("player", "team", "competition", "season")},
+                "gender": r.get("gender"),
                 "start": g[0],
                 "totals": dict(zip(r["keys"], g[2:], strict=True)),
             }  # fmt: skip
@@ -330,9 +344,8 @@ def _sum(apps: list[dict]) -> dict:
 def _latest(apps: list[dict]) -> list[dict]:
     """The appearances in the newest competition-season of the list (oldest first)."""
     last = apps[-1]
-    return [
-        a for a in apps if (a["competition"], a["season"]) == (last["competition"], last["season"])
-    ]
+    key = ("competition", "season", "gender")
+    return [a for a in apps if [a[k] for k in key] == [last[k] for k in key]]
 
 
 def player_season(sport: str, name: str, before: str) -> dict | None:
