@@ -59,15 +59,43 @@ def test_late_subscriber_gets_the_whole_replay(app_store):
     assert [n for n, _ in read_stream(client, rid)].count("line") == 2
 
 
-def test_commentator_failure_ends_the_stream_with_error(tmp_path):
+# four moments: enough for three provider errors in a row
+FOUR = [
+    {"sport": "football", "match_id": "f1", "idx": i, "clock": f"{10 * i:02d}:00", "type": "Shot"}
+    for i in range(4)
+]
+
+
+def stream(tmp_path, commentate):
+    deps = Deps(lambda: [], lambda mid: FOUR, commentate)
+    with TestClient(create_app(store=Store(tmp_path), deps=deps)) as client:
+        rid = client.post("/replays", json={"match_id": "f1", "speed": 1e6}).json()["replay_id"]
+        return read_stream(client, rid)
+
+
+def test_one_provider_error_skips_its_line_and_the_match_goes_on(tmp_path):
+    def flaky(moment, history):
+        if moment["idx"] == 1:
+            raise TimeoutError("provider timed out")
+        return fake_commentate(moment, history)
+
+    events = stream(tmp_path, flaky)
+    names = [n for n, _ in events]
+    assert names == ["moment", "line", "stats", "moment", "moment_off_air"] + [
+        "moment",
+        "line",
+        "stats",
+    ] * 2 + ["end"]
+    assert dict(events)["moment_off_air"] == {"code": "moment_off_air", "idx": 1}
+    assert [d["line_id"] for n, d in events if n == "line"] == ["f1-0", "f1-2", "f1-3"]
+
+
+def test_three_provider_errors_in_a_row_end_the_stream_with_error(tmp_path):
     def boom(moment, history):
         raise RuntimeError("provider down")
 
-    deps = Deps(lambda: [], lambda mid: MOMENTS[mid], boom)
-    with TestClient(create_app(store=Store(tmp_path), deps=deps)) as client:
-        rid = client.post("/replays", json={"match_id": "f1", "speed": 1e6}).json()["replay_id"]
-        names = [n for n, _ in read_stream(client, rid)]
-    assert names == ["moment", "error", "end"]
+    names = [n for n, _ in stream(tmp_path, boom)]
+    assert names == ["moment", "moment_off_air"] * 2 + ["moment", "error", "end"]
 
 
 def test_commentator_error_payload_is_generic(tmp_path):
@@ -76,10 +104,9 @@ def test_commentator_error_payload_is_generic(tmp_path):
             "402 starter_credit_used_up: see https://console.mubit.ai request_id=abc123"
         )
 
-    deps = Deps(lambda: [], lambda mid: MOMENTS[mid], broke)
-    with TestClient(create_app(store=Store(tmp_path), deps=deps)) as client:
-        rid = client.post("/replays", json={"match_id": "f1", "speed": 1e6}).json()["replay_id"]
-        error = dict(read_stream(client, rid))["error"]
+    events = stream(tmp_path, broke)
+    error = dict(events)["error"]
+    assert all("console" not in str(d) for _, d in events)
     assert error == {"code": "commentator_off_air", "detail": "Commentator is off air for a moment"}
 
 
@@ -122,10 +149,8 @@ def test_a_failed_model_call_is_logged_with_its_error(tmp_path, caplog):
     def broke(moment, history):  # Mubit's reply when the credit ran out (sweep 5)
         raise RuntimeError("Error code: 402 - {'error': {'type': 'starter_credit_used_up'}}")
 
-    deps = Deps(lambda: [], lambda mid: MOMENTS[mid], broke)
-    with TestClient(create_app(store=Store(tmp_path), deps=deps)) as client:
-        rid = client.post("/replays", json={"match_id": "f1", "speed": 1e6}).json()["replay_id"]
-        read_stream(client, rid)
+    stream(tmp_path, broke)
+    assert "replay f1 skipped 0: RuntimeError: Error code: 402" in caplog.text
     assert "replay f1 stopped: RuntimeError: Error code: 402" in caplog.text
     assert "starter_credit_used_up" in caplog.text
 
