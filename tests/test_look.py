@@ -4,11 +4,13 @@ never the system prompt or tools, so the lead's Mubit task stays the same."""
 import logging
 import threading
 
+import pytest
 from fastapi.testclient import TestClient
 
 from agent import look
 from agent.commentator import build_request
 from core.app import Deps, create_app
+from core.guard import spent
 from core.look import Looks
 from core.smoke import read_stream
 from core.store import Store
@@ -74,7 +76,8 @@ class Eyes:
         self.requests.append(request)
         if isinstance(self.said, Exception):
             raise self.said
-        return {"content": [{"type": "text", "text": self.said}]}
+        usage = {"input_tokens": 1000, "output_tokens": 10}
+        return {"content": [{"type": "text", "text": self.said}], "usage": usage}
 
 
 class Gate(threading.Event):
@@ -166,9 +169,15 @@ def test_a_note_that_names_anyone_is_dropped(tmp_path):
 def test_numbers_in_words_and_nothing_are_no_note():
     assert look.clean("Two players argue") is None
     assert look.clean("nothing") is None and look.clean("") is None
-    assert look.clean("the ball in their own half, near the box.") == (
-        "the ball in their own half, near the box"
-    )
+    assert look.clean("the ball near the box.") == "the ball near the box"
+
+
+def test_ordinals_amounts_other_scripts_and_capitals_are_no_note():
+    probes = ["sixth goal", "the twentieth corner", "a dozen shots", "a thousand fans", "half-time"]
+    probes += ["²", "a ½ volley", "LEBRON", "a dunk by LEBRON"]
+    for said in probes:
+        assert look.clean(said) is None, said
+    assert look.clean("a corner kick") == "a corner kick"
 
 
 def test_one_frame_every_four_seconds_then_the_cap(tmp_path):
@@ -238,6 +247,35 @@ def test_only_a_base64_jpeg_frame_is_taken(tmp_path):
     assert png.status_code == 422 and junk.status_code == 422 and eyes.requests == []
 
 
+def test_each_frame_call_counts_toward_the_daily_spend(tmp_path):
+    client, go, _, _, clock = watched(tmp_path, "a corner kick")
+    with client:
+        rid = started(client)
+        frame(client, rid)
+        clock.now += 4
+        frame(client, rid)
+        go.set()
+        read_stream(client, rid)
+    calls = Store(tmp_path).all("looks")
+    assert [(c["model"], c["tokens_in"], c["tokens_out"]) for c in calls] == [
+        (look.MODEL, 1000, 10)
+    ] * 2
+    day = calls[0]["created_at"][:10]
+    assert spent(Store(tmp_path), day) == pytest.approx(2 * (1000 * 1.0 + 10 * 5.0) / 1e6)
+
+
+def test_a_frame_body_over_the_limit_is_refused_before_it_is_read(tmp_path):
+    client, go, _, eyes, _ = watched(tmp_path, "a corner kick")
+    big = b'{"image": "/9j/' + b"A" * 430_000 + b'", "t": 1}'
+    with client:
+        rid = started(client)
+        said = client.post(f"/replays/{rid}/look", content=big)  # its Content-Length
+        hid = client.post(f"/replays/{rid}/look", content=iter([big[:200_000], big[200_000:]]))
+        go.set()
+        read_stream(client, rid)
+    assert said.status_code == 413 and hid.status_code == 413 and eyes.requests == []
+
+
 def test_offline_there_is_no_vision_call(monkeypatch):
     monkeypatch.delenv("MUBIT_API_KEY", raising=False)
-    assert look.see(FRAME, []) is None
+    assert look.see(FRAME, []) == {"note": None}

@@ -7,7 +7,7 @@ import os
 import threading
 from pathlib import Path
 
-KINDS = ("lines", "fixes", "auto_fixes", "adapter", "answers", "voice", "replays")
+KINDS = ("lines", "fixes", "auto_fixes", "adapter", "answers", "voice", "replays", "looks")
 
 
 class Store:

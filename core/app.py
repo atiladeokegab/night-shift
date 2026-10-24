@@ -15,9 +15,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from core import insight, predict, review
 from core.guard import OFF_TODAY, Guard, SayOnly, cached_commentator, client_ip
@@ -45,9 +46,9 @@ class Deps:
     ask: Callable[[str, list[dict], list[dict]], dict] | None = None
     status: Callable[[list[dict]], dict] | None = None
     fixes: bool = False  # commentate takes `fixes=`: the match's producer fixes go in each request
-    # a frame of the viewer's shared screen (base64 JPEG) and the match's names: one note, or None.
-    # Set, commentate takes `seen=` too (#291)
-    look: Callable[[str, list[str]], str | None] | None = None
+    # a frame of the viewer's shared screen (base64 JPEG) and the match's names: {"note"}, one note
+    # or None, with the call's model and tokens. Set, commentate takes `seen=` too (#291)
+    look: Callable[[str, list[str]], dict] | None = None
 
 
 def with_fixes(commentate, store):
@@ -105,6 +106,9 @@ class FixRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
     corrected_text: str = Field(min_length=1, max_length=200)
     reason: str = Field("", max_length=200)  # it goes in later prompts
+
+
+LOOK_BYTES = 420_000  # a frame's request body: the image's 400 kB and the JSON around it
 
 
 class LookRequest(BaseModel):
@@ -366,9 +370,24 @@ def create_app(
         return fix
 
     @app.post("/replays/{replay_id}/look")
-    async def look(replay_id: str, req: LookRequest):
+    async def look(replay_id: str, request: Request):
         """One frame of the viewer's shared tab (#291): its note goes in the replay's next line. The
         frame is never stored or logged."""
+        size = request.headers.get("content-length", "")
+        if size and (not size.isdigit() or int(size) > LOOK_BYTES):
+            raise HTTPException(413, "That frame is too big.")
+        body = bytearray()
+        # a hard limit too: Content-Length can lie or be absent
+        async for chunk in request.stream():
+            body += chunk
+            if len(body) > LOOK_BYTES:
+                raise HTTPException(413, "That frame is too big.")
+        try:
+            req = LookRequest.model_validate_json(bytes(body))
+        except ValidationError as exc:  # never the input: it is the frame
+            raise RequestValidationError(
+                exc.errors(include_url=False, include_input=False)
+            ) from None
         d = need_deps()
         replay = viewed(replay_id)
         if d.look is None or replay_id not in live:  # stored lines said again, or the replay ended
@@ -383,13 +402,17 @@ def create_app(
         names = [m.get("team") for m in moments] + [
             n for m in moments for n in m["players"].values()
         ]
-        # shortcut: a frame's model call is not in the daily spend (about $0.0003, at most
-        # LOOKS_PER_REPLAY a replay); count it there if frames ever cost more
         try:
-            note = await asyncio.to_thread(d.look, req.image, names)
+            seen = await asyncio.to_thread(d.look, req.image, names)
         except Exception as exc:  # the type only: nothing of the frame reaches the log
             log.warning("look %s: no note: %s", replay.match_id, type(exc).__name__)
-            note = None
+            seen = {"note": None}
+        note = seen["note"]
+        if "model" in seen:  # a call was made: its cost counts toward the daily cap, not the frame
+            cost = {k: seen[k] for k in ("model", "tokens_in", "tokens_out")}
+            created_at = datetime.now(UTC).isoformat(timespec="seconds")
+            record = {"match_id": replay.match_id, "replay_id": replay_id, **cost}
+            await asyncio.to_thread(store.append, "looks", {**record, "created_at": created_at})
         if note:
             looks.keep(replay_id, note, req.t)
         return {"note": note}

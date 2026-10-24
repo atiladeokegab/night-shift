@@ -19,8 +19,10 @@ ASK = "What does the picture show?"
 # a number said in words is a number too: the lines' numbers come only from the match data
 NUMBER_WORDS = re.compile(
     r"\b(zero|nil|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|"
-    r"\w+teen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|"
-    r"first|second|third|fourth|fifth|minute|minutes)\b",
+    r"\w+teen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|"
+    r"first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth|"
+    r"\w+teenth|\w+tieth|dozens?|hundreds?|hundredth|thousands?|thousandth|millions?|"
+    r"half|halves|minute|minutes)\b",
     re.I,
 )
 
@@ -48,7 +50,8 @@ def request(image: str) -> dict:
 
 def clean(text: str, names=()) -> str | None:
     """The model's phrase as a note: digits stripped, at most MAX_WORDS words; None for no note, a
-    number in words, or any name (a capital after the first word, or a word of a match's name)."""
+    number in words or in another script (², ½), or any name (an all-caps word, a capital after the
+    first word, or a word of a match's name)."""
     said = text.strip().splitlines()[0] if text.strip() else ""
     said = re.sub(r"\d+(?:[:.,'’\-–]\d*)*", " ", said)  # 2-1, 45:00, 90', No. 9
     said = re.sub(r"(?<!\w)[^\w\s]+(?!\w)", " ", said)  # what the digits left: a lone - or :
@@ -56,7 +59,9 @@ def clean(text: str, names=()) -> str | None:
     if not words or (len(words) == 1 and words[0].lower() == "nothing"):
         return None
     note = " ".join(words)
-    if NUMBER_WORDS.search(note) or any(w[0].isupper() for w in words[1:]):
+    if NUMBER_WORDS.search(note) or any(c.isnumeric() for c in note):
+        return None
+    if any(w[0].isupper() for w in words[1:]) or any(w.isupper() and len(w) > 1 for w in words):
         return None
     # shortcut: a name as the first word passes unless it is one of the match's names (the players
     # and teams); a word list or a tagger if the model starts doing that
@@ -66,14 +71,23 @@ def clean(text: str, names=()) -> str | None:
     return note[0].lower() + note[1:]
 
 
-def see(image: str, names=(), provider=None) -> str | None:
-    """One note for the frame `image` (base64 JPEG), or None. Offline (no MUBIT_API_KEY): None,
-    since the offline commentator has nothing to look with."""
+def see(image: str, names=(), provider=None) -> dict:
+    """One note for the frame `image` (base64 JPEG), or None, with the call's model and tokens for
+    the daily spend. Offline (no MUBIT_API_KEY): no call, so no note: the offline commentator has
+    nothing to look with."""
     if provider is None:
         if not os.environ.get("MUBIT_API_KEY"):
-            return None
+            return {"note": None}
         from agent.commentator import unrecorded_provider
 
         provider = unrecorded_provider()
-    reply = provider.call(request(image))
-    return clean(" ".join(b["text"] for b in reply["content"] if b["type"] == "text"), names)
+    sent = request(image)
+    reply = provider.call(sent)
+    said = " ".join(b["text"] for b in reply["content"] if b["type"] == "text")
+    usage = reply.get("usage") or {}
+    return {
+        "note": clean(said, names),
+        "model": sent["model"],
+        "tokens_in": usage.get("input_tokens", 0),
+        "tokens_out": usage.get("output_tokens", 0),
+    }
