@@ -98,3 +98,25 @@ def test_a_label_that_could_inject_another_var_stops_the_deploy(tmp_path, value)
 def test_a_voice_value_that_could_inject_another_var_stops_the_deploy(tmp_path, value):
     done, deployed = deploy(tmp_path, VOICE_FOOTBALL=value)
     assert done.returncode == 1 and "VOICE_FOOTBALL" in done.stderr and not deployed
+
+
+def secrets(deployed):
+    return deployed.split("--set-secrets ")[1].split(" --set-env-vars ")[0].split(",")
+
+
+def test_the_owners_key_mounts_as_the_fallback_at_a_pinned_version(tmp_path):
+    done, deployed = deploy(tmp_path)
+    assert done.returncode == 0, done.stderr
+    assert "MUBIT_API_KEY=mubit-api-key:latest" in secrets(deployed)
+    assert "MUBIT_FALLBACK_KEY=mubit-api-key:3" in secrets(deployed)
+
+
+def test_the_fallback_version_can_be_overridden(tmp_path):
+    done, deployed = deploy(tmp_path, MUBIT_FALLBACK_VERSION="4")
+    assert done.returncode == 0, done.stderr
+    assert "MUBIT_FALLBACK_KEY=mubit-api-key:4" in secrets(deployed)
+
+
+def test_a_bad_fallback_version_stops_the_deploy(tmp_path):
+    done, deployed = deploy(tmp_path, MUBIT_FALLBACK_VERSION="3,X=y:latest")
+    assert done.returncode == 1 and "MUBIT_FALLBACK_VERSION" in done.stderr and not deployed

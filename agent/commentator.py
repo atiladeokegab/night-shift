@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import copy
 import json
+import logging
 import os
 import re
 import time
@@ -28,6 +29,7 @@ TOOL_CHOICE = {"type": "auto"}
 MODEL = "claude-haiku-4-5"
 MAX_TOKENS = 100
 MUBIT_URL = "https://api.mubit.ai/anthropic"
+log = logging.getLogger(__name__)
 
 
 def session_id(sport: str, match_id: str) -> str:
@@ -244,7 +246,10 @@ def default_provider():
         key = os.environ.get("MUBIT_API_KEY")
         # MUBIT_RECORD=off: the key's app pays for lines but trains on none (a lent demo key)
         record = os.environ.get("MUBIT_RECORD", "on") != "off"
-        _provider = MubitProvider(key, record=record) if key else FakeProvider()
+        # the owner's key, used once the lent one runs out (402): the owner's app trains on it
+        owner = os.environ.get("MUBIT_FALLBACK_KEY")
+        fallback = MubitProvider(owner) if owner else None
+        _provider = MubitProvider(key, record=record, fallback=fallback) if key else FakeProvider()
     return _provider
 
 
@@ -257,7 +262,9 @@ def unrecorded_provider():
     global _unrecorded
     if _unrecorded is None:
         key = os.environ.get("MUBIT_API_KEY")
-        _unrecorded = MubitProvider(key, record=False) if key else FakeProvider()
+        owner = os.environ.get("MUBIT_FALLBACK_KEY")
+        fallback = MubitProvider(owner, record=False) if owner else None
+        _unrecorded = MubitProvider(key, record=False, fallback=fallback) if key else FakeProvider()
     return _unrecorded
 
 
@@ -363,10 +370,13 @@ def _block(b) -> dict:
 
 
 class MubitProvider:
-    """Anthropic SDK pointed at Mubit; streams so the first word can be timed."""
+    """Anthropic SDK pointed at Mubit; streams so the first word can be timed. A key that runs out
+    of credit (402) hands every later call to `fallback`'s key."""
 
-    def __init__(self, api_key: str, record: bool = True, timeout: float = 20.0):
+    def __init__(self, api_key: str, record: bool = True, timeout: float = 20.0, fallback=None):
         import anthropic
+
+        self.fallback = fallback
 
         headers = {} if record else {"x-middleware-record": "off"}
         self.client = anthropic.Anthropic(
@@ -378,8 +388,28 @@ class MubitProvider:
         )
 
     def call(self, request: dict) -> dict:
+        import anthropic
+
+        client, start = self.client, time.monotonic()
+        try:
+            return self._stream(client, request)
+        except anthropic.APIStatusError as exc:
+            if exc.status_code != 402 or not self.fallback or client is self.fallback.client:
+                raise
+            failed_ms = (time.monotonic() - start) * 1000
+            if self.client is client:  # once, even when two replays hit the 402 together
+                log.warning(
+                    "mubit: the key ran out of credit (402); switching to MUBIT_FALLBACK_KEY"
+                )
+                self.client = self.fallback.client  # sticky: no failed call before every line
+            reply = self.fallback.call(request)
+            if reply["first_word_ms"] is not None:  # the viewer waited through the 402 as well
+                reply["first_word_ms"] += failed_ms
+            return reply
+
+    def _stream(self, client, request: dict) -> dict:
         start, first = time.monotonic(), None
-        with self.client.messages.stream(**request) as stream:
+        with client.messages.stream(**request) as stream:
             for _ in stream.text_stream:
                 if first is None:
                     first = (time.monotonic() - start) * 1000
