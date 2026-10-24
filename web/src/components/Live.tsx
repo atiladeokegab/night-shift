@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { momentTag } from '../moment'
 import { embeds, posterUrl, showNoVideoCaption, watchUrl } from '../player'
-import { commentatorName } from '../teams'
+import { chipName, commentatorName } from '../teams'
 import { SPORT_NAMES, type Line, type Match, type Sport } from '../types'
 import { onScreen, type Clock, type ReplayState } from '../useReplay'
 import { LineLog } from './LineLog'
@@ -133,8 +133,9 @@ export function Live(props: Props) {
                 </button>
               ))}
             </div>
-            <button className="btn voice" disabled={busy} aria-haspopup="dialog" onClick={onVoiceSheet}>
-              <span>Voice: {voice.status === 'on' ? voice.name : voice.status === 'off' ? 'Off' : 'Unavailable'}</span>
+            <button className="btn voice" disabled={busy} aria-haspopup="dialog" onClick={onVoiceSheet}
+              aria-label={`Voice: ${voice.status === 'on' ? voice.name : voice.status === 'off' ? 'Off' : 'Unavailable'}`}>
+              <span><span className="pre">Voice: </span>{voice.status === 'on' ? chipName(voice.name) : voice.status === 'off' ? 'Off' : 'Unavailable'}</span>
             </button>
             {onNext && <button className="btn" disabled={busy} onClick={onNext}>Next match →</button>}
           </div>

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import type { Match, Moment, Sport } from './types.ts'
-import { commentatorName, cricketScore, sheetVoices, voiceName } from './teams.ts'
+import { chipName, commentatorName, cricketScore, sheetVoices, voiceName } from './teams.ts'
 
 const voice = (label: string) => ({ id: 'v', label, lang: 'en-GB', default_for: null })
 
@@ -37,4 +37,11 @@ test('the voice sheet lists a voice once per sport, as that sport\'s own entry',
   assert.deepEqual(ids('f1'), ['viraj', 'connor', 'announcer', 'sam', 'cricket-pick'])
   assert.deepEqual(ids('basketball'), ['viraj', 'connor', 'announcer', 'sam', 'cricket-pick'])
   assert.deepEqual(ids('football', 'announcer'), ['viraj', 'connor', 'announcer', 'sam', 'cricket-pick']) // the chosen entry stays checked
+})
+
+test('the dock chip shortens a long pick label to its last two words; a short name stays whole', () => {
+  assert.equal(chipName('British Football Announcer'), 'Football Announcer')
+  assert.equal(chipName('Sam, Engaging Game Narrator'), 'Game Narrator')
+  assert.equal(chipName('British'), 'British')
+  assert.equal(chipName('Football pick'), 'Football pick')
 })
