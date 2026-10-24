@@ -60,7 +60,8 @@ def test_the_cold_open_is_said_once_before_the_first_call_then_cached(tmp_path):
     assert len(opens(fake)) == 2
     ends = [insight.due_after(ln["video_t"], ln["text"]) for ln in opened]
     assert opened[0]["video_t"] == start and ends[0] == opened[1]["video_t"]
-    assert ends[-1] <= min(first_t, start + insight.OPEN_S)  # a breath before the call, in 15 s
+    assert ends[-1] <= first_t  # a breath before the call
+    assert sum(len(ln["text"].split()) / insight.WORDS_PER_S for ln in opened) <= insight.OPEN_S
     # the analyst hears the lead's welcome, by name
     q = opens(fake)[1]["messages"][0]["content"]
     assert f"{NAMES['lead']} just said: {opened[0]['text']}" in q
@@ -222,3 +223,58 @@ def test_an_open_line_with_a_number_the_match_doesnt_give_is_asked_once_more_the
     asked.clear()
     again = run(counting("Welcome to the Women's Super League."), stale)
     assert asked == ["lead", "analyst"] and "40000" not in " ".join(ln["text"] for ln in again)
+
+
+KEYED = {  # the open of the keyed WSL run at 7f28aaa, where Julian's line was cut for time
+    "lead": "Hello everyone, welcome to Brighton against Bristol City in the Women's Super League, "
+    "Julian alongside me.",
+    "analyst": "Good to be here with you, Jim, and it should be a lively afternoon.",
+}
+
+
+def test_wsl_hears_both_open_lines_at_a_real_lines_length(tmp_path):
+    # 17 and 13 words: the welcome alone took 8.3 s with its breath, so a 15 s cap that counted
+    # breaths cut Julian; the speech is 11.1 s, said in full a breath before the goal at 39 s
+    def keyed(moment, history):
+        if not moment["outcome"].startswith(insight.OPEN):
+            return None
+        text = KEYED[moment["detail"]["speaker"]]
+        return {"line_id": uuid.uuid4().hex, "moment_idx": moment["idx"], "text": text}
+
+    r = Replay(WSL, 1e9)
+    asyncio.run(run_replay(r, load_moments(WSL), keyed, Store(tmp_path), video_map(WSL)))
+    said = [e["data"] for e in r.events if e["event"] == "line"]
+    assert [(ln["speaker"], ln["text"]) for ln in said] == list(KEYED.items())
+    first_t = min(m["video_t"] for m in video_map(WSL)["moments"])
+    assert insight.due_after(said[1]["video_t"], said[1]["text"]) <= first_t
+
+
+class SameBridge(Fake):
+    """Every analyst line opens "Right, Jim, and", as in the keyed WSL run at 7f28aaa, unless the
+    request says which opener to avoid."""
+
+    def call(self, request):
+        reply = super().call(request)
+        q = request["messages"][0]["content"]
+        for b in reply["content"]:
+            if b["type"] == "text" and "speaker: analyst," in q and "never open with: " not in q:
+                b["text"] = f"Right, {NAMES['lead']}, and {b['text']}"
+        return reply
+
+
+def test_no_analyst_opener_repeats_within_a_match(tmp_path):
+    for match_id in ("3869685", WSL, KOBE):
+        fake = SameBridge()
+        r = Replay(match_id, 1e9)
+        calls = functools.partial(commentator.commentate, provider=fake)
+        store = Store(tmp_path / match_id)
+        asyncio.run(run_replay(r, load_moments(match_id), calls, store, video_map(match_id)))
+        said = [e["data"] for e in r.events if e["event"] == "line"]
+        # the data's own ball line (#205's fallback) is not the analyst's words
+        analyst = [ln for ln in said if ln["speaker"] == "analyst" and not ln.get("fallback")]
+        openers = [insight.opener(ln["text"]) for ln in analyst]
+        assert len(analyst) > 5 and len(set(openers)) == len(openers), match_id
+        # one line kept the bridge; the rest were asked again, told which opener to avoid
+        assert sum(o == ("right", "jim", "and") for o in openers) == 1
+        asked = [q["messages"][0]["content"] for q in stat_calls(fake)]
+        assert any("never open with: right jim and" in q for q in asked)

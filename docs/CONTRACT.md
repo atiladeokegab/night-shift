@@ -61,7 +61,8 @@ and refuses to start without `STORE_URL=gs://bucket/prefix`.
   analyst, who just said: <last line>"). Its request is a line's message with the analyst's own
   system prompt (agent/analyst.md), no tools, never recorded, on `ANALYST_MODEL` (default
   claude-sonnet-5-5 with `thinking: {"type": "between_tools"}`, priced in core/stats.py; a
-  model outside its prices is left out of the cost). An **insight** (`speaker: "analyst"`) carries `insight: {match_id, after_idx, n, kind, detail, heard, by, named}`, where `kind` is
+  model outside its prices is left out of the cost). An **insight** (`speaker: "analyst"`) carries `insight: {match_id, after_idx, n, kind, detail, heard, by, named}` (plus `never open with`
+  when its first try opened like an earlier analyst line: no opener's first 3 words repeat in a replay), where `kind` is
   `"player profile"`, `"next to score"`, `"tally"`, `"score story"`, `"momentum"` or `"positions"`
   and `detail` is one short fact (a profile, odds or positions give one fact per insight; a
   pre-match fact names its period, such as "this season before tonight"), built only from moments up to `after_idx` and the pre-match pack. Every
@@ -69,7 +70,7 @@ and refuses to start without `STORE_URL=gs://bucket/prefix`.
   A replay from the start opens with a **cold open** (#221) before the first mapped moment, from
   `video_start`: the lead's welcome naming the match, then the analyst's light line (`open: {...,
   kind: "cold open", n: 0 | 1, kickoff}`), each kept only if it ends 2 s before the first call and
-  within 15 s; said over the last moment before the first mapped one, else (`kickoff`) over the
+  the open's speech stays within 15 s; said over the last moment before the first mapped one, else (`kickoff`) over the
   first with its counts zeroed and no history.
   All three are cached per (match_id, after_idx, n, v: 4) and reused by later replays; a replay
   makes at most 160 new calls for them. A fix on any goes back, unrecorded, with that line's own

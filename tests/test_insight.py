@@ -4,6 +4,7 @@ video replay, from data up to the moment they follow only, through the analyst's
 
 import asyncio
 import functools
+import itertools
 import json
 import uuid
 from collections import Counter
@@ -37,15 +38,19 @@ def letters(n: int) -> str:
     return "x" + "".join(chr(97 + int(d)) for d in str(n))  # "x": never a stop word like "be"
 
 
+CALLS = itertools.count()  # across Fakes: a new viewing's lines never open like the cached ones
+
+
 class Fake(FakeProvider):
     """FakeProvider, its read-back swapped for 7 copies of a word new to each call: an insight's
     Event reads back the whole stat, and stretch lines that repeat one another are dropped."""
 
     def call(self, request):
         reply = super().call(request)
+        word = letters(next(CALLS))
         for b in reply["content"]:
             if b["type"] == "text":
-                b["text"] = " ".join([letters(len(self.requests))] * 7)
+                b["text"] = " ".join([word] * 7)
         return reply
 
 
@@ -78,7 +83,8 @@ class Sized:
 
     def __call__(self, moment, history):
         self.stats += moment["type"] == "Stat"
-        said = f"{moment['type']} {letters(moment['idx'])} " + f"{letters(self.stats)} " * 12
+        # "i" keeps the moment's word apart from the count's, so no two lines nearly repeat
+        said = f"{moment['type']} i{letters(moment['idx'])} " + f"{letters(self.stats)} " * 12
         return {"line_id": uuid.uuid4().hex, "moment_idx": moment["idx"], "text": said.strip()}
 
 

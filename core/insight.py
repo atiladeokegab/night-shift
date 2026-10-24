@@ -294,6 +294,7 @@ class Gaps:
             and i.get("v") == VERSION
         }
         self.used: set[str] = set()
+        self.openers: set[tuple[str, ...]] = set()  # the analyst's first words so far (#221)
         self.turn = 0
         self.opens = 0
         self.calls = 0
@@ -330,6 +331,10 @@ class Gaps:
     def wrong(self, text: str, stat: dict, past: list[dict]) -> list[str]:
         """What an analyst line or reply gets wrong against its stat and the moments before it."""
         return wrong_numbers(text, stat, self.header() or None, past)
+
+    def stale(self, text: str) -> bool:
+        """Whether an analyst line opens with the same first words as one before it this replay."""
+        return len(o := opener(text)) == OPENER_WORDS and o in self.openers
 
     def next_stat(self, past: list[dict], first: bool = False) -> tuple[str, str] | None:
         """The next kind in turn with a detail not said yet in this replay; a stretch's first
@@ -384,6 +389,8 @@ class Gaps:
                 return None
             if self.wrong(ln.get("text") or "", stat_moment(m, said_as, reply), past):
                 ln = None  # stored before the check (or a newer check fails it): made again
+            elif not reply and not ln.get("fallback") and self.stale(ln.get("text") or ""):
+                ln = None  # opens like an earlier line this replay: made again
         elif self.calls >= MAX_CALLS:
             return None
         else:
@@ -412,7 +419,7 @@ class Gaps:
             if picked[0] == "orientation":  # said at the ball's time, the latest it reads (A-1.4)
                 said_as["clock"] = ball["clock"]
         if ln is None:
-            failed = False  # a try had a wrong number
+            failed = False  # a try had a wrong number or a used opener
             for retry in (False, True):
                 if self.calls >= MAX_CALLS:
                     return None
@@ -425,11 +432,17 @@ class Gaps:
                 if said and said.get("text") and (fresh or not repeats(said["text"], list(recent))):
                     # the moment lines' number check: a wrong number gets the same stat once more,
                     # then the line is dropped; an unchecked number is never said
-                    if fresh or not self.wrong(said["text"], stat_moment(m, said_as, reply), past):
+                    stat = stat_moment(m, said_as, reply)
+                    right = fresh or not self.wrong(said["text"], stat, past)
+                    # the analyst's opener never repeats in a match: asked once more, told which
+                    stale = not reply and self.stale(said["text"])
+                    if right and (not stale or retry and fresh):  # a ball line falls back below
                         said = {**said, "checked": True, **({"retried": True} if failed else {})}
                         break
                     if retry:
                         return None
+                    if stale:
+                        said_as = {**said_as, "never open with": " ".join(opener(said["text"]))}
                     failed = True
                     continue
                 if reply or retry or self.calls >= MAX_CALLS:
@@ -440,8 +453,9 @@ class Gaps:
                     return None
                 said_as = {**said_as, "kind": picked[0], "detail": picked[1]}
                 said_as.pop("clock", None)  # a stat is said at its moment's time
-            if said_as["kind"] == "orientation" and wrong_orientation(
-                said["text"], m, said_as, self.header(), past
+            if said_as["kind"] == "orientation" and (
+                wrong_orientation(said["text"], m, said_as, self.header(), past)
+                or self.stale(said["text"])
             ):
                 said = {**said, "text": said_as["detail"], "fallback": True}
             key = {"match_id": self.match_id, "after_idx": m["idx"], "n": n}
@@ -457,14 +471,9 @@ class Gaps:
             )
         if not reply:
             self.used.add(said_as["detail"])
+            if not ln.get("fallback"):  # the data's ball line is not the analyst's opener
+                self.openers.add(opener(ln["text"]))
         return stat_moment(m, said_as, reply), ln
-
-    def wrong_open(self, text: str, stat: dict, past: list[dict]) -> list[str]:
-        try:
-            header = self.header()
-        except KeyError:  # not a bundled match: its numbers are still checked
-            header = None
-        return wrong_numbers(text, stat, header, past)
 
     def cold_open(
         self, before: list[dict], first: dict, t: float, first_t: float, commentate
@@ -473,10 +482,10 @@ class Gaps:
         `first_t`): the lead welcomes the listener and names the match, the analyst adds one light
         line (#221). Said over the last moment `before` it, else over `first` with no score yet, so
         its play never reaches the request. Cached like the insights; a line, cached or new, is
-        said only if it ends a breath before the first call and within OPEN_S, else the open ends
-        there. [(Stat moment, stored Line)] in order."""
+        said only if it ends a breath before the first call and the open's speech stays within
+        OPEN_S, else the open ends there. [(Stat moment, stored Line)] in order."""
         m, history, kickoff = (before[-1], before, False) if before else (first, [], True)
-        out, heard, until = [], "", min(first_t, t + OPEN_S)
+        out, heard, spoken = [], "", 0.0  # spoken: seconds of speech so far, breaths not counted
         for n, (speaker, ask) in enumerate(OPENING):
             lead = speaker == "lead"
             ln = self.cached.get((m["idx"], n, True))
@@ -495,11 +504,15 @@ class Gaps:
             )
             stat = stat_moment(m, said_as, lead)
             # the moment lines' number check on every open line, cached ones too (#224's for the
-            # stretches): a number the match doesn't give is never said
-            if ln is not None and self.wrong_open(ln.get("text") or "", stat, history):
-                ln = None
+            # stretches): a number the match doesn't give is never said; nor a stored answer to a
+            # welcome since made again
+            if ln is not None and (
+                said_as["heard"] != heard or self.wrong(ln.get("text") or "", stat, history)
+            ):
+                ln, said_as = None, {**said_as, "heard": heard}
+                stat = stat_moment(m, said_as, lead)
             if ln is None:
-                if t > until - CLEAR_S:
+                if t > first_t - CLEAR_S:
                     break
                 said = None
                 for retry in (False, True):  # a wrong number: asked once more, then the open ends
@@ -507,7 +520,7 @@ class Gaps:
                         break
                     self.calls += 1
                     got = commentate(stat, list(history))
-                    if got and got.get("text") and not self.wrong_open(got["text"], stat, history):
+                    if got and got.get("text") and not self.wrong(got["text"], stat, history):
                         said = {**got, "checked": True, **({"retried": True} if retry else {})}
                         break
                 if said is None:
@@ -524,11 +537,22 @@ class Gaps:
                     },
                 )
             done = due_after(t, ln.get("text"))
-            if done > until:
+            spoken += done - t - PAUSE_S
+            if done > first_t or spoken > OPEN_S:
                 break
+            if not lead:
+                self.openers.add(opener(ln["text"]))
             out.append((stat, {**ln, "video_t": t}))
             heard, t = ln["text"], done
         return out
+
+
+OPENER_WORDS = 3  # an analyst line's opener: these first words, never twice in a replay (#221)
+
+
+def opener(text: str) -> tuple[str, ...]:
+    """A line's first OPENER_WORDS words, lowercased, without punctuation."""
+    return tuple(re.findall(r"[\w'’]+", text.lower())[:OPENER_WORDS])
 
 
 RECENT_LINES = 3  # a line is checked against this many before it in the replay
@@ -1075,6 +1099,7 @@ def stat_moment(m: dict, said_as: dict, reply: bool) -> dict:
         "partner": f"{NAMES[partner]}, the {partner}",
         "call partner by name": "yes" if said_as.get("named") else "no",
         f"{NAMES[by]} just said": said_as["heard"],
+        **({"never open with": said_as["never open with"]} if "never open with" in said_as else {}),
     }
     event = (
         f"the lead answers the analyst, who just said: {said_as['heard']}"
