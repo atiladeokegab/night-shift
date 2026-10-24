@@ -1,0 +1,18 @@
+{
+  "label": "before",
+  "case": "jordan",
+  "at": "2026-10-24T23:24:27+00:00",
+  "match_id": "0049700088",
+  "idx": 30,
+  "line": "Jordan with the driving layup! Chicago Bulls take the lead, 85-86!",
+  "key": "ok",
+  "answer": "{\"score\":\"wrong\"}",
+  "label_parsed": "wrong",
+  "matches_key": false,
+  "mubit_request_id": "mreq_01a1703ad34b7a618a5ad9b57e1f5ad8",
+  "served_by": "claude-sonnet-5-5",
+  "middleware": {
+    "x-middleware-request-id": "mreq_01a1703ad34b7a618a5ad9b57e1f5ad8"
+  },
+  "record": false
+}
