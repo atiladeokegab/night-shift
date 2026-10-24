@@ -277,8 +277,8 @@ _trainer = None
 
 
 def correction_provider():
-    """Mubit on the owner's key, recorded whatever MUBIT_RECORD says: a producer's fix is the example
-    the owner's app trains on, and the lent key never records. None without MUBIT_FALLBACK_KEY."""
+    """Mubit on the owner's key, recorded whatever MUBIT_RECORD says: a producer's fix is the
+    example the owner's app trains on, and the lent key never records. None without an owner key."""
     global _trainer
     owner = os.environ.get("MUBIT_FALLBACK_KEY")
     if _trainer is None and owner:
