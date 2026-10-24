@@ -13,6 +13,7 @@ import re
 import time
 import uuid
 from datetime import UTC, datetime
+from difflib import get_close_matches
 from pathlib import Path
 from string import Template
 
@@ -243,6 +244,13 @@ _PREAMBLE = re.compile(
 )
 
 
+# An answer's own decline, which the preamble rule would drop whole (#332): "I don't see Megan
+# Rapinoe in this match." Said aloud, it is the answer to a trap.
+_DECLINE = re.compile(r"^I(?:'m)?\s+(?:\w+\s+)?(?:can['’]t|cannot|don['’]t|do not|not|have no)\b")
+# An answer opening on the viewer's question said back (agent/ask.md asks for it), which _fit kept
+# alone when the answer ran long: "How much time remains in this final?" (#332).
+_ECHO = re.compile(r"^[^.!?\n]*\?\s+(?=\S)")
+
 # A stray grade word the model put before the line: "BAD Manenti with a boundary!".
 _STRAY = re.compile(r"^BAD\s+(?=[A-Z])")
 MAX_WORDS = 20
@@ -256,12 +264,15 @@ _META = re.compile(
 )
 
 
-def spoken(text: str, limit: int = MAX_WORDS) -> str:
-    """The line as spoken: preamble dropped, and any paragraph about the input left out."""
-    kept = []
-    for para in re.split(r"\n\s*\n", text.strip()):
+def spoken(text: str, limit: int = MAX_WORDS, ask: bool = False) -> str:
+    """The line as spoken: preamble dropped, and any paragraph about the input left out. An answer
+    (`ask`) also drops the question said back before it and keeps a first-person decline."""
+    kept, text = [], text.strip()
+    while ask and (m := _ECHO.match(text)):
+        text = text[m.end() :]
+    for para in re.split(r"\n\s*\n", text):
         para = para.strip()
-        while (m := _PREAMBLE.match(para)) and m.end():
+        while (m := _PREAMBLE.match(para)) and m.end() and not (ask and _DECLINE.match(para)):
             para = para[m.end() :].lstrip()
         para = _STRAY.sub("", para)
         if para and not _META.search(para):
@@ -563,6 +574,54 @@ def _tally(header: dict, past: list[dict]) -> str:
     )
 
 
+# Capitalised words in a question that are no name: a sentence's opening word ("Has Neymar
+# scored?" asks about Neymar alone), the game's own words ("Who scored in the Final?"), and dates.
+_NOT_NAMES = set(
+    "has have had did does do is are was were will would can could should how who what when where"
+    " which why whose tell give and or but so tonight today now please any anyone anybody everyone"
+    " there it its this that these those they he she we you your my me hey hi ok okay yes no wow"
+    " final finals cup world half extra time penalty penalties shootout league quarter overtime"
+    " game match goal score season round semi championship playoffs playoff trophy"
+    " monday tuesday wednesday thursday friday saturday sunday january february march april may"
+    " june july august september october november december".split()
+)
+
+
+def _strangers(question: str, header: dict, past: list[dict]) -> list[str]:
+    """The names in a viewer's question that are no player or team in this match (#332), so a trap
+    ("Has Neymar scored?") is answered plainly, not dodged. Known names come from every moment and
+    the pack's squad: a substitute who comes on later is no stranger, and nothing later is said."""
+    from data.matches import load_moments
+
+    try:
+        moments = load_moments(header["match_id"])
+    except KeyError:  # a match with no data file: its moments so far
+        moments = past
+    pack = predict.load_pack(header["sport"], header["match_id"]) or {}
+    names = [str(header.get(k) or "") for k in ("home", "away", "competition", "stage", "venue")]
+    names += [str(m.get("team") or "") for m in moments]
+    names += [str(v) for m in moments for v in (m.get("players") or {}).values()]
+    names += [str(n) for n in (*pack.get("players", ()), *pack.get("teams", ()))]
+    known = {w for n in names for w in re.findall(r"[\w'’-]+", predict._fold(n))}
+
+    def is_known(word: str) -> bool:  # "Mbappe" is Mbappé, "Spurs" is Tottenham Hotspur
+        w = predict._fold(word)
+        return bool(get_close_matches(w, known, 1, 0.8)) or (
+            len(w) >= 4 and any(w[:4] in k for k in known)
+        )
+
+    out = []
+    for run in re.findall(r"\b[A-Z][\w'’-]*(?:\s+[A-Z][\w'’-]*)*", question):
+        words = [
+            w
+            for w in run.split()
+            if re.split(r"['’-]", w.lower())[0] not in _NOT_NAMES and not w.isupper()
+        ]
+        if words and not all(map(is_known, words)):
+            out.append(" ".join(words))
+    return out
+
+
 def answer(
     question: str,
     past: list[dict],
@@ -592,6 +651,11 @@ def answer(
             + ("\n".join(_goal(header, p) for p in _goals(past)) or "- none yet")
         )
     request["messages"][0]["content"] += _tally(header, past)
+    if strangers := _strangers(question, header, past):
+        request["messages"][0]["content"] += (
+            "\nNot a player or team in this match, so say plainly they are not in it: "
+            + ", ".join(json.dumps(n, ensure_ascii=False) for n in strangers)
+        )
     request["messages"][0]["content"] += "\n" + QUESTION.format(lines=heard, question=quoted)
     if wrong:
         request["messages"][0]["content"] += (
@@ -600,9 +664,14 @@ def answer(
     start = time.monotonic()
     reply, replies, tool_calls, _ = _call(provider or unrecorded_provider(), request, header, past)
     said = " ".join(b["text"] for b in reply["content"] if b["type"] == "text")
-    text = spoken(said, ANSWER_WORDS)
-    if not text:
-        raise NoLine(f"no answer at moment {past[-1]['idx']}")
+    text, fell = spoken(said, ANSWER_WORDS, ask=True), False
+    if not text or text.endswith("?"):  # nothing to say, or only the question: never off air (#332)
+        from agent.status import fallback_text
+
+        try:
+            text, fell = f"No word on that yet. {fallback_text(header, past[-1])}", True
+        except KeyError as e:
+            raise NoLine(f"no answer at moment {past[-1]['idx']}") from e
     return {
         "line_id": uuid.uuid4().hex,  # an answer is spoken like a line: /lines/{id}/audio
         "sport": header["sport"],
@@ -617,6 +686,7 @@ def answer(
         "mubit_request_ids": [r["request_id"] for r in replies],
         "tool_calls": tool_calls,
         "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
+        **({"fallback": True} if fell else {}),
     }
 
 

@@ -6,6 +6,7 @@ import json
 import threading
 import time
 from datetime import UTC, datetime
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
@@ -188,7 +189,7 @@ def test_a_flag_reaches_the_fix_queue_and_stats(tmp_path):
     # the rules passed the line; Line check's flag puts it in the producer's queue all the same
     entry = next(q for q in queued if q["line_id"] == "k6")
     assert entry["wrong"] == ["Checker model: score may be wrong"] and entry["text"] == RIGHT
-    assert stats["linecheck"] == {
+    assert {k: v for k, v in stats["linecheck"].items() if k != "heldout"} == {
         "checked": 1,
         "flags": 1,
         "rules_missed": 1,
@@ -308,7 +309,37 @@ def test_the_eval_scores_line_check_beside_the_rules_offline(tmp_path, capsys):
     assert model["tp"] + model["fp"] == 6  # it flagged every line, so every line counts as a flag
     path = tmp_path / "held_out.jsonl"
     path.write_text("\n".join(json.dumps(x) for x in labels))
-    assert linecheck_eval.main(["--dry", str(path)], env={}) == 0
+    assert (
+        linecheck_eval.main(["--dry", str(path), "--json", str(tmp_path / "r.json")], env={}) == 0
+    )
     shown = capsys.readouterr().out
     assert "| Rules check | 6 |" in shown and "| Line check | 6 |" in shown
     assert linecheck_eval.main([], env={}) == 2  # no key: never a call
+    # the counts /stats serves (#317), as the table: FakeProvider flags nothing
+    rules = checker_eval.evaluate(labels)["overall"]
+    assert json.loads((tmp_path / "r.json").read_text()) == {
+        "labels": "held_out.jsonl",
+        "lines": 6,
+        "wrong": rules["tp"] + rules["fn"],
+        "rules": {"caught": rules["tp"], "false_alarms": rules["fp"]},
+        "line_check": {"caught": 0, "false_alarms": 0},
+        "errors": 0,
+    }
+
+
+def test_stats_serve_the_held_out_result_the_eval_wrote(tmp_path, monkeypatch):
+    from core import stats as stats_mod
+    from eval import linecheck_eval
+
+    # the shape --json writes (web/src/proof.test.ts reads the same fixture)
+    fixture = Path(__file__).parent / "fixtures" / "linecheck_heldout.json"
+    result = json.loads(fixture.read_text())
+    rules = {"overall": {"lines": 288, "tp": 1, "fn": 4, "fp": 0}}
+    model = {"overall": {"tp": 3, "fp": 5}}
+    out = {"rules": rules, "line_check": model, "errors": 0}
+    assert linecheck_eval.summary("heldout_labels.jsonl", out) == result
+    store = Store(tmp_path / "store")
+    monkeypatch.setattr(stats_mod, "HELDOUT", tmp_path / "linecheck_heldout.json")
+    assert stats_mod.stats(store)["linecheck"]["heldout"] is None  # no file: nothing claimed
+    monkeypatch.setattr(stats_mod, "HELDOUT", fixture)
+    assert stats_mod.stats(store)["linecheck"]["heldout"] == result

@@ -50,7 +50,7 @@ def test_every_goal_is_on_the_official_highlights_and_the_jump_plays_the_last_tw
         33: 171.0,
         34: 201.0,
     }
-    assert (vmap["youtube_id"], vmap["start"]) == ("soJej-DhVe0", 14)
+    assert (vmap["youtube_id"], vmap["start"]) == ("soJej-DhVe0", 27)
     assert PEAKS[WSL] == 33 and video_map(WSL, PEAKS[WSL])["start"] == 161
 
 

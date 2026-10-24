@@ -5,6 +5,7 @@ STORE_URL=gs://bucket/prefix."""
 import json
 import os
 import threading
+import time
 from pathlib import Path
 
 KINDS = (
@@ -76,11 +77,16 @@ class Store:
 
 
 class GcsStore(Store):
-    """Each kind is one GCS object; an append rewrites it, compare-and-swap on its generation."""
+    """Each kind is one GCS object; an append rewrites it, compare-and-swap on its generation. Each
+    kind's text is cached with its generation (#156): a read makes no GCS call while the cache was
+    checked in the last FRESH_S, else one metadata call; an append uploads the cached text plus the
+    record, and downloads only when another writer got there first."""
+
+    FRESH_S = 2.0  # how stale another process's write may look; this process's own never is
 
     # shortcut: every append rewrites the whole object (about one write a second per object);
     # a database if two producers edit at once (IDEA.md ceilings).
-    def __init__(self, url: str, client=None):
+    def __init__(self, url: str, client=None, clock=time.monotonic):
         from google.cloud import storage
 
         bucket, _, prefix = url.removeprefix("gs://").partition("/")
@@ -88,13 +94,36 @@ class GcsStore(Store):
         self.prefix = prefix.strip("/")
         self._lock = threading.Lock()
         self._cache = {}
+        self._checked: dict[str, float] = {}  # kind: when its generation was last read
+        self.clock = clock
 
     def _blob(self, kind: str):
         return self.bucket.blob(f"{self.prefix}/{kind}.jsonl" if self.prefix else f"{kind}.jsonl")
 
     def _stamp(self, kind: str):
+        cached, now = self._cache.get(kind), self.clock()
+        # stats() reads every kind after each line of every replay: 9 metadata calls a line
+        if cached and now - self._checked.get(kind, -self.FRESH_S) < self.FRESH_S:
+            return cached[0]
         blob = self.bucket.get_blob(self._blob(kind).name)  # metadata only, never the object
+        self._checked[kind] = now
         return blob.generation if blob else None
+
+    def _fetch(self, kind: str) -> tuple[int, str]:
+        """The object's generation (0: none yet) and text, downloaded at that generation."""
+        from google.api_core.exceptions import PreconditionFailed
+
+        for _ in range(8):
+            # get_blob loads the generation; blob().exists() leaves it None, which read the
+            # object as empty and let the next append overwrite every earlier record
+            blob = self.bucket.get_blob(self._blob(kind).name)
+            if blob is None:
+                return 0, ""
+            try:
+                return blob.generation, blob.download_as_text(if_generation_match=blob.generation)
+            except PreconditionFailed:  # it changed between the two calls
+                continue
+        raise RuntimeError(f"store: {kind} kept changing under the read")
 
     def _read(self, kind: str) -> str:
         blob = self._blob(kind)
@@ -105,22 +134,24 @@ class GcsStore(Store):
 
         if kind not in KINDS:
             raise ValueError(f"unknown kind {kind!r}")
+        row = json.dumps(record) + "\n"
         with self._lock:
+            cached = self._cache.get(kind)
+            # a cached None is a kind not written yet: generation 0 uploads only if still none
+            gen, text = (cached[0] or 0, cached[1]) if cached else self._fetch(kind)
             for _ in range(8):
-                # get_blob loads the generation; blob().exists() leaves it None, which read
-                # the object as empty and let the next append overwrite every earlier record
-                blob = self.bucket.get_blob(self._blob(kind).name)
-                gen = blob.generation if blob else 0
+                out = self._blob(kind)
                 try:
-                    text = blob.download_as_text(if_generation_match=gen) if blob else ""
-                    text += json.dumps(record) + "\n"
-                    out = self._blob(kind)
-                    out.upload_from_string(text, if_generation_match=gen)
-                    # the upload loads the new generation; None (unknown) just fetches next time
-                    self._cache[kind] = (out.generation, text)
-                    return record
-                except PreconditionFailed:
+                    out.upload_from_string(text + row, if_generation_match=gen)
+                except PreconditionFailed:  # another writer: start again from its text
+                    gen, text = self._fetch(kind)
                     continue
+                if out.generation:  # the upload loads it; unknown, the next read fetches
+                    self._cache[kind] = (out.generation, text + row)
+                    self._checked[kind] = self.clock()
+                else:
+                    self._cache.pop(kind, None)
+                return record
         raise RuntimeError(f"store: {kind} kept changing under the append")
 
 

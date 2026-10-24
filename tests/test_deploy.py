@@ -10,6 +10,7 @@ import pytest
 SCRIPT = Path(__file__).parent.parent / "scripts" / "deploy.sh"
 STUB = """#!/usr/bin/env bash
 printf '%s\\n' "$*" >> "$CALLS"
+[[ -n "${FAIL_ON:-}" && "$*" == *"$FAIL_ON"* ]] && exit 1
 [[ "$*" == *"services describe"* ]] && printf 'https://x.run.app\\trev-1\\n'
 exit 0
 """
@@ -39,7 +40,8 @@ def deploy(tmp_path, dotenv="", **env):
     done = subprocess.run(
         ["bash", "scripts/deploy.sh"], cwd=repo, env=run_env, capture_output=True, text=True
     )
-    deployed = next((c for c in calls.read_text().splitlines() if "run deploy" in c), "")
+    made = calls.read_text().splitlines() if calls.exists() else []  # none: stopped first
+    deployed = next((c for c in made if "run deploy" in c), "")
     return done, deployed
 
 
@@ -145,3 +147,30 @@ def test_a_producer_token_that_could_inject_another_var_stops_the_deploy(tmp_pat
     done, deployed = deploy(tmp_path, PRODUCER_TOKEN="ab@MUBIT_RECORD=on")
     assert done.returncode == 1 and "PRODUCER_TOKEN" in done.stderr and not deployed
     assert "ab@MUBIT" not in done.stderr + done.stdout
+
+
+def test_the_backup_voice_keys_mount_from_a_pinned_version_that_must_exist(tmp_path):
+    done, deployed = deploy(tmp_path)
+    assert done.returncode == 0, done.stderr
+    assert "ELEVENLABS_API_KEY=elevenlabs-api-key:latest" in secrets(deployed)
+    assert "ELEVENLABS_API_KEY_FALLBACKS=elevenlabs-api-key:4" in secrets(deployed)
+    calls = (tmp_path / "calls").read_text()
+    assert "secrets versions describe 4 --secret elevenlabs-api-key --project p" in calls
+
+
+def test_the_backup_voice_version_can_be_overridden_or_turned_off(tmp_path):
+    done, deployed = deploy(tmp_path / "a", ELEVENLABS_FALLBACK_VERSION="6")
+    assert "ELEVENLABS_API_KEY_FALLBACKS=elevenlabs-api-key:6" in secrets(deployed)
+    done, deployed = deploy(tmp_path / "b", ELEVENLABS_FALLBACK_VERSION="none")
+    assert done.returncode == 0, done.stderr
+    assert not any(s.startswith("ELEVENLABS_API_KEY_FALLBACKS") for s in secrets(deployed))
+    assert "secrets versions" not in (tmp_path / "b" / "calls").read_text()
+
+
+@pytest.mark.parametrize(
+    "env",
+    [{"ELEVENLABS_FALLBACK_VERSION": "4,X=y:latest"}, {"FAIL_ON": "secrets versions describe"}],
+)
+def test_a_bad_or_missing_backup_voice_version_stops_the_deploy(tmp_path, env):
+    done, deployed = deploy(tmp_path, **env)
+    assert done.returncode == 1 and "ELEVENLABS_FALLBACK_VERSION" in done.stderr and not deployed

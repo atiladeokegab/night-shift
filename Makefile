@@ -1,4 +1,4 @@
-.PHONY: dev check smoke demo-check bootstrap deploy
+.PHONY: dev check smoke load demo-check live-e2e bootstrap deploy
 
 PROJECT ?= hackathon-starter-ao
 
@@ -15,10 +15,20 @@ smoke: check
 	MUBIT_API_KEY= MUBIT_FALLBACK_KEY= ANTHROPIC_API_KEY= ELEVENLABS_API_KEY= \
 		MAX_LIVE_REPLAYS=0 REPLAYS_PER_HOUR=0 ASKS_PER_HOUR=0 DAILY_BUDGET_USD=0 uv run python -m core.smoke
 
+# Five judges at once on a local server, offline: first-line p95, 429s and 5xx, /health, memory.
+# STORE=gcs runs GcsStore over a bucket with GCS-like latency, as production stores.
+load:
+	uv run python scripts/load_check.py --store $(or $(STORE),local)
+
 # Before a live demo: the live site (or URL=...) is healthy, voiced by ElevenLabs and under budget.
 # Starts one short smoke replay; nothing else is written.
 demo-check:
 	uv run python scripts/demo_check.py $(URL)
+
+# After a deploy: a judge's path on the live site (or URL=...) in a real Chromium. Plays Chelsea v
+# Spurs, so it spends about one replay's model and voice cost.
+live-e2e:
+	cd web && LIVE_URL=$(URL) npx playwright test -c playwright.live.config.ts
 
 # One-time GCP setup: secrets from MUBIT_API_KEY and ELEVENLABS_API_KEY, the state bucket, IAM.
 bootstrap:
