@@ -46,7 +46,7 @@ export function Wall({ matches, error, onRetry, onOpen, onGo }: Props) {
         {body}
         <p className="foot">
           Match data: StatsBomb open data, Cricsheet, NBA play-by-play and OpenF1. Highlights: broadcast highlights on
-          YouTube, embedded, muted. Commentary is AI-generated.
+          YouTube, embedded and muted where their owners allow it, linked where they don't. Commentary is AI-generated.
         </p>
       </main>
     </div>

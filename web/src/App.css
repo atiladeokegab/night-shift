@@ -99,7 +99,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 #video.dim .player { opacity: .45; filter: saturate(.6); transition: opacity .4s; }
 #video.off .player { display: none; }
 /* An embed-blocked video's poster: a still, darkened so the overlays read as they do over the picture. */
-#video .still { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .45; }
+#video .still { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .3; }
 .live { position: relative; z-index: 1; }
 .stage { position: relative; height: var(--stage-h); }
 /* The bottom scrim is pinned in px to the subtitle lane (bottom 150px, two lines and the tag), so it sits
@@ -166,7 +166,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 @keyframes spin { to { transform: rotate(360deg); } }
 /* Its own small backdrop, so it reads over a bright frame like the subtitle does. */
 .novideo { position: absolute; top: 46%; left: var(--gut); right: calc(var(--side-w) + var(--gut) + 16px); transform: translateY(-50%); z-index: 1; width: fit-content; margin: 0 auto; padding: 6px 12px; border-radius: 10px; background: rgba(6, 8, 15, .78); text-align: center; color: var(--muted); font-size: .95rem; text-shadow: 0 1px 2px rgba(0, 0, 0, .9); }
-.novideo a { color: var(--amber); }
+.novideo a { color: var(--amber); display: inline-block; padding: 10px 4px; margin: -10px -4px; } /* a bigger tap target, same layout */
 .banner { position: absolute; top: 148px; left: var(--gut); right: calc(var(--side-w) + var(--gut) + 16px); z-index: 3; display: flex; justify-content: center; }
 .banner > div { display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 16px; border-radius: 14px; font: 500 .92rem/1.3 var(--body); }
 .banner .warn { border-color: rgba(255, 181, 71, .45); }
@@ -288,6 +288,8 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   .subtitle { bottom: 170px; gap: 12px; }
   /* Under the score bar, clear of the moment tag; an alert banner takes the spot while it shows. */
   .novideo { top: 148px; transform: none; font-size: .85rem; }
+  /* The F1 standings card is four rows (lap and the top three), so the caption drops below it. */
+  .stage:has(.scorebar.f1) .novideo { top: 176px; }
   /* The scrim sized to the phone's subtitle lane (two lines and the tag above the two-row dock), so
      the players above it stay in the clear (docs/design.md "never sits on the players"). */
   .shade { background: linear-gradient(180deg, rgba(6, 8, 15, .78) 0%, rgba(6, 8, 15, 0) 24%),

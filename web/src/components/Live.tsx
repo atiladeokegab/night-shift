@@ -168,13 +168,14 @@ function Timeline({ replay, synced }: { replay: ReplayState; synced: boolean }) 
   const at = (t: number) => (length ? `${Math.min(100, (t / length) * 100)}%` : '0%')
   return (
     <div className="lane timeline">
-      <span className="yt">
+      {/* Empty with no picture: it would contradict the no-video caption. The span keeps the grid's columns. */}
+      <span className="yt">{synced && <>
         <svg viewBox="0 0 16 16" aria-hidden="true">
           <rect x="1" y="3" width="14" height="10" rx="3" fill="none" stroke="currentColor" strokeWidth="1.3" />
           <path d="M6.5 5.8v4.4L10.3 8z" fill="currentColor" />
         </svg>
         Broadcast highlights · YouTube · muted
-      </span>
+      </>}</span>
       <div className="track" aria-hidden>
         <span className="played" style={{ width: at(replay.now) }} />
         {marks.map((m) => (
