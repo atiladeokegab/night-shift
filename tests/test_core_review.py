@@ -73,6 +73,17 @@ def test_a_fix_from_review_empties_the_queue_and_counts_like_a_replays_fix(clien
     assert stats["fixes"] == 1 and stats["fixes_recorded"] == 1
 
 
+def test_review_polls_with_nothing_new_share_one_build_and_a_fix_rebuilds_it(client, monkeypatch):
+    # every open page polls /review; each poll building the queue from the whole store held the
+    # live site's one CPU (57 s answers and 429s, 24 Oct)
+    reads, real = [], client.store.all
+    monkeypatch.setattr(client.store, "all", lambda kind: reads.append(kind) or real(kind))
+    first = client.get("/review").json()
+    assert client.get("/review").json() == first and reads.count("linechecks") == 1
+    client.post("/lines/w-new/fix", json={"corrected_text": RIGHT, "reason": "Wrong score"})
+    assert client.get("/review").json() == []
+
+
 def test_a_reply_to_the_analyst_is_checked_against_what_the_analyst_said(tmp_path):
     store = Store(tmp_path)
     for ln in (
