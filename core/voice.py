@@ -85,14 +85,8 @@ TAGS = {
     "Wicket": "[shouting]",
     "Six": "[shouting]",
     "Last ball": "[shouting]",
-    "Shot": "[excited]",
-    "Four": "[excited]",
-    "Foul Committed": "[excited]",
-    "Bad Behaviour": "[excited]",
     "Chase": "[hushed]",
     "End of game": "[shouting]",
-    "Steal": "[excited]",
-    "Free throw": "[excited]",
     "Lead change": "[shouting]",  # f1: an overtake for the lead
     "Red flag": "[shouting]",  # a crash stops the race
     "Finish": "[shouting]",
@@ -106,7 +100,7 @@ TAGS = {
 }
 
 ANSWER_TAG = "[excited]"
-ANALYST_TAG = "[warmly]"  # the analyst's stat lines between moments (#130): the lead's register
+ANALYST_TAG = None  # the analyst's stat lines between moments (#130) read plain, like the lead's
 # What the two commentators call each other (#221): only the analyst's and reply requests carry
 # them, never the lead's recorded moment prompt
 NAMES = {"lead": "Jim", "analyst": "Julian"}
@@ -134,16 +128,33 @@ def _call_tag(moment: dict) -> str | None:
     return TAGS.get(moment.get("type"))
 
 
+def _goal_stakes(m: dict) -> str | None:
+    """A football goal from the state of the game: level, a go-ahead or a one-goal game is high, a
+    goal in a late two-goal game too; a goal that makes it three or more is medium (#378)."""
+    score = m.get("score") or {}
+    if m.get("sport") != "football" or m.get("outcome") != "Goal" or "home" not in score:
+        return None
+    margin = abs(score["home"] - score["away"])
+    try:
+        late = int(str(m.get("clock")).split(":")[0]) >= 80
+    except ValueError:
+        late = False
+    return "high" if margin <= 1 or (late and margin == 2) else "medium"
+
+
 def intensity(moment: dict) -> str:
-    """How big a moment is, from the tag its call gets; a stat line carries its moment's (#378)."""
+    """How big a moment is: the tag its call gets, and for a football goal the game's state; a stat
+    line carries its moment's (#378)."""
     if moment.get("type") == "Stat":
         return (moment.get("detail") or {}).get("intensity", "calm")
-    return {"[shouting]": "high", "[excited]": "medium"}.get(_call_tag(moment), "calm")
+    return _goal_stakes(moment) or {"[shouting]": "high", "[excited]": "medium"}.get(
+        _call_tag(moment), "calm"
+    )
 
 
 # How the pair sounds at each intensity: one tag for both voices, so they share a pitch and tone
 # like two people in one booth (#378); a big moment lifts them together.
-PAIR_TAG = {"high": "[excited]", "medium": "[warmly]", "calm": ANALYST_TAG}
+PAIR_TAG = {"high": "[excited]", "medium": "[warmly]", "calm": None}  # routine reads plain
 # eleven_v3 takes stability at 0 (creative), 0.5 (natural) or 1 (robust) only
 STABILITY = {"high": 0.0, "medium": 0.5, "calm": 0.5}
 
@@ -151,7 +162,8 @@ STABILITY = {"high": 0.0, "medium": 0.5, "calm": 0.5}
 def tag_for(moment: dict) -> str | None:
     if moment.get("type") == "Stat":  # a stat line or comeback: its moment's intensity, by speaker
         return PAIR_TAG[intensity(moment)]
-    return _call_tag(moment)
+    tag = _call_tag(moment)
+    return PAIR_TAG["medium"] if tag == "[shouting]" and intensity(moment) == "medium" else tag
 
 
 def all_voices(env=os.environ) -> list[dict]:
@@ -418,7 +430,7 @@ class Speaker:
         if "question" in line:
             said = ANSWER_TAG
         elif line.get("speaker") == "analyst":
-            said = self.tags.get(line["line_id"]) or ANALYST_TAG
+            said = self.tags.get(line["line_id"], ANALYST_TAG)
         else:
             said = self.tags.get(line["line_id"])
         tag = said if "v3" in model else None

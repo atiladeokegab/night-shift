@@ -1,13 +1,16 @@
 """Talk to the commentator (#380): a short-lived signed URL for the browser, and the custom LLM
 ElevenLabs calls for each turn, answered by the Ask path and cut at the moment on screen."""
 
+import asyncio
 import json
+import time
 from functools import partial
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
 from agent.commentator import FakeProvider, answer
-from core import converse
+from core import converse, insight
 from core.app import Deps, create_app
 from core.smoke import read_stream
 from core.store import Store
@@ -35,6 +38,7 @@ def talk(tmp_path, monkeypatch, env=ENV):
     ask = partial(answer, header=HEADER, provider=provider)
     deps = Deps(lambda: [], lambda mid: MOMENTS, line, ask=ask)
     monkeypatch.setattr(converse, "signed_url", signed)
+    monkeypatch.setattr(converse.commentator, "unrecorded_provider", lambda: provider)
     client = TestClient(create_app(store=Store(tmp_path), deps=deps))
     return client, provider, asked
 
@@ -149,3 +153,101 @@ def test_off_air_the_agent_says_so_calmly(tmp_path, monkeypatch):
         resp = turn(client, ctx, "Who scored?", stream=False)
     text = resp.json()["choices"][0]["message"]["content"]
     assert text == "Commentator is off air for a moment"
+
+
+class SlowClient:
+    """The Anthropic SDK's streaming shape: (delay, text) pieces, each after its delay."""
+
+    def __init__(self, pieces, kind="text"):
+        self.pieces, self.kind, self.messages = pieces, kind, self
+
+    def stream(self, **request):
+        return self
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def __iter__(self):
+        for delay, text in self.pieces:
+            time.sleep(delay)
+            yield SimpleNamespace(type=self.kind, text=text)
+
+    def get_final_message(self):
+        text = "".join(t for _, t in self.pieces)
+        return SimpleNamespace(
+            content=[SimpleNamespace(type="text", text=text)],
+            usage=SimpleNamespace(input_tokens=1, output_tokens=1),
+        )
+
+
+def model(pieces):
+    return SimpleNamespace(client=SlowClient(pieces), call=None)
+
+
+async def sentences(inner, question="Who scored?"):
+    ask = partial(answer, header=HEADER)
+    past, lines = MOMENTS[:2], []
+    return [s async for s in converse.speak(ask, inner, question, past, lines)]
+
+
+SLOW = [(0.05, "Player1 scored for the Reds. "), (0.6, "A fine finish by Player1.")]
+
+
+def test_the_first_sentence_is_spoken_before_the_model_has_finished():
+    async def run():
+        ask, start = partial(answer, header=HEADER), time.monotonic()
+        spoken = converse.speak(ask, model(SLOW), "Who scored?", MOMENTS[:2], [])
+        first = await anext(spoken)
+        at_first = time.monotonic() - start
+        rest = [s async for s in spoken]
+        return first, at_first, rest
+
+    first, at_first, rest = asyncio.run(run())
+    # before: the whole reply was built first, so time-to-speech was the full model call
+    ask, start = partial(answer, header=HEADER), time.monotonic()
+    tap = converse.Tap(model(SLOW), lambda t: None, lambda: None)
+    insight.checked_answer(partial(ask, provider=tap), "Who scored?", MOMENTS[:2], [])
+    before = time.monotonic() - start
+    assert before > 0.6 and at_first < before / 2
+    assert first == "Player1 scored for the Reds."
+    assert rest == ["A fine finish by Player1."]
+
+
+def test_a_sentence_that_fails_the_number_check_stops_the_answer():
+    said = asyncio.run(
+        sentences(model([(0, "Player1 scored for the Reds. "), (0, "It made it 9-0 to them.")]))
+    )
+    assert said == ["Player1 scored for the Reds."]
+
+
+def test_a_first_sentence_that_fails_falls_back_to_the_safe_answer(monkeypatch):
+    monkeypatch.setattr(converse.commentator, "unrecorded_provider", FakeProvider)
+    inner = model([(0, "The Reds lead 9-0 and Player1 has 40 goals.")])
+    said = asyncio.run(sentences(inner))
+    assert said and "9-0" not in said[0] and "40" not in said[0]
+
+
+def test_the_question_said_back_is_not_spoken():
+    inner = model(
+        [
+            (0, "The viewer is asking who scored the first goal so far tonight. "),
+            (0, "Well, Player1 scored for the Reds."),
+        ]
+    )
+    assert asyncio.run(sentences(inner)) == ["Well, Player1 scored for the Reds."]
+
+
+def test_a_stream_with_no_text_event_we_know_still_answers(monkeypatch):
+    monkeypatch.setattr(converse.commentator, "unrecorded_provider", FakeProvider)
+    inner = SimpleNamespace(client=SlowClient([(0, "Player1 scored.")], kind="something_new"))
+    assert asyncio.run(sentences(inner)) == ["So far, Reds 1, Blues 0."]
+
+
+def test_a_provider_that_cannot_stream_still_answers(monkeypatch):
+    fake = FakeProvider()
+    inner = SimpleNamespace(client=object(), call=fake.call)
+    monkeypatch.setattr(converse.commentator, "unrecorded_provider", lambda: fake)
+    assert asyncio.run(sentences(inner)) == ["So far, Reds 1, Blues 0."]

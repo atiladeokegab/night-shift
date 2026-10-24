@@ -129,10 +129,11 @@ clips sit in the instance's memory ([`core/voice.py`](../core/voice.py)). With R
 SurrealDB's embedded engine, in the app's own process ([`core/graph.py`](../core/graph.py)), loaded
 from the JSON packs ([`data/packs/`](../data/packs)) at startup. Beside it, an on-disk SurrealDB
 store ([`data/graph/`](../data/graph), surrealkv, built offline by `scripts/build_graph.py`) holds
-every match, team and player of each sample match's competition and season (football: 612 matches,
-four competition-seasons; other sports not yet). `team_form`, `head_to_head`, `player_season`,
+every match, team and player of each sample match's competition and season (football: 612 matches in four
+competition-seasons; basketball: NBA 2005-06 and 1997-98, regular season and playoffs; cricket: every
+T20I of 2022 and 2026; F1 not yet. Basketball totals come from the play-by-play, so no minutes). `team_form`, `head_to_head`, `player_season`,
 `squad` and `teams` read it, cut at the kickoff asked about; on any error they return nothing and
-the packs answer. About 75 MB of memory and under a second to open. Still planned: at thousands of
+the packs answer. About 75 MB of memory and under a second to open, 15 MB on disk. Still planned: at thousands of
 matches the graph moves to a SurrealDB service shared by every instance, with edges for "shot in",
 and the commentator's tools and the shot and heat maps query it too, instead of loading one file
 per match.
