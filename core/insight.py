@@ -1137,10 +1137,14 @@ def wrong_claims(text: str, past: list[dict], question: str = "") -> list[str]:
         named = named_in(clause)
 
         for hit in NOT_SCORED.finditer(clause):
-            # "no goal (yet) for Lionel Messi" is Messi's, even after "Lautaro is searching, but"
-            after = re.match(r"\s+(?:yet\s+)?for\s+((?:\w+\s+){0,2}\w+)", clause[hit.end() :])
-            run = range(hit.end() + after.start(1), hit.end() + after.end(1)) if after else ()
-            for_whom = next((name for start, name in named if start in run), None)
+            # "no goal (yet) for Lionel Messi" is Messi's, even after "Lautaro is searching, but";
+            # "no goal for France (while Messi...)" is nobody's
+            after = re.match(r"\s+(?:yet\s+)?for\s+", clause[hit.end() :])
+            rest = clause[hit.end() + after.end() :] if after else ""
+            for_whom = next(
+                (n for n in names if re.match(rf"(?:{re.escape(n)}|{re.escape(said[n])})\b", rest)),
+                None,
+            )
             # "He hasn't scored": the player named last in the answer, else in the question
             he = re.search(
                 r"\b(?:he|she)(?:['’]s)?(?:\s+\w+){0,2}\s*$", clause[: hit.start()], re.I
@@ -1149,7 +1153,8 @@ def wrong_claims(text: str, past: list[dict], question: str = "") -> list[str]:
                 _named_before(everyone, offset + hit.start())
                 or _named_before(asked, len(question) + 1)
             )
-            if (name := for_whom or _named_before(named, hit.start()) or him) and goals[name]:
+            name = for_whom if after else _named_before(named, hit.start()) or him
+            if name and goals[name]:
                 wrong.append(f"{name} has scored {goals[name]} so far")
         for hit in NTH.finditer(clause):
             n = NTH_GOAL.get(next(g for g in hit.groups() if g).lower(), 3)
