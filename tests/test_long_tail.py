@@ -62,7 +62,8 @@ def test_the_checks_hold_on_its_moments():
     said = "Terland, on the half volley from ten yards! Brighton lead three-two!"
     assert insight.wrong_numbers(said, winner, header) == []
     assert insight.wrong_numbers("Terland! Brighton lead 4-2!", winner, header) == [
-        "4 is not in the moment"
+        "4 is not in the moment",
+        "4-2 is not the score (3-2)",
     ]
     # Who leads (#185), by the names a line uses: "Brighton", not "Brighton & Hove Albion WFC".
     equaliser = moments[33]

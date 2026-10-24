@@ -1,8 +1,8 @@
 """The Ask eval (#319): a judge's counts are in the message, own goals add up, and a right answer
 gets through the route's path and its check."""
 
-from agent.commentator import FakeProvider, answer
-from data.matches import load_moments
+from agent.commentator import FakeProvider, _strangers, answer
+from data.matches import load_moments, match_header
 from eval.ask_eval import QUESTIONS, ask, verdict
 
 
@@ -10,6 +10,47 @@ def asked(match_id: str, idx: int) -> str:
     provider = FakeProvider()
     answer("How's it going?", load_moments(match_id)[: idx + 1], [], provider=provider)
     return provider.requests[0]["messages"][0]["content"]
+
+
+class Says:
+    """A model that replies with each scripted content list in turn."""
+
+    def __init__(self, *contents):
+        self.contents = list(contents)
+
+    def call(self, request):
+        content = self.contents.pop(0)
+        if isinstance(content, str):
+            content = [{"type": "text", "text": content}]
+        usage = {"input_tokens": 1, "output_tokens": 1}
+        return {"content": content, "usage": usage, "request_id": "r"}
+
+
+def said_to(match_id: str, idx: int, *replies) -> dict:
+    return answer("Asked?", load_moments(match_id)[: idx + 1], [], provider=Says(*replies))
+
+
+def test_an_answer_drops_the_question_said_back():
+    # #332: the keyed run said "How much time remains in this final?" and nothing else
+    long = "We're at 87 minutes and level at two-two, with three minutes of normal time left"
+    said = said_to("3869685", 30, f"How much time remains in this final? {long}, what a final!")
+    assert said["text"] == f"{long}, what a final!" and "fallback" not in said
+
+
+def test_a_first_person_decline_is_said_not_dropped():
+    # #332: "I don't ..." went as preamble, leaving nothing, and the viewer heard off air
+    decline = "I don't see Megan Rapinoe in this match. The Courage lead three-two."
+    assert said_to("7457", 30, decline)["text"] == decline
+    later = said_to("3754092", 26, "I can't tell you what comes later, but Spurs lead two-one.")
+    assert later["text"] == "I can't tell you what comes later, but Spurs lead two-one."
+
+
+def test_an_answer_with_nothing_to_say_gives_the_status_not_off_air():
+    tool = [{"type": "tool_use", "id": "t1", "name": "get_score", "input": {}}]
+    for replies in (["I have all the information I need."], ["How long is left?"], [tool, tool]):
+        said = said_to("3754092", 26, *replies)
+        assert said["fallback"] and said["text"].startswith("No word on that yet. "), replies
+        assert "Tottenham Hotspur lead 2-1" in said["text"]
 
 
 def test_a_football_ask_holds_each_sides_shots_cards_and_each_scorers_goals():
@@ -49,3 +90,47 @@ def test_the_verdicts():
     assert verdict("France have had six shots.", q) == "wrong"
     assert verdict("I can't say, but it's 2-2.", q) == "refused"
     assert verdict("Commentator is off air for a moment", q) == "refused"
+
+    def keyed(question: str, idx: int) -> dict:
+        return next(q for q in QUESTIONS if (q["q"], q["idx"]) == (question, idx))
+
+    # #332: true answers to the question asked, from the keyed run
+    said = "Kylian Mbappé has just scored his second goal of the match!"
+    assert verdict(said, keyed("What just happened?", 26)) == "correct"
+    said = "We'll find out who lifts the trophy when this match finishes."
+    assert verdict(said, keyed("Who wins the World Cup?", 26)) == "correct"
+    said = "The last goal in this match was an own goal!"
+    assert verdict(said, keyed("Who scored the last goal?", 42)) == "correct"
+    said = "How much time remains in this final?"  # the echo stays wrong
+    assert verdict(said, keyed("How long is left?", 30)) == "wrong"
+
+
+def test_a_name_not_in_the_match_is_named_in_the_message():
+    # #332: the keyed run dodged Neymar and LeBron James; it is told they are not in the match
+    provider = FakeProvider()
+    answer("Has Neymar scored? Or Mbappe?", load_moments("3869685")[:46], [], provider=provider)
+    said = provider.requests[0]["messages"][0]["content"]
+    assert 'so say plainly they are not in it: "Neymar"\n' in said
+    kobe = match_header("0020500591")
+    assert _strangers("How many points has LeBron James scored?", kobe, []) == ["LeBron James"]
+    for q in ("How many points does Kobe have?", "Are the Raptors winning?", "What's the score?"):
+        assert _strangers(q, kobe, []) == [], q
+    spurs = match_header("3754092")  # a nickname or a surname alone is no stranger
+    assert _strangers("Are Spurs winning? Has Son scored?", spurs, []) == []
+    assert _strangers("Did Frank Lampard score?", spurs, []) == ["Frank Lampard"]
+
+
+def test_the_games_own_words_are_no_strangers():
+    # #336: a judge will ask about "the Final"; a game word or a date must not be called a player
+    final = match_header("3869685")
+    assert _strangers("Who scored in the World Cup Final?", final, []) == []
+    assert _strangers("Is Neymar playing?", final, []) == ["Neymar"]
+    spurs = match_header("3754092")  # a Premier League game: Final is still no player
+    for q in (
+        "Who scored in the Final?",
+        "Was there a Penalty in Extra Time?",
+        "Any VAR checks before Half-time?",
+        "Did the MVP score on Monday in May?",
+        "Please, who leads the League?",
+    ):
+        assert _strangers(q, spurs, []) == [], q
