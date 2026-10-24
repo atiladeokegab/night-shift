@@ -81,6 +81,19 @@ def _per_match(store, lines: list[dict], voice: list[dict]) -> dict:
     }
 
 
+def _autonomy(calls: list[dict], fixed_to: set[str]) -> dict:
+    """The lead's moment calls by how the number check left them (#204): passed first time, fixed
+    by the retry, or sent to a human (the retry failed too, the fallback was said, the try queued).
+    A retry from before `retried` was stored is known by its text, the auto fix's correction."""
+    human = sum(bool(ln.get("fallback")) for ln in calls)
+    auto = sum(
+        not ln.get("fallback") and bool(ln.get("retried") or ln.get("text") in fixed_to)
+        for ln in calls
+    )
+    n = len(calls)
+    return {"called": n, "first_time": n - auto - human, "auto_fixed": auto, "to_human": human}
+
+
 def stats(store) -> dict:
     lines = store.all("lines")
     fixes = store.all("fixes")
@@ -94,6 +107,12 @@ def stats(store) -> dict:
     total = [ln["latency_ms"] for ln in lines if ln.get("latency_ms") is not None]
     voice = store.all("voice")
     costs = [c for c in map(_cost, lines) if c is not None]
+    # the moment calls the check sees: not the analyst's stat lines, nor the lead's replies to them
+    calls = [ln for ln in lead if "reply" not in ln]
+    fixed_to = {f["corrected_text"] for f in store.all("auto_fixes")}
+    by_match: dict[str, list[dict]] = {}
+    for ln in calls:
+        by_match.setdefault(ln.get("match_id") or "", []).append(ln)
     return {
         "lines": len(lines),
         "fixes": len(fixes),
@@ -112,5 +131,7 @@ def stats(store) -> dict:
         "fixes_toward_next": sum(f.get("created_at", "") > since for f in recorded),
         "fixes_auto": len(store.all("auto_fixes")),  # the number check's own (#162), not a person's
         "voice_chars": sum(v.get("chars", 0) for v in voice),
+        "autonomy": _autonomy(calls, fixed_to),
+        "autonomy_by_match": {m: _autonomy(c, fixed_to) for m, c in by_match.items()},
         **_per_match(store, lines, voice),
     }

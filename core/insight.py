@@ -725,7 +725,9 @@ def wrong_event(text: str, m: dict) -> list[str]:
 def checked(commentate, moment: dict, history: list[dict]) -> dict | None:
     """A moment's line whose numbers match the moment: regenerated once when they don't, then
     replaced by the line built from the moment's data. A Stat line is the analyst's, and passes.
-    An accepted retry carries the rejected first try as `rejected`; a fallback carries none."""
+    An accepted retry carries the rejected first try as `rejected` and is marked `retried`; a
+    fallback keeps the failed try as `tried` and the check's reasons as `wrong`, for the producer's
+    review queue (#204)."""
     line = commentate(moment, history)
     if not (line and line.get("text")) or moment.get("type") == "Stat":
         return line
@@ -738,9 +740,14 @@ def checked(commentate, moment: dict, history: list[dict]) -> dict | None:
     if not wrong_numbers(line["text"], moment, header, history):
         return line
     again = commentate(moment, history)
-    if again and again.get("text") and not wrong_numbers(again["text"], moment, header, history):
-        return {**again, "rejected": line}  # the replay corrects the recorded first try with it
-    return {**(again or line), "text": fallback_text(header, moment), "fallback": True}
+    if again and again.get("text"):
+        if not (wrong := wrong_numbers(again["text"], moment, header, history)):
+            # the replay corrects the recorded first try with it
+            return {**again, "rejected": line, "retried": True}
+    else:  # nothing usable the second time: the first try is the one the producer fixes
+        again, wrong = line, wrong_numbers(line["text"], moment, header, history)
+    tried = {"tried": again["text"], "wrong": wrong}
+    return {**again, "text": fallback_text(header, moment), "fallback": True, **tried}
 
 
 def stat_moment(m: dict, said_as: dict, reply: bool) -> dict:
