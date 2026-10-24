@@ -10,12 +10,16 @@ into the repo.
     uv run demo/capture/film.py 03-ask --base http://localhost:8000
 
 Prod stays read-only: every request to /lines/<id>/fix is aborted, and the Fix shot cancels its
-sheet. Playwright records no sound, so the commentary clips the page plays are logged and laid
+sheet. With --save-fix it sends the fix (the token from $PRODUCER_TOKEN, when prod asks for
+one) and then jumps to the layup to film the corrected line being called.
+Playwright records no sound, so the commentary clips the page plays are logged and laid
 back onto each video with ffmpeg (NN-name.mp4). The YouTube player's own sound is never in it.
 Headless Chromium draws no cursor.
 """
 
 import argparse
+import json
+import os
 import shutil
 import subprocess
 import tempfile
@@ -31,9 +35,10 @@ VIEW = {"width": 1600, "height": 900}  # 16:9 with the whole caption in view at 
 # The stored Jordan idx 30 lines call the Bulls ahead; the layup only cut Utah's lead to one.
 # "How did Messi score?" got a wrong answer at 105:41 on 24 Oct; the status line is checked (#186).
 QUESTION = "Where are we?"
+# Passes the number check (#232); a fix that fails it is refused with 422.
 JORDAN_FIX = (
-    "Michael Jordan with the layup! The Bulls cut it to one, "
-    "Utah still lead 86 to 85 with 37 seconds left."
+    "Michael Jordan with the driving layup, forty-three for him! "
+    "Utah still lead, eighty-six to eighty-five."
 )
 SAVE_FIX = False  # --save-fix: the one take that really sends the Jordan fix to prod
 
@@ -150,7 +155,12 @@ def fix_jordan(page: Page, base: str) -> None:
     if SAVE_FIX:
         page.get_by_role("button", name="Send fix").click()
         page.get_by_text("Fix sent.").wait_for(timeout=30_000)  # its card leaves the queue
-        page.wait_for_timeout(5000)
+        page.wait_for_timeout(3000)
+        # Fixes are read when a replay starts, so the jump comes after the save: the producer's
+        # own line is called at the layup, marked, with no model call (#232).
+        page.goto(f"{base}/?match=0049700088&at=30")
+        page.locator(".log li.fixed .pill.fixed.producer").wait_for(timeout=90_000)
+        page.wait_for_timeout(8000)
     else:
         page.get_by_role("button", name="Cancel").click()
         page.wait_for_timeout(2000)
@@ -205,6 +215,9 @@ def shoot(browser, name: str, base: str, out: Path, work: Path) -> None:
     ctx = browser.new_context(viewport=VIEW, record_video_dir=str(work), record_video_size=SIZE)
     if not SAVE_FIX:
         ctx.route("**/lines/*/fix", lambda route: route.abort())
+    elif token := os.environ.get("PRODUCER_TOKEN"):
+        # Kept where the page keeps it after its first 401, so the take never shows the token field.
+        ctx.add_init_script(f"localStorage.setItem('producer-token', {json.dumps(token)})")
     events: list[tuple[str, str, float]] = []
     ctx.expose_function("__filmPlay", lambda src: events.append(("play", src, time.time())))
     ctx.expose_function("__filmStop", lambda src: events.append(("stop", src, time.time())))
