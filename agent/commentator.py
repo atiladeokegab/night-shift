@@ -63,6 +63,19 @@ def _score(header: dict, m: dict) -> str:
     return text
 
 
+def _score_leader_first(header: dict, m: dict) -> str:
+    """`_score` for the commentary request: the side ahead first ("Toronto Raptors 69, Los Angeles
+    Lakers 53"), so the model that copies the order says the leader's score first. Level, or no
+    home/away score (cricket, F1): `_score` as is. The check requests keep `_score`."""
+    s = m["score"]
+    if "home" not in s or s["home"] >= s["away"]:
+        return _score(header, m)
+    swap = lambda d: {"home": d["away"], "away": d["home"]}  # noqa: E731
+    detail = {k: swap(v) if k == "shootout" else v for k, v in m["detail"].items()}
+    flipped = {**header, "home": header["away"], "away": header["home"]}
+    return _score(flipped, {**m, "score": swap(s), "detail": detail})
+
+
 def _players(m: dict) -> str:
     return ", ".join(f"{role}: {name}" for role, name in m["players"].items()) or "none"
 
@@ -114,7 +127,7 @@ def render_message(header: dict, past: list[dict]) -> str:
         outcome=_outcome(m),
         team=m["team"],
         players=_players(m),
-        score=_score(header, m),
+        score=_score_leader_first(header, m),
         detail=_detail(m),
         recent="\n".join(f"- {r}" for r in recent),
     )
@@ -209,7 +222,7 @@ def build_request(header: dict, past: list[dict], fixes=(), seen: str | None = N
 def run_tool(name: str, args: dict, header: dict, past: list[dict]) -> str:
     m = past[-1]
     if name == "get_score":
-        return f"{_score(header, m)}; {_period(m)}, {m['clock']}"
+        return f"{_score_leader_first(header, m)}; {_period(m)}, {m['clock']}"
     if name == "get_player":
         who = str((args or {}).get("name", "")).strip().lower()
         hits = [
