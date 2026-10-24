@@ -114,12 +114,13 @@ function Tile({ match, onOpen, onJump }: { match: Match; onOpen: (m: Match) => v
   }, [plays, match.youtube_id, match.video_start])
 
   return (
+    // The three long-tail matches (#246) fill the first row, so the famous six sit in an even grid below them
     <div className="tile-wrap">
     <button className="tile" onClick={() => onOpen(match)}>
       {match.youtube_id ? (
-        <img className="poster" alt="" loading="lazy" onError={(e) => { e.currentTarget.hidden = true }} src={posterUrl(match.youtube_id)} />
+        <img className="poster" alt="" loading="lazy" onError={(e) => { e.currentTarget.hidden = true }} src={posterUrl(match.youtube_id, note ? 'maxresdefault' : 'hqdefault')} />
       ) : (
-        // a whole match has no video (#246): the picker card's stadium and crests stand in
+        // a whole match has no video (#246): the picker card's stadium stands in
         <div className="art" dangerouslySetInnerHTML={{ __html: cardArt(match.sport, ...matchTeams(match)) }} />
       )}
       <div className={`clip${playing && !broken ? ' on' : ''}`} ref={host} aria-hidden />

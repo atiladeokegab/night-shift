@@ -1,7 +1,7 @@
 # Architecture
 
 Two pictures: what runs today, and how it would grow to thousands of matches and viewers. The
-second is a plan. None of it is built.
+second is a plan and is not built; the first is running now.
 
 ## Now: what is running
 
@@ -18,7 +18,7 @@ flowchart LR
         app["Match server<br/>[Container: FastAPI, Python 3.12]<br/>core/app.py: replays, SSE stream, Ask, Fix, /stats"]
         agent["Commentator agent<br/>[Component: Python]<br/>agent/commentator.py, one fixed prompt and tools"]
         packs[("Per-match stats packs<br/>[Files: JSON]<br/>data/packs, built offline")]
-        feeds[("Match event feeds<br/>[Files: JSON]<br/>data/cache: StatsBomb, Cricsheet, NBA, OpenF1")]
+        feeds[("Match event feeds<br/>[Files: JSON]<br/>data/sample, built offline from StatsBomb, Cricsheet, NBA, OpenF1")]
     end
 
     store[("Store<br/>[Cloud Storage: JSON lines]<br/>lines, fixes, answers, adapter")]
@@ -55,10 +55,16 @@ flowchart LR
 1. The page posts `POST /replays` with a match. The server reads that match's moments from its feed.
 2. For each moment in the highlights, the agent makes one call to Mubit's Anthropic endpoint,
    or two when it uses its one round of tools. It is given only the moments up to this one.
-3. The line is appended to the store, sent to ElevenLabs, and published on the SSE stream with its
+3. Each moment's line goes through the number check, `checked()` in
+   [`core/insight.py`](../core/insight.py). A line whose numbers don't match the moment's data gets
+   one retry; if the retry is wrong too, a line built from the data is spoken instead. A retry that
+   passes is sent to Mubit as an automatic correction of the first try. The analyst's stat lines,
+   the lead's replies to them and Ask answers get the same check; one still wrong after its retry is
+   dropped, never said.
+4. The line is appended to the store, sent to ElevenLabs, and published on the SSE stream with its
    video time.
-4. The page holds the line until the YouTube player reaches that time, then shows and speaks it.
-5. Between big moments, the analyst fills the gap with stat lines; now and then the lead replies.
+5. The page holds the line until the YouTube player reaches that time, then shows and speaks it.
+6. Between big moments, the analyst fills the gap with stat lines; now and then the lead replies.
 
 ### Where Mubit training data comes from
 
@@ -67,13 +73,15 @@ The live site runs on a teammate's Mubit key with recording off (`MUBIT_RECORD=o
 the commentator moves to the owner's key, which records
 ([`agent/commentator.py`](../agent/commentator.py)). Training traffic comes from
 [`scripts/replay_matches.py`](../scripts/replay_matches.py), which replays real football and cricket
-matches through the owner's key. Ask answers and the analyst's stat lines are always unrecorded: they have their own prompts and
+matches through the owner's key, and from producer fixes and the number check's automatic
+corrections to moment lines, which go through the owner's key recorded, whatever `MUBIT_RECORD`
+says. Ask answers and the analyst's stat lines are always unrecorded: they have their own prompts and
 would split the one task the lines train.
 
 ## At scale: a plan, not built
 
 > **Plan only.** Nothing in this section is built or deployed. It is how we would take Touchline
-> from one instance and six matches to thousands of matches and viewers.
+> from one instance and seven matches to thousands of matches and viewers.
 
 ```mermaid
 flowchart LR

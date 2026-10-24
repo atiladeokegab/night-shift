@@ -13,7 +13,7 @@ import httpx
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 
-log = logging.getLogger("night_shift.voice")
+log = logging.getLogger("touchline.voice")
 
 TTS_URL = "https://api.elevenlabs.io/v1/text-to-speech/{voice}"
 MODEL = "eleven_v3"  # VOICE_MODEL_<SPORT> overrides it per sport
@@ -97,6 +97,9 @@ TAGS = {
 
 ANSWER_TAG = "[excited]"
 ANALYST_TAG = "[thoughtful]"  # the analyst's stat lines between moments (#130) are calmer
+# What the two commentators call each other (#221): only the analyst's and reply requests carry
+# them, never the lead's recorded moment prompt
+NAMES = {"lead": "Jim", "analyst": "Julian"}
 
 # The second commentator per sport (#131): a library voice with another accent than the lead.
 ANALYST_FOR = {"cricket": "george", "football": "sam", "basketball": "george", "f1": "sam"}

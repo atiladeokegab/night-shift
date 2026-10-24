@@ -1,6 +1,6 @@
 """Replay real matches through the commentator so the Mubit task trains on real, varied calls.
 
-    set -a; . ~/private/night-shift/mubit.env; set +a
+    export MUBIT_API_KEY=...  # the owner's key, which records
     uv run python scripts/replay_matches.py --football 8 --cricket 8
 
 Each match is one Mubit session. Held-out and demo matches are never replayed, and neither is any

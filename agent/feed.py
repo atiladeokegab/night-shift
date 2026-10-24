@@ -1,7 +1,8 @@
-"""Match feeds to Moments: StatsBomb open data (football), Cricsheet (cricket) and OpenF1 (F1).
+"""Match feeds to Moments: StatsBomb open data (football), Cricsheet (cricket), stats.nba.com
+play-by-play (basketball) and OpenF1 (F1).
 
 Downloads are untrusted: every field that reaches a Moment is coerced to a short string or a
-number, and the match header never carries the result. The picker follows the day spec (R11).
+number, and the match header never carries the result.
 """
 
 from __future__ import annotations
@@ -27,7 +28,7 @@ CRICSHEET_ZIP = "https://cricsheet.org/downloads/t20s_json.zip"
 NBA_PBP = "https://github.com/shufinskiy/nba_data/raw/main/datasets/{name}.tar.xz"
 TIMEOUT = httpx.Timeout(30.0, connect=10.0)
 
-# Chelsea v Spurs 2016; Ind v Pak 2022; WC 2022 final; a WSL match
+# The seven demo matches; never replayed for training
 DEMO = {
     ("football", "3754092"),
     ("cricket", "1298150"),

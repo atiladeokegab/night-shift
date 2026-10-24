@@ -65,7 +65,7 @@ def main() -> int:
         return live(os.environ["BASE_URL"].rstrip("/"))
     deps = default_deps()
     if deps is None:
-        print("smoke: no commentator (agent/, data/ from #13 not present)")
+        print("smoke: no commentator (agent/ or data/ failed to import)")
         return 1
     os.environ.pop("ELEVENLABS_API_KEY", None)  # offline: no line is voiced
     with tempfile.TemporaryDirectory() as tmp:

@@ -47,9 +47,10 @@ def stream(tmp_path, video):
 
 def test_mapped_match_calls_only_mapped_moments_with_their_video_time(tmp_path):
     events = stream(tmp_path, F1_VIDEO)
-    assert [n for n, _ in events] == ["moment", "line", "stats"] * 2 + ["end"]
-    lines = [d for n, d in events if n == "line"]
-    moments = [d for n, d in events if n == "moment"]
+    opening = sum(n == "line" and "open" in d for n, d in events)  # the cold open (#221) first
+    assert [n for n, _ in events] == ["moment", "line", "stats"] * (opening + 2) + ["end"]
+    lines = [d for n, d in events if n == "line" and "open" not in d]
+    moments = [d for n, d in events if n == "moment" and d["type"] != "Stat"]
     assert [(ln["line_id"], ln["video_t"]) for ln in lines] == [("f1-0", 12.5), ("f1-2", 80.0)]
     assert [m["video_t"] for m in moments] == [12.5, 80.0]
 
@@ -68,7 +69,8 @@ async def replay_within(seconds, video, store):
 
 
 def test_mapped_lines_never_wait_for_wall_clock(tmp_path):
-    assert len(asyncio.run(replay_within(5, F1_VIDEO, Store(tmp_path)))) == 2
+    lines = asyncio.run(replay_within(5, F1_VIDEO, Store(tmp_path)))
+    assert len([e for e in lines if "open" not in e["data"]]) == 2
 
 
 def test_unmapped_replay_still_paces_by_the_match_clock(tmp_path):
@@ -142,16 +144,17 @@ def test_demo_replay_streams_each_mapped_moment_once(tmp_path, path):
     assert [(ln["line_id"], ln["video_t"]) for ln in lines] == expected
 
 
-def test_each_video_starts_10_s_before_its_first_mapped_moment():
-    # Kobe's first call is 490 s into the highlights: the page starts the video at 480 s, not 0.
-    # 10 s, not 5: the first line is ready ~2 s in, and v3 needs 2-3 s more (#57).
+def test_each_video_starts_25_s_before_its_first_mapped_moment():
+    # Kobe's first call is 490 s into the highlights: the page starts the video at 465 s, not 0.
+    # 10 s, not 5: the first line is ready ~2 s in, and v3 needs 2-3 s more (#57); 15 s more for
+    # the cold open (#221). A jump keeps 10 s (tests/test_core_jump.py).
     assert {m["match_id"]: m.get("video_start") for m in list_matches()} == {
         "3754092": 0,
         "1298150": 0,
-        "3869685": 71,
-        "3913122": 29,
-        "0049700088": 358,
-        "0020500591": 480,
+        "3869685": 56,
+        "3913122": 14,
+        "0049700088": 343,
+        "0020500591": 465,
         "9636": 0,
         "7457": None,
         "1515217": None,
