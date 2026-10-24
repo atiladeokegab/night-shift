@@ -405,18 +405,24 @@ def test_empty_voice_settings_from_env_example_keep_the_defaults(monkeypatch):
 
 
 class Trickle(httpx.AsyncByteStream):
-    """20 chunks 0.03 s apart: each read is quick, the whole body is not."""
+    """20 chunks 0.03 s apart, the first after `wait` s: each read is quick, the whole body is
+    not."""
+
+    def __init__(self, wait=0.03):
+        self.wait = wait
 
     async def __aiter__(self):
         import asyncio
 
+        await asyncio.sleep(self.wait)
         for _ in range(20):
-            await asyncio.sleep(0.03)
             yield AUDIO[:4]
+            await asyncio.sleep(0.03)
 
 
-def test_a_slow_stream_past_the_deadline_falls_back(monkeypatch):
-    # httpx's timeout is per read, so only a deadline on the whole call stops a trickling body.
+def trickled_v3(monkeypatch, wait):
+    """What audio() gives for a line due 0.08 s after the flash reserve, v3 trickling in after
+    `wait` s and flash answering at once."""
     import asyncio
     import time
 
@@ -431,7 +437,7 @@ def test_a_slow_stream_past_the_deadline_falls_back(monkeypatch):
         model = json.loads(request.content)["model_id"]
         seen.append(model)
         return (
-            httpx.Response(200, stream=Trickle())
+            httpx.Response(200, stream=Trickle(wait))
             if "v3" in model
             else httpx.Response(200, content=AUDIO)
         )
@@ -440,12 +446,95 @@ def test_a_slow_stream_past_the_deadline_falls_back(monkeypatch):
     line = {"line_id": "x", "sport": "football", "text": "Goal!"}
 
     async def run():
-        # v3 gets 0.08 s before the flash reserve; its body takes 0.6 s
         speaker.prepare(line, {"type": "Shot"}, time.monotonic() + FALLBACK_RESERVE_S + 0.08)
         return await speaker.audio(line, VOICES[1])
 
-    assert asyncio.run(run()) == (AUDIO, "eleven_flash_v2_5")
+    return asyncio.run(run()), seen
+
+
+def test_a_stream_that_starts_in_time_plays_on_past_the_deadline(monkeypatch):
+    # the page plays from the first chunk, so only that has to beat the deadline
+    made, seen = trickled_v3(monkeypatch, wait=0.03)
+    assert made == (AUDIO[:4] * 20, "eleven_v3") and seen == ["eleven_v3"]
+
+
+def test_a_stream_whose_first_chunk_misses_the_deadline_falls_back(monkeypatch):
+    # httpx's timeout is per read, so only a deadline on the call stops a slow first chunk
+    made, seen = trickled_v3(monkeypatch, wait=0.3)
+    assert made == (AUDIO, "eleven_flash_v2_5")
     assert seen[0] == "eleven_v3" and seen[-1] == "eleven_flash_v2_5"
+
+
+def test_audio_is_ready_at_the_first_chunk_and_the_page_gets_every_chunk(tmp_path, monkeypatch):
+    # the moment-to-audio time stops at the first chunk, not after the whole file (0.6 s here)
+    import asyncio
+    import time
+
+    from core.voice import VOICES, Speaker
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    store = Store(tmp_path)
+    speaker = Speaker(httpx.MockTransport(lambda r: httpx.Response(200, stream=Trickle())), store)
+    line = {"line_id": "x", "sport": "football", "text": "Goal!", "replay_id": "r1"}
+
+    async def run():
+        line["moment_at"] = time.monotonic()
+        speaker.prepare(line, {"type": "Goal"}, time.monotonic() + 5.0)
+        clip = await speaker.stream(line, VOICES[1])
+        ready = time.monotonic() - line["moment_at"]
+        assert not clip.whole and clip.model == "eleven_v3"
+        return ready, b"".join([chunk async for chunk in clip.follow()]), clip
+
+    ready, heard, clip = asyncio.run(run())
+    assert ready < 0.3 and heard == AUDIO[:4] * 20 and clip.whole
+    [said] = store.all("voice")
+    assert said["audio_first_ms"] < 300 and said["model"] == "eleven_v3"
+
+
+def test_the_route_streams_a_line_still_arriving(tmp_path, monkeypatch):
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    trickle = httpx.MockTransport(lambda r: httpx.Response(200, stream=Trickle()))
+    with client_for(tmp_path, trickle) as client:
+        first = client.get("/lines/l1/audio")
+        again = client.get("/lines/l1/audio")  # whole by now: a plain file
+    assert first.status_code == 200 and first.headers["content-type"] == "audio/mpeg"
+    assert "content-length" not in first.headers and first.content == AUDIO[:4] * 20
+    assert again.headers["content-length"] == str(len(AUDIO[:4] * 20))
+
+
+class Breaks(httpx.AsyncByteStream):
+    """One chunk, then the connection drops."""
+
+    async def __aiter__(self):
+        yield AUDIO[:4]
+        raise httpx.ReadError("connection reset")
+
+
+def test_a_stream_cut_off_after_its_first_chunk_is_not_replaced_mid_line(monkeypatch):
+    # the page may be playing it: flash after half a v3 line would say it twice; the next ask
+    # makes it again
+    import asyncio
+
+    from core.voice import VOICES, Speaker
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    seen = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        seen.append(json.loads(request.content)["model_id"])
+        if len(seen) == 1:
+            return httpx.Response(200, stream=Breaks())
+        return httpx.Response(200, content=AUDIO)
+
+    speaker = Speaker(httpx.MockTransport(handle))
+    line = {"line_id": "x", "sport": "football", "text": "Goal!"}
+
+    async def run():
+        cut = await speaker.audio(line, VOICES[1])
+        assert seen == ["eleven_v3"] and ("x", VOICES[1]["id"]) not in speaker.jobs
+        return cut, await speaker.audio(line, VOICES[1])
+
+    assert asyncio.run(run()) == (None, (AUDIO, "eleven_v3"))
 
 
 def test_a_prepared_lines_v3_call_gets_the_longer_timeout_and_a_live_one_its_deadline(
@@ -694,7 +783,7 @@ def test_an_analyst_line_is_made_ahead_in_the_analyst_voice_with_a_calmer_tag(mo
 
     def handle(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
-        seen.append((request.url.path.rsplit("/", 1)[-1], body["model_id"], body["text"]))
+        seen.append((request.url.path.split("/")[3], body["model_id"], body["text"]))
         return httpx.Response(200, content=AUDIO)
 
     speaker = Speaker(httpx.MockTransport(handle))
@@ -717,7 +806,7 @@ def test_the_page_gets_an_analyst_line_in_the_analyst_voice(tmp_path, monkeypatc
 
     def handle(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
-        seen.append((request.url.path.rsplit("/", 1)[-1], body["model_id"], body["text"]))
+        seen.append((request.url.path.split("/")[3], body["model_id"], body["text"]))
         return httpx.Response(500 if body["model_id"] == "eleven_v3" else 200, content=AUDIO)
 
     store = Store(tmp_path)
@@ -908,7 +997,7 @@ def keyed(answers, seen):
     def handle(request: httpx.Request) -> httpx.Response:
         if "/text-to-speech/" not in request.url.path:
             return httpx.Response(404)
-        call = (request.headers["xi-api-key"], request.url.path.rsplit("/", 1)[1])
+        call = (request.headers["xi-api-key"], request.url.path.split("/")[3])
         seen.append((*call, json.loads(request.content)["model_id"]))
         status, body = answers.get(call, (200, AUDIO))
         return httpx.Response(status, content=body)
