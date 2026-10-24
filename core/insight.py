@@ -12,6 +12,7 @@ WORDS_PER_S = 2.7  # a line has likely finished speaking after its words at this
 PAUSE_S = 2.0  # then this breath before the next insight
 CLEAR_S = 6.0  # no insight starts closer than this to the next mapped moment
 MAX_CALLS = 120  # new insight calls per replay; cached ones are free
+REPLY_EVERY = 4  # every 4th line in a quiet stretch is the lead replying to the analyst
 RECENT = 6  # the key moments that count as recent play for momentum
 
 
@@ -155,7 +156,7 @@ class Gaps:
         self.cached = {
             (i["after_idx"], i["n"]): ln
             for ln in store.all("lines")
-            if (i := ln.get("insight")) and i.get("match_id") == match_id
+            if (i := ln.get("insight") or ln.get("reply")) and i.get("match_id") == match_id
         }
         self.used: set[str] = set()
         self.turn = 0
@@ -180,28 +181,39 @@ class Gaps:
     def line(
         self, past: list[dict], n: int, video_t: float, commentate, before: str | None = None
     ) -> tuple[dict, dict] | None:
-        """The n-th insight after past[-1], the moment it follows, and its stored Line: the
-        cached one, else one new commentate call. None ends the quiet stretch. The analyst and
-        the lead take turns, and each hears the line before it (`before`), so the lead may reply."""
+        """The n-th line in the quiet stretch after past[-1]: the moment it is said over and its
+        stored Line, the cached one, else one new commentate call. None ends the stretch. The
+        analyst speaks the insights and hears the line before it (`before`); now and then the
+        lead replies to the analyst."""
         m = past[-1]
+        reply = n % REPLY_EVERY == REPLY_EVERY - 1
+        role, speaker = ("reply", "lead") if reply else ("insight", "analyst")
+        heard = " ".join(str(before or "").split())  # one line: it must not forge a field
         ln = self.cached.get((m["idx"], n))
-        if ln is not None:
-            kind, detail = ln["insight"]["kind"], ln["insight"]["detail"]
-            if detail in self.used:  # a different replay's choices: never say it twice
+        if ln is not None and role in ln:
+            kind, detail = ln[role]["kind"], ln[role]["detail"]
+            if not reply and detail in self.used:  # another replay's choice: never said twice
                 return None
+        elif self.calls >= MAX_CALLS:
+            return None
+        elif reply:
+            ln, kind, detail = None, "reply", heard
         else:
-            picked = self.calls < MAX_CALLS and self.next_stat(past)
+            ln, picked = None, self.next_stat(past)
             if not picked:
                 return None
             kind, detail = picked
-            self.calls += 1
         # its own detail stays out (it would be called again); the score line needs these
         keep = {k: v for k, v in (m.get("detail") or {}).items() if k in ("balls_left", "shootout")}
-        speaker = "analyst" if n % 2 == 0 else "lead"
-        heard = " ".join(str(before or "").split())  # one line: it must not forge a field
-        detail_in = {**keep, "speaker": speaker, "after": heard, "stat": detail}
-        stat = {**m, "type": "Stat", "outcome": kind, "detail": detail_in}
+        said_to = {"speaker": speaker, "Partner just said": heard}
+        stat = {
+            **m,
+            "type": "Stat",
+            "outcome": kind,
+            "detail": {**keep, **said_to, **({} if reply else {"stat": detail})},
+        }
         if ln is None:
+            self.calls += 1
             # the same seam as every line: only moments up to the one followed reach the model
             said = commentate(stat, list(past))
             if not said or not said.get("text"):
@@ -213,8 +225,9 @@ class Gaps:
                     **said,
                     "video_t": video_t,
                     "speaker": speaker,
-                    "insight": {**key, "kind": kind, "detail": detail},
+                    role: {**key, "kind": kind, "detail": detail},
                 },
             )
-        self.used.add(detail)
+        if not reply:
+            self.used.add(detail)
         return stat, ln
