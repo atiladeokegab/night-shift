@@ -126,8 +126,9 @@ def orientation(header: dict, past: list[dict]) -> str | None:
     if not b:
         return None
     other = header["away"] if b["team"] == header["home"] else header["home"]
-    where = _where(header, {"type": "Pass", **b}).replace(f"{b['team']}'s own", "their own")
-    text = f"{b['team']} have the ball {where}, attacking {other}'s goal."
+    team, other = CLUB_SUFFIX.sub("", b["team"]), CLUB_SUFFIX.sub("", other)
+    where = _where(header, {"type": "Pass", **b}).replace(f"{team}'s own", "their own")
+    text = f"{team} have the ball {where}, attacking {other}'s goal."
     if before and before["score"] != m["score"] and "lead" in m["detail"]:
         text += f" {m['detail']['lead'][0].upper()}{m['detail']['lead'][1:]}."
     return text

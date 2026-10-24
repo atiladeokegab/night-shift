@@ -548,3 +548,11 @@ def test_a_stretch_stored_before_the_ball_now_opens_on_it(tmp_path):
     lines, _ = replay(FINAL, store)
     first = [ln["insight"]["kind"] for ln in lines if ln.get("insight", {}).get("n") == 0]
     assert "orientation" in first
+
+
+def test_a_wsl_side_has_the_ball_without_its_wfc():
+    moments = load_moments("3913122")
+    assert orientation(match_header("3913122"), moments[:9]) == (
+        "Bristol City have the ball in Brighton & Hove Albion's half, attacking Brighton & Hove "
+        "Albion's goal. Brighton & Hove Albion lead 1-0."
+    )
