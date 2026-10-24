@@ -13,7 +13,7 @@ from collections import Counter
 from agent.packs import phase
 from core import predict
 from core.fallback import fallback_text  # noqa: F401  checked() says it; tests import it here
-from core.voice import NAMES
+from core.voice import NAMES, intensity
 from data.matches import CLUB_SUFFIX
 
 WORDS_PER_S = 2.7  # a line has likely finished speaking after its words at this rate
@@ -1759,6 +1759,8 @@ def stat_moment(m: dict, said_as: dict, reply: bool) -> dict:
             if "next" in said_as
             else {}
         ),
+        # how big the moment is: the pair matches its delivery to it (#378); the voice reads it too
+        "intensity": "calm" if said_as.get("kind") == OPEN else intensity(m),
         f"{NAMES[by]} just said": said_as["heard"],
         **({"never open with": said_as["never open with"]} if "never open with" in said_as else {}),
         **({"never say": said_as["never say"]} if "never say" in said_as else {}),
