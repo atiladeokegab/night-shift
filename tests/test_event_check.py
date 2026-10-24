@@ -76,6 +76,29 @@ def test_more_wrong_events_from_the_live_store(match_id, idx, text):
     assert insight.wrong_event(text, moment(match_id, idx))
 
 
+@pytest.mark.parametrize(
+    "text", ["Argentina score again!", "France scored! Two-one!", "Argentina have scored again!"]
+)
+@pytest.mark.parametrize("idx", [13, 30])  # a saved shot; an injury stoppage, the ball in play
+def test_a_team_said_to_score_when_none_did_is_a_goal_called(text, idx):
+    # build-130: the plural "Argentina score again" got past the singular "scores"
+    wrong = insight.wrong_event(text, moment(FINAL, idx))
+    assert any(w.startswith("a goal is called") for w in wrong), wrong
+
+
+@pytest.mark.parametrize(
+    ("idx", "text"),
+    [
+        (13, "Saved! Argentina's score stays at two."),
+        (13, "Argentina score is still two-nil, Lloris saves."),
+        (13, "Saved by Lloris! The score is two-nil."),
+        (9, "Argentina score again! Di María makes it two!"),
+    ],
+)
+def test_the_score_and_a_real_goal_pass(idx, text):
+    assert insight.wrong_event(text, moment(FINAL, idx)) == []
+
+
 JAZZ, KOBE, INDIA = "0049700088", "0020500591", "1298150"
 
 # (match, idx, a line heard on the live site, a near miss that must pass): the #190 audit's classes

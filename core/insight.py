@@ -742,6 +742,24 @@ def _wrong_cricket(text: str, m: dict) -> list[str]:
     return wrong
 
 
+def _team_scores(text: str, m: dict) -> bool:
+    """ "Argentina score again", "France scored": a team's goal, which GOAL_WORDS' "scores" misses.
+    Not "Argentina's score" or "Argentina score is two"."""
+    from data.matches import match_header
+
+    try:
+        _, names = _sides(match_header(m["match_id"]))
+    except KeyError:  # not a bundled match: no team names to look for
+        return False
+    return bool(
+        re.search(
+            rf"\b(?:{names})\s+(?:(?:have|has|just|now)\s+)?score[sd]?\b(?!\s+(?:level|is|are|was))",
+            text,
+            re.I,
+        )
+    )
+
+
 def wrong_event(text: str, m: dict) -> list[str]:
     """What a line says happened that the moment's type and outcome deny; [] if nothing."""
     if m.get("type") == "Stat":  # a reply over a stat recalls play
@@ -755,7 +773,8 @@ def wrong_event(text: str, m: dict) -> list[str]:
     d, s = m.get("detail") or {}, m.get("score") or {}
     goal = m.get("type") == "Shot" and m.get("outcome") == "Goal"
     wrong = []
-    if not goal and m.get("type") != "Full time" and GOAL_WORDS.search(text):  # full time recaps
+    called = GOAL_WORDS.search(text) or _team_scores(text, m)
+    if not goal and m.get("type") != "Full time" and called:  # full time recaps
         wrong.append(f"a goal is called, but the moment is {m['type']}, {m.get('outcome')}")
     tally = d.get("shootout") or s
     if goal and LEVEL.search(text) and tally.get("home") != tally.get("away"):
