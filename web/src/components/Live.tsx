@@ -109,11 +109,14 @@ export function Live(props: Props) {
             </div>
           </div>
         )}
-        {replay.error && (
-          <div className="banner"><div className="glass err" role="alert"><b />{replay.error}</div></div>
-        )}
         {replay.phase === 'live' && video !== 'loading' && (
-          latest ? (
+          replay.error ? (
+            // A calm state whatever the server sent: the error payload goes to the console only.
+            <div className="lane subtitle waiting" role="status">
+              <p>Commentator is off air for a moment</p>
+              <button className="btn sm" onClick={onRetry}>Retry</button>
+            </div>
+          ) : latest ? (
             <div className={`lane subtitle${fix ? ' fixed' : ''}`} aria-live="polite" key={latest.line_id + (fix ? '-fixed' : '')}>
               {latestMoment && <span className={`tag${fix ? ' fixed' : ''}`}>{fix ? 'Fixed · ' : ''}{momentTag(latestMoment)}</span>}
               <p>{fix ? fix.corrected_text : latest.text}</p>

@@ -57,3 +57,9 @@ test('the ON AIR badge names the voice as the dock chip does', () => {
   assert.match(live, /const voiceLabel = voice\.chip\b/)
   assert.match(live, /<OnAir voice=\{voice\} label=\{voiceLabel\} \/>/)
 })
+
+test('a commentator error shows the calm off-air state with a Retry, never the error text', () => {
+  const live = readFileSync(new URL('./components/Live.tsx', import.meta.url), 'utf8')
+  assert.match(live, /replay\.error \? \([\s\S]*?Commentator is off air for a moment[\s\S]*?onClick=\{onRetry\}>Retry</)
+  assert.doesNotMatch(live, /\{replay\.error\}/)
+})
