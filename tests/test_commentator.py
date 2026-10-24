@@ -1,6 +1,7 @@
 """The commentator request, the no-leak rule (S10) and the traffic runner, all offline."""
 
 import json
+import time
 
 import pytest
 
@@ -363,16 +364,141 @@ def test_mubit_record_off_keeps_lines_out_of_the_keys_training(monkeypatch, sett
     made = []
 
     class Mubit(FakeProvider):
-        def __init__(self, key, record=True):
+        def __init__(self, key, record=True, fallback=None):
             super().__init__()
             made.append(record)
 
     monkeypatch.setattr(commentator, "MubitProvider", Mubit)
     monkeypatch.setattr(commentator, "_provider", None)
     monkeypatch.setenv("MUBIT_API_KEY", "test-key")
+    monkeypatch.delenv("MUBIT_FALLBACK_KEY", raising=False)
     if setting is None:
         monkeypatch.delenv("MUBIT_RECORD", raising=False)
     else:
         monkeypatch.setenv("MUBIT_RECORD", setting)
     commentator.default_provider()
     assert made == [recorded]
+
+
+def _sse(text: str) -> bytes:
+    """A whole Messages stream saying `text`, as Mubit would send it."""
+    message = {
+        "id": "msg_1",
+        "type": "message",
+        "role": "assistant",
+        "model": commentator.MODEL,
+        "content": [],
+        "stop_reason": None,
+        "stop_sequence": None,
+        "usage": {"input_tokens": 3, "output_tokens": 1},
+    }
+    events = [
+        ("message_start", {"type": "message_start", "message": message}),
+        (
+            "content_block_start",
+            {
+                "type": "content_block_start",
+                "index": 0,
+                "content_block": {"type": "text", "text": ""},
+            },
+        ),
+        (
+            "content_block_delta",
+            {
+                "type": "content_block_delta",
+                "index": 0,
+                "delta": {"type": "text_delta", "text": text},
+            },
+        ),
+        ("content_block_stop", {"type": "content_block_stop", "index": 0}),
+        (
+            "message_delta",
+            {
+                "type": "message_delta",
+                "delta": {"stop_reason": "end_turn", "stop_sequence": None},
+                "usage": {"output_tokens": 5},
+            },
+        ),
+        ("message_stop", {"type": "message_stop"}),
+    ]
+    return "".join(f"event: {e}\ndata: {json.dumps(d)}\n\n" for e, d in events).encode()
+
+
+def _mubit(monkeypatch, primary_status, fallback=True, record="off", primary_s=0.0):
+    """default_provider() on fake keys, its HTTP stubbed: the primary key answers
+    `primary_status`, the fallback always speaks. Returns the provider and the requests seen."""
+    import httpx2 as httpx  # the HTTP package the anthropic SDK uses
+
+    seen = []
+
+    def handle(request):
+        key = request.headers["authorization"].removeprefix("Bearer ")
+        seen.append((key, request.headers.get("x-middleware-record")))
+        if key == "fake-lent" and primary_status != 200:
+            time.sleep(primary_s)
+            body = {"type": "error", "error": {"type": "billing_error", "message": "no credit"}}
+            return httpx.Response(primary_status, json=body)
+        return httpx.Response(
+            200,
+            content=_sse(f"Goal from the {key} key."),
+            headers={"content-type": "text/event-stream", "x-middleware-request-id": key},
+        )
+
+    monkeypatch.setattr(commentator, "_provider", None)
+    monkeypatch.setenv("MUBIT_API_KEY", "fake-lent")
+    monkeypatch.setenv("MUBIT_RECORD", record)
+    if fallback:
+        monkeypatch.setenv("MUBIT_FALLBACK_KEY", "fake-owner")
+    else:
+        monkeypatch.delenv("MUBIT_FALLBACK_KEY", raising=False)
+    provider = commentator.default_provider()
+    http = httpx.Client(transport=httpx.MockTransport(handle))
+    for p in (provider, getattr(provider, "fallback", None)):
+        if p is not None:
+            p.client = p.client.with_options(http_client=http)
+    return provider, seen
+
+
+def _two_lines(provider):
+    moments = [moment(FOOT, 0), moment(FOOT, 1)]
+    return [line_for(FOOT, moments, i, provider)["text"] for i in (0, 1)]
+
+
+def test_a_402_on_the_lent_key_moves_the_lines_to_the_owners_key_for_good(monkeypatch, caplog):
+    provider, seen = _mubit(monkeypatch, 402)
+    lines = _two_lines(provider)
+    assert lines == ["Goal from the fake-owner key."] * 2
+    # one failed call on the lent key, then the owner's key: the next line never tries the lent one
+    assert [key for key, _ in seen] == ["fake-lent", "fake-owner", "fake-owner"]
+    assert "fake-" not in caplog.text and "402" in caplog.text
+
+
+def test_the_owners_key_records_and_the_lent_key_stays_unrecorded(monkeypatch):
+    provider, seen = _mubit(monkeypatch, 402, record="off")
+    _two_lines(provider)
+    assert seen == [("fake-lent", "off"), ("fake-owner", None), ("fake-owner", None)]
+
+
+def test_a_500_does_not_switch_keys(monkeypatch):
+    import anthropic
+
+    provider, seen = _mubit(monkeypatch, 500)
+    with pytest.raises(anthropic.InternalServerError):
+        _two_lines(provider)
+    assert {key for key, _ in seen} == {"fake-lent"}
+
+
+def test_without_a_fallback_key_a_402_still_takes_the_commentator_off_air(monkeypatch):
+    import anthropic
+
+    provider, seen = _mubit(monkeypatch, 402, fallback=False)
+    with pytest.raises(anthropic.APIStatusError) as err:
+        _two_lines(provider)
+    assert err.value.status_code == 402 and [key for key, _ in seen] == ["fake-lent"]
+
+
+def test_the_first_word_after_a_402_counts_the_failed_call(monkeypatch):
+    provider, _ = _mubit(monkeypatch, 402, primary_s=0.3)
+    line = line_for(FOOT, [moment(FOOT, 0)], 0, provider)
+    # the viewer waited through the lent key's 402 too
+    assert line["first_word_ms"] >= 300
