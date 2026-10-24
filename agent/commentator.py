@@ -578,7 +578,7 @@ class MubitProvider:
             },
             "request_id": middleware.get("x-middleware-request-id"),
             "first_word_ms": first,
-            # what answered, per Mubit's reply: the provider model, or an adapter once one serves
+            # whatever model Mubit's reply names, as it names it (#250)
             "served_by": msg.model,
             "middleware": middleware,
         }
