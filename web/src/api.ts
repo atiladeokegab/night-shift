@@ -30,12 +30,12 @@ export async function getStats(): Promise<Stats> {
   return res.json()
 }
 
-export async function createReplay(matchId: string, speed: number): Promise<string> {
+export async function createReplay(matchId: string, speed: number, startIdx?: number): Promise<string> {
   if (isDemo) return matchId
   const res = await fetch('/replays', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ match_id: matchId, speed }),
+    body: JSON.stringify({ match_id: matchId, speed, start_idx: startIdx }),
   })
   if (!res.ok) throw new Error(`POST /replays failed (${res.status})`)
   return ((await res.json()) as { replay_id: string }).replay_id

@@ -12,7 +12,7 @@ from core.replay import Replay, run_replay
 from core.store import Store
 from data.matches import list_matches, load_moments, match_header, video_map
 
-CRICKET, KOBE = "1298150", "0020500591"
+CRICKET, KOBE, JORDAN = "1298150", "0020500591", "0049700088"
 
 # (match, moment idx, what a judge heard, a right line for the same moment)
 JUDGED = [
@@ -37,8 +37,8 @@ JUDGED = [
     (
         CRICKET,
         14,
+        "Caught! Pakistan ninety-six for five.",
         "Caught! Pakistan four for ninety-six.",
-        "Caught! Pakistan ninety-six for four.",
     ),
     (
         KOBE,
@@ -65,11 +65,54 @@ def moment(match_id, idx):
     return next(m for m in load_moments(match_id) if m["idx"] == idx)
 
 
+def before(match_id, idx):
+    return [m for m in load_moments(match_id) if m["idx"] < idx]
+
+
 @pytest.mark.parametrize(("match_id", "idx", "heard", "right"), JUDGED)
 def test_each_judged_line_is_wrong_and_its_fix_is_right(match_id, idx, heard, right):
-    m = moment(match_id, idx)
-    assert insight.wrong_numbers(heard, m)
+    m, past = moment(match_id, idx), before(match_id, idx)
+    assert insight.wrong_numbers(heard, m, match_header(match_id), past)
+    assert insight.wrong_numbers(right, m, match_header(match_id), past) == []
+
+
+def test_a_cricket_score_may_be_said_wickets_first():
+    m = moment(CRICKET, 28)
+    right = "Caught! India two for ten, needing one hundred fifty from one hundred balls."
     assert insight.wrong_numbers(right, m) == []
+    assert insight.wrong_numbers("Caught! India three for ten.", m)  # 3.2 overs: 3 is given
+
+
+# true lines from production whose counts come from recent play, or name a player by number
+TRUE_FROM_RECENT_PLAY = [
+    (
+        CRICKET,
+        11,
+        "Another six! Iftikhar Ahmed blazing away, three sixes in four balls from AR Patel! "
+        "Pakistan 88 for 2.",
+    ),
+    (CRICKET, 11, "Another six! Iftikhar Ahmed to 18 off six balls, Pakistan 88 for 2!"),
+    (CRICKET, 10, "Iftikhar Ahmed, another six! Pakistan 82 for 2, three sixes in five balls!"),
+    (
+        JORDAN,
+        28,
+        "Michael Jordan ties it at eighty-three with the free throw! "
+        "Forty-one points for Number 23!",
+    ),
+]
+
+
+@pytest.mark.parametrize(("match_id", "idx", "text"), TRUE_FROM_RECENT_PLAY)
+def test_a_count_from_recent_play_or_a_shirt_number_is_no_error(match_id, idx, text):
+    m = moment(match_id, idx)
+    assert insight.wrong_numbers(text, m, match_header(match_id), before(match_id, idx)) == []
+
+
+def test_recent_play_gives_counts_only_of_the_moments_own_kind_and_player():
+    m, past = moment(CRICKET, 11), before(CRICKET, 11)
+    line = "Another six! Iftikhar Ahmed, three sixes in four balls! Pakistan 88 for 2."
+    assert insight.wrong_numbers(line, m)  # without the recent play, 3 is not in the moment
+    assert insight.wrong_numbers("Iftikhar Ahmed, five sixes in a row! 88 for 2.", m, None, past)
 
 
 def test_a_chase_states_runs_needed_balls_left_and_the_result():
@@ -85,6 +128,12 @@ def test_a_milestone_is_the_shooters_points_so_far():
     assert said[22] == "Kobe Bryant has 80 points tonight"
     assert said[23] == "Kobe Bryant has 81 points tonight"
     assert said[0] is None  # Peterson's 2 points are no milestone
+
+
+def test_a_basket_in_the_thirties_or_forties_is_a_milestone_only_when_it_crosses_a_ten():
+    kobe = {m["idx"]: m["detail"] for m in load_moments(KOBE)}
+    assert kobe[4]["milestone"] == "Kobe Bryant has 41 points tonight"  # 30 to 41
+    assert kobe[5]["player_points"] == 43 and "milestone" not in kobe[5]
 
 
 def test_the_tally_never_splits_the_points_into_counts_that_dont_add_up():

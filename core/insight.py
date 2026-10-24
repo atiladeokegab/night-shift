@@ -516,25 +516,53 @@ def _given(m: dict, header: dict | None = None) -> set[float]:
     return given
 
 
-def wrong_numbers(text: str, m: dict, header: dict | None = None) -> list[str]:
-    """What a moment's line gets wrong against the moment's own data; [] when nothing."""
+def _ball(m: dict) -> int:
+    over, ball = str(m["clock"]).split(".")
+    return int(over) * 6 + int(ball)
+
+
+def _streaks(m: dict, past: list[dict]) -> set[float]:
+    """Counts recent play gives a cricket boundary or wicket: the last k of the moment's own kind
+    by its own batter (bowler for a wicket), the balls they span and the runs they made ("three
+    sixes in four balls", "18 off six balls"). Only these kinds: a wide must not borrow a six."""
+    if m.get("sport") != "cricket" or m.get("type") not in ("Six", "Four", "Wicket"):
+        return set()
+    role = "bowler" if m["type"] == "Wicket" else "batter"
+    who = (m.get("players") or {}).get(role)
+    same = [
+        p
+        for p in past
+        if p["idx"] < m["idx"] and p["type"] == m["type"] and p["players"].get(role) == who
+    ] + [m]
+    out = set()
+    for k in range(1, len(same) + 1):
+        last = same[-k:]
+        runs = sum((p.get("detail") or {}).get("runs_batter") or 0 for p in last)
+        out |= {float(k), float(_ball(m) - _ball(last[0]) + 1), float(runs)}
+    return out
+
+
+def wrong_numbers(
+    text: str, m: dict, header: dict | None = None, past: list[dict] = ()
+) -> list[str]:
+    """What a moment's line gets wrong against the moment's own data and the counts its recent
+    play gives (`past`: the moments before it); [] when nothing."""
     s, d = m.get("score") or {}, m.get("detail") or {}
-    wrong = [f"{n:g} is not in the moment" for n in numbers(text) if n not in _given(m, header)]
+    given = _given(m, header) | _streaks(m, past)
+    words = said(text)
+    heard = [  # "Number 23" names a player, it is no stat
+        n
+        for prev, n in zip(["", *words], words, strict=False)
+        if isinstance(n, float) and prev != "number"
+    ]
+    wrong = [f"{n:g} is not in the moment" for n in heard if n not in given]
     if "milestone" in d and not set(numbers(d["milestone"])) & set(numbers(text)):
         wrong.append(f"the milestone is unsaid: {d['milestone']}")
     if m.get("sport") == "cricket":
-        words = said(text)
+        score = {(s.get("runs"), s.get("wickets")), (s.get("wickets"), s.get("runs"))}
         for a, w, b in zip(words, words[1:], words[2:], strict=False):
-            pair = (a, b)
-            if (
-                w == "for"
-                and all(isinstance(x, float) for x in pair)
-                and pair
-                != (
-                    s.get("runs"),
-                    s.get("wickets"),
-                )
-            ):
+            # wickets first ("India two for ten") is a broadcast convention too
+            if w == "for" and isinstance(a, float) and isinstance(b, float) and (a, b) not in score:
                 wrong.append(f"{a:g} for {b:g} is not runs for wickets")
         left = d.get("balls_left")
         if (
@@ -577,10 +605,10 @@ def checked(commentate, moment: dict, history: list[dict]) -> dict | None:
         header = match_header(moment["match_id"])
     except KeyError:  # not a bundled match: nothing to build a line from, so it is not checked
         return line
-    if not wrong_numbers(line["text"], moment, header):
+    if not wrong_numbers(line["text"], moment, header, history):
         return line
     again = commentate(moment, history)
-    if again and again.get("text") and not wrong_numbers(again["text"], moment, header):
+    if again and again.get("text") and not wrong_numbers(again["text"], moment, header, history):
         return again
     return {**(again or line), "text": fallback_text(header, moment), "fallback": True}
 

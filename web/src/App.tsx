@@ -105,7 +105,7 @@ export default function App() {
 
   // A-6.5: each screen is a browser history entry, so Back from a match returns to the wall.
   // A match opened from another screen pushes one; a switch on the stage replaces it.
-  const start = (match: Match, speed: number, switching = false, fromHistory = false) => {
+  const start = (match: Match, speed: number, switching = false, fromHistory = false, startIdx?: number) => {
     if (!fromHistory) {
       const entry = { screen: 'live', match: match.match_id, speed }
       if (screen === 'live') window.history.replaceState(entry, '')
@@ -121,7 +121,7 @@ export default function App() {
     setCurrent((prev) => ({ match, speed, key: (prev?.key ?? 0) + 1, switching }))
     setScreen('live')
     // A match with a highlights video holds its commentary for the player (A-6.4@2).
-    replay.start(match.match_id, speed, !!match.youtube_id, match.video_start)
+    replay.start(match.match_id, speed, !!match.youtube_id, match.video_start, startIdx)
   }
 
   // One tap starts the other sport's first match at the same speed; the whole page follows it.
@@ -285,6 +285,8 @@ export default function App() {
             load()
           }}
           onOpen={(m) => start(m, m.youtube_id ? 1 : 4)}
+          // #163: the same stage, with the video and the commentary both starting just before the peak
+          onJump={(m) => start({ ...m, video_start: m.peak_video_start }, m.youtube_id ? 1 : 4, false, false, m.peak_idx)}
           onGo={go}
         />
       ) : (

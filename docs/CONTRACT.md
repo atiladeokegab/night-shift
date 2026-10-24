@@ -8,9 +8,10 @@ builds against it; only the lead changes it (anything else is a change-request, 
 "Build a product that routes its LLM calls through Mubit and turns your corrections into model
 updates for a recurring task." Track: Own your intelligence layer.
 
-Demo: the 2023 Women's World Cup final replays and Night Shift calls it aloud in under a second, the
-producer fixes one wrong line, our trained commentator calls a moment beside the big model, then one
-tap switches to India v Pakistan 2022 and the same commentator calls cricket.
+Demo: the 2023 Women's World Cup final replays and Night Shift calls it aloud, the first word of text in
+about 0.5 s (median), the producer fixes one wrong line, the big model's recorded lines are shown
+where our trained commentator's will go (6 versions trained, none has passed Mubit's test yet, best
+55.8%, and the app does not call an adapter), then one tap switches to India v Pakistan 2022 and the same commentator calls cricket.
 
 ## Shared core
 
@@ -63,11 +64,14 @@ and refuses to start without `STORE_URL=gs://bucket/prefix`.
 - **Fix** (core/): `{line_id, corrected_text, reason, created_at, mubit_request_id,
   reply_matched: bool, recorded: bool}`; `recorded` is true only when Mubit recorded the correction
   for training (the owner's key). A Fix stored before it has none and counts as not recorded.
-- **Match** (data/): `{match_id, sport, title?, sample: bool, youtube_id?, video_start?, embed?}`; `sample`
+- **Match** (data/): `{match_id, sport, title?, sample: bool, youtube_id?, video_start?, embed?, peak_idx?,
+  peak_video_start?}`; `sample`
   marks `data/sample/`; `youtube_id` and `video_start` are there when the match has a video map.
   `embed: false` (absent otherwise) means the video's owner blocks embedding: pages show its poster and
   a link to it on YouTube, never the player, and the commentary runs on the replay's own clock.
   `video_start` is the whole second the page starts the video at, 10 s before its first mapped moment (or 0).
+  `peak_idx` (#163) is the moment "Jump to the big moment" starts at; `peak_video_start` is the video's start
+  for that jump, 10 s before the first mapped moment from `peak_idx` on.
 - **Video map** (data/video/): `{youtube_id, embed?, source, moments: [{idx, video_t}]}`; `idx` is a Moment's
   `idx`, `video_t` the seconds into the video of that moment's first showing, increasing with `idx`.
   Only moments matched with confidence are listed.
@@ -78,7 +82,10 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
 
 - `GET /health` → `{status: "ok"}` (core)
 - `GET /matches` → `[Match]` (core over data/)
-- `POST /replays {match_id, speed>0}` → `{replay_id}` (core)
+- `POST /replays {match_id, speed>0, start_idx?}` → `{replay_id}` (core); `start_idx` (#163) starts the stream at
+  that moment: earlier moments are never called. They are sent first, untimed (no `video_t`), so the score
+  and clock are already there, each followed by the last line stored for it with `history: true`
+  (shown, never spoken), then that line's latest `fixed` if it has one. 422 if no such moment.
 - `GET /replays/{id}/stream` → SSE: per moment `moment`, `line`, `stats` in that order; `error`
   `{code: "commentator_off_air", detail}` if the commentator fails, where `detail` is a fixed
   viewer-safe string ("Commentator is off air for a moment"), never the provider's error text (that

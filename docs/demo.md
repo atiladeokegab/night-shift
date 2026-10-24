@@ -39,7 +39,7 @@ earlier headless check, the first cricket audio returned 503 and then 200 on ret
    speaks a short line in every voice, the sport picks included, and prints FAILED for any that fail.
 2. Still do the taps, which prove the voices play in the browser. On the wall tab, tap India v
    Pakistan and wait until Raju speaks one line, then tap ← Wall.
-3. Tap Jordan's last shot and wait until Sam, the basketball voice, speaks one line, then tap ← Wall.
+3. Tap Jordan's last shot as a Bull and wait until Sam, the basketball voice, speaks one line, then tap ← Wall.
    Jordan, not Kobe, so the Kobe tap in the script is still fresh.
 
 While the wall is open, read the proof panel's numbers and the adapter's state once, so the spoken
@@ -119,20 +119,23 @@ is recorded for training on the owner's Mubit app."
 "The model's first word comes in about half a second, and a line costs a fraction of a cent." Read
 both numbers off the panel. The half second is the model's text, not the audio.
 
-The one line on the tech: "Every call goes through Mubit, which trains a smaller commentator of our
-own on these calls and every producer fix."
+The one line on the tech: "Every call goes through Mubit, which has trained 6 versions of a smaller
+commentator of our own on these calls. None has passed Mubit's test yet, best 55.8%, so the app
+doesn't call one."
 
 Then one of these, matching the adapter's state on the panel:
 
 - **Adapter scored:** "Here's our trained commentator, scored against the big model on matches it
   never saw." Read the result off the panel as shown, and claim nothing beyond it.
 - **Adapter not ready (the fallback):** *Point at the Lines card, then switch to the Mubit console
-  tab.* "Every line you heard today came from the big model, Claude Haiku. This is Mubit's console,
-  not our product: it holds those calls, the data our own commentator trains on. Our own commentator
-  isn't trained yet, so we won't show you a number we don't have."
+  tab.* "Every line you heard today came from the big models: Claude Haiku for the calls, Claude
+  Sonnet for the analyst. This is Mubit's console, not our product: it holds the recorded calls, the
+  data our own commentator trains on. None of our own commentator's 6 versions has passed Mubit's
+  test yet, so we won't show you a line it hasn't earned."
 
   On the off-air path no line was heard today, so open with "Every line Touchline has called came from
-  the big model, Claude Haiku" instead, and skip pointing at the Lines card: it is empty.
+  the big models: Claude Haiku for the calls, Claude Sonnet for the analyst" instead, and skip
+  pointing at the Lines card: it is empty.
 
 ### 7. Close (1:55–2:00)
 
@@ -148,6 +151,40 @@ date, the commit deployed on main and the total time. Check in particular:
 - the wall's Kobe tap calls the 30-point jumper at 8:10;
 - the voice changes when the sport changes;
 - a fix shows as Fixed and the proof panel's fix count goes up by one.
+
+### Timed rehearsal with "Jump to the big moment" (#163)
+
+Every wall tile has a **Jump to the big moment** pill at its top left. It opens the same live stage
+with the video 10 s before the match's peak and the commentary starting at that moment: nothing
+earlier is called, but the commentator knows the score. It replaces the Stage tab's pause and drag.
+
+Seconds are from when the video starts playing (a second or two after the tap), taken from the
+checked-in video map; nobody has watched them live yet. Run it with a stopwatch and correct this table.
+
+| Match | Button | Video starts | Beats (s after play) | Ends |
+|---|---|---|---|---|
+| Kobe's 81 v Toronto | Jump to the big moment | 23:43 | 10 free throw for 80 · 20 free throw for 81 · 40 Bonner's jumper | 79 buzzer |
+| Jordan's last shot as a Bull | Jump to the big moment | 22:34 | 10.5 the steal · 23.5 the shot | 54 buzzer |
+| India v Pakistan | Jump to the big moment | 13:56 | 10 last-over wicket · 33 six · 102 wicket | 150 last ball |
+| Messi v Mbappé | Jump to the big moment | 10:18 | 10.8 first penalty, then one about every 6 s | 46.4 full time |
+| Verstappen, P17 to P1 | Jump to the big moment | 2:08 | 10.4 into P1 | 24.2 chequered flag |
+| Battle of the Bridge | Jump to the big moment | 1:54 | 10.4 Hazard's equaliser | 10.4 |
+
+The two-minute run with the jump, Kobe as the peak:
+
+1. **0:00** Wall tab. The promise (script step 1).
+2. **0:15** Tap Kobe's **Jump to the big moment**. "Forty-three seconds left. Kobe's on the line."
+3. **0:27** The free throw for 80 is called; **0:37** the free throw for 81. Stop talking for both.
+4. **0:45** "Those lines were written from the real play-by-play and held until each shot reached the
+   picture."
+5. **1:36** The buzzer is called. **Ask after full time:** type or say "How many did Kobe score?" in
+   the Ask box. A finished replay keeps answering for at least a minute after the buzzer
+   (REJOIN_S + 60 s, #163 and #157).
+6. **1:45** If there's time, ← Wall, then India v Pakistan's **Jump to the big moment**: the last-over
+   wicket is called by Raju 10 s after play (script step 4), then the proof (step 6) and close.
+
+Kobe's buzzer at 79 s leaves no room for the fix (script step 5) inside two minutes; do the fix on
+India v Pakistan's lines instead of Ask, or drop Ask.
 
 ### Kobe cue check, 2026-10-24 about 07:25 UTC
 
