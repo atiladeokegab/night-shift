@@ -67,11 +67,12 @@ def with_fixes(commentate, store):
     return call
 
 
-def with_look(commentate, take: Callable[[], str | None]):
-    """`commentate` given the viewer's latest screen note (#291), when `take` has a fresh one."""
+def with_look(commentate, take: Callable[[dict], str | None]):
+    """`commentate` given the viewer's latest screen note (#291), when `take` has one for the
+    moment."""
 
     def call(moment: dict, history: list[dict], **kw) -> dict:
-        if seen := take():
+        if seen := take(moment):
             kw["seen"] = seen
         return commentate(moment, history, **kw)
 
@@ -211,10 +212,11 @@ def create_app(
         # a cached replay cost nothing: never a match for cost per full replay
         replay = Replay(req.match_id, req.speed, req.smoke or cached)
         replays[replay.id] = replay
-        if d.look and not cached:  # a frame's note goes in the next line (#291)
-            commentate = with_look(commentate, lambda: looks.take(replay.id))
         # a jump starts the video just before its moment (#163), as GET /matches' peak_video_start
         video = d.video_map(req.match_id) if jump is None else d.video_map(req.match_id, jump)
+        if d.look and not cached and video:  # a frame's note goes in the next line (#291)
+            due = {m["idx"]: m["video_t"] for m in video["moments"]}
+            commentate = with_look(commentate, lambda m: looks.take(replay.id, due.get(m["idx"])))
         task = asyncio.create_task(
             run_replay(
                 replay,
@@ -389,7 +391,7 @@ def create_app(
             log.warning("look %s: no note: %s", replay.match_id, type(exc).__name__)
             note = None
         if note:
-            looks.keep(replay_id, note)
+            looks.keep(replay_id, note, req.t)
         return {"note": note}
 
     @app.post("/replays/{replay_id}/ask")

@@ -61,6 +61,7 @@ def moment(idx, players=None):
 
 
 MOMENTS = [moment(0, {"shooter": "Kylian Mbappé"}), moment(1), moment(2)]
+DUE = [(0, 5.0), (1, 12.0), (2, 60.0)]  # each moment's time on the video
 
 
 class Eyes:
@@ -76,6 +77,14 @@ class Eyes:
         return {"content": [{"type": "text", "text": self.said}]}
 
 
+class Gate(threading.Event):
+    """Set, the replay goes on from moment 0; `held` is set once moment 0's line is being called."""
+
+    def __init__(self):
+        super().__init__()
+        self.held = threading.Event()
+
+
 class Clock:
     def __init__(self):
         self.now = 1000.0
@@ -87,25 +96,27 @@ class Clock:
 def watched(tmp_path, said, env=None):
     """An app whose replay of match 7 holds at moment 0 until `go` is set, and the `seen` each
     line's commentate was given."""
-    go, seen, eyes, clock = threading.Event(), {}, Eyes(said), Clock()
+    go, seen, eyes, clock = Gate(), [], Eyes(said), Clock()
 
     def commentate(m, history, **kw):
-        seen[m["idx"]] = kw.get("seen")
+        seen.append((m["idx"], m["type"], kw.get("seen")))
         if m["idx"] == 0:
+            go.held.set()
             go.wait(5)
         return {"line_id": f"l{m['idx']}", "match_id": "7", "moment_idx": m["idx"], "text": "New"}
 
     def see(image, names):
         return look.see(image, names, provider=eyes)
 
-    deps = Deps(lambda: [], lambda mid: MOMENTS, commentate, look=see)
+    video = {"youtube_id": "x", "start": 0, "moments": [{"idx": i, "video_t": t} for i, t in DUE]}
+    deps = Deps(lambda: [], lambda mid: MOMENTS, commentate, lambda *a: video, look=see)
     looks = Looks(env or {}, clock)
     client = TestClient(create_app(store=Store(tmp_path), deps=deps, looks=looks))
     return client, go, seen, eyes, clock
 
 
-def frame(client, replay_id, image=FRAME):
-    return client.post(f"/replays/{replay_id}/look", json={"image": image, "t": 12.5})
+def frame(client, replay_id, image=FRAME, t=12.5):
+    return client.post(f"/replays/{replay_id}/look", json={"image": image, "t": t})
 
 
 def started(client):
@@ -116,11 +127,19 @@ def test_a_frames_note_goes_in_the_next_line_once_digits_stripped(tmp_path):
     client, go, seen, eyes, _ = watched(tmp_path, "Players celebrate the 2-1 goal at 45:00")
     with client:
         rid = started(client)
+        assert go.held.wait(5)
         got = frame(client, rid)
         go.set()
         read_stream(client, rid)
     assert got.status_code == 200 and got.json() == {"note": "players celebrate the goal at"}
-    assert seen == {0: None, 1: "players celebrate the goal at", 2: None}  # used once
+    notes = [(idx, note) for idx, _, note in seen if note]
+    # once, by the first line called after the frame within 15 s of it on the video (moment 0's
+    # quiet-stretch line at 5 s, or moment 1 at 12 s), never moment 2 at 60 s
+    assert len(notes) == 1 and notes[0] in (
+        (0, "players celebrate the goal at"),
+        (1, "players celebrate the goal at"),
+    )
+    assert seen[0] == (0, "Shot", None)  # called before the frame
     sent = eyes.requests[0]
     assert sent["system"] == look.SYSTEM and "tools" not in sent
     assert sent["messages"][0]["content"][0]["source"]["data"] == FRAME
@@ -141,7 +160,7 @@ def test_a_note_that_names_anyone_is_dropped(tmp_path):
         got = frame(client, rid)
         go.set()
         read_stream(client, rid)
-    assert got.json() == {"note": None} and set(seen.values()) == {None}
+    assert got.json() == {"note": None} and {note for *_, note in seen} == {None}
 
 
 def test_numbers_in_words_and_nothing_are_no_note():
@@ -170,15 +189,27 @@ def test_one_frame_every_four_seconds_then_the_cap(tmp_path):
     assert len(eyes.requests) == 2  # a refused frame costs no call
 
 
+def test_a_note_never_goes_in_a_line_far_from_its_frame_on_the_video(tmp_path):
+    # the replay calls its lines ahead of the picture: a frame at 40 s is of no line's moment
+    client, go, seen, _, _ = watched(tmp_path, "a replay")
+    with client:
+        rid = started(client)
+        assert frame(client, rid, t=40).json() == {"note": "a replay"}
+        go.set()
+        read_stream(client, rid)
+    assert {note for *_, note in seen} == {None}
+
+
 def test_a_note_older_than_ten_seconds_is_not_used(tmp_path):
     client, go, seen, _, clock = watched(tmp_path, "a replay")
     with client:
         rid = started(client)
+        assert go.held.wait(5)  # moment 0 is called before the frame
         frame(client, rid)
         clock.now += 11
         go.set()
         read_stream(client, rid)
-    assert set(seen.values()) == {None}
+    assert {note for *_, note in seen} == {None}
 
 
 def test_a_frame_is_never_stored_or_logged(tmp_path, caplog):
