@@ -59,9 +59,7 @@ def main() -> None:
             runs = [once(client, secret, question) for _ in range(args.runs)]
             first = statistics.median(r[0] for r in runs)
             whole = statistics.median(r[1] for r in runs)
-            print(
-                f"{name}: first sentence {first:.2f}s, whole reply {whole:.2f}s (median of {args.runs})"
-            )
+            print(f"{name}: first sentence {first:.2f}s, whole reply {whole:.2f}s (median)")
 
 
 if __name__ == "__main__":
