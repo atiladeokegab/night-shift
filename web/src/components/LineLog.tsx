@@ -25,6 +25,13 @@ interface Props {
 // first-text-word time ("first word" in the mockup: the #37 review asked for the measured thing's name)
 // and "Fix". A fixed line shows the correction over the struck-through original. Viewers' questions and
 // the commentator's answers (#117) sit among the lines at the moment they were asked.
+// "3 called · 15 earlier": lines a jump (#163) brought from an earlier replay were not called this time.
+function count(lines: Line[]): string {
+  const earlier = lines.filter((l) => l.history).length
+  const called = lines.length - earlier
+  return [called && `${called} called`, earlier && `${earlier} earlier`].filter(Boolean).join(' · ')
+}
+
 export function LineLog({ lines, late, fixes, moments, onFix, answers, onAsk, shooter, onShots, followed, roster, onUnfollow, voiced }: Props) {
   const said = (l: Line) => fixes[l.line_id]?.corrected_text ?? l.text
   const theirs = followed ? lines.filter((l) => names(said(l), followed, roster)).length : 0
@@ -32,7 +39,7 @@ export function LineLog({ lines, late, fixes, moments, onFix, answers, onAsk, sh
     <section className="panel lines glass" aria-label="Lines">
       <div className="panel-h">
         <h3>Lines</h3>
-        <span className="label">{lines.length ? `${lines.length} called` : ''}</span>
+        <span className="label">{count(lines)}</span>
       </div>
       <AskBox onAsk={onAsk} />
       {followed && (
@@ -76,7 +83,9 @@ export function LineLog({ lines, late, fixes, moments, onFix, answers, onAsk, sh
                   Fix
                 </button>
                 <div className="meta-l">
-                  <span className="num">{firstWord ? 'model first text word' : 'model reply'} {(ms / 1000).toFixed(2)} s</span>
+                  {l.history
+                    ? <span className="num">From an earlier replay</span> // a jump (#163) never called it, so no timing
+                    : <span className="num">{firstWord ? 'model first text word' : 'model reply'} {(ms / 1000).toFixed(2)} s</span>}
                   {mine && <span className="pill follow">{shortName(followed!)}</span>}
                   {fix && <span className="pill fixed">Fixed</span>}
                   {isLate && !fix && <span className="pill late" title="The video had moved past it, so it was not shown or spoken">Late</span>}

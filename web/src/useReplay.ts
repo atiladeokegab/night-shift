@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react'
 import { askCommentator, createReplay, followReplay, getPlayers, getProfile, getShots, type StreamStatus } from './api'
-import { release, replayClock } from './gate'
+import { release, replayClock, speaks } from './gate'
 import type { Answer, Fix, Line, Moment, Stats } from './types'
 
 export interface ReplayState {
@@ -120,14 +120,14 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
     rewound.current = onRewind
   }, [onLine, onRewind])
 
-  // Speak each newly presented line once, unless it was released late.
+  // Speak each newly presented line once, unless it was released late or said before a jump (#163).
   const spoken = useRef<string | null>(null)
   const spokenAt = useRef<number | null>(null) // video time of the line being spoken
   const newest = state.lines[0]
   useEffect(() => {
     if (!newest || newest.line_id === spoken.current) return
     spoken.current = newest.line_id
-    if (!state.late.includes(newest.line_id)) {
+    if (speaks(newest, state.late)) {
       spokenAt.current = newest.video_t ?? null
       said.current(newest)
     }
@@ -185,7 +185,7 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
   }, [])
 
   const start = useCallback(
-    async (matchId: string, speed: number, gated: boolean, from = 0) => {
+    async (matchId: string, speed: number, gated: boolean, from = 0, startIdx?: number) => {
       const token = ++run.current
       stop.current?.()
       stop.current = null
@@ -194,7 +194,7 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
       at.current = 0
       dispatch({ type: 'start', gated })
       try {
-        const id = await createReplay(matchId, speed)
+        const id = await createReplay(matchId, speed, startIdx)
         if (run.current !== token) return
         replayId.current = id
         dispatch({ type: 'started' })
