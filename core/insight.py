@@ -21,24 +21,22 @@ PAUSE_S = 2.0  # then this breath before the next line of the cold open
 # between two voices in a stretch, short, so the next is due as this one ends; the page holds a line
 # due early until the voice on air finishes (#288)
 TURN_S = 0.3
-CLEAR_S = 6.0  # no insight starts closer than this to the next mapped moment
-MAX_CALLS = 160  # new insight calls per replay; cached ones are free
-# after the lead's call the voices alternate, never one twice in a row (#288): the analyst
-# reacts, the lead comes back to them, the analyst answers the lead; then the stretch ends
-PER_GAP = 3
-# a stretch that ends with the next moment more than FILL_S away gets one more pair, lead then
-# analyst, kept only if both lines are made and end FILL_CLEAR_S before that moment (#297)
-FILL_S = 10.0
-FILL_CLEAR_S = 2.0
-MAX_PER_GAP = PER_GAP + 2
+MAX_CALLS = 240  # new insight calls per replay, enough to fill the longest video; cached are free
+# after the lead's call the voices alternate, never one twice in a row (#288), voice after voice
+# until the next mapped moment (#297): a line starts only with room for MIN_WORDS before it
+MIN_WORDS = 8  # about 3 s: a shorter leftover stays quiet
+MISSES = 1  # dropped lines a stretch survives: that voice tries again on its next turn
 # stored insights of another version are never reused (v1 re-called the play, v2 tallied counts,
 # v3 opened cold on the stat with no names, v4 gave the analyst two lines in a row, v5 named by
-# position, so one match could name the partner in every comeback)
+# position and stopped after three lines)
 VERSION = 6
-COMEBACK_WORDS = 10  # the longest lead comeback: the room it needs before the analyst can answer it
+COMEBACK_WORDS = 10  # the lead's comeback is asked to keep to this many words
 OPEN = "cold open"  # the kind of the two lines before the first mapped moment (#221)
 OPENING = (  # who says each line of it and what to do: short, so even a read-back fits
-    ("lead", "welcome the listener and name the match"),
+    (
+        "lead",
+        "welcome the listener and set the scene: the two teams, the competition and its stage",
+    ),
     ("analyst", "one light line back to your partner"),
 )
 OPEN_S = 15.0  # the whole cold open is spoken within this
@@ -52,6 +50,11 @@ RECENT = 6  # the key moments that count as recent play for momentum
 def due_after(t: float, text: str | None, pause: float = PAUSE_S) -> float:
     """When the next insight is due after a line said at video time `t`."""
     return t + len(str(text or "").split()) / WORDS_PER_S + pause
+
+
+def room(t: float, end: float | None) -> float:
+    """The words a line started at video time `t` can say and still end a turn before `end`."""
+    return math.inf if end is None else (end - TURN_S - t) * WORDS_PER_S
 
 
 def _who(m: dict) -> str | None:
@@ -283,14 +286,35 @@ def _positions(pack, past):
     return out
 
 
+def _look_back(pack, past):
+    """The moments before the one just called, newest first: the booth looks back at one (#297)."""
+    out = []
+    for m in reversed(past[:-1]):
+        what = f"{m['type']}, {m['outcome']}" if m.get("outcome") else m["type"]
+        by = f" by {_who(m)}" if _who(m) else ""
+        out.append(f"Earlier, at {m.get('clock')}: {m.get('team')} {what}{by}")
+    return out
+
+
 KINDS = (
     ("player profile", _profiles),
     ("next to score", _odds),
     ("tally", _tallies),
     ("score story", _score_story),
+    ("look back", _look_back),
     ("momentum", _momentum),
     ("positions", _positions),
 )
+# what each kind is about, told to the analyst in the user message, so the lines never loop (#297)
+ANGLES = {
+    "player profile": "a player",
+    "next to score": "what to watch for next",
+    "tally": "a player",
+    "score story": "the game state",
+    "look back": "look back at an earlier moment",
+    "momentum": "the game state",
+    "positions": "the game state",
+}
 
 
 class Gaps:
@@ -314,6 +338,7 @@ class Gaps:
         self.opens = 0
         self.asked = None  # what the lead's last comeback asked the analyst about
         self.calls = 0
+        self.overran = False  # the last line was dropped for running into the next moment (#297)
         self._pack = None
         self._header = None
         self._balls = None
@@ -392,6 +417,7 @@ class Gaps:
         before: str | None = None,
         recent: list[str] = (),
         end: float | None = None,
+        orient: bool = True,
     ) -> tuple[dict, dict] | None:
         """The n-th line in the quiet stretch after past[-1]: the moment it is said over and its
         stored Line, the cached one, else a new commentate call (an analyst line that comes back
@@ -401,12 +427,13 @@ class Gaps:
         before it (`before`). The lead's comeback is told what the analyst's next stat is about when
         that line fits before `end`, the next mapped moment, so a question from the lead gets its
         answer. A line that repeats one of the `recent` ones, or echoes a phrase from one, is never
-        said."""
+        said; nor one that would not end before `end` (#297). `orient`: a football stretch opens on
+        who has the ball."""
         m = past[-1]
-        if n >= MAX_PER_GAP:
-            return None
-        ball = self.balls().get(m["idx"])
+        self.overran = False
         reply = n % 2 == 1
+        most = int(min(COMEBACK_WORDS if reply else ANALYST_WORDS, room(video_t, end)))
+        ball = self.balls().get(m["idx"]) if orient else None
         role, speaker = ("reply", "lead") if reply else ("insight", "analyst")
         heard = " ".join(str(before or "").split())  # one line: it must not forge a field
         ln = self.cached.get((m["idx"], n, False))
@@ -429,6 +456,8 @@ class Gaps:
                 ln = None  # stored before the check (or a newer check fails it): made again
             elif not reply and not ln.get("fallback") and self.stale(ln.get("text") or ""):
                 ln = None  # opens like an earlier line this replay: made again
+            elif len((ln.get("text") or "").split()) > room(video_t, end):
+                ln, said_as = None, {**said_as, "words": most}  # made for more room: made again
         elif self.calls >= MAX_CALLS:
             return None
         else:
@@ -451,16 +480,19 @@ class Gaps:
                 # who said it: always the other voice, the lead's call before the first line
                 "by": "analyst" if reply else "lead",
                 "named": named(self.match_id, m["idx"], n),
+                "words": most,
                 "v": VERSION,
             }
             if picked[0] == "orientation":  # said at the ball's time, the latest it reads (A-1.4)
                 said_as["clock"] = ball["clock"]
             # the comeback is told what the analyst says next, when that line still fits before
             # the next moment, so a question from the lead gets its answer
-            room = (
-                end is not None and video_t + COMEBACK_WORDS / WORDS_PER_S + TURN_S <= end - CLEAR_S
-            )
-            if reply and room and (topic := self.peek(past, first=bool(ball))):
+            answer_at = video_t + most / WORDS_PER_S + TURN_S
+            if (
+                reply
+                and room(answer_at, end) >= MIN_WORDS
+                and (topic := self.peek(past, first=bool(ball)))
+            ):
                 said_as["next"] = topic[0]
         if ln is None:
             failed = False  # a try had a wrong number or a used opener
@@ -471,7 +503,10 @@ class Gaps:
                 # the same seam as every line: only moments up to the one followed reach the model
                 said = commentate(stat_moment(m, said_as, reply), list(past))
                 if said and said.get("text"):  # the checks below see what is said
-                    said = {**said, "text": cut(said["text"])}
+                    said = {
+                        **said,
+                        "text": cut(said["text"], int(min(CUT_WORDS, room(video_t, end)))),
+                    }
                 # where the ball is now is news, though it reads like where it was before; its own
                 # check (wrong_orientation, below) falls back to the data's line, never drops it
                 fresh = said_as["kind"] == "orientation"
@@ -484,10 +519,13 @@ class Gaps:
                     stale = not reply and self.stale(said["text"])
                     # nor does either voice say a recent line's phrase: asked once more, told it
                     echo = None if fresh else echoes(said["text"], list(recent))
-                    if right and not echo and (not stale or retry and fresh):
+                    # and it ends before the next moment: a longer one is asked once more (#297)
+                    fits = len(said["text"].split()) <= room(video_t, end)
+                    if right and not echo and fits and (not stale or retry and fresh):
                         said = {**said, "checked": True, **({"retried": True} if failed else {})}
                         break  # a ball line falls back below
                     if retry:
+                        self.overran = not fits
                         return None
                     if stale:
                         said_as = {**said_as, "never open with": " ".join(opener(said["text"]))}
@@ -518,8 +556,8 @@ class Gaps:
                     "speaker": speaker,
                     "replay_id": self.replay_id,
                     role: {**key, **said_as},
-                    # the extra pair: the page drops it if the next moment comes first (#297)
-                    **({"fill": True} if n >= PER_GAP else {}),
+                    # the page's next moment cuts it and drops it if held: never late (#297)
+                    "fill": True,
                 },
             )
         if reply:
@@ -534,14 +572,16 @@ class Gaps:
         self, before: list[dict], first: dict, t: float, first_t: float, commentate
     ) -> list[tuple[dict, dict]]:
         """The lines said from video time `t` before the first mapped moment (`first`, at
-        `first_t`): the lead welcomes the listener and names the match, the analyst adds one light
-        line (#221). Said over the last moment `before` it, else over `first` with no score yet, so
-        its play never reaches the request. Cached like the insights; a line, cached or new, is
-        said only if it ends a breath before the first call and the open's speech stays within
-        OPEN_S, else the open ends there. [(Stat moment, stored Line)] in order."""
+        `first_t`): the lead welcomes the listener and sets the scene (#221); with no moments
+        `before` it, the analyst adds one light line, else the replay goes on into a stretch over
+        the last of them, so the analyst's reply is a fact (#297). Said over the last moment
+        `before` it, else over `first` with no score yet, so its play never reaches the request.
+        Cached like the insights; a line, cached or new, is said only if it ends a turn before the
+        first call and the open's speech stays within OPEN_S, else the open ends there.
+        [(Stat moment, stored Line)] in order."""
         m, history, kickoff = (before[-1], before, False) if before else (first, [], True)
-        out, heard, spoken = [], "", 0.0  # spoken: seconds of speech so far, breaths not counted
-        for n, (speaker, ask) in enumerate(OPENING):
+        out, heard, spoken = [], "", 0.0  # spoken: seconds of speech so far, turns not counted
+        for n, (speaker, ask) in enumerate(OPENING[:1] if before else OPENING):
             lead = speaker == "lead"
             ln = self.cached.get((m["idx"], n, True))
             said_as = (
@@ -567,7 +607,7 @@ class Gaps:
                 ln, said_as = None, {**said_as, "heard": heard}
                 stat = stat_moment(m, said_as, lead)
             if ln is None:
-                if t > first_t - CLEAR_S:
+                if room(t, first_t) < MIN_WORDS:
                     break
                 said = None
                 for retry in (False, True):  # a wrong number: asked once more, then the open ends
@@ -591,14 +631,14 @@ class Gaps:
                         "open": {**key, **said_as},
                     },
                 )
-            done = due_after(t, ln.get("text"))
-            spoken += done - t - PAUSE_S
-            if done > first_t or spoken > OPEN_S:
+            done = due_after(t, ln.get("text"), 0)  # when it has been said: a turn is no speech
+            spoken += done - t
+            if done > first_t - TURN_S or spoken > OPEN_S:
                 break
             if not lead:
                 self.openers.add(opener(ln["text"]))
             out.append((stat, {**ln, "video_t": t}))
-            heard, t = ln["text"], done
+            heard, t = ln["text"], done + TURN_S
         return out
 
 
@@ -1356,15 +1396,17 @@ def stat_moment(m: dict, said_as: dict, reply: bool) -> dict:
     # m's own detail stays out too; the score line needs these
     keep = {k: v for k, v in (m.get("detail") or {}).items() if k in ("balls_left", "shootout")}
     me, partner = ("lead", "analyst") if reply else ("analyst", "lead")
-    open_ = said_as.get("kind") == OPEN
     by = said_as.get("by") or partner  # who said `heard`: before v4, always the partner
     said_to = {  # the names reach only this unrecorded request, never the lead's moment prompt
         "speaker": me,
         "you are": NAMES[me],
         "partner": f"{NAMES[partner]}, the {partner}",
         "call partner by name": "yes" if said_as.get("named") else "no",
-        # a reminder in the user message: the analyst's prompt is the task's fingerprint (#297)
-        **({"length": f"at most {ANALYST_WORDS} words"} if me == "analyst" and not open_ else {}),
+        # reminders in the user message: the analyst's prompt is the task's fingerprint (#297)
+        **({"length": f"at most {words} words"} if (words := said_as.get("words")) else {}),
+        **(
+            {"angle": ANGLES[kind]} if not reply and (kind := said_as.get("kind")) in ANGLES else {}
+        ),
         # the comeback may ask about what the analyst says next, so the next line answers it
         **(
             {f"{NAMES['analyst']}'s next point is about": said_as["next"]}

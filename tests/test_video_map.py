@@ -165,6 +165,10 @@ def test_line_audio_is_due_from_the_video_start(tmp_path):
     due = {}
     replay = Replay("f1", speed=1.0)
     video = {**F1_VIDEO, "start": 7}
-    speak = lambda line, moment, at: due.setdefault(line["line_id"], at - replay.started)  # noqa: E731
+
+    def speak(line, moment, at):
+        if not any(k in line for k in ("open", "insight", "reply")):  # the moments' own lines
+            due.setdefault(line["line_id"], at - replay.started)
+
     asyncio.run(run_replay(replay, MOMENTS, commentate, Store(tmp_path), video, speak))
     assert due == {"f1-0": pytest.approx(5.5), "f1-2": pytest.approx(73.0)}
