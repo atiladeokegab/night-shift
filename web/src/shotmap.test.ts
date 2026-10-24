@@ -21,6 +21,7 @@ function mount() {
   let cursor = 0
   let pending: (() => void)[] = []
   const React = {
+    useRef: (current: unknown) => ({ current }),
     useState(initial: unknown) {
       const i = cursor++
       if (!(i in slots)) slots[i] = initial
@@ -36,7 +37,7 @@ function mount() {
     },
   }
   const jsx = (type: unknown, props: Record<string, unknown>) => ({ type, props: props ?? {} })
-  const lib: Record<string, unknown> = { react: React, 'react/jsx-runtime': { jsx, jsxs: jsx, Fragment: 'fragment' }, '../shots': shots }
+  const lib: Record<string, unknown> = { react: React, 'react/jsx-runtime': { jsx, jsxs: jsx, Fragment: 'fragment' }, '../shots': shots, '../focus': { useSheetFocus() {} } }
   const src = readFileSync(new URL('./components/ShotMap.tsx', import.meta.url), 'utf8')
   const js = ts.transpileModule(src, { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText
   const mod = { exports: {} as { ShotMap: (p: unknown) => Node } }
