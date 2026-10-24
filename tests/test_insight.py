@@ -631,6 +631,10 @@ def test_the_ball_is_said_again_though_it_reads_like_the_last_ball_line(tmp_path
     # read alike; each is still where the ball is now, so each gap with a ball opens on it
     calls = functools.partial(commentator.commentate, provider=FakeProvider())
     lines, _ = replay(FINAL, Store(tmp_path), calls=calls)
-    first = {gap(ln)["after_idx"]: gap(ln)["kind"] for ln in lines if gap(ln).get("n") == 0}
+    first = {
+        gap(ln)["after_idx"]: gap(ln)["kind"]
+        for ln in lines
+        if gap(ln).get("n") == 0 and "open" not in ln  # the cold open shares its after_idx
+    }
     with_ball = [idx for idx in first if idx in balls(FINAL)]
     assert len(with_ball) >= 5 and {first[idx] for idx in with_ball} == {"orientation"}
