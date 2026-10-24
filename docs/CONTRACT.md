@@ -254,6 +254,12 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
 
 ## Agent
 
+- Producer fixes as context: each line's request (`build_request(header, past, fixes)`) appends to
+  the user message the match's last 5 stored fixes said at or before its moment (when, the line
+  said or the failed try, the check's reasons or the producer's reason, the producer's line; each
+  quoted). Never the system prompt, tools or model; with none, the request is byte-identical. The
+  replay reads them (`match_fixes(store, match_id)`) on every call, so a fix applies to the next
+  lines straight away. `correct()` builds its request without them.
 - System prompt `agent/prompt.md`, never templated. User message from one frozen template
   `agent/message.md` carrying the sport, the moment, its score and recent play.
 - Tools `agent/tools.json`, sport-neutral: `get_score`, `get_player`, `get_recent_play`;

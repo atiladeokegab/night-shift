@@ -60,6 +60,12 @@ Say your line again, corrected: the line alone, at most 20 words.
 ```
 
 Each fix stores this turn as `correction`, with `reply_passed`.
+
+A fix applies to the next lines straight away, and Mubit records it for training. Every later
+line of that match, in this replay and the next, carries the match's last five fixes in its user
+message: when, what the commentator said, what was wrong and the producer's line. The system
+prompt, tools and model stay the same, so it is still one Mubit task, and the number check still
+runs on every line.
 The analyst's stat lines, the lead's replies to them and Ask answers get the same number check,
 against the stat and the match so far: a wrong number is tried once more, then the line is dropped
 and never said (an answer becomes the off-air line).
