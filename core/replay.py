@@ -266,11 +266,20 @@ async def run_replay(
             end = min((t for t in video_t.values() if t > tag["video_t"]), default=None)
             t, said = tag["video_t"], (line or {}).get("text")
             for n in itertools.count():
-                t = insight.due_after(t, said)
+                # each voice as the other ends; the page holds a line until the one on air ends
+                t = insight.due_after(t, said, insight.TURN_S)
                 if end is None or t > end - insight.CLEAR_S:
                     break
                 got = await call(
-                    moment["idx"], gaps.line, list(history), n, t, commentate, said, list(recent)
+                    moment["idx"],
+                    gaps.line,
+                    list(history),
+                    n,
+                    t,
+                    commentate,
+                    said,
+                    list(recent),
+                    end,
                 )
                 if got is None:
                     break
