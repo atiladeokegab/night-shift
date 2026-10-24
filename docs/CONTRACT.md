@@ -47,7 +47,7 @@ and refuses to start without `STORE_URL=gs://bucket/prefix`.
   reply_matched: bool}`.
 - **Match** (data/): `{match_id, sport, title?, sample: bool, youtube_id?, video_start?}`; `sample`
   marks `data/sample/`; `youtube_id` and `video_start` are there when the match has a video map.
-  `video_start` is the whole second the page starts the video at, 5 s before its first mapped moment.
+  `video_start` is the whole second the page starts the video at, 10 s before its first mapped moment (or 0).
 - **Video map** (data/video/): `{youtube_id, source, moments: [{idx, video_t}]}`; `idx` is a Moment's
   `idx`, `video_t` the seconds into the video of that moment's first showing, increasing with `idx`.
   Only moments matched with confidence are listed.
