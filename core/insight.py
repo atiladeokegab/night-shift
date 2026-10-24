@@ -596,7 +596,7 @@ def _streaks(m: dict, past: list[dict]) -> set[float]:
 # the start of a clause, so "they'll have to wait for the review" is still commentary.
 SELF_TALK = re.compile(
     r"(?:^|[.!?,;:—–]\s*)(?:wait\s*[—–-]|wait,\s*i\b|i need to\b|let me\b|reconsider|actually\b)"
-    r"|\bthe recent play (?:and|shows|lists)\b",
+    r"|\bthe recent play (?:and|shows|lists)\b|\bthe (?:event parameter|moment given)\b",
     re.I,
 )
 
@@ -736,14 +736,83 @@ ENDED = re.compile(
 )
 
 
+# Phrases only: a bare "three", "six" or "tie" is mostly a number or a score ("three forty-four to
+# play", "Pakistan six for one"). A wrong leader and the model talking to itself are wrong_numbers'.
+THREE = re.compile(
+    r"\b(?:three[- ]pointer|3[- ]pointer|from (?:deep|(?:way )?downtown|beyond the arc|long range)"
+    r"|beyond the arc)\b",
+    re.I,
+)
+TIE = re.compile(
+    r"\b(?:a tie|it's a tie|their tie|the tie|tie it|tied (?:the match|it)|match is tied"
+    r"|level the scores?|levels? it|level (?:with|on)|scores? level|super over"
+    r"|matched \w+'s (?:total|score)|all square)\b",
+    re.I,
+)
+SIX = re.compile(r"(?i:\b(?:a|the|another) six\b|\bmaximum\b)|\bSIX\b")  # capitals are a shout
+HOW_OUT = {
+    "stumped": re.compile(r"\bstump(?:ed|ing)\b", re.I),
+    "lbw": re.compile(r"\blbw\b|\bleg before\b", re.I),
+    "run out": re.compile(r"\brun[- ]out\b(?! of)", re.I),  # "bowled" also names the bowler
+}
+
+
+def _wrong_basketball(text: str, m: dict) -> list[str]:
+    if m.get("outcome") == "2 points" and THREE.search(text):
+        return ["a three is called, but the shot was a two"]
+    return []
+
+
+def _wrong_cricket(text: str, m: dict) -> list[str]:
+    d, kind = m.get("detail") or {}, m.get("type")
+    wrong = []
+    if " win " in f" {d.get('chase', '')} " and TIE.search(text):  # "India win by 4 wickets"
+        wrong.append(f"a tie is called, but {d['chase']}")
+    if kind in ("Chase", "Last ball") and m.get("outcome") != "6 runs" and SIX.search(text):
+        wrong.append(f"a six is called, but the ball was {m.get('outcome')}")
+    if kind == "Wicket":
+        out = m.get("outcome")
+        wrong += [
+            f"{how} is called, but the wicket was {out}"
+            for how, said in HOW_OUT.items()
+            if how != out and said.search(text)
+        ]
+    return wrong
+
+
+def _team_scores(text: str, m: dict) -> bool:
+    """ "Argentina score again", "France scored": a team's goal, which GOAL_WORDS' "scores" misses.
+    Not "Argentina's score" or "Argentina score is two"."""
+    from data.matches import match_header
+
+    try:
+        _, names = _sides(match_header(m["match_id"]))
+    except KeyError:  # not a bundled match: no team names to look for
+        return False
+    return bool(
+        re.search(
+            rf"\b(?:{names})\s+(?:(?:have|has|just|now)\s+)?score[sd]?\b(?!\s+(?:level|is|are|was))",
+            text,
+            re.I,
+        )
+    )
+
+
 def wrong_event(text: str, m: dict) -> list[str]:
-    """What a football line says happened that the moment's type and outcome deny; [] if nothing."""
-    if m.get("sport") != "football" or m.get("type") == "Stat":  # a reply over a stat recalls play
+    """What a line says happened that the moment's type and outcome deny; [] if nothing."""
+    if m.get("type") == "Stat":  # a reply over a stat recalls play
+        return []
+    if m.get("sport") == "basketball":
+        return _wrong_basketball(text, m)
+    if m.get("sport") == "cricket":
+        return _wrong_cricket(text, m)
+    if m.get("sport") != "football":
         return []
     d, s = m.get("detail") or {}, m.get("score") or {}
     goal = m.get("type") == "Shot" and m.get("outcome") == "Goal"
     wrong = []
-    if not goal and m.get("type") != "Full time" and GOAL_WORDS.search(text):  # full time recaps
+    called = GOAL_WORDS.search(text) or _team_scores(text, m)
+    if not goal and m.get("type") != "Full time" and called:  # full time recaps
         wrong.append(f"a goal is called, but the moment is {m['type']}, {m.get('outcome')}")
     tally = d.get("shootout") or s
     if goal and LEVEL.search(text) and tally.get("home") != tally.get("away"):
@@ -761,7 +830,9 @@ def wrong_event(text: str, m: dict) -> list[str]:
 def checked(commentate, moment: dict, history: list[dict]) -> dict | None:
     """A moment's line whose numbers match the moment: regenerated once when they don't, then
     replaced by the line built from the moment's data. A Stat line is the analyst's, and passes.
-    An accepted retry carries the rejected first try as `rejected`; a fallback carries none."""
+    Every line the check saw is marked `checked` (#204). An accepted retry carries the rejected
+    first try as `rejected` and is marked `retried`; a fallback keeps the failed try as `tried` and
+    the check's reasons as `wrong`, for the producer's review queue."""
     line = commentate(moment, history)
     if not (line and line.get("text")) or moment.get("type") == "Stat":
         return line
@@ -772,11 +843,16 @@ def checked(commentate, moment: dict, history: list[dict]) -> dict | None:
     except KeyError:  # not a bundled match: nothing to build a line from, so it is not checked
         return line
     if not wrong_numbers(line["text"], moment, header, history):
-        return line
+        return {**line, "checked": True}
     again = commentate(moment, history)
-    if again and again.get("text") and not wrong_numbers(again["text"], moment, header, history):
-        return {**again, "rejected": line}  # the replay corrects the recorded first try with it
-    return {**(again or line), "text": fallback_text(header, moment), "fallback": True}
+    if again and again.get("text"):
+        if not (wrong := wrong_numbers(again["text"], moment, header, history)):
+            # the replay corrects the recorded first try with it
+            return {**again, "rejected": line, "retried": True, "checked": True}
+    else:  # nothing usable the second time: the first try is the one the producer fixes
+        again, wrong = line, wrong_numbers(line["text"], moment, header, history)
+    tried = {"tried": again["text"], "wrong": wrong, "checked": True}
+    return {**again, "text": fallback_text(header, moment), "fallback": True, **tried}
 
 
 # where the ball goes next is not in the data: an orientation line never says it

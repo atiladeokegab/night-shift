@@ -1,6 +1,7 @@
 """The producer's review queue (#171): stored lead lines whose numbers their own moment's data
 contradicts (insight.wrong_numbers), so the producer can fix them by hand and Mubit trains on the
-fix (#161). The check flags, the producer corrects, Mubit learns."""
+fix (#161). The check flags, the producer corrects, Mubit learns. A fallback line is queued with
+the model's failed try and the reasons the check gave when it was said (#204)."""
 
 from core import insight
 
@@ -8,7 +9,7 @@ UNSAID = "the milestone is unsaid"  # leaving a milestone out is not a wrong num
 
 
 def _key(line: dict) -> tuple:
-    return line.get("match_id"), line.get("moment_idx"), line["text"].strip()
+    return line.get("match_id"), line.get("moment_idx"), (line.get("tried") or line["text"]).strip()
 
 
 def queue(store, deps) -> list[dict]:
@@ -55,7 +56,11 @@ def queue(store, deps) -> list[dict]:
             m, past = moments[at], moments[:at]  # the replay's history: recent-play counts
             if m.get("type") == "Stat":  # the analyst's moment
                 continue
-        wrong = [w for w in insight.wrong_numbers(line["text"], m, header, past) if UNSAID not in w]
+        if line.get("tried"):  # the retry failed too and the fallback was said: a human's to fix
+            text, wrong = line["tried"], line.get("wrong") or ["the retry failed the check"]
+        else:
+            text = line["text"]
+            wrong = [w for w in insight.wrong_numbers(text, m, header, past) if UNSAID not in w]
         if not wrong:
             continue
         d = m.get("detail") or {}
@@ -75,7 +80,7 @@ def queue(store, deps) -> list[dict]:
                 "period": m.get("period"),
                 "score": _score(header, m),
                 "play": play,
-                "text": line["text"],
+                "text": text,
                 "wrong": wrong,
             }
         )
