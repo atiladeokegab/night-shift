@@ -31,6 +31,7 @@ export interface View {
   paired: boolean // at least one recorded adapter line: show both lines side by side
   bigCost: number | null // mean $ per line
   oursCost: number | null // null until an adapter line with a cost is recorded
+  ours: string // our commentator's state: the recorded status once paired, else that no version has passed
 }
 
 function mean(xs: (number | null)[]): number | null {
@@ -44,5 +45,7 @@ export function viewOf(report: Report): View {
     paired: ours.length > 0,
     bigCost: mean(report.pairs.map((p) => p.big.cost_usd)),
     oursCost: mean(ours.map((l) => l.cost_usd)),
+    // what's recorded, never that training is under way
+    ours: ours.length ? report.adapter.status : "no version has passed Mubit's test yet",
   }
 }
