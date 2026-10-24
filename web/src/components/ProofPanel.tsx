@@ -45,7 +45,7 @@ export function ProofPanel({ live, matchId }: Props) {
           {/* own heading so the fix counts don't read as the analyst's */}
           <div className="wide">
             <dt className="label">Training</dt>
-            <dd>{next.note ?? 'Your fixes Mubit trains on'}</dd>
+            <dd>{next.note ?? 'Your fixes that passed the check, recorded in Mubit as training data'}</dd>
           </div>
           <Figure label="Fixes" value={String(stats.fixes_recorded ?? 0)} />
           {/* a moment with a producer's fix is said in the fixed words on every later replay (#232) */}

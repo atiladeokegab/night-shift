@@ -15,7 +15,7 @@ export function About({ onGo }: { onGo: (screen: Screen) => void }) {
             moment reaches the picture. The matches here are replays of real matches, as if live.
           </p>
           <p>
-            <strong>It checks every number before it speaks.</strong> Before a call is spoken, its score, who leads,
+            <strong>It checks the score, the leader and the key numbers before it speaks.</strong> Before a call is spoken, its score, who leads,
             the margin and the players' counts are checked against the match data. A call that fails is tried once
             more; if that fails too, a line built from the data is spoken instead and a producer sees the call. The
             analyst's stat lines and the answers to fans' questions get the same check; one still wrong after its retry
@@ -27,8 +27,9 @@ export function About({ onGo }: { onGo: (screen: Screen) => void }) {
             match than the moment it is calling.
           </p>
           <p>
-            <strong>Every fix trains the platform's own describer.</strong> A producer can fix any line, and every fix,
-            the producer's or the check's own, is recorded in Mubit to train a smaller describer. No version has passed
+            <strong>Each fix that passes the check is recorded as training data.</strong> A producer can fix any
+            line, and each fix that passes the number check is recorded in Mubit as training data for a smaller
+            describer; fixes to the analyst's stat lines are left out. No version has passed
             Mubit's test yet, so we make no claim for it.
           </p>
         </div>

@@ -25,10 +25,10 @@ commentary still plays on the match's own clock.
 | # | Time | On screen | Say |
 |---|---|---|---|
 | 1 | 0:00 | Black, then the wall. Tap **Brighton v Bristol City**, the tile marked "No described broadcast that we could find" | Nothing for ten seconds: let the room hear it. Then: "That match had no described broadcast. Touchline described it from the match data, in a replay, as if live." |
-| 2 | 0:20 | The **Proof** card: First time, Auto-fixed, To a human | "Before it speaks, it checks every number against the data. When a call is wrong, it tries again; this count is the calls it fixed itself, before anyone heard them." |
+| 2 | 0:20 | The **Proof** card: First time, Auto-fixed, To a human | "Before it speaks, it checks the score, the leader and the key numbers against the data. When a call is wrong, it tries again; this count is the calls it fixed itself, before anyone heard them." |
 | 3 | 0:40 | **Review**: a line the retry couldn't fix, with the check's reasons | "When the retry still fails, it doesn't guess. It says a line built from the data, and sends the call to a producer, with the reason." |
 | 4 | 1:00 | Press **Fix** on that line, type the right line, save | "A producer fixes it in one line. A wrong leader is the error that breaks a blind fan's trust." |
-| 5 | 1:25 | Mubit's console, Adapters | "Every fix is recorded in Mubit, to train a smaller describer of our own." Say the best version's score as it is; call it better only if Mubit marks it Passed. |
+| 5 | 1:25 | Mubit's console, Adapters | "Each fix that passes the number check is recorded in Mubit, as training data for a smaller describer of our own." Say the best version's score as it is; call it better only if Mubit marks it Passed. |
 | 6 | 1:55 | Kobe's 81 or the World Cup final; type "Where are we?" or "How did Messi score?" in **Ask** | "A fan can ask anything, any time, in the same voice." |
 | 7 | 2:15 | The **Proof** card: calls, fixed by itself, sent to a person; the cost per match | "Across seven matches: [calls], [fixed itself] fixed by itself, [to a human] sent to a person. About [cost] a match, voice included." Read each figure off the card. |
 | 8 | 2:35 | The wall | "Touchline. The describer that checks itself. For the match nobody described." |
