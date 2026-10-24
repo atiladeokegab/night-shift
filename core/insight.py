@@ -1264,8 +1264,9 @@ def _swapped_teams(text: str, m: dict, header: dict) -> list[str]:
             j = i - 1
             if j >= 0 and toks[j] == "the":
                 j -= 1
-            if j >= 0 and toks[j] == "to":
-                j -= 1
+            if j < 0 or toks[j] != "to":  # "113-96, Toronto ..." is no "to Toronto"
+                continue
+            j -= 1
             b = toks[j] if j >= 0 else None
             a = toks[j - 1] if j >= 1 and isinstance(toks[j - 1], float) else None
             if a is None and j >= 2 and toks[j - 1] == "to":

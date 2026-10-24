@@ -83,3 +83,9 @@ def test_twenty_true_stored_lines_that_name_both_teams_stay_green():
         assert insight._swapped_teams(r["text"], m, h) == [], r["text"]
         kept += 1
     assert kept >= 20, kept
+
+
+def test_a_score_followed_by_a_team_without_to_is_no_claim():
+    # the held-out true line: "... at 113-96, Toronto is running out of answers" (Lakers 113)
+    m, _, h = at(KOBE, 16)
+    assert insight._swapped_teams("At 96-113, Toronto is running out of answers.", m, h) == []
