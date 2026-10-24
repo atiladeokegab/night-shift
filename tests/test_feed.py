@@ -494,3 +494,34 @@ def test_football_full_time_is_called_at_the_whistle_that_ends_the_match():
         called("Final", draw[:-2]) == []
     )  # A-1.4: the same match cut at 120 minutes calls nothing
     assert called("Group Stage", whistle(2, 93)) == [(2, "93:05")]  # a group draw ends at 90
+
+
+def test_a_football_moment_carries_the_ball_a_beat_after_it_never_near_the_next():
+    def play(kind, team, minute, second, holder=None, **extra):
+        return ev(
+            kind,
+            team=team,
+            id=f"{kind}{minute}{second}",
+            minute=minute,
+            second=second,
+            possession_team={"name": holder or team},
+            location=[61.6, 7.7],
+            **extra,
+        )
+
+    shot = {"shot": {"outcome": {"name": "Off T"}}}
+    events = [
+        play("Shot", "Reds", 10, 0, **shot),
+        play("Pass", "Blues", 10, 10),  # too soon after the shot
+        play("Pressure", "Reds", 10, 30, holder="Blues"),  # not a pass or carry
+        play("Pass", "Reds", 10, 40, holder="Blues"),  # the side without the ball
+        play("Carry", "Blues", 10, 45),
+        play("Shot", "Blues", 12, 0, **shot),
+        play("Pass", "Reds", 12, 30),  # 20 s before the next moment: its build-up
+        play("Shot", "Reds", 12, 50, **shot),
+        play("Pass", "Blues", 46, 0, period=2),  # the next period's play
+    ]
+    first, second, third = feed.football_moments(HEADER, events)
+    assert first["ball"] == {"clock": "10:45", "team": "Blues", "x": 61.6, "y": 7.7}
+    assert "ball" not in second
+    assert "ball" not in third
