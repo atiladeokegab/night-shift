@@ -554,7 +554,7 @@ def _streaks(m: dict, past: list[dict]) -> set[float]:
 # the start of a clause, so "they'll have to wait for the review" is still commentary.
 SELF_TALK = re.compile(
     r"(?:^|[.!?,;:—–]\s*)(?:wait\s*[—–-]|wait,\s*i\b|i need to\b|let me\b|reconsider|actually\b)"
-    r"|\bthe recent play (?:and|shows|lists)\b",
+    r"|\bthe recent play (?:and|shows|lists)\b|\bthe (?:event parameter|moment given)\b",
     re.I,
 )
 
@@ -689,9 +689,59 @@ ENDED = re.compile(
 )
 
 
+# Phrases only: a bare "three", "six" or "tie" is mostly a number or a score ("three forty-four to
+# play", "Pakistan six for one"). A wrong leader and the model talking to itself are wrong_numbers'.
+THREE = re.compile(
+    r"\b(?:three[- ]pointer|3[- ]pointer|from (?:deep|(?:way )?downtown|beyond the arc|long range)"
+    r"|beyond the arc)\b",
+    re.I,
+)
+TIE = re.compile(
+    r"\b(?:a tie|it's a tie|their tie|the tie|tie it|tied (?:the match|it)|match is tied"
+    r"|level the scores?|levels? it|level (?:with|on)|scores? level|super over"
+    r"|matched \w+'s (?:total|score)|all square)\b",
+    re.I,
+)
+SIX = re.compile(r"(?i:\b(?:a|the|another) six\b|\bmaximum\b)|\bSIX\b")  # capitals are a shout
+HOW_OUT = {
+    "stumped": re.compile(r"\bstump(?:ed|ing)\b", re.I),
+    "lbw": re.compile(r"\blbw\b|\bleg before\b", re.I),
+    "run out": re.compile(r"\brun[- ]out\b(?! of)", re.I),  # "bowled" also names the bowler
+}
+
+
+def _wrong_basketball(text: str, m: dict) -> list[str]:
+    if m.get("outcome") == "2 points" and THREE.search(text):
+        return ["a three is called, but the shot was a two"]
+    return []
+
+
+def _wrong_cricket(text: str, m: dict) -> list[str]:
+    d, kind = m.get("detail") or {}, m.get("type")
+    wrong = []
+    if " win " in f" {d.get('chase', '')} " and TIE.search(text):  # "India win by 4 wickets"
+        wrong.append(f"a tie is called, but {d['chase']}")
+    if kind in ("Chase", "Last ball") and m.get("outcome") != "6 runs" and SIX.search(text):
+        wrong.append(f"a six is called, but the ball was {m.get('outcome')}")
+    if kind == "Wicket":
+        out = m.get("outcome")
+        wrong += [
+            f"{how} is called, but the wicket was {out}"
+            for how, said in HOW_OUT.items()
+            if how != out and said.search(text)
+        ]
+    return wrong
+
+
 def wrong_event(text: str, m: dict) -> list[str]:
-    """What a football line says happened that the moment's type and outcome deny; [] if nothing."""
-    if m.get("sport") != "football" or m.get("type") == "Stat":  # a reply over a stat recalls play
+    """What a line says happened that the moment's type and outcome deny; [] if nothing."""
+    if m.get("type") == "Stat":  # a reply over a stat recalls play
+        return []
+    if m.get("sport") == "basketball":
+        return _wrong_basketball(text, m)
+    if m.get("sport") == "cricket":
+        return _wrong_cricket(text, m)
+    if m.get("sport") != "football":
         return []
     d, s = m.get("detail") or {}, m.get("score") or {}
     goal = m.get("type") == "Shot" and m.get("outcome") == "Goal"
