@@ -21,7 +21,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from core import graph, insight, predict, review
+from core import graph, insight, ledger, predict, review
 from core.guard import OFF_TODAY, Guard, SayOnly, cached_commentator, client_ip
 from core.look import Looks, Unshared
 from core.predict import load_pack, shot_points
@@ -614,6 +614,11 @@ def create_app(
     def get_review():
         """Stored lead lines the number check flags, for the producer to fix by hand (#171)."""
         return review.queue(store, need_deps())
+
+    @app.get("/ledger")
+    def get_ledger():
+        """The newest corrections sent to Mubit, with their session and request: cached 30 s."""
+        return ledger.cached(store, need_deps())
 
     @app.get("/stats")
     def get_stats():
