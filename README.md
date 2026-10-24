@@ -306,7 +306,7 @@ The totals count both, each priced at its own model's rate, and `by_speaker` spl
 | Full line, p50 / p95 | 904 ms / 1,795 ms | not measured |
 | Cost per line | $0.0019 | not reported by Mubit |
 | Tokens per line, in / out | about 1,600 / 31 (11,215,402 / 218,395 over 6,988 lines) | not measured |
-| Corrections | 67 recorded for training, all 67 counted toward the next adapter version: the team's, from the number-check fix list; and 27 automatic correction attempts by the number check (`fixes_auto`), not recorded corrections | |
+| Corrections | 67 recorded for training, all 67 counted toward the next adapter version: the team's, from the number-check fix list; and 27 automatic correction attempts by the number check (`fixes_auto_sent`), not recorded corrections | |
 
 Split by speaker (`by_speaker`, same read):
 
