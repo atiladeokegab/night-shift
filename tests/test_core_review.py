@@ -91,8 +91,15 @@ def test_a_line_said_before_todays_check_is_marked_and_left_out_of_the_autonomy_
     for ln in (
         line("old", WRONG, speaker="lead"),  # said before the check: only today's check fails it
         line("ok", RIGHT, speaker="lead", checked=True),
-        line("live", RIGHT, speaker="lead", checked=True, fallback=True, tried=WORSE,
-             wrong=["59 is not in the moment"]),  # the retry failed as it was said
+        line(
+            "live",
+            RIGHT,
+            speaker="lead",
+            checked=True,
+            fallback=True,
+            tried=WORSE,
+            wrong=["59 is not in the moment"],
+        ),  # the retry failed as it was said
     ):
         store.append("lines", ln)
     queued = review.queue(store, Deps(list_matches, load_moments, lambda m, h: None))
