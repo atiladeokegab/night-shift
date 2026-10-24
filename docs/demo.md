@@ -21,8 +21,20 @@ Open three tabs:
       lines weren't all held yet: wait for "15 held" and drag again.
 3. **Mubit's console**, signed in, showing the requests for our task.
 
-Check `/health` says ok. On the wall tab, read the proof panel's numbers and the adapter's state once
-(tap any tile, then ← Wall), so the spoken ones match the screen.
+Check `/health` says ok.
+
+**Warm both voices.** A library voice that hasn't spoken for a while can fail its first line: in the
+headless check, the first cricket audio returned 503 and then 200 on retry. On the wall tab:
+
+1. Tap India v Pakistan and wait until Raju speaks one line, then tap ← Wall.
+2. Tap Spain v England and wait until the first line is spoken, then tap ← Wall. Skip this if the
+   Stage tab's cue already played a line aloud.
+
+Once #83 is merged, `uv run python -m core.voice` (with the ElevenLabs key in the environment) warms
+both voices from a terminal too. Still do the taps: they prove the voices play in the browser.
+
+While the wall is open, read the proof panel's numbers and the adapter's state once, so the spoken
+ones match the screen.
 
 **If the highlights can't play** (a tile says "Highlights unavailable here", or /stage says "Video
 unavailable"): /stage shows lines as they arrive, without waiting for a moment, so skip step 3. The
@@ -31,7 +43,10 @@ and 4 work as written.
 
 ## The script
 
-Times are cumulative and were measured on the deployed page (see the headless check below).
+The section times are targets for a two-minute run, estimated rather than timed: no person has
+rehearsed it against a clock yet. The waits inside them (the first call 6 seconds after a tap, the goal
+10 seconds after play, Raju in 6 to 20 seconds) were measured on the deployed page (see the headless
+check below).
 *Italics* are what's on screen; the quoted text is spoken.
 
 ### 1. The promise (0:00–0:15)
@@ -44,7 +59,7 @@ Touchline gives every match a commentator."
 ### 2. Tap into a match (0:15–0:30)
 
 *Tap Spain v England, the 2023 Women's World Cup final. It goes full screen, and Lauren Hemp's early
-chance is called about 6 seconds later.*
+chance is called about 6 seconds later (measured).*
 
 "Tap a match, and the commentator takes it. It reads the real match data and calls each moment as it
 reaches the picture."
@@ -52,7 +67,7 @@ reaches the picture."
 ### 3. The goal, the peak (0:30–0:55)
 
 *Stage tab, paused at 5:05 on the same final. Press play. Olga Carmona's goal is called at 5:15,
-10 seconds later.*
+10 seconds later (measured).*
 
 "Here's the goal."
 
@@ -63,7 +78,7 @@ reaches the picture."
 ### 4. Another sport, same commentator (0:55–1:20)
 
 *Wall tab. Tap ← Wall, then India v Pakistan, the 2022 T20 World Cup. Babar Azam's wicket is called
-by Raju, in 6 to 20 seconds.*
+by Raju, in 6 to 20 seconds (measured).*
 
 "Same commentator, same prompt, different sport, and a cricket voice."
 
@@ -73,7 +88,7 @@ by Raju, in 6 to 20 seconds.*
 ready to correct. Type the correction and send. The line shows Fixed and the proof panel's fix count
 goes up by one.*
 
-"Say a line is wrong. A producer fixes it in one tap. The fix is kept beside the original, and it
+"Say a line is wrong. A producer corrects it right here. The fix is kept beside the original, and it
 goes back through Mubit to train our own commentator."
 
 ### 6. The proof (1:35–1:55)
@@ -107,6 +122,9 @@ main and the total time. Check in particular:
 - the Stage tab, paused at 5:05, calls the goal at 5:15 once played;
 - the voice changes when the sport changes;
 - a fix shows as Fixed and the proof panel's fix count goes up by one.
+
+Retake the README's live-goal.png once #80 is deployed: it still shows "Spain Women's", which #80
+corrects.
 
 ### Headless check, 2026-10-24 about 00:15 UTC
 

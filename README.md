@@ -46,8 +46,8 @@ shown as a large subtitle. A line is never shown or spoken before its moment rea
 
 One agent calls every sport. It reads the match's real event feed, looks up the score, the player and
 recent play with tools, and never sees anything from later in the match than the moment it is
-calling. A producer fixes any line that's wrong in one tap, and the fix goes back through Mubit to
-train the commentator.
+calling. A producer corrects any line that's wrong, and the fix goes back through Mubit to train the
+commentator.
 
 ## How it uses Mubit
 
