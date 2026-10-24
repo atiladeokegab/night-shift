@@ -246,3 +246,36 @@ test('a video that should play but can\'t keeps saying so, and the commentary ca
   assert.match(html, /<p class="novideo">Highlights can&#x27;t play here\. Commentary carries on, timed to the replay\.<\/p>/)
   assert.ok(!html.includes('described from the match data'))
 })
+
+// Let them watch (#291): the browser's screen sharing, faked; node has none of its own.
+const share = { getDisplayMedia: async () => new MediaStream() } as unknown as MediaDevices
+function withSharing<T>(media: MediaDevices | undefined, fn: () => T): T {
+  Object.defineProperty(globalThis.navigator, 'mediaDevices', { value: media, configurable: true })
+  try {
+    return fn()
+  } finally {
+    Object.defineProperty(globalThis.navigator, 'mediaDevices', { value: undefined, configurable: true })
+  }
+}
+
+test('Let them watch is in the controls of a video match, where the browser can share a tab (#291)', () => {
+  const onLook = async () => true
+  const card = withSharing(share, () => videoCard(render({ onLook })))
+  assert.match(card, /class="controls"[\s\S]*<button class="ctl eyes-btn watch-btn" aria-label="Let them watch"[^>]*>[\s\S]*Let them watch<\/span><\/button>[\s\S]*Close your eyes/)
+  assert.ok(!card.includes("They're watching"), 'no chip before the tab is shared')
+  // no screen sharing, a match with no video, the replay over, or no server (onLook unset): no button
+  const whole = { ...match, youtube_id: undefined, video_start: undefined }
+  assert.ok(!withSharing(undefined, () => render({ onLook })).includes('Let them watch'))
+  assert.ok(!withSharing(share, () => render({ onLook, match: whole, video: 'unavailable' })).includes('Let them watch'))
+  assert.ok(!withSharing(share, () => render({ onLook, replay: { ...replay, ended: true } })).includes('Let them watch'))
+  assert.ok(!withSharing(share, () => render()).includes('Let them watch'))
+})
+
+test('while they watch, a chip says so with a Stop button, and a screen reader hears it (#291)', async () => {
+  const { Watching } = await import('./components/Watch.tsx')
+  const on = renderToStaticMarkup(createElement(Watching, { on: true, onStart: noop, onStop: noop }))
+  assert.match(on, /<span class="sr-only" role="status">They&#x27;re watching the screen<\/span>/)
+  assert.match(on, /<span class="chip"><b aria-hidden="true"><\/b>They&#x27;re watching<\/span><button class="ctl eyes-btn" aria-label="Stop: they stop watching"><span>Stop<\/span><\/button>/)
+  const asking = renderToStaticMarkup(createElement(Watching, { on: false, asking: true, onStart: noop, onStop: noop }))
+  assert.match(asking, /<span class="sr-only" role="status"><\/span><button class="ctl eyes-btn watch-btn" disabled=""/)
+})

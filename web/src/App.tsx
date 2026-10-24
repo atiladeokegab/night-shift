@@ -324,6 +324,7 @@ export default function App() {
           onVoiceSheet={() => setVoiceSheet(true)}
           onFix={(line) => setFixing({ line, phase: 'edit' })}
           onAsk={askCommentator}
+          onLook={replay.look}
           interrupted={interrupted}
           onHear={hearAgain}
           onShots={replay.shots}
