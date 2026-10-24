@@ -7,6 +7,7 @@ Rebuild with: uv run python -m data.matches
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 SAMPLE = Path(__file__).resolve().parent / "sample"
@@ -56,7 +57,67 @@ def list_matches() -> list[dict]:
 
 
 def load_moments(match_id: str) -> list[dict]:
-    return _read(match_id)["moments"]
+    data = _read(match_id)
+    return _stated(data["header"], data["moments"])
+
+
+def _stated(header: dict, moments: list[dict]) -> list[dict]:
+    """Each moment with the numbers a climax line gets wrong said outright in its detail: a cricket
+    chase's state (or its result) and a basketball shooter's points milestone. Built from each
+    moment's own score and the ones before it, so no later moment leaks in."""
+    best: dict[str, int] = {}
+    for m in moments:
+        s, d = m["score"], m["detail"]
+        if m["sport"] == "football" and "x" in m and "y" in m:
+            d["where"] = _where(m)
+        if m["sport"] == "cricket" and "target" in s and "balls_left" in d:
+            d["chase"] = _chase(header, m)
+        pts, who = d.get("player_points"), (m["players"] or {}).get("shooter")
+        if m["sport"] == "basketball" and pts is not None and who:
+            before = best.get(who, 0)
+            if pts >= 50 or (pts >= 30 and pts // 10 > before // 10):
+                d["milestone"] = f"{who} has {pts} points tonight"
+            best[who] = max(before, pts)
+    return moments
+
+
+def _where(m: dict) -> str:
+    """Where a football moment happened, in spoken words (#172). StatsBomb's pitch is 120 x 80 yd,
+    and the event's own team attacks towards x = 120, so y < 40 is that team's left."""
+    x, y = m["x"], m["y"]
+    left, wide, central = y < 40, y < 18 or y > 62, abs(y - 40) < 4
+    if m["type"] == "Shot":
+        yards = max(1, round(math.hypot(120 - x, 40 - y)))  # a tap-in is "from 1 yard"
+        side = (
+            f"wide on the {'left' if left else 'right'}"
+            if wide
+            else ("central" if central else f"{'left' if left else 'right'} of centre")
+        )
+        return f"from {yards} yard{'s' * (yards != 1)}, {side}"
+    if x >= 114 and 30 <= y <= 50:
+        return "inside the six-yard box"
+    if x > 104 and not wide:
+        return "inside the box"
+    if x >= 99 and not wide:
+        return "on the edge of the box"
+    if x <= 18 and not wide:
+        return "inside their own box"
+    if x < 60:
+        return "in their own half"
+    return f"on the {'left' if left else 'right'} wing" if wide else "in the opponent's half"
+
+
+def _chase(header: dict, m: dict) -> str:
+    s, left, team = m["score"], m["detail"]["balls_left"], m["team"]
+    need = s["target"] - s["runs"]
+    if need <= 0:
+        return f"{team} win by {10 - s['wickets']} wickets"
+    if left == 0 or s["wickets"] == 10:
+        other = header["home"] if team == header["away"] else header["away"]
+        return "the match is tied" if need == 1 else f"{other} win by {need - 1} runs"
+    runs = f"{need} run{'s' * (need > 1)}"
+    balls = "the final ball" if left == 1 else f"the last {left} balls"
+    return f"{team} need {runs} from {balls}"
 
 
 def video_map(match_id: str, start_idx: int | None = None) -> dict | None:

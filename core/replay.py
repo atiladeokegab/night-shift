@@ -108,7 +108,10 @@ async def run_replay(
             said = {
                 ln["moment_idx"]: ln
                 for ln in await asyncio.to_thread(store.all, "lines")
-                if ln.get("match_id") == replay.match_id and ln.get("speaker", "lead") == "lead"
+                # the moment's own line, not the lead's later reply to the analyst at its idx
+                if ln.get("match_id") == replay.match_id
+                and ln.get("speaker", "lead") == "lead"
+                and "reply" not in ln
             }
             fixed = {f["line_id"]: f for f in await asyncio.to_thread(store.all, "fixes")}
             for moment in moments:
@@ -138,7 +141,7 @@ async def run_replay(
                 continue
             await replay.publish("moment", {**moment, **tag})
             # commentate sees only moments up to this one: later events never reach the model
-            line = await asyncio.to_thread(commentate, moment, list(history))
+            line = await asyncio.to_thread(insight.checked, commentate, moment, list(history))
             history.append(moment)
             if line is not None:  # None: the commentator had nothing usable to say
                 said_line = {**line, **tag, "speaker": "lead", "replay_id": replay.id}
