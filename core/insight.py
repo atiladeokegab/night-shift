@@ -1073,12 +1073,13 @@ def wrong_answer(answer: dict, question: str, past: list[dict], lines: list[dict
     return [f"{n:g} is not in the match so far" for n in numbers(answer["text"]) if n not in given]
 
 
-# "Messi hasn't scored yet" with his penalty in (#236). Not a qualified one: "hasn't scored since
-# the 81st minute", "in extra time", "again", "was not the only goal"
+# "Messi hasn't scored yet" with his penalty in (#236). Not one with a time window, "hasn't scored
+# since the 81st minute" or "in extra time", nor "was not the only goal"; "in this final" is caught
 NOT_SCORED = re.compile(
     r"\b(?:hasn't|has not|hadn't|had not|yet to|still to|not|never|no)\s+"
     r"(?:(?!only\b)\w+\s+){0,2}?(?:scor\w*|goals?|netted|found the net)\b"
-    r"(?!\s+(?:since|in|again|this|for|from|yet in)\b)",
+    r"(?!\s+(?:yet\s+)?(?:since|in\s+(?:the\s+)?(?:extra[- ]time|(?:first|second) half"
+    r"|(?:penalty )?shootout))\b)",
     re.I,
 )
 # a goal said to have happened: "his second", "Mbappé's brace", "completes a hat-trick"; never
@@ -1127,7 +1128,9 @@ def wrong_claims(text: str, past: list[dict]) -> list[str]:
         )
 
         for hit in NOT_SCORED.finditer(clause):
-            if (name := _named_before(named, hit.start())) and goals[name]:
+            # "No goal for Messi yet": with no one named before it, the first named after it
+            first_after = next((name for start, name in named if start > hit.start()), None)
+            if (name := _named_before(named, hit.start()) or first_after) and goals[name]:
                 wrong.append(f"{name} has scored {goals[name]} so far")
         for hit in NTH.finditer(clause):
             n = NTH_GOAL.get(next(g for g in hit.groups() if g).lower(), 3)
