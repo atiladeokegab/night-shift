@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import type { Match, Moment } from './types.ts'
-import { commentatorName, cricketScore, voiceName } from './teams.ts'
+import type { Match, Moment, Sport } from './types.ts'
+import { commentatorName, cricketScore, sheetVoices, voiceName } from './teams.ts'
 
 const voice = (label: string) => ({ id: 'v', label, lang: 'en-GB', default_for: null })
 
@@ -27,4 +27,14 @@ test('the cricket score bar shows the batting side, never a first innings that r
   const ind = at('India', 2, 138, 4, 160)
   assert.equal(brief(cricketScore(match, ind, [pak, pakEnd, ind])), 'IND 138/4 PAK 159/8')
   assert.equal(brief(cricketScore(match, ind, [ind])), 'IND 138/4 PAK 159') // first innings unseen: target less one
+})
+
+test('the voice sheet lists a voice once per sport, as that sport\'s own entry', () => {
+  const v = (id: string, default_for?: Sport, same_as?: string) => ({ id, label: id, lang: 'en-GB', default_for, same_as })
+  const live = [v('viraj'), v('connor'), v('announcer', 'f1'), v('sam', 'basketball'), v('football-pick', 'football', 'announcer'), v('cricket-pick', 'cricket')]
+  const ids = (sport: Sport, chosen?: string) => sheetVoices(live, sport, chosen).map((x) => x.id)
+  assert.deepEqual(ids('football'), ['viraj', 'connor', 'football-pick', 'sam', 'cricket-pick'])
+  assert.deepEqual(ids('f1'), ['viraj', 'connor', 'announcer', 'sam', 'cricket-pick'])
+  assert.deepEqual(ids('basketball'), ['viraj', 'connor', 'announcer', 'sam', 'cricket-pick'])
+  assert.deepEqual(ids('football', 'announcer'), ['viraj', 'connor', 'announcer', 'sam', 'cricket-pick']) // the chosen entry stays checked
 })

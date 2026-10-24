@@ -111,6 +111,19 @@ export function commentatorName(name: string): string {
   return name.includes(' ') ? name : `${name} commentator`
 }
 
+// The voice sheet's options for a sport: one per voice. Of the entries for the same voice (same_as), the
+// sport's chosen one shows, else its default, else the first, so football's pick and f1's default are one option.
+export function sheetVoices(voices: Voice[], sport: Sport, chosenId?: string): Voice[] {
+  const rank = (v: Voice) => (v.id === chosenId ? 2 : v.default_for === sport ? 1 : 0)
+  const one = new Map<string, Voice>()
+  for (const v of voices) {
+    const key = v.same_as ?? v.id
+    const had = one.get(key)
+    if (!had || rank(v) > rank(had)) one.set(key, v)
+  }
+  return [...one.values()]
+}
+
 export function defaultVoice(voices: Voice[], sport: Sport): Voice | null {
   return voices.find((v) => v.default_for === sport) ?? voices[0] ?? null
 }
