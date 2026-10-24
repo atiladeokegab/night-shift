@@ -116,7 +116,6 @@ async def run_replay(
     speak: Callable[[dict, dict, float | None], None] | None = None,
     start_idx: int = 0,
     correct: Callable[[dict, str], dict] | None = None,
-    cache_only: bool = False,  # the budget guard's replay of stored lines (#244): nothing is stored
 ) -> None:
     # A video map: only mapped moments are called, each tagged with its video time and sent as
     # soon as it is ready; the page holds each line until the player reaches that time.
@@ -253,7 +252,7 @@ async def run_replay(
             if line is not None:  # None: the commentator had nothing usable to say
                 rejected = line.pop("rejected", None)
                 said_line = {**line, **tag, "speaker": "lead", "replay_id": replay.id}
-                if not cache_only:
+                if not line.get("cached"):  # a stored line said again (#244): never stored twice
                     said_line = await asyncio.to_thread(store.append, "lines", said_line)
                 await say(said_line, moment)
                 recent.append(line.get("text") or "")

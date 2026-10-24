@@ -60,9 +60,9 @@ def spent(store, day: str) -> float:
 
 
 def cached_commentator(store, match_id: str):
-    """A commentate that gives each moment's stored line back as it is, for run_replay's cache_only
-    path, or None for a moment with none and for every stat line: no model call. None: nothing
-    stored."""
+    """A commentate that gives each moment's stored line back, marked `cached` so run_replay never
+    stores it again, or None for a moment with none and for every stat line: no model call. None:
+    nothing stored."""
     said = {
         ln["moment_idx"]: ln
         for ln in store.all("lines")
@@ -79,7 +79,8 @@ def cached_commentator(store, match_id: str):
         ln = said.get(moment["idx"])
         if ln is None or moment.get("type") == "Stat":
             return None
-        return {k: v for k, v in ln.items() if k != "video_t"}  # this replay's video time, if any
+        # this replay's video time, if any, not the stored one
+        return {**{k: v for k, v in ln.items() if k != "video_t"}, "cached": True}
 
     return commentate
 
