@@ -15,11 +15,15 @@ from datetime import UTC, datetime
 from pathlib import Path
 from string import Template
 
+from core import predict
+
 AGENT = Path(__file__).resolve().parent
 SYSTEM = (AGENT / "prompt.md").read_text(encoding="utf-8")
 MESSAGE = (AGENT / "message.md").read_text(encoding="utf-8")
 ASK = (AGENT / "ask.md").read_text(encoding="utf-8")
 TOOLS = json.loads((AGENT / "tools.json").read_text(encoding="utf-8"))
+# Ask only: Mubit fingerprints the tools, so a new one in every line would split the lines' task
+ASK_TOOLS = TOOLS + json.loads((AGENT / "ask_tools.json").read_text(encoding="utf-8"))
 TOOL_CHOICE = {"type": "auto"}
 MODEL = "claude-haiku-4-5"
 MAX_TOKENS = 100
@@ -126,11 +130,19 @@ def run_tool(name: str, args: dict, header: dict, past: list[dict]) -> str:
             for p in past
             if who and any(who in n.lower() for n in p["players"].values())
         ]
-        return "\n".join(hits[-10:]) or f"No moments yet for {who or 'that player'}."
+        # never echo the name: it came through the model from a viewer and could forge a field
+        return "\n".join(hits[-10:]) or "No moments yet for that player."
     if name == "get_recent_play":
         count = (args or {}).get("count", 3)
         count = max(1, min(10, count if isinstance(count, int) else 3))
         return "\n".join(describe(p) for p in past[-count - 1 : -1]) or "No earlier moments."
+    if name in ("get_player_profile", "get_next_score_odds"):
+        pack = predict.load_pack(header["sport"], header["match_id"])
+        if pack is None:
+            return "No pre-match record for this event."
+        if name == "get_next_score_odds":
+            return predict.odds_text(pack, past, len(past) - 1)
+        return predict.profile_text(pack, past, len(past) - 1, str((args or {}).get("name", "")))
     return f"Unknown tool {name}."
 
 
@@ -288,6 +300,7 @@ def answer(
         header = match_header(past[-1]["match_id"])
     request = build_request(header, past)
     request["system"] = ASK
+    request["tools"] = ASK_TOOLS
     heard = "\n".join(f"- {ln['text']}" for ln in lines[-5:]) or "- none yet"
     # one quoted line: a line break in the question must not forge a field the model reads
     quoted = json.dumps(" ".join(question.split()), ensure_ascii=False)
