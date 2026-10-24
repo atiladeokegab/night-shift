@@ -6,6 +6,7 @@ by later replays of the same match."""
 
 from collections import Counter
 
+from agent.packs import phase
 from core import predict
 
 WORDS_PER_S = 2.7  # a line has likely finished speaking after its words at this rate
@@ -27,17 +28,32 @@ def _who(m: dict) -> str | None:
     return next(iter((m.get("players") or {}).values()), None)
 
 
+CRICKET_PART = {"batter": "- Batting", "non_striker": "- Batting", "bowler": "- Bowling"}
+
+
 def _profiles(pack, past):
     if not pack:
         return []
     out, zones = [], []
-    seen = [n for m in reversed(past) for n in (m.get("players") or {}).values()]
+    # the latest role each player had: a batter's profile is their batting, a bowler's bowling
+    role = {}
+    for m in reversed(past):
+        for r, n in (m.get("players") or {}).items():
+            role.setdefault(n, r)
     # then the rest of the roster: a pre-match record is known before the match starts
     rest = sorted(pack["players"], key=lambda n: -pack["players"][n].get("games", 0))
-    for name in dict.fromkeys(seen + rest):
+    for name in dict.fromkeys([*role, *rest]):
         text = predict.profile_text(pack, past, len(past) - 1, name).splitlines()
         if text[0].startswith("No pre-match"):
             continue
+        part = CRICKET_PART.get(role.get(name))
+        if part:
+            rows = [row for row in text[1:] if row.startswith(part)]
+            if not rows:  # nothing on record for the role they are playing
+                continue
+            # this over's phase last, so the summary below is the batting that matters now
+            now = f"- Batting, {phase(int(str(past[-1].get('clock', '0')).split('.')[0]))}:"
+            text = text[:1] + sorted(rows, key=lambda row: row.startswith(now))
         out.append(" ".join(dict.fromkeys([text[0], text[-1]])))  # the record and tonight
         who = text[0].split(" (")[0]
         zones += [f"{who}, {row.lstrip('- ')}" for row in text[1:] if row.startswith("- ")]
