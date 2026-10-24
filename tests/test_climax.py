@@ -250,7 +250,8 @@ def test_the_analyst_says_at_most_two_lines_a_gap(tmp_path):
     r, store = Replay(KOBE, 1e9), Store(tmp_path)
 
     def commentate(m, history):
-        return {"line_id": uuid.uuid4().hex, "moment_idx": m["idx"], "text": uuid.uuid4().hex}
+        said = uuid.uuid4().hex.translate(str.maketrans("0123456789", "ghijklmnop"))  # no number
+        return {"line_id": uuid.uuid4().hex, "moment_idx": m["idx"], "text": said}
 
     asyncio.run(run_replay(r, load_moments(KOBE), commentate, store, video_map(KOBE)))
     lines = [e["data"] for e in r.events if e["event"] == "line"]

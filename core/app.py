@@ -271,7 +271,8 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
             if d.status and wants_status(req.question):
                 said = await asyncio.to_thread(d.status, past)
             else:
-                said = await asyncio.to_thread(d.ask, req.question, past, lines) if d.ask else None
+                ask = (d.ask, req.question, past, lines)
+                said = await asyncio.to_thread(insight.checked_answer, *ask) if d.ask else None
         except Exception as exc:  # the calm off-air state, never the provider's error
             name = type(exc).__name__
             log.warning("ask %s off air: %s: %s", replay.match_id, name, str(exc)[:300])
