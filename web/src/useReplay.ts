@@ -2,6 +2,7 @@ import { useCallback, useEffect, useReducer, useRef } from 'react'
 import { Refused } from './ask'
 import { askCommentator, createReplay, followReplay, getPlayers, getProfile, getShots, lookAt, waitForExample, type StreamStatus } from './api'
 import { release, replayClock, speaks } from './gate'
+import { ENDED, gone } from './ended'
 import { TEACHES } from './proof'
 import type { Answer, Fix, Line, LineCheck, LineCheckExample, Moment, Stats } from './types'
 
@@ -232,6 +233,18 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
 
   useEffect(() => () => stop.current?.(), [])
 
+  // The server dropped this replay (#454): it has ended, and the page offers to start it again.
+  useEffect(() => {
+    const on = (e: Event) => {
+      if ((e as CustomEvent<string>).detail !== replayId.current) return
+      stop.current?.()
+      stop.current = null
+      dispatch({ type: 'failed', refused: ENDED })
+    }
+    gone.addEventListener('replay-gone', on)
+    return () => gone.removeEventListener('replay-gone', on)
+  }, [])
+
   // A fix's answer marks the line at once; the `fixed` event that follows on the stream is the same Fix.
   // A fix with a Wrong reason also sends Line check an example (#305), shown on its line once core has it.
   const markFixed = useCallback((fix: Fix) => {
@@ -248,7 +261,7 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
     const id = replayId.current
     if (!id) return null
     const answer = await askCommentator(id, question, momentIdx)
-    if (run.current !== token) return null
+    if (!answer || run.current !== token) return null
     dispatch({ type: 'answer', answer })
     return answer
   }, [])

@@ -5,6 +5,7 @@
 // (ElevenLabs; 503 when the voice isn't configured).
 import { demoMatches, demoStats, streamDemo } from './demo'
 import { offAir, Refused, refused } from './ask'
+import { replayGone } from './ended'
 import { playersUrl, type Player, type Profile } from './follow'
 import type { Shots } from './shots'
 import type { Answer, Fix, Line, LineCheck, Ledger, LineCheckExample, Match, Moment, ReviewItem, Stats, StreamEvent, Teams, Voice } from './types'
@@ -189,7 +190,8 @@ export async function postFix(lineId: string, correctedText: string, reason: str
 
 // POST /replays/{id}/ask, about the match up to the moment on screen. Off air (the server's own off-air
 // answer, or any failure here) is the calm copy, never an error.
-export async function askCommentator(replayId: string, question: string, momentIdx: number): Promise<Answer> {
+// null: the server has dropped the replay (#454), which useReplay hears from ended.ts.
+export async function askCommentator(replayId: string, question: string, momentIdx: number): Promise<Answer | null> {
   if (isDemo) return offAir(question, momentIdx) // the demo has no commentator to ask
   try {
     const res = await fetch(`/replays/${encodeURIComponent(replayId)}/ask`, {
@@ -198,6 +200,7 @@ export async function askCommentator(replayId: string, question: string, momentI
       body: JSON.stringify({ question, moment_idx: momentIdx }),
     })
     if (res.ok) return res.json()
+    if (await replayGone(res, replayId)) return null
     const busy = await refused(res)
     if (busy) return { ...offAir(question, momentIdx), text: busy, notice: busy }
   } catch {
@@ -217,6 +220,7 @@ export async function lookAt(replayId: string, image: string, t: number): Promis
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ image, t }),
     })
+    await replayGone(res, replayId)
     return res.status !== 404 && res.status !== 410
   } catch {
     return true
@@ -228,7 +232,7 @@ export async function lookAt(replayId: string, image: string, t: number): Promis
 export async function getShots(replayId: string, name: string, momentIdx: number): Promise<Shots | null> {
   if (isDemo) return null
   const res = await fetch(`/replays/${encodeURIComponent(replayId)}/players/${encodeURIComponent(name)}/shots?moment_idx=${momentIdx}`)
-  if (res.status === 404) return null
+  if (await replayGone(res, replayId) || res.status === 404) return null
   if (!res.ok) throw new Error(`GET shots failed (${res.status})`)
   return res.json()
 }
@@ -237,7 +241,7 @@ export async function getShots(replayId: string, name: string, momentIdx: number
 export async function getPlayers(replayId: string, at: number): Promise<Player[]> {
   if (isDemo) return []
   const res = await fetch(playersUrl(replayId, at))
-  if (res.status === 404) return []
+  if (await replayGone(res, replayId) || res.status === 404) return []
   if (!res.ok) throw new Error(`GET players failed (${res.status})`)
   return res.json()
 }
@@ -246,7 +250,7 @@ export async function getPlayers(replayId: string, at: number): Promise<Player[]
 export async function getProfile(replayId: string, name: string, momentIdx: number): Promise<Profile | null> {
   if (isDemo) return null
   const res = await fetch(`/replays/${encodeURIComponent(replayId)}/players/${encodeURIComponent(name)}/profile?moment_idx=${momentIdx}`)
-  if (res.status === 404) return null
+  if (await replayGone(res, replayId) || res.status === 404) return null
   if (!res.ok) throw new Error(`GET profile failed (${res.status})`)
   return res.json()
 }
