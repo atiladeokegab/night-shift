@@ -3,7 +3,7 @@ import { momentTag } from '../moment'
 import { embeds, posterUrl, showNoVideoCaption, watchUrl } from '../player'
 import { SPORT_NAMES, type Line, type Match, type Sport } from '../types'
 import { onScreen, type Clock, type ReplayState } from '../useReplay'
-import { latestShooter, MAPPED, type Shots } from '../shots'
+import { latestShooter, MAPPED, pickedFor, type Picked, type Shots } from '../shots'
 import { LineLog } from './LineLog'
 import { Nav, type Screen } from './Nav'
 import { ProofPanel } from './ProofPanel'
@@ -58,7 +58,8 @@ export function Live(props: Props) {
   }, [])
   const voiceLabel = voice.chip // the dock chip's name, never a lone nationality
   // The shot map follows the moment on screen while it is open (#120).
-  const [mapOf, setMapOf] = useState<string | null>(null)
+  const [picked, setPicked] = useState<Picked>(null)
+  const mapOf = pickedFor(picked, replayKey)
   const shooter = MAPPED.includes(match.sport) ? latestShooter(shown.moments) : null
 
   let overlay = null
@@ -155,10 +156,10 @@ export function Live(props: Props) {
       <aside className="side">
         <LineLog lines={shown.lines} late={replay.late} fixes={replay.fixes} moments={shown.moments} onFix={onFix}
           answers={replay.answers} onAsk={moment ? (q) => onAsk(q, moment.idx) : null}
-          shooter={shooter} onShots={setMapOf} />
+          shooter={shooter} onShots={(name) => setPicked({ name, replay: replayKey })} />
         <ProofPanel live={replay.stats} />
       </aside>
-      {mapOf && moment && <ShotMap name={mapOf} momentIdx={moment.idx} load={onShots} onClose={() => setMapOf(null)} />}
+      {mapOf && moment && <ShotMap key={replayKey} name={mapOf} momentIdx={moment.idx} load={onShots} onClose={() => setPicked(null)} />}
     </div>
   )
 }

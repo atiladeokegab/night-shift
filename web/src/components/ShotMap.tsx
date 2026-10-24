@@ -8,14 +8,25 @@ interface Props {
   onClose: () => void
 }
 
+// An answer kept with the player it was asked for (#120 review). The sheet draws it only for that player,
+// with tonight's shots cut to the moment on screen, so a rewind, a player change or a late answer never
+// shows a later shot or another player's map: until the right answer lands it says loading.
+type Got = { name: string; shots: Shots | null | 'error' }
+function forQuery(got: Got | null, name: string, momentIdx: number): Shots | null | 'error' | 'loading' {
+  if (!got || got.name !== name) return 'loading'
+  const s = got.shots
+  return s && s !== 'error' ? { ...s, tonight: s.tonight.filter((t) => t.idx <= momentIdx) } : s
+}
+
 // The shot map (#120): the player's shots before tonight as faint dots, tonight's so far bright, made
 // versus missed, and the hit rate per zone. Numbers only, no commentator, so it works while off air.
 export function ShotMap({ name, momentIdx, load, onClose }: Props) {
-  const [shots, setShots] = useState<Shots | null | 'loading' | 'error'>('loading')
+  const [got, setGot] = useState<Got | null>(null)
+  const shots = forQuery(got, name, momentIdx)
 
   useEffect(() => {
     let live = true // a newer moment or a closed sheet drops this answer
-    load(name, momentIdx).then((s) => live && setShots(s), () => live && setShots('error'))
+    load(name, momentIdx).then((s) => live && setGot({ name, shots: s }), () => live && setGot({ name, shots: 'error' }))
     return () => { live = false }
   }, [name, momentIdx, load])
 

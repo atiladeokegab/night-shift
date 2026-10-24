@@ -20,6 +20,10 @@ export function latestShooter(moments: Moment[]): string | null {
   return null
 }
 
+// The map picked on the live screen belongs to its replay: a new replay never reopens the old one's map.
+export type Picked = { name: string; replay: number } | null
+export const pickedFor = (picked: Picked, replay: number) => (picked?.replay === replay ? picked.name : null)
+
 // NBA zone names, short enough for one line at phone width.
 export const zoneName = (zone: string) => zone.replace('In The Paint (Non-RA)', 'Paint (non-RA)')
 

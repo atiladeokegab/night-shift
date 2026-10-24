@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { latestShooter, place, zoneName } from './shots.ts'
+import { latestShooter, pickedFor, place, zoneName } from './shots.ts'
 import type { Moment } from './types.ts'
 
 const m = (idx: number, players: Record<string, string>) => ({ idx, players }) as Moment
@@ -21,4 +21,11 @@ test('a football shot turns to the attacking half, goal at the top; a basketball
 test('the paint zone fits one line at phone width; other zones keep their names', () => {
   assert.equal(zoneName('In The Paint (Non-RA)'), 'Paint (non-RA)')
   assert.equal(zoneName('Mid-Range'), 'Mid-Range')
+})
+
+test('a map picked in one replay never reopens in the next', () => {
+  const picked = { name: 'Kobe Bryant', replay: 1 }
+  assert.equal(pickedFor(picked, 1), 'Kobe Bryant')
+  assert.equal(pickedFor(picked, 2), null) // a new match, or the same one started again
+  assert.equal(pickedFor(null, 1), null)
 })
