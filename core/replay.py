@@ -38,10 +38,11 @@ def moment_seconds(moment: dict) -> float:
 
 
 class Replay:
-    def __init__(self, match_id: str, speed: float):
+    def __init__(self, match_id: str, speed: float, smoke: bool = False):
         self.id = uuid.uuid4().hex[:12]
         self.match_id = match_id
         self.speed = speed
+        self.smoke = smoke  # the deploy's live smoke: never a match for cost per full replay
         self.started = time.monotonic()
         self.events: list[dict] = []
         self.done = False
@@ -128,10 +129,12 @@ async def run_replay(
             due = replay.started + line["video_t"] - video.get("start", 0) if video else None
             # this replay's id, so a cached line spoken again is charged to the replay that spoke it
             speak({**line, "replay_id": replay.id}, moment, due)
+        spoke.append(line["line_id"])
         await replay.publish("line", line)
         await replay.publish("stats", await asyncio.to_thread(stats, store))
 
     fixes: list[asyncio.Task] = []
+    spoke: list[str] = []  # every line this replay said, cached ones too: what the match cost
     try:
         last = None
         history: list[dict] = []
@@ -206,8 +209,9 @@ async def run_replay(
                 await say({**said_line, "video_t": t}, stat)
                 said = said_line["text"]
                 recent.append(said)
-        if not start_idx:  # played from kick-off to its last moment: a match for cost per match
-            done = {"replay_id": replay.id, "match_id": replay.match_id}
+        # played from kick-off to its last moment: a match for cost per full replay
+        if not start_idx and not replay.smoke:
+            done = {"replay_id": replay.id, "match_id": replay.match_id, "line_ids": spoke}
             await asyncio.to_thread(store.append, "replays", done)
     except Exception as exc:  # the stream says why it stopped instead of hanging open
         # the provider's status and error type, e.g. Mubit's 402 when its credit runs out
