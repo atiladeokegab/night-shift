@@ -1,5 +1,5 @@
 import { momentTag } from '../moment'
-import { showNoVideoCaption } from '../player'
+import { embeds, posterUrl, showNoVideoCaption, watchUrl } from '../player'
 import { commentatorName } from '../teams'
 import { SPORT_NAMES, type Line, type Match, type Sport } from '../types'
 import { onScreen, type Clock, type ReplayState } from '../useReplay'
@@ -40,6 +40,8 @@ export function Live(props: Props) {
   const latest = shown.lines.find((l) => !replay.late.includes(l.line_id))
   const busy = replay.phase !== 'live'
   const gated = !!match.youtube_id
+  // The owner blocks embedding: a still poster and a YouTube link, never the player's error screen.
+  const blocked = gated && !embeds(match)
   const voiceLabel = commentatorName(voice.name)
 
   let overlay = null
@@ -71,7 +73,8 @@ export function Live(props: Props) {
   return (
     <div className="live">
       <div id="video" className={video === 'unavailable' && !busy ? 'off' : dim ? 'dim' : undefined}>
-        {replay.phase === 'live' && <VideoStage key={replayKey} youtubeId={match.youtube_id} start={match.video_start ?? 0} onClock={onClock} onState={onVideo} />}
+        {blocked && <img className="still" alt="" src={posterUrl(match.youtube_id!)} />}
+        {replay.phase === 'live' && <VideoStage key={replayKey} youtubeId={blocked ? undefined : match.youtube_id} start={match.video_start ?? 0} onClock={onClock} onState={onVideo} />}
       </div>
       <section className="stage" aria-label={`${match.title ?? match.match_id} highlights`}>
         <div className="shade" />
@@ -80,7 +83,11 @@ export function Live(props: Props) {
           <ScoreBar match={match} moment={moment} moments={shown.moments} />
           <OnAir voice={voice} label={voiceLabel} />
         </div>
-        {showNoVideoCaption(replay, video) && <p className="novideo">Highlights can't play here. Commentary carries on, timed to the replay.</p>}
+        {showNoVideoCaption(replay, video) && (blocked ? (
+          <p className="novideo">Commentary only · <a href={watchUrl(match)} target="_blank" rel="noopener noreferrer">highlights on YouTube ↗</a></p>
+        ) : (
+          <p className="novideo">Highlights can't play here. Commentary carries on, timed to the replay.</p>
+        ))}
         {replay.stream === 'reconnecting' && (
           <div className="banner"><div className="glass warn" role="alert"><b />Reconnecting to the replay…</div></div>
         )}

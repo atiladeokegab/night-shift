@@ -18,6 +18,7 @@ export interface Match {
   // PRD v2 (A-6.1@2, A-6.4@1): the match's official highlights, from data/video/ (#33).
   youtube_id?: string
   video_start?: number // the second the video starts at, just before its first mapped moment
+  embed?: boolean // false: the owner blocks embedding, so a poster and a YouTube link instead
 }
 
 // Football and basketball: {home, away}; cricket: runs and wickets; f1: the lap and the top five.
