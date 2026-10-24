@@ -764,15 +764,20 @@ def checked(commentate, moment: dict, history: list[dict]) -> dict | None:
     return {**(again or line), "text": fallback_text(header, moment), "fallback": True}
 
 
+# where the ball goes next is not in the data: an orientation line never says it
+NEXT = re.compile(r"\b(?:will|looking to|looks? to|about to|going to|set to|heading)\b|'ll\b", re.I)
+
+
 def wrong_orientation(
     text: str, m: dict, said_as: dict, header: dict, past: list[dict]
 ) -> list[str]:
     """What an orientation line (#205) gets wrong: a number its stat and moment m don't give, a
-    false leader, or a goal called: the ball in play between key moments is no event."""
+    false leader, a goal called (the ball in play between key moments is no event), or where the
+    ball goes next."""
     stat = stat_moment(m, said_as, False)
-    return wrong_numbers(text, stat, header, past) + wrong_event(
-        text, {**stat, "type": "Possession", "outcome": ""}
-    )
+    wrong = wrong_numbers(text, stat, header, past)
+    wrong += wrong_event(text, {**stat, "type": "Possession", "outcome": ""})
+    return wrong + [f"says what comes next: {hit[0]}" for hit in NEXT.finditer(text)]
 
 
 def stat_moment(m: dict, said_as: dict, reply: bool) -> dict:

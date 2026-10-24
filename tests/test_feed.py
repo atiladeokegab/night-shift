@@ -496,7 +496,7 @@ def test_football_full_time_is_called_at_the_whistle_that_ends_the_match():
     assert called("Group Stage", whistle(2, 93)) == [(2, "93:05")]  # a group draw ends at 90
 
 
-def test_a_football_moment_carries_the_ball_a_beat_after_it_never_near_the_next():
+def test_a_football_quiet_spell_of_3_minutes_carries_the_ball_never_its_end():
     def play(kind, team, minute, second, holder=None, **extra):
         return ev(
             kind,
@@ -516,12 +516,13 @@ def test_a_football_moment_carries_the_ball_a_beat_after_it_never_near_the_next(
         play("Dispossessed", "Blues", 10, 30),  # losing the ball, not having it
         play("Pass", "Reds", 10, 40, holder="Blues"),  # the side without the ball
         play("Carry", "Blues", 10, 45),
-        play("Shot", "Blues", 12, 0, **shot),
-        play("Pass", "Reds", 12, 30),  # 20 s before the next moment: its build-up
-        play("Shot", "Reds", 12, 50, **shot),
-        play("Pass", "Blues", 46, 0, period=2),  # the next period's play
+        play("Shot", "Blues", 13, 30, **shot),
+        play("Pass", "Reds", 13, 55),  # a gap of 90 s: no quiet spell
+        play("Shot", "Reds", 15, 0, **shot),
+        play("Pass", "Blues", 18, 10),  # 20 s before the next moment: its build-up
+        play("Shot", "Blues", 18, 30, **shot),
+        play("Pass", "Reds", 46, 0, period=2),  # the next period's play
     ]
-    first, second, third = feed.football_moments(HEADER, events)
+    first, short, built_up, last = feed.football_moments(HEADER, events)
     assert first["ball"] == {"clock": "10:45", "team": "Blues", "x": 61.6, "y": 7.7}
-    assert "ball" not in second
-    assert "ball" not in third
+    assert not any("ball" in m for m in (short, built_up, last))
