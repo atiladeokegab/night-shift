@@ -23,6 +23,7 @@ import { ScoreBar } from './ScoreBar'
 import { ShotMap } from './ShotMap'
 import { VideoStage, type VideoState } from './VideoStage'
 import { Watch } from './Watch'
+import { ENDED } from '../ended'
 
 // #429: Talk's SDK (@elevenlabs/client) is most of the first-load script, and Talk only shows once a replay
 // runs. Its own chunk, fetched once the page is idle, takes it off the first paint without Talk showing late.
@@ -157,7 +158,7 @@ export function Live(props: Props) {
       <div className="overlay" role="alert">
         <span>{replay.refused ?? "Couldn't start the replay."}</span>
         <span className="actions">
-          <button className="btn primary" onClick={onRetry}>Try again</button>
+          <button className="btn primary" onClick={onRetry}>{replay.refused === ENDED ? 'Start again' : 'Try again'}</button>
           <button className="btn" onClick={() => onGo('wall')}>Back to matches</button>
         </span>
       </div>
