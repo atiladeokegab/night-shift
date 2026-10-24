@@ -110,14 +110,15 @@ async def run_replay(
     # A video map: only mapped moments are called, each tagged with its video time and sent as
     # soon as it is ready; the page holds each line until the player reaches that time.
     video_t = {m["idx"]: m["video_t"] for m in video["moments"]} if video else None
-    gaps = insight.Gaps(replay.match_id, store) if video else None
+    gaps = insight.Gaps(replay.match_id, store, replay.id) if video else None
 
     async def say(line: dict, moment: dict) -> None:
         # shortcut: due as if the video starts with the replay at its `start` second;
         # the player's own clock if the page ever sends it.
         if speak:
             due = replay.started + line["video_t"] - video.get("start", 0) if video else None
-            speak(line, moment, due)
+            # this replay's id, so a cached line spoken again is charged to the replay that spoke it
+            speak({**line, "replay_id": replay.id}, moment, due)
         await replay.publish("line", line)
         await replay.publish("stats", stats(store))
 
@@ -171,7 +172,8 @@ async def run_replay(
             history.append(moment)
             if line is not None:  # None: the commentator had nothing usable to say
                 rejected = line.pop("rejected", None)
-                await say(store.append("lines", {**line, **tag, "speaker": "lead"}), moment)
+                said_line = {**line, **tag, "speaker": "lead", "replay_id": replay.id}
+                await say(store.append("lines", said_line), moment)
                 recent.append(line.get("text") or "")
                 if rejected and correct:  # after the kept line is out: never on its path
                     fixes.append(asyncio.create_task(auto_fix(store, correct, rejected, line)))
@@ -195,6 +197,8 @@ async def run_replay(
                 await say({**said_line, "video_t": t}, stat)
                 said = said_line["text"]
                 recent.append(said)
+        if not start_idx:  # played from kick-off to its last moment: a match for cost per match
+            store.append("replays", {"replay_id": replay.id, "match_id": replay.match_id})
     except Exception as exc:  # the stream says why it stopped instead of hanging open
         # the provider's status and error type, e.g. Mubit's 402 when its credit runs out
         name = type(exc).__name__

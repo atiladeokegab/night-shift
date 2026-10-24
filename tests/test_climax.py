@@ -256,3 +256,50 @@ def test_an_auto_fix_is_counted_apart_from_the_peoples(tmp_path):
     _, store = auto_fixed(tmp_path, [WRONG_80, RIGHT_80])
     s = stats(store)
     assert s["fixes_auto"] == 1 and s["fixes_recorded"] == 0 and s["fixes_toward_next"] == 0
+    # the producer's fix-list corrections in prod (no `auto` key) stay "your fixes"
+    store.append("fixes", {"reason": "fix list: wrong number", "recorded": True})
+    s = stats(store)
+    assert s["fixes_auto"] == 1 and s["fixes_recorded"] == 1 and s["fixes_toward_next"] == 1
+
+
+# lines the model said aloud at India v Pakistan idx 52, reasoning about its input
+SELF_TALK = [
+    "The recent play and current score confirm a six at 19.4, not a wide.",
+    "Wait—I need to reconcile the information. The six listed in recent play",
+    "Wait—I need to reconsider. The recent play lists 19.4 as a Six by V Kohli.",
+    "Wait—the recent play shows a six at 19.4, but the moment given is a wide at 19.4.",
+]
+
+
+@pytest.mark.parametrize("text", SELF_TALK)
+def test_a_line_that_talks_to_itself_is_wrong(text):
+    assert insight.talks_to_itself(text)
+    assert "the line talks to itself" in insight.wrong_numbers(text, moment(CRICKET, 52))
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Big appeal! They'll have to wait for the review, India 155 for 5.",
+        "Wait for it... a wide! India 155 for 5.",
+        "That was actually a wide from Nawaz, India 155 for 5.",
+    ],
+)
+def test_waiting_in_a_sports_sense_is_commentary(text):
+    assert not insight.talks_to_itself(text)
+    assert insight.wrong_numbers(text, moment(CRICKET, 52)) == []
+
+
+def test_a_line_that_talks_to_itself_is_said_again_once():
+    said = iter(
+        [
+            "Wait—I need to reconsider the moment given.",
+            "A wide from Nawaz on the free hit! India 155 for 5.",
+        ]
+    )
+
+    def commentate(mm, history):
+        return {"line_id": "x", "moment_idx": mm["idx"], "text": next(said)}
+
+    line = insight.checked(commentate, moment(CRICKET, 52), before(CRICKET, 52))
+    assert line["text"] == "A wide from Nawaz on the free hit! India 155 for 5."
