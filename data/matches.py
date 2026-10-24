@@ -12,7 +12,7 @@ from pathlib import Path
 SAMPLE = Path(__file__).resolve().parent / "sample"
 VIDEO = Path(__file__).resolve().parent / "video"
 VIDEO_LEAD_S = 10  # the video starts this long before its first mapped moment: time for v3
-# The demo's "Jump to the big moment" (#163): the moment each match's jump starts at, a beat before its peak.
+# "Jump to the big moment" (#163): the moment each jump starts at, a beat before its peak.
 PEAKS = {
     "0020500591": 22,  # Kobe: free throws for 80 and 81
     "0049700088": 31,  # Jordan's steal, then the shot
