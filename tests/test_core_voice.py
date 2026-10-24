@@ -531,3 +531,33 @@ def test_flash_gets_its_minimum_time_even_when_the_budget_is_spent(monkeypatch):
 
     assert asyncio.run(run()) == (AUDIO, "eleven_flash_v2_5")
     assert seen == [("eleven_flash_v2_5", "Goal!")]
+
+
+def test_two_waiters_on_a_failing_job_share_one_retry(monkeypatch):
+    # Hermes on #96: the second waiter popped the first one's fresh retry and paid for another
+    import asyncio
+
+    from core.voice import VOICES, Speaker
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    calls = []
+
+    async def run():
+        gate = asyncio.Event()
+
+        async def handle(request: httpx.Request) -> httpx.Response:
+            calls.append(json.loads(request.content)["model_id"])
+            if len(calls) <= 3:  # hold the prepared job open until both requests wait on it
+                await gate.wait()
+            return httpx.Response(500)
+
+        speaker = Speaker(httpx.MockTransport(handle))
+        line = {"line_id": "x", "sport": "football", "text": "Goal!"}
+        speaker.prepare(line, {"type": "Shot"})
+        asked = [asyncio.create_task(speaker.audio(line, VOICES[1])) for _ in range(2)]
+        await asyncio.sleep(0.05)
+        gate.set()
+        return await asyncio.gather(*asked)
+
+    assert asyncio.run(run()) == [None, None]
+    assert len(calls) == 6  # the prepared job (v3, v3, flash), then one shared retry
