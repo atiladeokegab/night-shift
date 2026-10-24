@@ -87,3 +87,26 @@ def test_a_fix_the_data_contradicts_or_over_200_characters_gets_422_and_stores_n
         assert store.all("fixes") == [] and sent == []  # never sent to Mubit for training
         assert c.post("/lines/w/fix", json={"corrected_text": RIGHT}).status_code == 200
         assert sent == [RIGHT]
+
+
+def test_a_fix_needs_the_producer_token_once_the_deploy_sets_one(tmp_path, monkeypatch):
+    store = Store(tmp_path)
+    stored(store, "w", WRONG)
+    sent = []
+
+    def correct(line, text, **more):
+        sent.append(text)
+        return {"mubit_request_id": "m", "reply_matched": True, "recorded": True}
+
+    deps = Deps(list_matches, load_moments, lambda m, h: None, correct=correct)
+    body = {"corrected_text": RIGHT, "reason": "Wrong score"}
+    with TestClient(create_app(store=store, deps=deps)) as c:
+        monkeypatch.setenv("PRODUCER_TOKEN", "s3cret")
+        assert c.post("/lines/w/fix", json=body).status_code == 401
+        wrong = c.post("/lines/w/fix", json=body, headers={"X-Producer-Token": "guess"})
+        assert wrong.status_code == 401
+        assert store.all("fixes") == [] and sent == []  # nothing stored, nothing sent to Mubit
+        right = c.post("/lines/w/fix", json=body, headers={"X-Producer-Token": "s3cret"})
+        assert right.status_code == 200 and len(store.all("fixes")) == 1
+        monkeypatch.delenv("PRODUCER_TOKEN")  # unset: local and tests, the check is off
+        assert c.post("/lines/w/fix", json=body).status_code == 200
