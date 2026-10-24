@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { withAnswers } from '../ask'
+import { answeredAt, isStale, withAnswers } from '../ask'
 import { names, shortName } from '../follow'
 import { MicButton } from './MicButton'
 import { clockText } from '../moment'
@@ -58,11 +58,12 @@ export function LineLog({ lines, late, fixes, moments, onFix, answers, interrupt
         <ul className="log">
           {withAnswers(lines, answers).map(({ line: l, answer: a }) => {
             if (a) {
+              const at = answeredAt(a, moments)
               return (
-                <li key={a.line_id} className={`qa${a.off_air ? ' off' : ''}`}>
+                <li key={a.line_id} className={`qa${a.off_air ? ' off' : ''}${isStale(a, moments) ? ' stale' : ''}`}>
                   <span className="when">Ask</span>
                   <div className="text">
-                    <div className="q">{a.question}</div>
+                    <div className="q">{a.question}{at && <span className="at"> · {at}</span>}</div>
                     <span>{a.text}</span>
                   </div>
                   {interrupted.includes(a.line_id) && (

@@ -4,6 +4,7 @@ video replay, from data up to the moment they follow only, through the analyst's
 
 import asyncio
 import functools
+import itertools
 import json
 import uuid
 from collections import Counter
@@ -19,6 +20,7 @@ from core.predict import load_pack
 from core.replay import Replay, run_replay
 from core.smoke import read_stream
 from core.store import Store
+from core.voice import NAMES
 from data.matches import (
     balls,
     list_matches,
@@ -36,15 +38,19 @@ def letters(n: int) -> str:
     return "x" + "".join(chr(97 + int(d)) for d in str(n))  # "x": never a stop word like "be"
 
 
+CALLS = itertools.count()  # across Fakes: a new viewing's lines never open like the cached ones
+
+
 class Fake(FakeProvider):
     """FakeProvider, its read-back swapped for 7 copies of a word new to each call: an insight's
     Event reads back the whole stat, and stretch lines that repeat one another are dropped."""
 
     def call(self, request):
         reply = super().call(request)
+        word = letters(next(CALLS))
         for b in reply["content"]:
             if b["type"] == "text":
-                b["text"] = " ".join([letters(len(self.requests))] * 7)
+                b["text"] = " ".join([word] * 7)
         return reply
 
 
@@ -63,8 +69,9 @@ def stat_calls(fake):
 
 
 def gap(ln):
-    """The insight or reply key of a line in a quiet stretch, else {} for a moment's line."""
-    return ln.get("insight") or ln.get("reply") or {}
+    """The insight, reply or cold open key of a line between moments, else {} for a moment's
+    line."""
+    return ln.get("insight") or ln.get("reply") or ln.get("open") or {}
 
 
 class Sized:
@@ -76,7 +83,8 @@ class Sized:
 
     def __call__(self, moment, history):
         self.stats += moment["type"] == "Stat"
-        said = f"{moment['type']} {letters(moment['idx'])} " + f"{letters(self.stats)} " * 12
+        # "i" keeps the moment's word apart from the count's, so no two lines nearly repeat
+        said = f"{moment['type']} i{letters(moment['idx'])} " + f"{letters(self.stats)} " * 12
         return {"line_id": uuid.uuid4().hex, "moment_idx": moment["idx"], "text": said.strip()}
 
 
@@ -160,11 +168,18 @@ def test_an_insight_request_has_the_analysts_prompt_and_a_lines_message(tmp_path
 def test_each_insight_hears_the_line_before_it_and_the_lead_replies(tmp_path):
     lines, fake = replay(KOBE, Store(tmp_path))
     asked = [q["messages"][0]["content"] for q in stat_calls(fake)]
-    pairs = [(prev, ln) for prev, ln in zip(lines, lines[1:], strict=False) if gap(ln)]
+    asked = [q for q in asked if f"\nEvent: Stat, {insight.OPEN}: " not in q]
+    pairs = [
+        (prev, ln)
+        for prev, ln in zip(lines, lines[1:], strict=False)
+        if gap(ln) and "open" not in ln
+    ]
     assert len(asked) == len(pairs) > 0
     for q, (prev, ln) in zip(asked, pairs, strict=True):
         details = next(row for row in q.splitlines() if row.startswith("Details: "))
-        assert f"speaker: {ln['speaker']}, Partner just said: {prev['text']}" in details
+        # the line just said, by whoever said it: the lead's call opens each stretch (#221)
+        assert details.startswith(f"Details: speaker: {ln['speaker']}, ")
+        assert details.endswith(f"{NAMES[prev['speaker']]} just said: {prev['text']}")
         event = next(row for row in q.splitlines() if row.startswith("Event: "))
         if "insight" in ln:  # the stat is the Event; a reply's Event is what it heard
             assert event == f"Event: Stat, {ln['insight']['kind']}: {ln['insight']['detail']}"
@@ -298,7 +313,8 @@ def test_a_dropped_analyst_line_hands_its_slot_to_the_next_kind_once(tmp_path):
     fake, asked = Fake(), []
 
     def calls(moment, history, drop="player profile"):
-        asked.append((moment["idx"], moment["outcome"])) if moment["type"] == "Stat" else None
+        if moment["type"] == "Stat" and not moment["outcome"].startswith(insight.OPEN):
+            asked.append((moment["idx"], moment["outcome"]))
         if moment["outcome"].startswith(drop):
             return None  # the line filter dropped it
         return commentator.commentate(moment, history, provider=fake)
@@ -324,7 +340,8 @@ def test_the_analyst_never_restates_the_leads_call(tmp_path):
     def calls(moment, history):
         if moment["type"] != "Stat":
             return {"line_id": uuid.uuid4().hex, "moment_idx": moment["idx"], "text": GOAL}
-        if moment["idx"] not in opened:  # each stretch opens on the real repeat shape
+        # each stretch opens on the real repeat shape (the cold open hears no call to repeat)
+        if moment["idx"] not in opened and not moment["outcome"].startswith(insight.OPEN):
             opened.add(moment["idx"])
             return {
                 "line_id": uuid.uuid4().hex,
@@ -450,7 +467,7 @@ def test_a_fix_on_an_insight_or_reply_goes_back_with_its_own_request(tmp_path):
             assert q[0] == fake.requests[first]["messages"][0]  # the message the line came from
             assert ("\nEvent: Stat, " in q[0]["content"]) == bool(gap(ln))
             if gap(ln):
-                assert f"Partner just said: {gap(ln)['heard']}" in q[0]["content"]
+                assert f" just said: {gap(ln)['heard']}" in q[0]["content"]
 
 
 def test_the_live_smoke_passes_on_a_replay_that_reuses_stored_insight_lines(tmp_path, monkeypatch):
@@ -619,6 +636,10 @@ def test_the_ball_is_said_again_though_it_reads_like_the_last_ball_line(tmp_path
     # read alike; each is still where the ball is now, so each gap with a ball opens on it
     calls = functools.partial(commentator.commentate, provider=FakeProvider())
     lines, _ = replay(FINAL, Store(tmp_path), calls=calls)
-    first = {gap(ln)["after_idx"]: gap(ln)["kind"] for ln in lines if gap(ln).get("n") == 0}
+    first = {
+        gap(ln)["after_idx"]: gap(ln)["kind"]
+        for ln in lines
+        if gap(ln).get("n") == 0 and "open" not in ln  # the cold open shares its after_idx
+    }
     with_ball = [idx for idx in first if idx in balls(FINAL)]
     assert len(with_ball) >= 5 and {first[idx] for idx in with_ball} == {"orientation"}

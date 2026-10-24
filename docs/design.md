@@ -1,5 +1,8 @@
 # Design
 
+> Spec as of PRD v2; the shipped page differs: a seven-match wall, four sports, voices in
+> `docs/voice.md`.
+
 Designer: Atilade (@atiladeokegab). Owned by the designer: to change anything here, open a
 change-request (AGENTS.md §7) addressed to them. Each vertical's `Design:` line says which
 sections of this page it must follow.
@@ -100,7 +103,7 @@ voice speaks. Cards lift 3px on hover and their artwork scales 3.5% over 1.2s. S
   legible (from the bottom on phones, with the text at the bottom).
 - **Live, desktop (over 1100px).** The highlights fill the first screen edge to edge. Over them: the
   nav; the score bar top left with the ON AIR pill at the right of the same row; the moment tag and
-  subtitle centred over the lower third; the dock (Fixtures, sport switch, voice) under it; the video
+  subtitle centred over the lower third; the dock (Wall, sport switch, voice) under it; the video
   timeline at the very bottom. The Lines and Proof cards stand in a 384px glass column on the right,
   over the video. A dark wash at the top and bottom keeps the overlays legible.
 - **Live, tablet (760 to 1100px).** The stage is 74% of the screen height; Lines and Proof sit under it
@@ -115,13 +118,13 @@ voice speaks. Cards lift 3px on hover and their artwork scales 3.5% over 1.2s. S
 
 | Component | Shows | Behaviour |
 |---|---|---|
-| Nav | "Touchline." left; "Live" (green dot), "Fixtures", "About" right; the current page tinted | Live opens the live page; Fixtures is the match picker |
+| Nav | "Touchline." left; "Live" (green dot), "Replays", "About" right; the current page tinted | Live opens the live page; Replays is the match picker |
 | Match card | Night-stadium artwork with the two teams' crests (shield in team colour, three-letter code), sport label, title, detail (the date never wraps), result, a meta row (highlights length, key moments, default voice), the speed chips, "Start replay →" | Starts the replay |
 | Video stage | The broadcast highlights (re-uploads of the TV coverage on YouTube): an embedded YouTube player, muted, full-bleed. In the mockup an SVG night stadium stands in | Plays from the start. The player's current time drives the commentary, so a line never runs ahead of the picture (A-6.4@2) |
 | Score bar | Team colour bars and codes, the score, the clock (football "69:01" and the half; cricket "Over 19.4", "need 6 off 3" in an amber chip, with both teams' totals at the same weight: "IND 154/5 PAK 159/8"), "REPLAY" | Updates with each moment |
 | ON AIR pill | Red dot, "ON AIR", four amber bars, the voice ("British commentator") | Dot and bars move only while speaking; "VOICE OFF" or "VOICE UNAVAILABLE" otherwise |
 | Subtitle | Over a soft dark scrim so it never sits on the players: the moment tag ("28:29 · Goal", "Over 19.4 · No-ball · Six") above the line in large type | Replaced by the next moment's line; a fixed line turns `--fix` with a "Fixed" tag |
-| Dock | "← Fixtures", the Football / Cricket switch, "Voice: British" | The switch starts the other demo match; Voice opens the voice setting |
+| Dock | "← Wall", the Football / Cricket switch, "Voice: British" | The switch starts the other demo match; Voice opens the voice setting |
 | Timeline | "Broadcast highlights · YouTube · muted", the progress track with a marker per mapped moment (amber once called), a small "Synced to video" chip, "3:05 / 4:56" | Read only |
 | Lines card | Every line so far, newest first: clock, line, first-word time, "Fix". Sized to its content; the oldest line fades out at the bottom rather than being cut | "Fix" opens the producer fix |
 | Proof card | First word p50 and p95, cost per line, lines, fixes, the adapter's result | Read only |
@@ -159,39 +162,39 @@ flowchart LR
 | Voice | Voice off: the pill reads "VOICE OFF · Subtitles only". | Speaking: the dot pulses and the bars move beside "ON AIR". | "VOICE UNAVAILABLE · Subtitles carry on"; the voice setting shows "Voice unavailable. Subtitles carry on." and no switch. |
 | Producer fix | Box emptied: "Send fix" disabled, hint "Type the corrected line, or reject it." | "Sending fix…" with a spinner on the button, the sheet locked. | "Fix not saved. Check the connection and send again." The sheet stays open with the text kept. |
 | Proof card | Every number "–" and "No lines yet." | "Loading stats…" | "Stats unavailable. Lines still play." |
-| Adapter result | "Not trained yet: needs 25 kept lines (12 so far)." | "Training: Mubit is building the adapter." | Cost not measurable: "Adapter cost: Not measurable. Mubit doesn't report the adapter's cost to the app." |
+| Adapter result | "Not trained yet: needs 25 kept lines (<n> so far)." | "Training: Mubit is building the adapter." | Cost not measurable: "Adapter cost: Not measurable. Mubit doesn't report the adapter's cost to the app." |
 
 ## Copy
 
 | Where | Words |
 |---|---|
 | Wordmark | "Touchline." |
-| Nav | "Live", "Fixtures", "About" |
-| Tagline on the picker | "A live AI commentator for matches nobody calls." |
+| Nav | "Live", "Replays", "About" |
+| Tagline on the picker | "Touchline: the describer that checks itself" |
 | Picker heading | "Pick a match" |
 | Football card | "Football" / "Battle of the Bridge" / "Premier League · Chelsea v Tottenham · 2 May 2016" / "Chelsea 2–2 Tottenham: Leicester are champions" |
 | Cricket card | "Cricket" / "India v Pakistan" / "T20 World Cup · MCG, Melbourne · 23 Oct 2022" / "India won by 4 wickets, off the last ball" |
 | Card meta | "Highlights 3:08", "4 key moments", "British commentator" (cricket: "Highlights 4:48", "5 key moments", "Indian commentator") |
 | Card button | "Start replay →" |
 | Picker footer | "Match data: StatsBomb open data and Cricsheet. Highlights: broadcast highlights on YouTube (the TV coverage for Chelsea v Tottenham, the TV feed for India v Pakistan), embedded, muted. Commentary is AI-generated." |
-| About heading | "Every match deserves a commentator." |
-| About text | "Most matches are played with nobody calling them. Touchline watches a match's event feed and calls each key moment in one emotional spoken line, about a second after it happens, over the broadcast highlights." / "One commentator, two sports. The same agent calls football and cricket; switch sport and it follows." / "It learns from its producer. A wrong line is fixed in one tap. Every call and every fix goes through Mubit, which trains a smaller commentator that matches the big one at lower cost." |
+| About heading | "The describer that checks itself." |
+| About text | "Most matches are played with nobody describing them. Touchline watches a match's event feed and describes each key moment in one emotional spoken line, with the model's first word in about half a second (median, GET /stats), over the broadcast highlights." / "It checks every number before it speaks." (score, leader, margin, counts; one retry, then a line built from the data; analyst lines and answers dropped if still wrong) / "One describer, four sports." / "Every fix trains the platform's own describer." (no version has passed Mubit's test yet). Shipped text: `web/src/components/About.tsx`. |
 | Score bar tag | "REPLAY" |
 | Football clock | "82:39" with "1st half" or "2nd half" |
 | Cricket clock | "Over 19.4" with "need 6 off 3", and "PAK 159/8" |
 | Moment tag | "<clock> · <moment>": "Goal", "Penalty", "Off the woodwork", "Stoppage", "Six", "Wicket", "No-ball · Six", "India win" |
 | ON AIR pill | "ON AIR" and "<voice> commentator"; "VOICE OFF" and "Subtitles only"; "VOICE UNAVAILABLE" and "Subtitles carry on" |
 | Timeline caption | "Broadcast highlights · YouTube · muted" |
-| Dock | "← Fixtures", "Football", "Cricket", "Voice: <British, Indian, Australian, Off or Unavailable>" |
+| Dock | "← Wall", "Football", "Cricket", "Voice: <British, Indian, Australian, Off or Unavailable>" |
 | Voice setting | "Commentator voice" / "Each line is spoken in this voice. A change applies from the next line, without reloading." / "Voice" / "Football", "Cricket" / "British", "Indian", "Australian" / "Default" / "Done" |
 | Voice toast | "<voice> commentator from the next line." |
 | Lines card | "Lines", "<n> called", "Fix", "first word 0.58 s", "Fixed", "Rejected" |
 | Fix sheet | "Fix this line" / "Touchline said" / "Corrected line" / "What was wrong" / "Wrong fact", "Wrong player", "Wrong score", "Tone", "Other" / "Send fix", "Reject line", "Cancel" / "Your fix goes back through Mubit and is kept beside the original." |
 | Toasts | "Fix sent. Kept beside the original." / "Line rejected." |
-| Proof card | "Proof" / "First word p50", "First word p95", "Cost per line", "Lines", "Fixes", "Adapter" / "Agrees with the big model on 23 of 25 test moments." / "First word: time from the moment to the first spoken word. Measured through Mubit." |
+| Proof card | "Proof" / "First word p50", "First word p95", "Cost per line", "Lines", "Fixes", "Adapter" / "6 versions trained, best 55.8% on Mubit's test; none passed yet." / "First word: time from the moment to the first spoken word. Measured through Mubit." |
 
 Sample lines in the mockup (samples of the emotional register A-3.6 asks for, not the agent's output;
-the video times are placeholders until the video maps land in `data/`):
+the video times are the mockup's, not the video maps' in `data/video/`):
 
 | Moment | Line |
 |---|---|
@@ -204,7 +207,3 @@ the video times are placeholders until the video maps land in `data/`):
 | Over 19.1 Pandya out | "Pandya goes! Caught off Nawaz, first ball of the last over!" |
 | Over 19.4 no-ball six | "Full toss, waist high, and Kohli dispatches it for six! No-ball, free hit!" |
 | Over 19.6 Ashwin winning single | "Ashwin lifts it over mid-off! India win it off the very last ball!" |
-
-Open, for the lead: the third voice choice (Australian is a placeholder) and whether Fixtures should
-list more than the two demo matches. Rejecting a line has no endpoint in the contract yet; the mockup
-assumes it is sent as a fix with the reason "Rejected" and an empty corrected line.

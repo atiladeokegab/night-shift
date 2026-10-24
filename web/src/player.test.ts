@@ -8,6 +8,7 @@ test('an embed-blocked video never plays here: it gets a poster and a link to Yo
   assert.equal(embeds({ youtube_id: 'yPvoKz6tyJs', video_start: 0, embed: false }), false)
   assert.equal(embeds({}), false)
   assert.equal(posterUrl('yPvoKz6tyJs'), 'https://i.ytimg.com/vi/yPvoKz6tyJs/hqdefault.jpg')
+  assert.equal(posterUrl('yPvoKz6tyJs', 'maxresdefault'), 'https://i.ytimg.com/vi/yPvoKz6tyJs/maxresdefault.jpg')
   assert.equal(watchUrl({ youtube_id: 'jD1GwCcJV-0', video_start: 25.6, embed: false }), 'https://www.youtube.com/watch?v=jD1GwCcJV-0&t=25s')
 })
 

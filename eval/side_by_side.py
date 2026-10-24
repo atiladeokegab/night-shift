@@ -1,6 +1,6 @@
 """Big model vs ours, side by side, for the proof panel (#141). Held-out matches only.
 
-    set -a; . ~/private/night-shift/mubit.env; set +a
+    export MUBIT_API_KEY=...  # the owner's key, which records
     uv run python -m eval.side_by_side --adapters 6 --best 55.8
 
 The app can't call the adapter: Mubit has no model ID for one ("you can't send a call to an adapter

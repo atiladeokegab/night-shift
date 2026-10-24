@@ -32,7 +32,7 @@ def client_for(tmp_path, transport, *lines):
 def test_line_streams_audio_and_logs_first_byte(tmp_path, monkeypatch, caplog):
     monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
     seen = []
-    caplog.set_level(logging.INFO, logger="night_shift.voice")
+    caplog.set_level(logging.INFO, logger="touchline.voice")
     with client_for(tmp_path, upstream(seen=seen)) as client:
         resp = client.get("/lines/l1/audio")
     assert resp.status_code == 200 and resp.headers["content-type"] == "audio/mpeg"

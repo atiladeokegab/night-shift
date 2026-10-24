@@ -9,7 +9,7 @@ body:
     validations: {required: true}
   - type: textarea
     id: boxes
-    attributes: {label: C4 boxes affected, description: Which boxes in the README's Architecture diagram.}
+    attributes: {label: C4 boxes affected, description: Which boxes in docs/ARCHITECTURE.md.}
     validations: {required: true}
   - type: textarea
     id: issues

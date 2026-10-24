@@ -6,19 +6,23 @@ Lines are spoken by ElevenLabs **`eleven_v3`**, its most expressive model. It re
 
 | Moment | Tag |
 |---|---|
-| Goal, wicket, six, last ball | `[shouting]` |
+| Goal, wicket, six, last ball, full time | `[shouting]` |
 | Shot saved or missed, four, card | `[excited]` |
 | Chase build-up | `[hushed]` |
+| Basketball: final buzzer; a lead change, a three or a dunk, or any basket in the last two minutes | `[shouting]` |
+| Basketball: steal, free throw | `[excited]` |
 | F1: lead change, red flag (a crash), chequered flag | `[shouting]` |
 | F1: lights out, other overtakes, pit stop, safety car | `[excited]` |
 | F1 build-up: low grip, last lap | `[hushed]` |
+| The analyst's stat lines | `[thoughtful]` |
+| An answer to a viewer's question | `[excited]` |
 | Anything else (substitution, injury) | none |
 
 The tag goes into the text sent to ElevenLabs and nowhere else. The stored line, the page and Mubit only ever see the line as the commentator wrote it.
 
 ## On time
 
-A v3 request takes 2-3 s warm and 11-15 s cold. Lines for a video-mapped match are created well ahead of the picture, so the server starts each line's audio as soon as the line exists and keeps it in memory. The page's `GET /lines/{id}/audio` then serves audio that is already made.
+A v3 request takes 2-3 s warm and 11-15 s cold; a library voice's first call took 13-16 s (measured 2026-10-23). Lines for a video-mapped match are created well ahead of the picture, so the server starts each line's audio as soon as the line exists and keeps it in memory. The page's `GET /lines/{id}/audio` then serves audio that is already made.
 
 1. Try `eleven_v3` with the moment's tag. A line made before its moment gets one v3 call of at least 7 s, even if that runs past the moment: a v3 line a little late beats a flat one on time. A line spoken as it arrives may retry v3 once, as long as it can still finish 1.5 s before the moment.
 2. Otherwise use `eleven_flash_v2_5` without the tag (about 0.3 s warm).
@@ -41,6 +45,7 @@ The lead picked these on 2026-10-23, after the listening test below: Raju, Crick
 | Basketball | Sam, Engaging Game Narrator | `sam` | the code default | `sam` |
 | F1 | British Football Announcer | `announcer` | the code default | `announcer` (`VOICE_F1` changes it) |
 | Any (page setting) | | `george`, George: British, warm | | |
+| Analyst, every sport | George for cricket and basketball, Sam for football and F1 | `george`, `sam` | the code default | never the lead's voice in the same match |
 
 Football's pick is the same ElevenLabs voice as F1's `announcer`, so it gets its own `football-pick` entry: `GET /voices` names one sport per voice, and the page needs a default for each.
 
