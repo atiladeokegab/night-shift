@@ -289,18 +289,21 @@ def commentate(
     seen: str | None = None,
 ) -> dict:
     """The server's seam: one Line for `moment`, given only the earlier moments and the match's
-    producer fixes (`build_request`)."""
+    producer fixes (`build_request`). A line made with `seen`, what a viewer's shared tab showed, is
+    untrusted (#291): called unrecorded, so never training data, and marked `screen`, so it goes
+    only to that viewer."""
     if header is None:
         from data.matches import match_header
 
         header = match_header(moment["match_id"])
     moments = [*history, moment]
+    if provider is None:
+        provider = unrecorded_provider() if seen else provider_for(moment)
     try:
-        return line_for(
-            header, moments, len(history), provider or provider_for(moment), fixes, seen
-        )
+        line = line_for(header, moments, len(history), provider, fixes, seen)
     except NoLine:
         return None  # the replay skips the moment
+    return {**line, "screen": True} if seen and line else line
 
 
 # the line check's seeding (eval/seed_linecheck.py): its answer is one exact JSON line, so an echo

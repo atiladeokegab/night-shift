@@ -22,7 +22,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from core import insight, predict, review
 from core.guard import OFF_TODAY, Guard, SayOnly, cached_commentator, client_ip
-from core.look import Looks
+from core.look import Looks, Unshared
 from core.predict import load_pack, shot_points
 from core.replay import OFF_AIR, Replay, run_replay
 from core.stats import stats
@@ -218,15 +218,17 @@ def create_app(
         replays[replay.id] = replay
         # a jump starts the video just before its moment (#163), as GET /matches' peak_video_start
         video = d.video_map(req.match_id) if jump is None else d.video_map(req.match_id, jump)
+        said_to = SayOnly(store) if cached else store
         if d.look and not cached and video:  # a frame's note goes in the next line (#291)
             due = {m["idx"]: m["video_t"] for m in video["moments"]}
             commentate = with_look(commentate, lambda m: looks.take(replay.id, due.get(m["idx"])))
+            said_to = Unshared(store)  # that line is this viewer's only
         task = asyncio.create_task(
             run_replay(
                 replay,
                 moments,
                 commentate,
-                SayOnly(store) if cached else store,
+                said_to,
                 video,
                 speak,
                 jump or 0,

@@ -12,6 +12,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 
 from core import insight, review
+from core.look import screened
 from core.stats import stats
 
 log = logging.getLogger("touchline.replay")
@@ -257,7 +258,8 @@ async def run_replay(
                 said_line = {**line, **tag, "speaker": "lead", "replay_id": replay.id}
                 await say(await asyncio.to_thread(store.append, "lines", said_line), moment)
                 recent.append(line.get("text") or "")
-                if rejected and correct:  # after the kept line is out: never on its path
+                # after the kept line is out: never on its path; never a screen note's (#291)
+                if rejected and correct and not screened(rejected) and not screened(line):
                     fixes.append(asyncio.create_task(auto_fix(store, correct, rejected, line)))
             if not tag:
                 continue

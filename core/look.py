@@ -13,6 +13,28 @@ KEEP_S = 10.0
 NEAR_S = 15.0
 
 
+def screened(line: dict) -> bool:
+    """A line made with a screen note, or carrying a try that was (a rejected or failed try)."""
+    return bool(line.get("screen")) or any(
+        isinstance(v, dict) and v.get("screen") for v in line.values()
+    )
+
+
+class Unshared:
+    """The store a watched replay runs on (#291). What a viewer's shared tab shows is untrusted, so
+    a line made with it goes to `looks`, for that viewer's voice and the daily spend, and never to
+    `lines`, which other viewers' replays, the cached commentator and producer fixes read."""
+
+    def __init__(self, store):
+        self.store = store
+
+    def __getattr__(self, name):
+        return getattr(self.store, name)
+
+    def append(self, kind: str, record: dict) -> dict:
+        return self.store.append("looks" if kind == "lines" and screened(record) else kind, record)
+
+
 class Looks:
     def __init__(self, env=os.environ, clock=time.monotonic):
         self.cap = int(env.get("LOOKS_PER_REPLAY") or 150)

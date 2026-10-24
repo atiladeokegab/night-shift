@@ -7,10 +7,10 @@ import threading
 import pytest
 from fastapi.testclient import TestClient
 
-from agent import look
-from agent.commentator import build_request
+from agent import commentator, look
+from agent.commentator import FakeProvider, build_request
 from core.app import Deps, create_app
-from core.guard import spent
+from core.guard import cached_commentator, spent
 from core.look import Looks
 from core.smoke import read_stream
 from core.store import Store
@@ -96,9 +96,10 @@ class Clock:
         return self.now
 
 
-def watched(tmp_path, said, env=None):
+def watched(tmp_path, said, env=None, correct=None):
     """An app whose replay of match 7 holds at moment 0 until `go` is set, and the `seen` each
-    line's commentate was given."""
+    line's commentate was given. Each line has a rejected first try; a line made with a note is
+    marked `screen`, as the real commentate marks it."""
     go, seen, eyes, clock = Gate(), [], Eyes(said), Clock()
 
     def commentate(m, history, **kw):
@@ -106,13 +107,16 @@ def watched(tmp_path, said, env=None):
         if m["idx"] == 0:
             go.held.set()
             go.wait(5)
-        return {"line_id": f"l{m['idx']}", "match_id": "7", "moment_idx": m["idx"], "text": "New"}
+        screen = {"screen": True} if kw.get("seen") else {}
+        rejected = {"line_id": f"r{m['idx']}", "text": "Old", **screen}
+        line = {"line_id": f"l{m['idx']}", "match_id": "7", "moment_idx": m["idx"], "text": "New"}
+        return {**line, **screen, "rejected": rejected}
 
     def see(image, names):
         return look.see(image, names, provider=eyes)
 
     video = {"youtube_id": "x", "start": 0, "moments": [{"idx": i, "video_t": t} for i, t in DUE]}
-    deps = Deps(lambda: [], lambda mid: MOMENTS, commentate, lambda *a: video, look=see)
+    deps = Deps(lambda: [], lambda mid: MOMENTS, commentate, lambda *a: video, correct, look=see)
     looks = Looks(env or {}, clock)
     client = TestClient(create_app(store=Store(tmp_path), deps=deps, looks=looks))
     return client, go, seen, eyes, clock
@@ -164,6 +168,49 @@ def test_a_note_that_names_anyone_is_dropped(tmp_path):
         go.set()
         read_stream(client, rid)
     assert got.json() == {"note": None} and {note for *_, note in seen} == {None}
+
+
+def test_a_line_made_with_a_note_is_called_unrecorded(monkeypatch):
+    recorded, unrecorded = FakeProvider(), FakeProvider()
+    monkeypatch.setattr(commentator, "default_provider", lambda: recorded)
+    monkeypatch.setattr(commentator, "unrecorded_provider", lambda: unrecorded)
+    moments, header = load_moments(JAZZ)[:34], match_header(JAZZ)
+    plain = commentator.commentate(moments[-1], moments[:-1], header)
+    assert recorded.requests and not unrecorded.requests and "screen" not in plain
+    del recorded.requests[:]
+    line = commentator.commentate(moments[-1], moments[:-1], header, seen=NOTE)
+    assert unrecorded.requests and not recorded.requests and line["screen"] is True
+    assert f"On screen: {NOTE}" in unrecorded.requests[0]["messages"][0]["content"]
+
+
+def test_a_line_made_with_a_note_is_only_that_viewers(tmp_path, monkeypatch):
+    monkeypatch.delenv("ELEVENLABS_API_KEY", raising=False)
+    sent = []
+
+    def correct(rejected, text, reason):
+        sent.append(rejected)
+        return {"mubit_request_id": "m"}
+
+    client, go, seen, _, _ = watched(tmp_path, "a corner kick", correct=correct)
+    with client:
+        rid = started(client)
+        assert go.held.wait(5)
+        frame(client, rid, t=25)  # moment 1's: moment 0 (and its stat lines) at 5 s is too far
+        go.set()
+        read_stream(client, rid)
+        store = Store(tmp_path)
+        (mine,) = [ln for ln in store.all("looks") if ln.get("screen")]
+        spoken = client.get(f"/lines/{mine['line_id']}/audio")  # found: only the voice is missing
+        shown = client.get(f"/lines/{mine['line_id']}")
+    assert mine["moment_idx"] == 1 and [note for *_, note in seen].count("a corner kick") == 1
+    # never stored for other viewers' replays, or fixed by a producer
+    lines = store.all("lines")
+    assert len(lines) == 2 and mine["moment_idx"] not in {ln["moment_idx"] for ln in lines}
+    again = cached_commentator(store, "7")
+    assert again(MOMENTS[mine["moment_idx"]], []) is None
+    assert spoken.status_code == 503 and shown.status_code == 404
+    # its rejected try never becomes a correction: the others' do
+    assert len(sent) == 2 and not any(r.get("screen") for r in sent)
 
 
 def test_numbers_in_words_and_nothing_are_no_note():
@@ -256,7 +303,7 @@ def test_each_frame_call_counts_toward_the_daily_spend(tmp_path):
         frame(client, rid)
         go.set()
         read_stream(client, rid)
-    calls = Store(tmp_path).all("looks")
+    calls = [c for c in Store(tmp_path).all("looks") if not c.get("screen")]  # the frame calls
     assert [(c["model"], c["tokens_in"], c["tokens_out"]) for c in calls] == [
         (look.MODEL, 1000, 10)
     ] * 2
