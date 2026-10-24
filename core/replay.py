@@ -147,6 +147,7 @@ async def run_replay(
             if ln.get("match_id") == replay.match_id
             and ln.get("speaker", "lead") == "lead"
             and "reply" not in ln
+            and "open" not in ln  # the cold open's lines (#221): said before any moment
         ]
         fixed = {f["line_id"]: f for f in await asyncio.to_thread(store.all, "fixes")}
         # a producer's fix is heard on the next replay (#232): the newest one for each moment
@@ -158,6 +159,20 @@ async def run_replay(
             header = match_header(replay.match_id)
         except KeyError:  # not a bundled match: its fixes are checked against the moment alone
             header = None
+        if gaps and not start_idx:  # the cold open (#221): once, before the first mapped moment
+            first = min(video_t, key=video_t.get)
+            opened = await asyncio.to_thread(
+                gaps.cold_open,
+                [m for m in moments if m["idx"] < first],
+                next(m for m in moments if m["idx"] == first),
+                video.get("start", 0),
+                video_t[first],
+                commentate,
+            )
+            for stat, said_line in opened:  # its score is the one before the first mapped moment
+                await replay.publish("moment", {**stat, "video_t": said_line["video_t"]})
+                await say(said_line, stat)
+                recent.append(said_line["text"])
         # a jump (#163): earlier play is on screen from the start, its score and clock and the lines
         # already said for it, untimed so nothing waits for the picture; it is never called again
         if start_idx:

@@ -55,17 +55,25 @@ and refuses to start without `STORE_URL=gs://bucket/prefix`.
   each mapped moment is filled with lines due at the last line's words / 2.7 + 2 s, until 6 s before
   the next mapped moment. Each one is a Line with `video_t`, said over a synthetic Moment
   `{...that moment, type: "Stat", outcome: "<kind>: <detail>", players: {}, detail: {speaker,
-  "Partner just said": <last line>}}` with the same `idx` (a reply's outcome is "the lead answers the
+  "you are": <name>, partner: "<name>, the <role>", "call partner by name": "yes" | "no",
+  "<name> just said": <last line>}}` with the same `idx` (names from `NAMES` in core/voice.py: Jim
+  the lead, Julian the analyst; the name before "just said" is whoever said the last line) (a reply's outcome is "the lead answers the
   analyst, who just said: <last line>"). Its request is a line's message with the analyst's own
   system prompt (agent/analyst.md), no tools, never recorded, on `ANALYST_MODEL` (default
   claude-sonnet-5-5 with `thinking: {"type": "between_tools"}`, priced in core/stats.py; a
-  model outside its prices is left out of the cost). An **insight** (`speaker: "analyst"`) carries `insight: {match_id, after_idx, n, kind, detail, heard}`, where `kind` is
+  model outside its prices is left out of the cost). An **insight** (`speaker: "analyst"`) carries `insight: {match_id, after_idx, n, kind, detail, heard, by, named}` (plus `never open with`
+  when its first try opened like an earlier analyst line: no opener's first 3 words repeat in a replay), where `kind` is
   `"player profile"`, `"next to score"`, `"tally"`, `"score story"`, `"momentum"` or `"positions"`
   and `detail` is one short fact (a profile, odds or positions give one fact per insight; a
   pre-match fact names its period, such as "this season before tonight"), built only from moments up to `after_idx` and the pre-match pack. Every
   4th line in a stretch is a **reply** (`speaker: "lead"`, `reply: {..., kind: "reply"}`, no stat).
-  Both are cached per (match_id, after_idx, n, v: 2) and reused by later replays; a replay makes at
-  most 160 new insight and reply calls. A fix on either goes back, unrecorded, with that line's own
+  A replay from the start opens with a **cold open** (#221) before the first mapped moment, from
+  `video_start`: the lead's welcome naming the match, then the analyst's light line (`open: {...,
+  kind: "cold open", n: 0 | 1, kickoff}`), each kept only if it ends 2 s before the first call and
+  the open's speech stays within 15 s; said over the last moment before the first mapped one, else (`kickoff`) over the
+  first with its counts zeroed and no history.
+  All three are cached per (match_id, after_idx, n, v: 4) and reused by later replays; a replay
+  makes at most 160 new calls for them. A fix on any goes back, unrecorded, with that line's own
   Stat request.
 - **Fix** (core/): `{line_id, corrected_text, reason, created_at, mubit_request_id,
   reply_matched: bool, recorded: bool}`; `recorded` is true only when Mubit recorded the correction
@@ -75,7 +83,7 @@ and refuses to start without `STORE_URL=gs://bucket/prefix`.
   marks `data/sample/`; `youtube_id` and `video_start` are there when the match has a video map.
   `embed: false` (absent otherwise) means the video's owner blocks embedding: pages show its poster and
   a link to it on YouTube, never the player, and the commentary runs on the replay's own clock.
-  `video_start` is the whole second the page starts the video at, 10 s before its first mapped moment (or 0).
+  `video_start` is the whole second the page starts the video at, 25 s before its first mapped moment (or 0): room for the cold open (#221).
   `peak_idx` (#163) is the moment "Jump to the big moment" starts at; `peak_video_start` is the video's start
   for that jump, 10 s before the first mapped moment from `peak_idx` on.
 - **Video map** (data/video/): `{youtube_id, embed?, source, moments: [{idx, video_t}]}`; `idx` is a Moment's

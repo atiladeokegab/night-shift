@@ -170,7 +170,7 @@ def test_a_wrong_answer_is_asked_again_once_then_off_air(tmp_path):
 
     asked = []
 
-    def ask(question, past, lines, texts=("So far, Reds 9, Blues 0.",)):
+    def ask(question, past, lines, texts=("So far, Reds 9, Blues 0.",), wrong=()):
         asked.append(question)
         text = texts[min(len(asked), len(texts)) - 1]
         return {"line_id": uuid.uuid4().hex, "moment_idx": past[-1]["idx"], "text": text}

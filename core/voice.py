@@ -97,6 +97,9 @@ TAGS = {
 
 ANSWER_TAG = "[excited]"
 ANALYST_TAG = "[thoughtful]"  # the analyst's stat lines between moments (#130) are calmer
+# What the two commentators call each other (#221): only the analyst's and reply requests carry
+# them, never the lead's recorded moment prompt
+NAMES = {"lead": "Jim", "analyst": "Julian"}
 
 # The second commentator per sport (#131): a library voice with another accent than the lead.
 ANALYST_FOR = {"cricket": "george", "football": "sam", "basketball": "george", "f1": "sam"}
