@@ -120,14 +120,14 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
     rewound.current = onRewind
   }, [onLine, onRewind])
 
-  // Speak each newly presented line once, unless it was released late.
+  // Speak each newly presented line once, unless it was released late or said before a jump (#163).
   const spoken = useRef<string | null>(null)
   const spokenAt = useRef<number | null>(null) // video time of the line being spoken
   const newest = state.lines[0]
   useEffect(() => {
     if (!newest || newest.line_id === spoken.current) return
     spoken.current = newest.line_id
-    if (!state.late.includes(newest.line_id)) {
+    if (!state.late.includes(newest.line_id) && !newest.history) {
       spokenAt.current = newest.video_t ?? null
       said.current(newest)
     }

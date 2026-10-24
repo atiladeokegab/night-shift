@@ -112,9 +112,9 @@ function Tile({ match, onOpen, onJump }: { match: Match; onOpen: (m: Match) => v
     </button>
     {/* A sibling, not inside the button: a link can't sit inside another control. */}
     {blocked && <a className="tile-yt" href={watchUrl(match)} target="_blank" rel="noopener noreferrer">Watch highlights on YouTube ↗</a>}
-    {/* #163: the YouTube link's pill on the left (below it when both show); inline as App.css is #153's */}
+    {/* #163: top right, clear of the sport label on the left (below the YouTube link when both show); inline as App.css is #153's */}
     {match.peak_idx !== undefined && (
-      <button className="tile-yt" style={{ left: 12, right: 'auto', top: blocked ? 50 : 12, cursor: 'pointer' }} onClick={() => onJump(match)}
+      <button className="tile-yt" style={{ top: blocked ? 50 : 12, cursor: 'pointer' }} onClick={() => onJump(match)}
         aria-label={`Jump to the big moment of ${title}`}>Jump to the big moment</button>
     )}
     </div>
