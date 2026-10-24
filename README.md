@@ -20,7 +20,7 @@ Touchline describes the matches a platform streams with nobody describing them. 
 
 What you hear are **replays, as if live**: real matches' event data played back over their broadcast highlights, each line called at its moment as if the match were on now. Sky Sports now describes [about 109 Premier League games a season](#the-problem) aloud, and none below the top flight.
 
-**Who it is for:** a blind or low-vision fan following a match with no described commentary. Two whole matches lead the page, every key moment from start to finish with no video: Orlando Pride v North Carolina Courage (NWSL, 2018) and Netherlands v Nepal (Women's T20 World Cup Qualifier, 2026). A match replayed from start to finish costs $0.37 to describe on average, $0.09 model and $0.28 voice, over the 23 measured on the live [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats) on 24 October 2026 at 16:15 UTC.
+**Who it is for:** a blind or low-vision fan following a match with no described commentary. Two whole matches lead the page, every key moment from start to finish with no video: Orlando Pride v North Carolina Courage (NWSL, 2018) and Netherlands v Nepal (Women's T20 World Cup Qualifier, 2026). A full replay, mostly highlights, costs $0.37 on average, $0.09 model and $0.28 voice, over the 23 measured on the live [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats) on 24 October 2026 at 16:15 UTC. A whole match calls every moment, so it costs more.
 
 <!-- DEMO GIF SLOT (build-140): the demo GIF, full width, with a one-line caption under it. -->
 
@@ -136,18 +136,20 @@ Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026. Track: Own
 | [The Proof panel](#the-proof-panel) | Live | [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats), [`core/stats.py`](core/stats.py) |
 | Live screen layout: the video in a card, Lines and Proof beside it, playback controls | Live (#132) | [`web/src/components/Live.tsx`](web/src/components/Live.tsx) |
 
-#### The seven matches
+#### The nine matches
 
 <img src="docs/img/wall.png" alt="The home page in a dark theme, at 1440 wide. The amber Touchline. wordmark top left; on the right the links Matches (with a green dot, the current page), Replays, Review and About. Under the eyebrow Touchline: the describer that checks itself, the heading The match nobody described and a short paragraph on what it does. Then the long-tail match as a wide tile across the full row: FOOTBALL · NO DESCRIBED BROADCAST, Brighton v Bristol City, Women's Super League · 21 Jan 2024. Below it, six tiles in three columns and two rows, each with a broadcast still, a Jump to the big moment pill and the link Tap to hear it called: Battle of the Bridge (Chelsea v Tottenham, 2016); Messi v Mbappé (2022 World Cup final); India v Pakistan (T20 World Cup, 2022); Kobe's 81 v Toronto (2006); Jordan's last shot as a Bull (1998 NBA Finals, Game 6); Verstappen, P17 to P1 (2024 São Paulo Grand Prix). Below them, the credits for the match data and the highlights." width="100%">
 
-One match from the long tail and six famous ones, in four sports, each replayed from real event data
-over its broadcast highlights and called by the same commentator with the same prompt. A line is
-never shown or spoken before its moment reaches the picture: the YouTube player's clock gates it
+Three matches from the long tail and six famous ones, in four sports, each replayed from real event data
+and called by the same commentator with the same prompt. The two whole matches have no video; the
+rest play over their broadcast highlights. A line is never shown or spoken before its moment reaches the picture: the YouTube player's clock gates it
 ([`web/src/gate.ts`](web/src/gate.ts)).
 
 | Match | Sport and data | Voice | What it calls |
 |---|---|---|---|
 | The long tail: Brighton 3-2 Bristol City, Women's Super League, 2024 | Football, StatsBomb | British Football Announcer | The five goals: Bristol City come level twice, then Terland's winner in stoppage time |
+| Orlando Pride v North Carolina Courage, NWSL 2018 | Football, StatsBomb | British Football Announcer | The whole match, every key moment from kick-off to full time: the shots, the substitutions, an own goal, Courage winning 4-3 |
+| Netherlands v Nepal, Women's T20 WC Qualifier 2026 | Cricket, Cricsheet | Raju | The whole match, every key moment: the wickets, the boundaries, Nepal's chase of 141 to the last ball |
 | The Battle of the Bridge: Chelsea 2-2 Tottenham, 2016 | Football, StatsBomb | British Football Announcer | The four goals, Hazard's equaliser that made Leicester champions |
 | Argentina v France, 2022 World Cup final | Football, StatsBomb | British Football Announcer | Messi's two goals, Di María, Mbappé's three, the shoot-out |
 | India v Pakistan, 2022 T20 World Cup | Cricket, Cricsheet | Raju | The wickets, the sixes, Kohli's two sixes off Rauf, the last ball |
