@@ -9,6 +9,7 @@ test('under the target, the figure counts toward it', () => {
 test('at or over the target, it never reads "66 of 25" and says there are enough', () => {
   const { value, note } = nextAdapter(66, 25)
   assert.doesNotMatch(value, / of /)
+  assert.equal(value, 'Ready to train')
   assert.equal(note, '66 fixes recorded · 25 needed: enough for the next adapter')
   assert.equal(nextAdapter(25, 25).note, '25 fixes recorded · 25 needed: enough for the next adapter')
 })
