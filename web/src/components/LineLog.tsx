@@ -114,9 +114,10 @@ function AskBox({ onAsk }: { onAsk: Props['onAsk'] }) {
   return (
     <form className="ask" onSubmit={send}>
       <label className="sr-only" htmlFor="ask-q">Ask the commentator</label>
-      {/* size 1: the input fills the row by flex, so its default 20-character width never widens the card (#139) */}
-      <input id="ask-q" size={1} value={question} maxLength={200} readOnly={asking} disabled={!onAsk} autoComplete="off" enterKeyHint="send"
-        placeholder={!onAsk ? 'Ask once play starts' : hint || 'Ask the commentator…'} onChange={(e) => setQuestion(e.target.value)} />
+      {/* A one-row box that grows, so a long question reads from its start (#153); Enter sends, as the input did. */}
+      <textarea id="ask-q" rows={1} value={question} maxLength={200} readOnly={asking} disabled={!onAsk} autoComplete="off" enterKeyHint="send"
+        placeholder={!onAsk ? 'Ask once play starts' : hint || 'Ask the commentator…'} onChange={(e) => setQuestion(e.target.value.replace(/\n/g, ' '))}
+        onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && (e.preventDefault(), e.currentTarget.form?.requestSubmit())} />
       <MicButton disabled={!onAsk || asking} onHeard={(t) => (setHint(''), setQuestion(t))} onSend={(t) => (setQuestion(t), void ask(t))}
         onHint={(h) => (setQuestion(''), setHint(h))} />
       <button className="btn sm primary" disabled={!onAsk || asking || !question.trim()}>

@@ -250,12 +250,15 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .pill.late { color: var(--muted); border: 1px solid var(--line-hi); }
 /* Ask the commentator (#117): the form under the Lines heading; a question and its answer sit in the log on a
    tint of their own, apart from the play-by-play. 16px text so a phone doesn't zoom into the field. */
-.ask { display: flex; gap: 8px; margin-bottom: 12px; }
-.ask input { flex: 1; min-width: 0; height: 38px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line-hi);
+.ask { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 12px; }
+.ask :is(input, textarea) { flex: 1; min-width: 0; height: 38px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line-hi);
   background: rgba(0, 0, 0, .3); color: var(--fg); font: 500 1rem/1 var(--body); }
-.ask input::placeholder { color: var(--muted); }
-.ask input:focus { outline: none; border-color: var(--amber); box-shadow: 0 0 0 4px rgba(255, 181, 71, .15); }
-.ask input:disabled { opacity: .6; }
+/* shortcut: field-sizing grows the box in Chrome and Safari 26.2+; elsewhere it stays one row and scrolls. */
+.ask textarea { display: block; height: auto; min-height: 38px; max-height: 96px; padding: 9px 12px; resize: none; field-sizing: content;
+  line-height: 20px; }
+.ask :is(input, textarea)::placeholder { color: var(--muted); }
+.ask :is(input, textarea):focus { outline: none; border-color: var(--amber); box-shadow: 0 0 0 4px rgba(255, 181, 71, .15); }
+.ask :is(input, textarea):disabled { opacity: .6; }
 .ask .btn.sm { height: 38px; gap: 6px; }
 .log .qa { padding: 12px 8px; border-radius: 10px; border-top-color: transparent; background: rgba(255, 255, 255, .06); }
 .log .qa + li { border-top-color: transparent; }
@@ -387,9 +390,12 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   .pickbar .back span { display: none; }
   .pickbar .voice .pre { display: none; } /* the name alone fits; the button's label keeps "Voice:" */
 }
-/* A phone on its side: the picture and its controls fill the screen's height; no nav or bar (#153). */
+/* A phone on its side: the picture and its controls fill the screen's height; of the nav and bar only the
+   back arrow stays, in the corner beside the picture (#153). */
 @media (orientation: landscape) and (max-height: 500px) {
-  .live .nav { display: none; }
+  .live .nav { position: fixed; top: 8px; left: 8px; z-index: 5; padding: 0; }
+  .live .nav > :not(.pickbar), .live .pickbar > :not(.back) { display: none; }
+  .live .nav .pickbar { flex: none; padding: 0; }
   .live-body { padding-top: 8px; }
   .live-main { min-height: 0; }
   .live-main > * { width: min(100%, calc((100svh - 56px) * 16 / 9)); }
