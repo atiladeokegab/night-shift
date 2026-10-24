@@ -459,6 +459,9 @@ class Gaps:
             self.used.add(said_as["detail"])
         return stat_moment(m, said_as, reply), ln
 
+    def wrong_open(self, text: str, stat: dict, past: list[dict]) -> list[str]:
+        return wrong_numbers(text, stat, self.header(), past)
+
     def cold_open(
         self, before: list[dict], first: dict, t: float, first_t: float, commentate
     ) -> list[tuple[dict, dict]]:
@@ -473,12 +476,10 @@ class Gaps:
         for n, (speaker, ask) in enumerate(OPENING):
             lead = speaker == "lead"
             ln = self.cached.get((m["idx"], n, True))
-            if ln is not None:
-                said_as = ln["open"]
-            elif t > until - CLEAR_S or self.calls >= MAX_CALLS:
-                break
-            else:
-                said_as = {
+            said_as = (
+                ln["open"]
+                if ln is not None
+                else {
                     "kind": OPEN,
                     "detail": ask,
                     "heard": heard,
@@ -487,9 +488,25 @@ class Gaps:
                     "kickoff": kickoff,
                     "v": VERSION,
                 }
-                self.calls += 1
-                said = commentate(stat_moment(m, said_as, lead), list(history))
-                if not (said and said.get("text")):
+            )
+            stat = stat_moment(m, said_as, lead)
+            # the moment lines' number check on every open line, cached ones too (#224's for the
+            # stretches): a number the match doesn't give is never said
+            if ln is not None and self.wrong_open(ln.get("text") or "", stat, history):
+                ln = None
+            if ln is None:
+                if t > until - CLEAR_S:
+                    break
+                said = None
+                for retry in (False, True):  # a wrong number: asked once more, then the open ends
+                    if self.calls >= MAX_CALLS:
+                        break
+                    self.calls += 1
+                    got = commentate(stat, list(history))
+                    if got and got.get("text") and not self.wrong_open(got["text"], stat, history):
+                        said = {**got, "checked": True, **({"retried": True} if retry else {})}
+                        break
+                if said is None:
                     break
                 key = {"match_id": self.match_id, "after_idx": m["idx"], "n": n}
                 ln = self.store.append(
@@ -505,7 +522,7 @@ class Gaps:
             done = due_after(t, ln.get("text"))
             if done > until:
                 break
-            out.append((stat_moment(m, said_as, lead), {**ln, "video_t": t}))
+            out.append((stat, {**ln, "video_t": t}))
             heard, t = ln["text"], done
         return out
 

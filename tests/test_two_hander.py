@@ -184,3 +184,41 @@ def test_a_cold_open_with_no_numbers_passes_the_number_check(tmp_path):
             assert insight.wrong_numbers(crowd, m, header["now"], past), match_id
             checked += 1
     assert checked >= 8  # both lines on the four long run-ins, at least Jim on the rest
+
+
+def test_an_open_line_with_a_number_the_match_doesnt_give_is_asked_once_more_then_dropped(
+    tmp_path,
+):
+    asked = []
+
+    def counting(text):
+        def calls(moment, history):
+            if not moment["outcome"].startswith(insight.OPEN):
+                return None
+            asked.append(moment["detail"]["speaker"])
+            return {"line_id": uuid.uuid4().hex, "moment_idx": moment["idx"], "text": text}
+
+        return calls
+
+    def run(calls, store):
+        r = Replay(WSL, 1e9)
+        asyncio.run(run_replay(r, load_moments(WSL), calls, store, video_map(WSL)))
+        return [e["data"] for e in r.events if e["event"] == "line" and "open" in e["data"]]
+
+    store = Store(tmp_path)
+    assert run(counting("Welcome, with 40000 here tonight."), store) == []
+    assert asked == ["lead", "lead"]  # the welcome twice, then no open at all
+    asked.clear()
+    good = run(counting("Welcome to the Women's Super League."), store)
+    assert [ln["speaker"] for ln in good] == ["lead", "analyst"] and all(
+        ln["checked"] for ln in good
+    )
+    # a stored open line the check now fails is made again, never said
+    stale = Store(tmp_path / "stale")
+    for ln in store.all("lines"):
+        stale.append(
+            "lines", {**ln, "text": "Welcome, with 40000 here tonight."} if "open" in ln else ln
+        )
+    asked.clear()
+    again = run(counting("Welcome to the Women's Super League."), stale)
+    assert asked == ["lead", "analyst"] and "40000" not in " ".join(ln["text"] for ln in again)
