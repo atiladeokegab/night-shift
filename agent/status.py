@@ -16,7 +16,6 @@ from agent.commentator import (
     MODEL,
     _match,
     _outcome,
-    _period,
     _players,
     _score,
     default_provider,
@@ -28,10 +27,41 @@ SYSTEM = (Path(__file__).resolve().parent / "status_prompt.md").read_text(encodi
 QUESTION = "Where are we?"
 WORDS = 25
 MESSAGE = Template(
-    "Sport: $sport\nMatch: $match\nMoment: $period, $clock\nScore: $score\nWho leads: $lead\n"
+    "Sport: $sport\nMatch: $match\nMoment: $when\nScore: $score\nWho leads: $lead\n"
     "Last event: $type, $outcome ($team; $players)"
 )
+QUARTERS = ("First", "Second", "Third", "Fourth")
+HALVES = {1: "First half", 2: "Second half", 5: "Penalty shootout"}
 log = logging.getLogger(__name__)
+
+
+def _when(m: dict) -> str:
+    """The time as a commentator says it: an NBA clock counts down ("First quarter, 0:30 left"),
+    a football one is whole minutes played ("Second half, 96 minutes played")."""
+    p, clock = m["period"], m["clock"]
+    if m["sport"] == "basketball":
+        mins, secs = clock.split(":")
+        part = f"{QUARTERS[p - 1]} quarter" if p <= 4 else f"Overtime {p - 4}"
+        return f"{part}, {int(mins)}:{secs} left"
+    if m["sport"] == "football":
+        half = HALVES.get(p, "Extra time")
+        return half if p == 5 else f"{half}, {int(clock.split(':')[0])} minutes played"
+    if m["sport"] == "cricket":
+        return f"Innings {p}, over {clock}"
+    return f"Lap {p}"
+
+
+def _people(m: dict) -> str:
+    """Who did what. A cricket ball in words, so a catch isn't credited to the bowler: "HH Pandya
+    bowling to Shadab Khan; Shadab Khan is out, caught by SA Yadav"."""
+    p = m["players"]
+    if m["sport"] != "cricket" or not {"batter", "bowler"} <= p.keys():
+        return _players(m)
+    said = f"{p['bowler']} bowling to {p['batter']}"
+    if p.get("out"):
+        said += f"; {p['out']} is out, {m['outcome']}"
+        said += f" by {p['fielder']}" if p.get("fielder") else ""
+    return said
 
 
 def _lead(m: dict) -> str:
@@ -44,14 +74,13 @@ def build_request(header: dict, m: dict) -> dict:
     message = MESSAGE.substitute(
         sport=m["sport"],
         match=_match(header),
-        period=_period(m),
-        clock=m["clock"],
+        when=_when(m),
         score=_score(header, m),
         lead=_lead(m),
         type=m["type"],
         outcome=_outcome(m),  # with the football moment's place (#172)
-        team=m["team"],
-        players=_players(m),
+        team=f"{m['team']} batting" if m["sport"] == "cricket" else m["team"],
+        players=_people(m),
     )
     return {
         "model": MODEL,
@@ -63,16 +92,33 @@ def build_request(header: dict, m: dict) -> dict:
 
 
 def fallback_text(header: dict, m: dict) -> str:
-    """The status from the moment's data alone: said when the model's numbers stay wrong, or it is
-    off air, so "Where are we?" always gets an answer."""
-    lead = m["detail"].get("lead") or m["detail"].get("chase")
-    said = f"{_period(m)[0].upper()}{_period(m)[1:]}, {m['clock']}. {_score(header, m)}."
-    return f"{said} {lead[0].upper()}{lead[1:]}." if lead else said
+    """The status from the moment's data alone: said when the model's line stays wrong, or it is
+    off air, so "Where are we?" always gets an answer. The score once: who leads says it."""
+    state = m["detail"].get("lead") or _score(header, m)
+    return f"{_when(m)}. {state[0].upper()}{state[1:]}."
+
+
+def says_score(text: str, m: dict) -> bool:
+    """The line says the score's numbers (the lap in F1), "one" and "nil" included: the number
+    check reads a lone "one" as a word."""
+    from core import insight
+
+    s = m["score"]
+    if "home" in s:
+        need = (s["home"], s["away"])
+    else:
+        need = (s["runs"], s["wickets"]) if "runs" in s else (s["lap"],)
+    words = insight.said(text)
+    have = {w for w in words if isinstance(w, float)}
+    have |= {1.0} if "one" in words else set()
+    have |= {0.0} if {"nil", "nothing", "zero", "love", "none"} & set(words) else set()
+    return {float(n) for n in need} <= have
 
 
 def status(past: list[dict], header: dict | None = None, provider=None) -> dict:
     """The status at past[-1], the moment on screen: nothing later reaches the request. Checked like
-    a moment's line (insight.checked), so a wrong score or leader is never spoken."""
+    a moment's line (insight.wrong_numbers), and it must say the score: tried once more, then the
+    status from the data, so a wrong or missing score or leader is never spoken."""
     from core import insight
 
     m = past[-1]
@@ -83,18 +129,24 @@ def status(past: list[dict], header: dict | None = None, provider=None) -> dict:
     provider = provider or default_provider()
     start, replies = time.monotonic(), []
 
-    def say(moment: dict, history: list[dict]) -> dict:
-        reply = provider.call(build_request(header, moment))
-        replies.append(reply)
-        return {
-            "text": spoken(
+    def right(text: str) -> bool:
+        # the status needn't repeat a points milestone; its numbers stay given by player_points
+        d = {k: v for k, v in m["detail"].items() if k != "milestone"}
+        wrong = insight.wrong_numbers(text, {**m, "detail": d}, header, past[:-1])
+        return bool(text) and says_score(text, m) and not wrong
+
+    text = None
+    try:
+        for _ in range(2):
+            reply = provider.call(build_request(header, m))
+            replies.append(reply)
+            said = spoken(
                 " ".join(b["text"] for b in reply["content"] if b["type"] == "text"), WORDS
             )
-        }
-
-    try:
-        out = insight.checked(say, m, past[:-1])
-        text = out["text"] if out["text"] and not out.get("fallback") else fallback_text(header, m)
+            if right(said):
+                text = said
+                break
+        text = text or fallback_text(header, m)
     except Exception as exc:  # off air: the data still says where we are
         log.warning("status %s off air: %s: %s", m["match_id"], type(exc).__name__, str(exc)[:300])
         text = fallback_text(header, m)

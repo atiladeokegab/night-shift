@@ -14,6 +14,7 @@ from core.store import Store
 from data.matches import load_moments, match_header
 
 JORDAN = "0049700088"  # Game 6, 1998: the Jazz lead 86-85 after Jordan's layup at idx 30
+KOBE, CRICKET, FINAL = "0020500591", "1298150", "3869685"
 
 
 class Says:
@@ -38,8 +39,13 @@ class OffAir:
         raise RuntimeError("402 Payment Required")
 
 
-def upto(idx):
-    return [m for m in load_moments(JORDAN) if m["idx"] <= idx]
+def upto(idx, match_id=JORDAN):
+    return [m for m in load_moments(match_id) if m["idx"] <= idx]
+
+
+def sent(match_id, idx):
+    m = upto(idx, match_id)[-1]
+    return st.build_request(match_header(match_id), m)["messages"][0]["content"]
 
 
 def line(m, history):
@@ -70,7 +76,10 @@ def test_after_a_jump_the_status_comes_from_the_moment_on_screen(tmp_path):
         )
     said = resp.json()
     assert resp.status_code == 200 and said["status"] and said["moment_idx"] == 30
-    assert said["text"] == "quarter 4, 00:37. Utah Jazz 86, Chicago Bulls 85. Utah Jazz lead 86-85."
+    assert (
+        said["text"]
+        == "Fourth quarter, 0:37 left. Utah Jazz 86, Chicago Bulls 85. Utah Jazz lead 86-85."
+    )
     assert [r["system"] for r in provider.requests] == [st.SYSTEM]  # its own task, not Ask's
     sent = provider.requests[-1]["messages"][0]["content"]
     assert "Last event: Field goal, 2 points (Chicago Bulls" in sent and "00:18" not in sent
@@ -102,8 +111,59 @@ def test_a_right_status_is_spoken_as_said():
 
 def test_off_air_the_status_still_comes_from_the_data():
     said = st.status(upto(30), provider=OffAir())
-    assert said["text"] == "Quarter 4, 00:37. Utah Jazz 86, Chicago Bulls 85. Utah Jazz lead 86-85."
+    assert said["text"] == "Fourth quarter, 0:37 left. Utah Jazz lead 86-85."
     assert said["mubit_request_ids"] == []
+
+
+# The keyed probe on #194's first prompt: each of these was said wrong by the real model.
+def test_the_time_says_what_the_clock_means():
+    assert "Moment: First quarter, 0:30 left\n" in sent(JORDAN, 8)  # said "thirty seconds gone"
+    assert "Moment: Second half, 96 minutes played\n" in sent(
+        FINAL, 34
+    )  # "... thirty-seven seconds"
+    assert "Moment: Penalty shootout\n" in sent(FINAL, 67)
+
+
+def test_a_cricket_wicket_names_each_role():
+    # said "Hardik Pandya just caught Shadab Khan at SA Yadav"
+    want = "HH Pandya bowling to Shadab Khan; Shadab Khan is out, caught by SA Yadav"
+    assert f"Last event: Wicket, caught (Pakistan batting; {want})" in sent(CRICKET, 14)
+    assert "non_striker" not in sent(CRICKET, 14)
+
+
+def test_the_fallback_says_the_time_and_the_lead_once():
+    m = upto(13, KOBE)[-1]
+    assert st.fallback_text(match_header(KOBE), m) == (
+        "Fourth quarter, 6:32 left. Los Angeles Lakers lead 102-93."
+    )
+    cricket = upto(14, CRICKET)[-1]
+    assert (
+        st.fallback_text(match_header(CRICKET), cricket)
+        == "Innings 1, over 13.2. Pakistan 96 for 4."
+    )
+
+
+def test_a_status_without_the_score_is_tried_again_then_the_data_speaks():
+    # Kobe idx 6, 78-73 to Toronto: the probe's line left the score out
+    said = "Four forty-seven left in the third quarter. Kobe Bryant just hit a three-pointer."
+    missing = Says(said)
+    out = st.status(upto(6, KOBE), provider=missing)
+    assert len(missing.requests) == 2
+    assert out["text"] == "Third quarter, 4:47 left. Toronto Raptors lead 78-73."
+    scored = Says(
+        "Four forty-seven left in the third. Raptors lead seventy-eight to seventy-three."
+    )
+    assert st.status(upto(6, KOBE), provider=scored)["text"] == scored.text
+
+
+def test_one_nil_is_a_score_and_a_milestone_is_not_asked_for():
+    spurs = upto(11, "3754092")[-1]  # Chelsea 0, Tottenham 1
+    assert st.says_score("Thirty-four minutes gone. Tottenham lead one-nil.", spurs)
+    assert not st.says_score("Thirty-four minutes gone. Tottenham lead.", spurs)
+    # Kobe idx 13 has a 61-point milestone: a status line needn't say it (the probe fell back)
+    line = "Six thirty-two left in the fourth. Lakers one hundred and two, Raptors ninety-three."
+    said = Says(line)
+    assert st.status(upto(13, KOBE), provider=said)["text"] == line and len(said.requests) == 1
 
 
 @pytest.mark.parametrize(
