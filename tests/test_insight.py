@@ -890,7 +890,13 @@ def test_a_model_outage_ends_a_stat_line_not_the_replay(tmp_path):
     def down(moment, history):
         raise RuntimeError("503")
 
-    assert gaps.line(moments[:5], 2, 100.0, down, "Jim said it", [], 200.0) is None
+    # the analyst's turn falls back to the fact itself, within the room, and passes the check
+    stat, got = gaps.line(moments[:5], 2, 100.0, down, "Jim said it", [], 200.0)
+    assert got["fallback"] and got["text"] == got["text"].strip()
+    assert got["text"] and not gaps.wrong(got["text"], stat, moments[:5])
+    assert len(got["text"].split()) <= insight.room(100.0, 200.0)
+    # the lead's comeback has no fact to read: it stays quiet
+    assert gaps.line(moments[:5], 1, 100.0, down, "Julian said it", [], 200.0) is None
 
 
 def test_a_players_conversation_holds_no_fact_from_after_the_moment_it_follows(tmp_path):

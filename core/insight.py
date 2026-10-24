@@ -9,6 +9,7 @@ import logging
 import math
 import random
 import re
+import uuid
 from collections import Counter
 
 from agent.packs import phase
@@ -603,7 +604,23 @@ class Gaps:
                     continue
                 if reply or retry or self.calls >= MAX_CALLS:
                     log.warning("stat line after %s: the model gave no line", m["idx"])
-                    return None
+                    # the analyst's turn is the fact itself, so an outage leaves the booth talking;
+                    # its numbers are the data's, so it passes the number check by construction
+                    text = None if reply else cut(said_as["detail"], int(room(video_t, end)))
+                    if not text or self.wrong(text, stat_moment(m, said_as, reply), past):
+                        return None
+                    said = {
+                        "line_id": uuid.uuid4().hex,
+                        "sport": m.get("sport"),
+                        "match_id": self.match_id,
+                        "moment_idx": m["idx"],
+                        "text": text,
+                        "model": None,
+                        "served_by": None,
+                        "fallback": True,
+                        "checked": True,
+                    }
+                    break
                 self.used.add(said_as["detail"])  # dropped: the next kind gets this slot, once
                 self.skip = said_as["kind"]
                 try:
