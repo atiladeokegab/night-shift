@@ -155,12 +155,17 @@ def start() -> float | None:
         return took
 
 
+def _ready() -> bool:
+    """True once the graph is loaded. start() holds the lock while it loads, so a reader waits for
+    the load in progress here instead of reading the packs."""
+    with _lock:
+        return _db is not None
+
+
 def _query(sql: str, params: dict):
-    if _db is None:
-        return None
     try:
         with _lock:
-            return _db.query(sql, params)
+            return _db.query(sql, params) if _db is not None else None
     except Exception as exc:
         log.warning("graph query failed, reading the pack: %s", type(exc).__name__)
         return None
@@ -175,7 +180,7 @@ FROM ONLY $m"""
 def pack(match_id: str) -> dict | None:
     """What Follow a player reads of the match's pack, from the graph, in the pack's shape; None
     when the graph is off or lacks the match."""
-    if _db is None:
+    if not _ready():
         return None
     from surrealdb import RecordID
 
@@ -207,7 +212,7 @@ FROM $p->played_in WHERE out != $m ORDER BY date"""
 def library(sport: str, match_id: str, name: str) -> list[dict]:
     """Also in our library: the player's other matches, each with their teammates there. Never the
     match on screen, so nothing from it, later moments included, can show."""
-    if _db is None:
+    if not _ready():
         return []
     from surrealdb import RecordID
 
@@ -239,11 +244,9 @@ def _open_store(path: Path = STORE) -> None:
 
 
 def _rows(sql: str, params: dict) -> list[dict] | None:
-    if _kv is None:
-        return None
     try:
-        with _lock:
-            return _kv.query(sql, params)
+        with _lock:  # waits for a load in progress
+            return _kv.query(sql, params) if _kv is not None else None
     except Exception as exc:
         log.warning("graph query failed, reading the packs: %s", type(exc).__name__)
         return None
