@@ -7,14 +7,17 @@ import functools
 import uuid
 
 import pytest
+from fastapi.testclient import TestClient
 
 from agent import commentator
 from agent.commentator import FakeProvider
 from core import insight
+from core.app import Deps, create_app
 from core.predict import load_pack
 from core.replay import Replay, run_replay
+from core.smoke import read_stream
 from core.store import Store
-from data.matches import load_moments, video_map
+from data.matches import list_matches, load_moments, video_map
 
 KOBE, CHELSEA = "0020500591", "3754092"
 
@@ -162,7 +165,7 @@ def test_a_second_replay_makes_no_new_insight_calls(tmp_path):
 def test_new_insight_calls_stop_at_the_cap(tmp_path):
     store = Store(tmp_path)
     counts = [len(stat_calls(replay(KOBE, store)[1])) for _ in range(3)]
-    assert counts[0] == insight.MAX_CALLS == 120
+    assert counts[0] == insight.MAX_CALLS == 160
     # FakeProvider's 7-word lines leave room for more than 120 on Kobe: the second viewing tops up
     assert 0 < counts[1] <= insight.MAX_CALLS and counts[2] == 0
 
@@ -171,3 +174,37 @@ def test_no_video_no_insights(tmp_path):
     lines, fake = replay(CHELSEA, Store(tmp_path), video=False)
     assert lines and stat_calls(fake) == [] and not any(gap(ln) for ln in lines)
     assert {ln["speaker"] for ln in lines} == {"lead"}
+
+
+def test_a_fix_on_an_insight_or_reply_goes_back_with_its_own_request(tmp_path):
+    fake = FakeProvider()
+    calls = functools.partial(commentator.commentate, provider=fake)
+    fix = functools.partial(commentator.correct, provider=fake)
+    deps = Deps(list_matches, load_moments, calls, video_map, fix)
+    with TestClient(create_app(store=Store(tmp_path), deps=deps)) as client:
+        rid = client.post("/replays", json={"match_id": CHELSEA}).json()["replay_id"]
+        lines = [d for n, d in read_stream(client, rid) if n == "line"]
+        moment = next(ln for ln in lines if not gap(ln))
+        picks = [
+            moment,
+            next(ln for ln in lines if "insight" in ln),
+            next(ln for ln in lines if "reply" in ln),
+        ]
+        for ln in picks:
+            said = len(fake.requests)
+            assert (
+                client.post(
+                    f"/lines/{ln['line_id']}/fix", json={"corrected_text": "Fixed."}
+                ).status_code
+                == 200
+            )
+            q = fake.requests[said]["messages"]
+            assert q[1:] == [
+                {"role": "assistant", "content": ln["text"]},
+                {"role": "user", "content": commentator.CORRECTION.format(text="Fixed.")},
+            ]
+            first = int(ln["mubit_request_ids"][0].removeprefix("fake-")) - 1
+            assert q[0] == fake.requests[first]["messages"][0]  # the message the line came from
+            assert ("\nEvent: Stat, " in q[0]["content"]) == bool(gap(ln))
+            if gap(ln):
+                assert f"Partner just said: {gap(ln)['heard']}" in q[0]["content"]
