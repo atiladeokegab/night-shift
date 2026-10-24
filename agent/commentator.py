@@ -345,13 +345,36 @@ def line_for(header: dict, moments: list[dict], idx: int, provider) -> dict:
 
 ANSWER_WORDS = 30
 QUESTION = "Lines said so far:\n{lines}\nViewer question: {question}"
+# football's period as said: "period 3" read as the second half of extra time on prod (#236)
+PARTS = {
+    1: "first half",
+    2: "second half",
+    3: "first half of extra time",
+    4: "second half of extra time",
+    5: "penalty shootout",
+}
+
+
+def goals_so_far(past: list[dict]) -> list[dict]:
+    """Every goal up to the moment on screen, shootout kicks left out."""
+    return [
+        p
+        for p in past
+        if p["type"] == "Shot" and p["outcome"] == "Goal" and "shootout" not in p["detail"]
+    ]
 
 
 def answer(
-    question: str, past: list[dict], lines: list[dict], header: dict | None = None, provider=None
+    question: str,
+    past: list[dict],
+    lines: list[dict],
+    header: dict | None = None,
+    provider=None,
+    wrong: list[str] = (),
 ) -> dict:
     """A viewer's question about the match so far, answered in the same Mubit session. `past` ends
-    at the moment on screen: the request and the tools never see a later one."""
+    at the moment on screen: the request and the tools never see a later one. `wrong` is the check's
+    reasons for the last answer, when this is the one retry."""
     if header is None:
         from data.matches import match_header
 
@@ -362,7 +385,23 @@ def answer(
     heard = "\n".join(f"- {ln['text']}" for ln in lines[-5:]) or "- none yet"
     # one quoted line: a line break in the question must not forge a field the model reads
     quoted = json.dumps(" ".join(question.split()), ensure_ascii=False)
+    # the message's recent play is three moments: a goal before them was missing (#236)
+    if past[-1]["sport"] == "football":
+        goals = [
+            f"- {p['clock']} {p['players'].get('shooter')} ({p['team']}), "
+            f"{p['detail'].get('shot_type', 'goal').lower()}"
+            for p in goals_so_far(past)
+        ]
+        request["messages"][0]["content"] += (
+            f"\nPart of the match: {PARTS[past[-1]['period']]}"
+            + "\nGoals so far:\n"
+            + ("\n".join(goals) or "- none yet")
+        )
     request["messages"][0]["content"] += "\n" + QUESTION.format(lines=heard, question=quoted)
+    if wrong:
+        request["messages"][0]["content"] += (
+            "\nYour last answer was wrong: " + "; ".join(wrong) + ". Answer from the message."
+        )
     start = time.monotonic()
     reply, replies, tool_calls, _ = _call(provider or unrecorded_provider(), request, header, past)
     said = " ".join(b["text"] for b in reply["content"] if b["type"] == "text")
