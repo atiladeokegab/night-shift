@@ -133,7 +133,7 @@ function Speaker({ name, s }: { name: string; s: SpeakerStats }) {
       </div>
       {/* one "First word" caption over both, so each label fits one line at 1280 px; "Cost" over its own */}
       <div className="cap" aria-hidden="true"><dt className="label">First word</dt></div>
-      <div className="cap side" aria-hidden="true"><dt className="label">Cost</dt></div>
+      <div className="cap cost" aria-hidden="true"><dt className="label">Cost</dt></div>
       <Figure className="third" label={<><span className="sr-only">First word </span>Median</>} value={v(seconds(s.first_word_ms_p50))} />
       <Figure className="third" label={<><span className="sr-only">First word </span>P95</>} value={v(seconds(s.first_word_ms_p95))} />
       <Figure className="third" label={<><span className="sr-only">Cost </span>Per line</>} value={v(dollars(s.cost_per_line_usd))} />
