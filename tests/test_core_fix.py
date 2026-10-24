@@ -121,7 +121,7 @@ def test_correction_is_the_next_turn_of_the_same_task_and_session(said, matched)
             "content": "Producer correction. Reply with exactly this line: Ann's shot is saved!",
         },
     ]
-    assert out == {"mubit_request_id": "fake-1", "reply_matched": matched}
+    assert out == {"mubit_request_id": "fake-1", "reply_matched": matched, "recorded": False}
 
 
 def test_a_correction_over_20_words_echoed_exactly_matches():

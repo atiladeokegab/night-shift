@@ -188,6 +188,7 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
                 "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
                 "mubit_request_id": sent["mubit_request_id"],
                 "reply_matched": sent["reply_matched"],
+                "recorded": sent.get("recorded", False),  # sent to Mubit for training (#161)
             },
         )
         for replay in replays.values():

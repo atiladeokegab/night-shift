@@ -55,6 +55,8 @@ def stats(store) -> dict:
     analyst = [ln for ln in lines if ln.get("speaker") == "analyst"]
     lead = [ln for ln in lines if ln.get("speaker") != "analyst"]
     since = (store.all("adapter") or [{}])[-1].get("created_at", "")
+    # only a fix Mubit recorded for training counts; one stored before #161 carries no flag
+    recorded = [f for f in fixes if f.get("recorded") is True]
     first = [ln["first_word_ms"] for ln in lines if ln.get("first_word_ms") is not None]
     total = [ln["latency_ms"] for ln in lines if ln.get("latency_ms") is not None]
     costs = [c for c in map(_cost, lines) if c is not None]
@@ -71,6 +73,7 @@ def stats(store) -> dict:
         "cost_per_line_usd": sum(costs) / len(costs) if costs else None,
         "adapter": _adapter(store),
         "by_speaker": {"lead": _speaker(lead), "analyst": _speaker(analyst)},
+        "fixes_recorded": len(recorded),
         # fixes recorded since the latest adapter record: the corrections toward the next one
-        "fixes_toward_next": sum(f.get("created_at", "") > since for f in fixes),
+        "fixes_toward_next": sum(f.get("created_at", "") > since for f in recorded),
     }

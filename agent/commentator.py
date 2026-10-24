@@ -253,6 +253,8 @@ def correct(
     return {
         "mubit_request_id": reply["request_id"],
         "reply_matched": said == corrected_text.split(),
+        # True only when Mubit records it for training (FakeProvider never does)
+        "recorded": getattr(provider, "record", False),
     }
 
 
@@ -417,6 +419,7 @@ class MubitProvider:
         import anthropic
 
         self.fallback = fallback
+        self.record = record
 
         headers = {} if record else {"x-middleware-record": "off"}
         self.client = anthropic.Anthropic(
@@ -442,6 +445,7 @@ class MubitProvider:
                     "mubit: the key ran out of credit (402); switching to MUBIT_FALLBACK_KEY"
                 )
                 self.client = self.fallback.client  # sticky: no failed call before every line
+                self.record = self.fallback.record
             reply = self.fallback.call(request)
             if reply["first_word_ms"] is not None:  # the viewer waited through the 402 as well
                 reply["first_word_ms"] += failed_ms
