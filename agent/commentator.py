@@ -495,7 +495,12 @@ class FakeProvider:
         if isinstance(said, str) and said.startswith("Producer correction"):
             content = [{"type": "text", "text": said.split(": ", 1)[1]}]
         elif "Who leads" in fields:  # "Where are we?" (agent/status.py): the data read back
-            text = f"{fields['Moment']}. {fields['Score']}. {fields['Who leads']}."
+            lead, score = fields["Who leads"], fields["Score"]
+            # a lead that holds every number of the score says it: "Level at 70-70", not both
+            if set(re.findall(r"\d+", score)) <= set(re.findall(r"\d+", lead)):
+                text = f"{fields['Moment']}. {lead[0].upper()}{lead[1:]}."
+            else:
+                text = f"{fields['Moment']}. {score}. {lead[0].upper()}{lead[1:]}."
             content = [{"type": "text", "text": text}]
         elif asked:  # a viewer's question: the score in the request, so a spoiler would show
             score = fields.get("Score after this moment")

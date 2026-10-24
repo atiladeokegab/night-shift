@@ -76,10 +76,7 @@ def test_after_a_jump_the_status_comes_from_the_moment_on_screen(tmp_path):
         )
     said = resp.json()
     assert resp.status_code == 200 and said["status"] and said["moment_idx"] == 30
-    assert (
-        said["text"]
-        == "Fourth quarter, 0:37 left. Utah Jazz 86, Chicago Bulls 85. Utah Jazz lead 86-85."
-    )
+    assert said["text"] == "Fourth quarter, 0:37 left. Utah Jazz lead 86-85."
     assert [r["system"] for r in provider.requests] == [st.SYSTEM]  # its own task, not Ask's
     sent = provider.requests[-1]["messages"][0]["content"]
     assert "Last event: Field goal, 2 points (Chicago Bulls" in sent and "00:18" not in sent
@@ -164,6 +161,35 @@ def test_one_nil_is_a_score_and_a_milestone_is_not_asked_for():
     line = "Six thirty-two left in the fourth. Lakers one hundred and two, Raptors ninety-three."
     said = Says(line)
     assert st.status(upto(13, KOBE), provider=said)["text"] == line and len(said.requests) == 1
+
+
+def test_f1_and_a_first_innings_send_the_real_leader():
+    assert "Who leads: Esteban Ocon leads\n" in sent("9636", 7)  # P1 on lap 29
+    assert "Who leads: no one yet, Pakistan batting first\n" in sent(CRICKET, 14)
+    assert "Who leads: India need 150 runs from the last 100 balls\n" in sent(CRICKET, 28)
+
+
+def test_a_status_needn_t_say_how_the_last_shot_ended():
+    # the final's idx 45: Lautaro off target at 105:41; the status is the state, not the shot
+    line = "A hundred and five minutes played in extra time. Argentina two, France two, level."
+    said = Says(line)
+    assert st.status(upto(45, FINAL), provider=said)["text"] == line and len(said.requests) == 1
+    # a save called on a shot off target is still wrong
+    saved = Says("Extra time. Argentina two, France two. Lloris saves from Lautaro.")
+    assert st.status(upto(45, FINAL), provider=saved)["text"] != saved.text
+
+
+def test_the_shootout_fallback_says_the_match_score_too():
+    m = upto(67, FINAL)[-1]
+    assert st.fallback_text(match_header(FINAL), m) == (
+        "Penalty shootout, 3-3 after extra time. Argentina lead the shootout 4-2."
+    )
+
+
+def test_offline_a_tie_is_said_once():
+    out = st.status(upto(19), provider=FakeProvider())  # Jordan's Game 6, 70-70 at 8:05
+    assert out["text"] == "Fourth quarter, 8:05 left. Level at 70-70."
+    assert st.fallback_text(match_header(JORDAN), upto(19)[-1]) == out["text"]
 
 
 @pytest.mark.parametrize(
