@@ -38,6 +38,10 @@ export const PHASES = ['powerplay', 'middle', 'death'] as const
 // Lower case without accents, like the server's find(): "mbappe" finds "Kylian Mbappé".
 export const fold = (s: string) => s.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().trim()
 
+// The cut the picker asks with: before the first moment it is -1, never "whatever the server has sent".
+export const cutAt = (momentIdx: number | null) => momentIdx ?? -1
+export const playersUrl = (replayId: string, at: number) => `/replays/${encodeURIComponent(replayId)}/players?moment_idx=${at}`
+
 // The picker's list: every word of the query in the name or the team, in the server's order.
 export function search(players: Player[], query: string, limit = 8): Player[] {
   const words = fold(query).split(/\s+/).filter(Boolean)

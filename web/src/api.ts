@@ -5,7 +5,7 @@
 // (ElevenLabs; 503 when the voice isn't configured).
 import { demoMatches, demoStats, streamDemo } from './demo'
 import { offAir } from './ask'
-import type { Player, Profile } from './follow'
+import { playersUrl, type Player, type Profile } from './follow'
 import type { Shots } from './shots'
 import type { Answer, Fix, Line, Match, Moment, Stats, StreamEvent, Voice } from './types'
 
@@ -132,10 +132,9 @@ export async function getShots(replayId: string, name: string, momentIdx: number
 }
 
 // GET /replays/{id}/players (#140): everyone in the match so far; empty in the demo, which has no server.
-export async function getPlayers(replayId: string, momentIdx?: number): Promise<Player[]> {
+export async function getPlayers(replayId: string, at: number): Promise<Player[]> {
   if (isDemo) return []
-  const at = momentIdx === undefined ? '' : `?moment_idx=${momentIdx}`
-  const res = await fetch(`/replays/${encodeURIComponent(replayId)}/players${at}`)
+  const res = await fetch(playersUrl(replayId, at))
   if (res.status === 404) return []
   if (!res.ok) throw new Error(`GET players failed (${res.status})`)
   return res.json()

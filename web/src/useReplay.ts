@@ -244,9 +244,9 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
   }, [])
 
   // Who is in the match, and one player's profile, up to the moment on screen (#140).
-  const players = useCallback(async (momentIdx?: number) => {
+  const players = useCallback(async (at: number) => {
     const id = replayId.current
-    return id ? getPlayers(id, momentIdx) : []
+    return id ? getPlayers(id, at) : []
   }, [])
   const profile = useCallback(async (name: string, momentIdx: number) => {
     const id = replayId.current

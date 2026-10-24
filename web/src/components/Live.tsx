@@ -35,7 +35,7 @@ interface Props {
   onFix: (line: Line) => void
   onAsk: (question: string, momentIdx: number) => Promise<void>
   onShots: (name: string, momentIdx: number) => Promise<Shots | null>
-  onPlayers: (momentIdx?: number) => Promise<Player[]> // #140: everyone in the match so far
+  onPlayers: (at: number) => Promise<Player[]> // #140: everyone in the match so far
   onProfile: (name: string, momentIdx: number) => Promise<Profile | null>
   onRetry: () => void
   onReconnect: () => void

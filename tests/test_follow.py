@@ -111,3 +111,10 @@ def test_unknown_replay_or_player(client):
     assert client.get("/replays/nope/players/Kobe/profile").status_code == 404
     rid = replayed(client, "0020500591")
     assert client.get(f"/replays/{rid}/players/Nobody/profile").status_code == 404
+
+
+def test_the_picker_cut_before_the_first_moment_names_nobody(client):
+    rid = replayed(client, "3869685")
+    url = f"/replays/{rid}/players"
+    assert any(p["named"] for p in client.get(url).json())  # can go red: the latest sent names players
+    assert not any(p["named"] for p in client.get(url, params={"moment_idx": -1}).json())

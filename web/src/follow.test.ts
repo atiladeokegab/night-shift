@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { answerFor, names, shortName, recordLine, sampleNote, search, tonightLine, type Player, type Profile } from './follow.ts'
+import { answerFor, cutAt, names, playersUrl, shortName, recordLine, sampleNote, search, tonightLine, type Player, type Profile } from './follow.ts'
 
 const p = (name: string, team: string): Player => ({ name, team, record: true, named: false })
 const players = [p('Kylian Mbappé', 'France'), p('Lionel Messi', 'Argentina'), p('Ángel Di María', 'Argentina')]
@@ -60,4 +60,10 @@ test('a late answer never shows after a rewind, a player switch or a replay swit
   assert.equal(answerFor(got, 2, 'Lionel Messi', 34), 'loading') // a new replay, even of the same match
   assert.equal(answerFor(null, 1, 'Lionel Messi', 34), 'loading')
   assert.equal(answerFor({ ...got, value: 'error' }, 1, 'Lionel Messi', 34), 'error')
+})
+
+test('before the first moment the picker asks with moment_idx=-1, never the latest sent', () => {
+  assert.equal(cutAt(null), -1)
+  assert.equal(playersUrl('r 1', cutAt(null)), '/replays/r%201/players?moment_idx=-1')
+  assert.equal(playersUrl('r1', cutAt(7)), '/replays/r1/players?moment_idx=7')
 })

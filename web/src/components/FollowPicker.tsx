@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
-import { answerFor, search, type Asked, type Player } from '../follow'
+import { answerFor, cutAt, search, type Asked, type Player } from '../follow'
 
 interface Props {
   replayKey: number // the list belongs to its replay
   momentIdx: number | null // the moment on screen: who has been named so far
-  load: (momentIdx?: number) => Promise<Player[]>
+  load: (at: number) => Promise<Player[]>
   onFollow: (name: string) => void
 }
 
@@ -13,16 +13,16 @@ export function FollowPicker({ replayKey, momentIdx, load, onFollow }: Props) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const [got, setGot] = useState<Asked<Player[]> | null>(null)
-  const at = momentIdx ?? -1
+  const at = cutAt(momentIdx)
   const players = answerFor(got, replayKey, '', at)
 
   useEffect(() => {
     if (!open) return
     let live = true
     const done = (value: Player[] | 'error') => live && setGot({ replay: replayKey, name: '', momentIdx: at, value })
-    load(momentIdx ?? undefined).then(done, () => done('error'))
+    load(at).then(done, () => done('error'))
     return () => { live = false }
-  }, [open, replayKey, at, momentIdx, load])
+  }, [open, replayKey, at, load])
 
   const hits = Array.isArray(players) ? search(players, query) : []
   const pick = (name: string) => {
