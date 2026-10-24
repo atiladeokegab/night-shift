@@ -263,11 +263,10 @@ test('Let them watch is in the controls of a video match, where the browser can 
   const card = withSharing(share, () => videoCard(render({ onLook })))
   assert.match(card, /class="controls"[\s\S]*<button class="ctl eyes-btn watch-btn" aria-label="Let them watch"[^>]*>[\s\S]*Let them watch<\/span><\/button>[\s\S]*Close your eyes/)
   assert.ok(!card.includes("They're watching"), 'no chip before the tab is shared')
-  // no screen sharing, a match with no video, the replay over, or no server (onLook unset): no button
+  // no screen sharing, a match with no video, or no server (onLook unset): no button
   const whole = { ...match, youtube_id: undefined, video_start: undefined }
   assert.ok(!withSharing(undefined, () => render({ onLook })).includes('Let them watch'))
   assert.ok(!withSharing(share, () => render({ onLook, match: whole, video: 'unavailable' })).includes('Let them watch'))
-  assert.ok(!withSharing(share, () => render({ onLook, replay: { ...replay, ended: true } })).includes('Let them watch'))
   assert.ok(!withSharing(share, () => render()).includes('Let them watch'))
 })
 

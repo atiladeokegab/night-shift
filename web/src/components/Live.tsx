@@ -233,7 +233,8 @@ export function Live(props: Props) {
             <Controls card={card} paused={paused || ended} canPlay={canPlay} onToggle={ended ? onRetry : toggle} now={replay.duration ? Math.min(replay.now, replay.duration) : replay.now} duration={replay.duration}
               marks={marks} onSeek={(t) => transport?.seek(t)} volume={volume} muted={muted} onVolume={onVolume}
               eyes={noVideo ? undefined : { closed: covered, onToggle: onEyes }}>
-              {!noVideo && props.onLook && replay.phase === 'live' && !replay.ended && (
+              {/* not hidden at the stream's end: the picture plays on, and the server says when it takes no more */}
+              {!noVideo && props.onLook && replay.phase === 'live' && (
                 <Watch key={replayKey} onLook={props.onLook} time={() => replay.now} />
               )}
             </Controls>
