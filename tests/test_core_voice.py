@@ -441,3 +441,93 @@ def test_a_slow_stream_past_the_deadline_falls_back(monkeypatch):
 
     assert asyncio.run(run()) == (AUDIO, "eleven_flash_v2_5")
     assert seen[0] == "eleven_v3" and seen[-1] == "eleven_flash_v2_5"
+
+
+def test_audio_made_ahead_that_failed_is_tried_again_when_the_page_asks(monkeypatch):
+    # /stage replays at speed 10 and shows a line every 6 s: a line's audio is made as it arrives,
+    # and if that failed, the page's request comes long after, so it must not get the stale 503.
+    import asyncio
+
+    from core.voice import VOICES, Speaker
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    calls = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        calls.append(json.loads(request.content)["model_id"])
+        return httpx.Response(500 if len(calls) <= 3 else 200, content=AUDIO)  # v3, v3, flash fail
+
+    speaker = Speaker(httpx.MockTransport(handle))
+    line = {"line_id": "x", "sport": "football", "text": "Goal!"}
+
+    async def run():
+        speaker.prepare(line, {"type": "Shot"})
+        await speaker.jobs["x", VOICES[1]["id"]]  # the page asks later
+        return await speaker.audio(line, VOICES[1])
+
+    assert asyncio.run(run()) == (AUDIO, "eleven_v3")
+    assert len(calls) == 4
+
+
+def test_audio_the_request_started_is_not_tried_twice(monkeypatch):
+    import asyncio
+
+    from core.voice import VOICES, Speaker
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    seen = []
+    speaker = Speaker(upstream(500, b"", seen=seen))
+    line = {"line_id": "x", "sport": "football", "text": "Goal!"}
+    assert asyncio.run(speaker.audio(line, VOICES[1])) is None
+    assert len(seen) == 3  # v3, v3, flash: then 503, and the next request tries again
+
+
+def test_a_request_that_joins_a_prepared_job_still_running_gets_a_fresh_try(monkeypatch):
+    # Hermes on #96: most /stage requests joined the job while it was still failing
+    import asyncio
+
+    from core.voice import VOICES, Speaker
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    calls = []
+
+    async def run():
+        gate = asyncio.Event()
+
+        async def handle(request: httpx.Request) -> httpx.Response:
+            calls.append(json.loads(request.content)["model_id"])
+            if len(calls) <= 3:  # the prepared job: v3, v3, flash, all failing once the gate opens
+                await gate.wait()
+                return httpx.Response(500)
+            return httpx.Response(200, content=AUDIO)
+
+        speaker = Speaker(httpx.MockTransport(handle))
+        line = {"line_id": "x", "sport": "football", "text": "Goal!"}
+        speaker.prepare(line, {"type": "Shot"})
+        asked = asyncio.create_task(speaker.audio(line, VOICES[1]))
+        await asyncio.sleep(0.05)
+        assert not asked.done() and not speaker.jobs["x", VOICES[1]["id"]].done()
+        gate.set()
+        return await asked
+
+    assert asyncio.run(run()) == (AUDIO, "eleven_v3")
+    assert len(calls) == 4
+
+
+def test_flash_gets_its_minimum_time_even_when_the_budget_is_spent(monkeypatch):
+    import asyncio
+    import time
+
+    from core.voice import VOICES, Speaker
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    seen = []
+    speaker = Speaker(by_model(seen))
+    line = {"line_id": "x", "sport": "football", "text": "Goal!"}
+
+    async def run():
+        speaker.prepare(line, {"type": "Shot"}, time.monotonic() - 1.0)  # v3's time has gone
+        return await speaker.audio(line, VOICES[1])
+
+    assert asyncio.run(run()) == (AUDIO, "eleven_flash_v2_5")
+    assert seen == [("eleven_flash_v2_5", "Goal!")]
