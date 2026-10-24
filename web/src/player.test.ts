@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { embeds, loadYouTube, mountPlayer, posterUrl, showNoVideoCaption, watchUrl } from './player.ts'
+import { airAnswer, embeds, Floor, HOLD_MAX_MS, loadYouTube, mountPlayer, posterUrl, showNoVideoCaption, watchUrl } from './player.ts'
 
 test('an embed-blocked video never plays here: it gets a poster and a link to YouTube at its first moment', () => {
   assert.equal(embeds({ youtube_id: '46nYnjGdQlk', video_start: 7 }), true)
@@ -143,4 +143,56 @@ test('the no-video caption shows only while no alert banner holds its slot', () 
   assert.equal(showNoVideoCaption({ ...live, stream: 'reconnecting' }, 'unavailable'), false)
   assert.equal(showNoVideoCaption({ ...live, stream: 'disconnected' }, 'unavailable'), false)
   assert.equal(showNoVideoCaption({ ...live, error: 'The commentator stopped.' }, 'unavailable'), false)
+})
+
+test('a line due while an answer is spoken waits for it, and is only shown once it is over 5 s late (#131)', () => {
+  const floor = new Floor<string>()
+  assert.equal(floor.line('kick-off', 0), 'kick-off') // nothing on air: spoken at once
+  floor.answer()
+  assert.equal(floor.line('shot', 1000), null) // held: the answer is never cut off
+  assert.equal(floor.line('goal', 2000), null) // a newer line replaces the held one
+  assert.equal(floor.answered(2000 + HOLD_MAX_MS), 'goal') // 5 s late: still spoken
+  assert.equal(floor.line('save', 9000), 'save') // the floor is free again
+  floor.answer()
+  floor.line('corner', 10_000)
+  assert.equal(floor.answered(10_001 + HOLD_MAX_MS), null) // over 5 s late: shown, not spoken
+  floor.answer()
+  floor.line('card', 20_000)
+  floor.clear() // a rewind, a pause or leaving drops the held line too
+  assert.equal(floor.answered(20_100), null)
+})
+
+test('the stage shows the question, then the answer while it is spoken, then the lines again (#131)', async () => {
+  const shown: (string | null)[] = []
+  const show = (c: { text: string; answer: boolean } | null) => shown.push(c && `${c.answer ? 'answer' : 'question'}: ${c.text}`)
+  let answer!: (a: { text: string }) => void
+  let spoken!: () => void
+  const asking = airAnswer(
+    'Who scores next?',
+    () => new Promise((r) => (answer = r)),
+    () => new Promise<void>((r) => (spoken = r)),
+    show,
+    () => true,
+  )
+  assert.deepEqual(shown, ['question: A viewer asks: Who scores next?'])
+  answer({ text: 'Who scores next? Reds are pressing!' })
+  await asking // the ask box is free once the answer is in, while it is still being spoken
+  assert.deepEqual(shown, ['question: A viewer asks: Who scores next?', 'answer: Who scores next? Reds are pressing!'])
+  spoken()
+  await sleep(0)
+  assert.deepEqual(shown.at(-1), null)
+})
+
+test('an answer that is not spoken stays up for the read time; a replaced replay clears nothing (#131)', async () => {
+  const shown: (string | null)[] = []
+  await airAnswer('Score?', async () => ({ text: 'Off air', off_air: true }), () => null, (c) => shown.push(c?.text ?? null), () => true, 20)
+  assert.deepEqual(shown, ['A viewer asks: Score?', 'Off air'])
+  await sleep(40)
+  assert.deepEqual(shown.at(-1), null)
+  const stale: (string | null)[] = []
+  let current = true
+  const late = airAnswer('Score?', async () => ({ text: 'One nil' }), () => null, (c) => stale.push(c?.text ?? null), () => current)
+  current = false // the viewer switched match before the answer came back
+  await late
+  assert.deepEqual(stale, ['A viewer asks: Score?'])
 })
