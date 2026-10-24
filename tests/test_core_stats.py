@@ -87,10 +87,30 @@ def test_lead_and_analyst_lines_are_reported_apart(tmp_path):
     }
 
 
+def fix(line_id, at, recorded=True):
+    return {"line_id": line_id, "created_at": f"2026-10-24T{at}:00:00+00:00", "recorded": recorded}
+
+
 def test_fixes_toward_the_next_adapter_count_since_its_latest_record(tmp_path):
     store = Store(tmp_path)
-    store.append("fixes", {"line_id": "a", "created_at": "2026-10-24T12:00:00+00:00"})
-    assert stats(store)["fixes_toward_next"] == 1  # no adapter yet: every fix counts
+    store.append("fixes", fix("a", "12"))
+    assert stats(store)["fixes_toward_next"] == 1  # no adapter yet: every recorded fix counts
     store.append("adapter", {"status": "training", "created_at": "2026-10-24T13:00:00+00:00"})
-    store.append("fixes", {"line_id": "b", "created_at": "2026-10-24T14:00:00+00:00"})
-    assert stats(store)["fixes"] == 2 and stats(store)["fixes_toward_next"] == 1
+    store.append("fixes", fix("b", "14"))
+    assert stats(store)["fixes_recorded"] == 2 and stats(store)["fixes_toward_next"] == 1
+
+
+def test_only_recorded_fixes_count_as_recorded(tmp_path):
+    # a fix to an analyst line goes out unrecorded; one stored before #161 carries no flag
+    store = Store(tmp_path)
+    store.append("fixes", fix("lead", "12"))
+    store.append("fixes", fix("analyst", "12", recorded=False))
+    store.append("fixes", {"line_id": "old", "created_at": "2026-10-24T11:00:00+00:00"})
+    s = stats(store)
+    assert s["fixes"] == 3 and s["fixes_recorded"] == 1 and s["fixes_toward_next"] == 1
+
+
+def test_with_no_owners_key_no_fix_counts_as_recorded(tmp_path):
+    store = Store(tmp_path)
+    store.append("fixes", fix("lead", "12", recorded=False))
+    assert stats(store)["fixes_recorded"] == 0 and stats(store)["fixes_toward_next"] == 0

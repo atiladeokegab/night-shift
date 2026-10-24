@@ -24,7 +24,7 @@ def test_fix_is_stored_sent_and_marks_the_line_fixed(tmp_path):
 
     def fake_correct(line, text):
         sent.append((line["line_id"], text))
-        return {"mubit_request_id": "r-fix", "reply_matched": True}
+        return {"mubit_request_id": "r-fix", "reply_matched": True, "recorded": True}
 
     client, store = setup(tmp_path, fake_correct)
     with client:
@@ -42,6 +42,7 @@ def test_fix_is_stored_sent_and_marks_the_line_fixed(tmp_path):
         "reason": "wrong",
     }
     assert fix["mubit_request_id"] == "r-fix" and fix["reply_matched"] is True and fix["created_at"]
+    assert fix["recorded"] is True  # #161: only a recorded fix counts toward the next adapter
     assert store.all("fixes") == [fix] and store.all("lines")[0]["text"] == "Shot!"
     assert ("fixed", fix) in events and stats["fixes"] == 1
 
