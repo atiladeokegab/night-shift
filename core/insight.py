@@ -73,7 +73,9 @@ def _before(pack) -> str:
     """The span a pack covers, said with every pre-match fact so it never reads as a career."""
     if pack["sport"] == "cricket":  # Cricsheet T20Is from 1 January to the day before
         return "in T20 internationals this year before tonight"
-    if "competition 43 " in pack["source"]:  # StatsBomb's FIFA World Cup
+    if "competition 43 " in pack.get(
+        "source", ""
+    ):  # StatsBomb World Cup; a graph-only pack has none
         return "at this World Cup before tonight"
     return "this season before tonight"
 

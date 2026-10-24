@@ -58,7 +58,7 @@ def test_the_profile_tool_adds_the_players_season_from_the_graph(monkeypatch):
 
 
 def test_the_profile_tool_is_unchanged_when_the_graph_has_nothing(monkeypatch):
-    monkeypatch.setattr(graph, "_db", None)  # the graph off: the real function finds nothing
+    monkeypatch.setattr(graph, "_kv", None)  # the graph off: the real function finds nothing
     without = run_tool(
         "get_player_profile", {"name": "kobe"}, match_header(KOBE), load_moments(KOBE)[:5]
     )
