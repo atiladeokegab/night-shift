@@ -116,5 +116,5 @@ def test_unknown_replay_or_player(client):
 def test_the_picker_cut_before_the_first_moment_names_nobody(client):
     rid = replayed(client, "3869685")
     url = f"/replays/{rid}/players"
-    assert any(p["named"] for p in client.get(url).json())  # can go red: the latest sent names players
+    assert any(p["named"] for p in client.get(url).json())  # can go red
     assert not any(p["named"] for p in client.get(url, params={"moment_idx": -1}).json())
