@@ -538,7 +538,9 @@ def safari(user_agent: str | None) -> bool:
     ua = user_agent or ""
     if "iPhone" in ua or "iPad" in ua:
         return True
-    return "Safari" in ua and not any(b in ua for b in ("Chrome", "Chromium", "Android"))
+    return "Safari" in ua and not any(
+        b in ua for b in ("Chrome", "Chromium", "CriOS", "FxiOS", "Android")
+    )
 
 
 def voice_router(store, speaker: Speaker) -> APIRouter:

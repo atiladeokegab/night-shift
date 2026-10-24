@@ -535,6 +535,16 @@ def test_safari_gets_the_whole_file_and_everyone_else_the_stream(
     assert ("content-length" in resp.headers) == whole
 
 
+def test_safari_is_safari_or_any_iphone_or_ipad_browser():
+    from core.voice import safari
+
+    assert safari(MAC_SAFARI) and safari(IPHONE)  # IPHONE is Chrome on iOS: still Safari's engine
+    assert safari("Mozilla/5.0 (iPad; CPU OS 17_5) FxiOS/127.0 Mobile/15E148 Safari/605.1.15")
+    assert not safari(CHROME) and not safari(ANDROID) and not safari(None)
+    assert not safari("Mozilla/5.0 (Macintosh) FxiOS/127.0 Safari/605.1.15")
+    assert not safari("Mozilla/5.0 (X11; Linux) Chromium/126.0 Safari/537.36")
+
+
 def test_safari_gets_a_503_not_half_a_line_when_the_stream_breaks(tmp_path, monkeypatch):
     monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
     breaks = httpx.MockTransport(lambda r: httpx.Response(200, stream=Breaks()))
