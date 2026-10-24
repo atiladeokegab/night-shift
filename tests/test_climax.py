@@ -207,7 +207,7 @@ def test_a_wrong_line_is_said_again_once_then_built_from_the_moment():
         return {"line_id": "x", "moment_idx": mm["idx"], "text": "Eleven twos!"}
 
     line = insight.checked(wrong, m, past)
-    assert calls == [23, 23] and line["fallback"] and "81" in line["text"]
+    assert calls == [23, 23] and line["fallback"] and "eighty-one" in line["text"]
     assert insight.wrong_numbers(line["text"], m) == []
 
 

@@ -10,6 +10,7 @@ from collections import Counter
 
 from agent.packs import phase
 from core import predict
+from core.fallback import fallback_text  # noqa: F401  checked() says it; tests import it here
 
 WORDS_PER_S = 2.7  # a line has likely finished speaking after its words at this rate
 PAUSE_S = 2.0  # then this breath before the next insight
@@ -474,7 +475,8 @@ def said(text: str) -> list:
             cur, words = (cur or 0) + TENS[w], [*words, w]
         elif w in UNITS or (w in ORDINALS and cur):
             v = UNITS.index(w) if w in UNITS else ORDINALS[w]
-            if not (cur and cur % 10 == 0 and v < 10):
+            # "one hundred and eleven": a teen after a hundred is part of it too
+            if not (cur and (cur % 10 == 0 and v < 10 or cur % 100 == 0 and v < 20)):
                 flush()
             cur, words = (cur or 0) + v, [*words, w]
         elif w == "hundred" and (cur or words == ["a"]):
@@ -613,8 +615,10 @@ def _wrong_margin(text: str, m: dict, header: dict) -> list[str]:
     wrong = []
     for hit in re.finditer(rf"\b(?:{names}){MARGIN}", text, re.I):
         n = [1.0] if hit[1].lower() == "one" else said(hit[1])
-        after = said(text[hit.end() : hit.end() + 24])  # a score follows: "trail 69, 53"
-        if len(n) == 1 and isinstance(n[0], float) and not (after and isinstance(after[0], float)):
+        # a score, not a margin: "trail 69, 53", "lead two, one", "lead one oh-two, ninety-three"
+        seq = [1.0 if w == "one" else w for w in said(text[hit.start(1) : hit.end() + 24])]
+        score = seq[0] != n[0] or len(seq) > 1 and isinstance(seq[1], float)
+        if len(n) == 1 and isinstance(n[0], float) and not score:
             if n[0] not in margins:
                 wrong.append(f"{n[0]:g} is not the margin ({min(margins):g})")
     return wrong
@@ -704,19 +708,6 @@ def wrong_event(text: str, m: dict) -> list[str]:
     if m.get("type") == "Shot" and not goal and not ENDED.search(text):
         wrong.append(f"the line never says how the shot ended: {m.get('outcome')}")
     return wrong
-
-
-def fallback_text(header: dict, m: dict) -> str:
-    """A line built only from the moment's data, said when the commentator's numbers stay wrong."""
-    from agent.commentator import _score
-
-    who, d = _who(m), m.get("detail") or {}
-    said = f"{m['type']}, {m['outcome']}" if m.get("outcome") else m["type"]
-    parts = [f"{said}, {who}." if who else f"{said}."]
-    extra = d.get("milestone") or (d.get("chase") if "need" not in d.get("chase", "need") else None)
-    if extra:
-        parts.append(f"{extra[0].upper()}{extra[1:]}.")
-    return " ".join([*parts, f"{_score(header, m)}."])
 
 
 def checked(commentate, moment: dict, history: list[dict]) -> dict | None:
