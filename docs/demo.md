@@ -109,8 +109,7 @@ Keep the correction to a word or two, typed in a few seconds. The sheet shows wh
 with the line ready to correct. Type the correction and send. The line shows Fixed and the proof
 panel's fix count goes up by one.*
 
-"Say a line is wrong. A producer corrects it right here. The fix is kept beside the original, and it
-is recorded for training on the owner's Mubit app."
+"Say a line is wrong. A producer corrects it right here. The fix is saved with the line in our store."
 
 ### 6. The proof (1:35–1:55)
 
