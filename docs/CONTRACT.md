@@ -62,7 +62,9 @@ Errors: 404 not found, 422 bad input, 503 commentator not configured.
 - `GET /matches` → `[Match]` (core over data/)
 - `POST /replays {match_id, speed>0}` → `{replay_id}` (core)
 - `GET /replays/{id}/stream` → SSE: per moment `moment`, `line`, `stats` in that order; `error`
-  `{detail}` if the commentator fails; `end` last. A late subscriber gets the whole replay. (core)
+  `{code: "commentator_off_air", detail}` if the commentator fails, where `detail` is a fixed
+  viewer-safe string ("Commentator is off air for a moment"), never the provider's error text (that
+  goes to the server log); `end` last. A late subscriber gets the whole replay. (core)
   For a match with a video map, only mapped moments are called, the `moment` and `line` events carry
   `video_t` (seconds), and they are sent as soon as each line is ready rather than paced by `speed`:
   the page shows and speaks each line when the player reaches `video_t`.
