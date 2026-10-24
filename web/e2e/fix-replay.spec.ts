@@ -11,15 +11,19 @@ import { FAKE_YT } from './fakeYT'
 const KOBE = /^Basketball ?Kobe's 81/
 const KOBE_ID = '0020500591' // idx 4: Bryant's three for 41 points, Lakers 65, Raptors 75
 const SAID = 'Kobe Bryant from deep, three points! Lakers trail'
-const WRONG = `${SAID} fifty-eight to seventy-five, Bryant with forty-one.`
-const RIGHT = `${SAID} sixty-five to seventy-five, Bryant with forty-one.`
+// a tag of letters per run: the dev store outlives a run, and a wording already fixed is not queued again
+const TAG = Math.random().toString(36).replace(/[^a-z]/g, '').slice(0, 6)
+const WRONG = `${SAID} fifty-eight to seventy-five, Bryant with forty-one. ${TAG}`
+const RIGHT = `${SAID} sixty-five to seventy-five, Bryant with forty-one. ${TAG}`
+
+const ID = `e2e-wrong-score-${Date.now()}`
 
 test('a line fixed in the review queue is what a new replay says at that moment', async ({ page }) => {
   // the flagged line, as an earlier replay would have stored it (the server reads the store file afresh)
   const dir = join(tmpdir(), 'touchline-e2e')
   mkdirSync(dir, { recursive: true })
   appendFileSync(join(dir, 'lines.jsonl'), JSON.stringify({
-    line_id: 'e2e-wrong-score', match_id: KOBE_ID, moment_idx: 4, sport: 'basketball', speaker: 'lead', text: WRONG,
+    line_id: ID, match_id: KOBE_ID, moment_idx: 4, sport: 'basketball', speaker: 'lead', text: WRONG,
     created_at: new Date().toISOString(),
   }) + '\n')
 
@@ -30,11 +34,11 @@ test('a line fixed in the review queue is what a new replay says at that moment'
 
   // 1. the review queue shows the flagged line; 2. it is fixed with the corrected text
   await page.getByRole('navigation', { name: 'Main' }).getByRole('button', { name: 'Review' }).click()
-  const card = page.getByRole('button', { name: /^Fix this line/ }).first()
+  const card = page.locator('li.flag').filter({ hasText: WRONG }).getByRole('button', { name: /^Fix this line/ }).first()
   await expect(page.getByText(WRONG).first()).toBeVisible({ timeout: 30_000 })
   await card.click()
   await page.getByLabel('Corrected line').fill(RIGHT)
-  const sent = page.waitForResponse((r) => /\/lines\/e2e-wrong-score\/fix$/.test(r.url()) && r.request().method() === 'POST')
+  const sent = page.waitForResponse((r) => r.url().endsWith(`/lines/${ID}/fix`) && r.request().method() === 'POST')
   await page.getByRole('button', { name: /^Send/ }).click()
   expect((await sent).status()).toBe(200)
   await expect(page.getByText(/^Fix sent/)).toBeVisible()

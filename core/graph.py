@@ -155,12 +155,17 @@ def start() -> float | None:
         return took
 
 
+def _ready() -> bool:
+    """True once the graph is loaded. start() holds the lock while it loads, so a reader waits for
+    the load in progress here instead of reading the packs."""
+    with _lock:
+        return _db is not None
+
+
 def _query(sql: str, params: dict):
-    if _db is None:
-        return None
     try:
         with _lock:
-            return _db.query(sql, params)
+            return _db.query(sql, params) if _db is not None else None
     except Exception as exc:
         log.warning("graph query failed, reading the pack: %s", type(exc).__name__)
         return None
@@ -175,7 +180,7 @@ FROM ONLY $m"""
 def pack(match_id: str) -> dict | None:
     """What Follow a player reads of the match's pack, from the graph, in the pack's shape; None
     when the graph is off or lacks the match."""
-    if _db is None:
+    if not _ready():
         return None
     from surrealdb import RecordID
 
@@ -207,7 +212,7 @@ FROM $p->played_in WHERE out != $m ORDER BY date"""
 def library(sport: str, match_id: str, name: str) -> list[dict]:
     """Also in our library: the player's other matches, each with their teammates there. Never the
     match on screen, so nothing from it, later moments included, can show."""
-    if _db is None:
+    if not _ready():
         return []
     from surrealdb import RecordID
 
@@ -239,11 +244,9 @@ def _open_store(path: Path = STORE) -> None:
 
 
 def _rows(sql: str, params: dict) -> list[dict] | None:
-    if _kv is None:
-        return None
     try:
-        with _lock:
-            return _kv.query(sql, params)
+        with _lock:  # waits for a load in progress
+            return _kv.query(sql, params) if _kv is not None else None
     except Exception as exc:
         log.warning("graph query failed, reading the packs: %s", type(exc).__name__)
         return None
@@ -322,6 +325,9 @@ def _games(sport: str, who: str, w: str, before: str) -> list[dict] | None:
             {
                 **{k: r[k] for k in ("player", "team", "competition", "season")},
                 "gender": r.get("gender"),
+                # shortcut: the shipped graph lacks IDs; rebuild it to recover transfers.
+                # Legacy rows are team-scoped meanwhile.
+                "identity": r.get("identity") or f"team:{r['team']}:{r['player']}",
                 "start": g[0],
                 "totals": dict(zip(r["keys"], g[2:], strict=True)),
             }  # fmt: skip
@@ -349,9 +355,11 @@ def _latest(apps: list[dict]) -> list[dict]:
 
 
 def player_season(sport: str, name: str, before: str) -> dict | None:
-    """The player's newest competition-season before `before`: team, matches and summed totals."""
+    """An unambiguous player's newest competition-season before `before`."""
     apps = _games(sport, "player", name, before)
     if not apps:
+        return None
+    if len({a["identity"] for a in apps}) != 1:
         return None
     mine = _latest(apps)
     return {
@@ -361,6 +369,10 @@ def player_season(sport: str, name: str, before: str) -> dict | None:
         "matches": len(mine),
         "totals": _sum(mine),
     }
+
+
+def _headline(n: float, stat: str, games: int) -> str:
+    return f"{n:g} {stat[:-1] if n == 1 else stat} in {games}"  # "1 goal", "2 goals"
 
 
 def squad(sport: str, team: str, before: str) -> list[dict]:
@@ -374,7 +386,7 @@ def squad(sport: str, team: str, before: str) -> list[dict]:
     lead = LEAD.get(sport, "points")
     ranked = sorted(by.items(), key=lambda kv: (-_sum(kv[1]).get(lead, 0), -len(kv[1]), kv[0]))
     return [
-        {"name": n, "matches": len(a), "headline": f"{_sum(a).get(lead, 0):g} {lead} in {len(a)}"}
+        {"name": n, "matches": len(a), "headline": _headline(_sum(a).get(lead, 0), lead, len(a))}
         for n, a in ranked
     ]
 

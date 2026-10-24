@@ -7,7 +7,6 @@ import json
 import logging
 import os
 import re
-import threading
 import time
 import uuid
 from collections.abc import Callable
@@ -17,6 +16,7 @@ from pathlib import Path
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -146,7 +146,10 @@ class AskRequest(BaseModel):
 
 
 # "Where are we?" asked in words, typed or by voice (#186): the status task answers it, not Ask
-STATUS_ASK = re.compile(r"(?:so )?(?:where are we|what(?:'s| is) the score)(?: now| at)?")
+STATUS_ASK = re.compile(
+    r"(?:so )?(?:where are we|what(?:'s| is) the score|who(?:'s| is) (?:batting|at the crease))"
+    r"(?: now| at)?"
+)
 
 
 def wants_status(question: str) -> bool:
@@ -240,7 +243,7 @@ def create_app(
         cached = cached or bool(capped)
         if cached:  # the lines already stored, said again: no model or voice call, nothing stored
             commentate, speak, correct = cached_commentator(store, req.match_id), None, None
-            linecheck = linecheck and checked_once(linecheck)  # a stored line is checked once too
+            linecheck = None  # cached playback must not make a paid provider call
             if commentate is None and off_air:
                 raise too_many(guard.until_tomorrow(), f"{OFF_TODAY}. Try again tomorrow.")
             if commentate is None and capped:
@@ -298,30 +301,6 @@ def create_app(
 
         def call(line: dict, moment: dict, history: list[dict]) -> dict | None:
             return None if guard.off_air(store) else linecheck(line, moment, history)
-
-        return call
-
-    checking: set[str] = set()  # stored lines whose line check is made or in flight
-    checking_lock = threading.Lock()  # checks run in worker threads
-
-    def checked_once(linecheck):
-        """Line check on a stored line said again: one per line ever, so only a line with no
-        record yet, and only once while its check is in flight. None: no call made."""
-
-        def call(line: dict, moment: dict, history: list[dict]) -> dict | None:
-            with checking_lock:
-                if line["line_id"] in checking:
-                    return None
-                checking.add(line["line_id"])
-            got = None
-            try:
-                if not any(c.get("line_id") == line["line_id"] for c in store.all("linechecks")):
-                    got = linecheck(line, moment, history)
-                return got
-            finally:
-                if got is None:  # failed or over the cap: the next viewing may try again
-                    with checking_lock:
-                        checking.discard(line["line_id"])
 
         return call
 
@@ -693,7 +672,8 @@ def create_app(
             need_deps=need_deps, viewed=viewed, asked_so_far=asked_so_far, guard=guard, store=store
         )
     )
-    # the built page (web/, #18) at /, mounted last so every API route above wins
+    # the built page (web/, #18) at /, mounted last so every API route above wins; gzipped (#438),
+    # the SSE stream and the API not
     if WEB.is_dir():
-        app.mount("/", StaticFiles(directory=WEB, html=True), name="web")
+        app.mount("/", GZipMiddleware(StaticFiles(directory=WEB, html=True)), name="web")
     return app

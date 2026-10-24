@@ -14,9 +14,9 @@ def fx(mid, start, home, away, hg, ag, season="2015/2016"):
             "start": start, "home": home, "away": away, "hg": hg, "ag": ag}  # fmt: skip
 
 
-def ap(mid, start, player, team, goals, season="2015/2016"):
+def ap(mid, start, player, team, goals, season="2015/2016", identity=None):
     return {"sport": "football", "mid": mid, "player": player, "team": team, "start": start,
-            "competition": "PL", "season": season, "minutes": 90,
+            "identity": identity, "competition": "PL", "season": season, "minutes": 90,
             "totals": {"goals": goals, "shots": goals + 1, "xg": 0.5, "assists": 0}}  # fmt: skip
 
 
@@ -70,6 +70,64 @@ def test_player_season_and_squad_stop_at_kickoff(store):
     ]
 
 
+def test_same_name_different_provider_ids_is_ambiguous(tmp_path, monkeypatch):
+    apps = [
+        ap("1", "2022-07-13T00:00:00", "Manpreet Singh", "Italy", 3, "2022", "italy-id"),
+        ap("2", "2022-07-15T00:00:00", "Manpreet Singh", "Singapore", 7, "2022", "singapore-id"),
+    ]
+    fixtures = [
+        fx("1", apps[0]["start"], "Italy", "Other", 3, 0, "2022"),
+        fx("2", apps[1]["start"], "Singapore", "Other", 7, 0, "2022"),
+    ]
+    build_graph.write({"football": (fixtures, apps)}, tmp_path / "db")
+    monkeypatch.setattr(graph, "_kv", None)
+    graph._open_store(tmp_path / "db")
+    assert graph.player_season("football", "Manpreet Singh", "2022-07-20") is None
+
+
+def test_same_provider_id_across_teams_is_one_transferred_player(tmp_path, monkeypatch):
+    apps = [
+        ap("1", "2022-07-13T00:00:00", "Mina", "Italy", 3, "2022", "player-1"),
+        ap("2", "2022-07-15T00:00:00", "Mina", "Singapore", 7, "2022", "player-1"),
+    ]
+    fixtures = [
+        fx("1", apps[0]["start"], "Italy", "Other", 3, 0, "2022"),
+        fx("2", apps[1]["start"], "Singapore", "Other", 7, 0, "2022"),
+    ]
+    build_graph.write({"football": (fixtures, apps)}, tmp_path / "db")
+    monkeypatch.setattr(graph, "_kv", None)
+    graph._open_store(tmp_path / "db")
+    got = graph.player_season("football", "Mina", "2022-07-20")
+    assert got == {
+        "team": "Singapore",
+        "competition": "PL",
+        "season": "2022",
+        "matches": 2,
+        "totals": {"goals": 10, "shots": 12, "xg": 1.0, "assists": 0},
+    }
+
+
+def test_same_name_different_provider_ids_on_one_team_stays_separate(tmp_path, monkeypatch):
+    apps = [
+        ap("1", "2022-07-13T00:00:00", "Mina", "Italy", 3, "2022", "player-1"),
+        ap("2", "2022-07-15T00:00:00", "Mina", "Italy", 7, "2022", "player-2"),
+    ]
+    fixtures = [
+        fx(a["mid"], a["start"], "Italy", "Other", a["totals"]["goals"], 0, "2022") for a in apps
+    ]
+    build_graph.write({"football": (fixtures, apps)}, tmp_path / "db")
+    monkeypatch.setattr(graph, "_kv", None)
+    graph._open_store(tmp_path / "db")
+    assert graph.player_season("football", "Mina", "2022-07-20") is None
+
+
+def test_shipped_manpreet_collision_is_not_combined(monkeypatch):
+    monkeypatch.setattr(graph, "_kv", None)
+    graph._open_store()
+    assert graph._kv is not None
+    assert graph.player_season("cricket", "Manpreet Singh", "2022-07-20") is None
+
+
 def test_a_later_match_never_appears(store):
     early = "2015-09-02T00:00:00"
     assert [g["date"] for g in graph.team_form("football", "Chelsea", early)] == [
@@ -112,11 +170,13 @@ def test_no_store_is_the_same_fallback(monkeypatch):
 
 
 def test_basketball_row_counts_points_rebounds_assists_and_the_last_score():
-    def row(kind, home="", visitor="", score="", p1=("Kobe", "LAL"), p2=("", "")):
+    def row(kind, home="", visitor="", score="", p1=("Kobe", "LAL", "kobe-id"), p2=("", "", "")):
         r = {"EVENTMSGTYPE": kind, "HOMEDESCRIPTION": home, "VISITORDESCRIPTION": visitor,
              "SCORE": score}  # fmt: skip
-        for n, (name, abbr) in ((1, p1), (2, p2), (3, ("", ""))):
+        for n, p in ((1, p1), (2, p2), (3, ("", ""))):
+            name, abbr = p[:2]
             r |= {f"PLAYER{n}_NAME": name, f"PLAYER{n}_TEAM_ABBREVIATION": abbr,
+                  f"PLAYER{n}_ID": p[2] if len(p) > 2 else "",
                   f"PLAYER{n}_TEAM_CITY": "LA" if abbr == "LAL" else "To",
                   f"PLAYER{n}_TEAM_NICKNAME": "Lakers" if abbr == "LAL" else "Raptors"}  # fmt: skip
         return r
@@ -124,16 +184,21 @@ def test_basketball_row_counts_points_rebounds_assists_and_the_last_score():
     g = {"names": {}, "totals": {}, "score": None}
     meta = ("2006-01-22", "LAL", "TOR")
     for r in (
-        row("1", home="Kobe 3PT Jump Shot (3 PTS) (Odom 1 AST)", score="0 - 3", p2=("Odom", "LAL")),
+        row(
+            "1",
+            home="Kobe 3PT Jump Shot (3 PTS) (Odom 1 AST)",
+            score="0 - 3",
+            p2=("Odom", "LAL", "odom-id"),
+        ),
         row("3", home="Kobe Free Throw 1 of 2 (4 PTS)", score="0 - 4"),
         row("3", home="MISS Kobe Free Throw 2 of 2"),
-        row("4", visitor="Bosh REBOUND", p1=("Bosh", "TOR")),
+        row("4", visitor="Bosh REBOUND", p1=("Bosh", "TOR", "bosh-id")),
     ):
         build_graph._basketball_row(g, r, meta)
     assert g["score"] == (0, 4) and g["names"] == {"LAL": "LA Lakers", "TOR": "To Raptors"}
-    assert g["totals"][("Kobe", "LAL")] == {"points": 4, "rebounds": 0, "assists": 0}
-    assert g["totals"][("Odom", "LAL")]["assists"] == 1
-    assert g["totals"][("Bosh", "TOR")]["rebounds"] == 1
+    assert g["totals"][("kobe-id", "Kobe", "LAL")] == {"points": 4, "rebounds": 0, "assists": 0}
+    assert g["totals"][("odom-id", "Odom", "LAL")]["assists"] == 1
+    assert g["totals"][("bosh-id", "Bosh", "TOR")]["rebounds"] == 1
 
 
 def test_cricket_match_scores_innings_and_credits_runs_balls_wickets():
@@ -150,6 +215,7 @@ def test_cricket_match_scores_innings_and_credits_runs_balls_wickets():
             "dates": ["2022-10-23"],
             "teams": ["A", "B"],
             "players": {"A": ["Bat", "Bench"], "B": ["Bowl"]},
+            "registry": {"people": {"Bat": "bat-id", "Bench": "bench-id", "Bowl": "bowl-id"}},
         },  # fmt: skip
         "innings": [
             {
@@ -172,6 +238,7 @@ def test_cricket_match_scores_innings_and_credits_runs_balls_wickets():
     got = {a["player"]: a["totals"] for a in apps}
     assert got == {"Bat": {"runs": 4, "balls": 2, "wickets": 0},
                    "Bowl": {"runs": 1, "balls": 1, "wickets": 1}}  # fmt: skip
+    assert {a["player"]: a["identity"] for a in apps} == {"Bat": "bat-id", "Bowl": "bowl-id"}
 
 
 def test_shipped_store_kobes_81_game_sees_only_earlier_games(monkeypatch):
@@ -244,3 +311,19 @@ def test_shipped_store_pakistan_squad_before_1298150_has_no_women(monkeypatch):
     names = {s["name"] for s in graph.squad("cricket", "Pakistan", "2022-10-23")}
     assert {"Babar Azam", "Mohammad Rizwan"} <= names
     assert not names & {"Muneeba Ali", "Nida Dar"}  # Pakistan's women's side
+
+
+def test_a_reader_waits_for_a_load_in_progress(store):
+    import threading
+    import time
+
+    kv, hits = graph._kv, []
+    graph._kv = None
+    with graph._lock:  # start() holds the lock while it loads
+        t = threading.Thread(target=lambda: hits.append(graph.teams("football")))
+        t.start()
+        time.sleep(0.2)
+        assert not hits  # waiting, not already answered from the packs
+        graph._kv = kv
+    t.join(5)
+    assert hits and hits[0]  # can go red: with the check before the lock it returns [] at once

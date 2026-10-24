@@ -1,13 +1,20 @@
 #!/usr/bin/env bash
 # Deploy the committed HEAD to Cloud Run and prove it answers.
 #   PROJECT=<gcp-project-id> [REGION=europe-west1] [SERVICE=night-shift] \
-#     [STATE_BUCKET=<PROJECT>-state] [MIN_INSTANCES=0] [DEPLOY_AS_SELF=1] [PRODUCER_TOKEN=...] [CONVERSE_AGENT_ID=...] scripts/deploy.sh
+#     [STATE_BUCKET=<PROJECT>-state] [MIN_INSTANCES=0] [DEPLOY_AS_SELF=1] [PRODUCER_TOKEN=...] [CONVERSE_AGENT_ID=...] [DAILY_BUDGET_USD=50] scripts/deploy.sh
 # A rehearsal deploys SERVICE=night-shift-staging, whose store sits under its own prefix.
 # One-time GCP setup: scripts/bootstrap.sh. Rollback: route traffic to the previous revision
 # (gcloud run services update-traffic SERVICE --to-revisions REV=100).
 set -euo pipefail
 
 : "${PROJECT:?set PROJECT to the GCP project id}"
+DAILY_BUDGET_USD="${DAILY_BUDGET_USD:-}"
+if [[ -n "$DAILY_BUDGET_USD" ]] &&
+  ! python3 -c 'import math,sys; value=float(sys.argv[1]); sys.exit(0 if math.isfinite(value) and value >= 0 else 1)' \
+    "$DAILY_BUDGET_USD" 2>/dev/null; then
+  echo "deploy: DAILY_BUDGET_USD must be a finite nonnegative number" >&2
+  exit 1
+fi
 REGION="${REGION:-europe-west1}"
 SERVICE="${SERVICE:-night-shift}"
 STATE_BUCKET="${STATE_BUCKET:-$PROJECT-state}"
@@ -40,6 +47,19 @@ if [[ "$ELEVENLABS_FALLBACK_VERSION" != none ]]; then
     exit 1
   fi
 fi
+# Every secret the deploy will mount must exist, or the revision can't start, found only after the
+# ten-minute build. Checked here, before the build and the impersonation, from the same lists as MOUNTS
+# below (metadata only, as you). converse-llm-secret is mounted only with CONVERSE_AGENT_ID.
+MUBIT_FALLBACK_VERSION="${MUBIT_FALLBACK_VERSION:-3}"
+NEEDED="$(for s in $SECRETS; do echo "$s latest"; done)"
+[[ "$MUBIT_FALLBACK_VERSION" =~ ^[0-9]+$ ]] && NEEDED+=$'\n'"mubit-api-key $MUBIT_FALLBACK_VERSION"
+[[ -n "${CONVERSE_AGENT_ID:-}" ]] && NEEDED+=$'\n'"converse-llm-secret latest"
+while read -r secret version; do
+  if ! gcloud secrets versions describe "$version" --secret "$secret" --project "$PROJECT" >/dev/null 2>&1; then
+    echo "deploy: secret $secret (version $version) does not exist in $PROJECT; create it (scripts/bootstrap.sh) before deploying" >&2
+    exit 1
+  fi
+done <<<"$NEEDED"
 if [[ "${DEPLOY_AS_SELF:-}" == 1 ]]; then
   echo "deploy: deploying as $(gcloud config get-value account), not the deployer"
 else
@@ -115,7 +135,7 @@ done
 gcloud run deploy "$SERVICE" --source . --region "$REGION" --project "$PROJECT" \
   --allow-unauthenticated \
   --set-secrets "${MOUNTS%,}" \
-  --set-env-vars "^@^MODE=cloud@STORE_URL=gs://$STATE_BUCKET/$SERVICE@MUBIT_RECORD=$MUBIT_RECORD$VOICE_ENV${PRODUCER_TOKEN:+@PRODUCER_TOKEN=$PRODUCER_TOKEN}${CONVERSE_AGENT_ID:+@CONVERSE_AGENT_ID=$CONVERSE_AGENT_ID}" \
+  --set-env-vars "^@^MODE=cloud@STORE_URL=gs://$STATE_BUCKET/$SERVICE@MUBIT_RECORD=$MUBIT_RECORD$VOICE_ENV${PRODUCER_TOKEN:+@PRODUCER_TOKEN=$PRODUCER_TOKEN}${CONVERSE_AGENT_ID:+@CONVERSE_AGENT_ID=$CONVERSE_AGENT_ID}${DAILY_BUDGET_USD:+@DAILY_BUDGET_USD=$DAILY_BUDGET_USD}" \
   --labels "commit=$COMMIT" \
   --min-instances "$MIN_INSTANCES" \
   --max-instances 1 \
