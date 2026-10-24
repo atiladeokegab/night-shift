@@ -67,8 +67,10 @@ and refuses to start without `STORE_URL=gs://bucket/prefix`.
   Both are cached per (match_id, after_idx, n, v: 2) and reused by later replays; a replay makes at
   most 160 new insight and reply calls. A fix on either goes back, unrecorded, with that line's own
   Stat request.
-- **Fix** (core/): `{line_id, corrected_text, reason, created_at, mubit_request_id,
-  reply_matched: bool, recorded: bool}`; `recorded` is true only when Mubit recorded the correction
+- **Fix** (core/): `{line_id, corrected_text, reason, created_at, mubit_request_id, correction,
+  reply_passed: bool, recorded: bool}`; `correction` is the exact user turn Mubit was given (#245);
+  `reply_passed` is whether the provider's corrected reply passed the number check (a Fix before
+  #245 has `reply_matched` instead); `recorded` is true only when Mubit recorded the correction
   for training (the owner's key). A Fix stored before it has none and counts as not recorded.
 - **Match** (data/): `{match_id, sport, title?, sample: bool, youtube_id?, video_start?, embed?, peak_idx?,
   peak_video_start?}`; `sample`
@@ -187,7 +189,8 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
     `wrong` at the same match and moment are one entry, the newest line's, with `lines` (how many
     distinct wordings) and `others` (the older wordings, newest first). A fix on any of them
     clears every line of that mistake stored up to the fix (`created_at`); one said after it is a new entry.
-  - `fixes_toward_next: int`: recorded fixes since the latest `adapter` record (all of them before one).
+  - `fixes_toward_next: int`: recorded fixes since the latest `adapter` record (all of them before one),
+    leaving out any whose corrected reply failed the number check (`reply_passed: false`, #245).
   - `voice_chars: int`: characters in every `voice` record.
   - `cost_per_match_usd: number | null`: the mean full replay's spend, `model_cost_per_match_usd`
     (the tokens of every line it said, cached or not, and of its answers × list price) plus `voice_cost_per_match_usd` (its `voice`
@@ -214,8 +217,11 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   `FakeProvider` offline.
 - Correction (`agent.commentator.correct`): the line's original request (same prompt, tools, model
   and `metadata.user_id`, so the same Mubit task and session) plus the line as the assistant turn
-  and "Producer correction. Reply with exactly this line: <text>"; `reply_matched` records whether
-  the reply was exactly that line. Mubit has no feedback API, so this turn is the training signal.
+  and a correction turn (#245): "Producer correction: <reason>", the facts at the moment (score,
+  leader, player total), "The producer's line: <text>" and "Say your line again, corrected". Only
+  the messages differ from the line's request. The provider writes the fixed line; `reply_passed`
+  records whether it passes the number check. An auto-fix gives the checker's own reasons. Mubit
+  has no feedback API, so this turn is the training signal.
 - The commentator sees only moments up to the current one; a later event never reaches the model.
 - Answer (`agent.commentator.answer`): the request for the moment on screen with the system prompt
   `agent/ask.md`, the last five lines said and the viewer's question (whitespace collapsed, quoted as a JSON

@@ -35,6 +35,20 @@ margin, the players' counts and, in football, what kind of event it was ([`core/
 A line that fails is tried once more. If the retry passes, the failed try is sent to Mubit as a
 correction, with no person involved; if it fails too, a line built from the match data is spoken
 instead. A producer fixes the rest from the page, and each fix goes to Mubit the same way.
+A correction is the next turn of the line's own call, so only the messages change, never the
+prompt, tools or model. It says what was wrong and gives the facts, and the commentator writes
+the fixed line itself. The fix counts toward the next Mubit version only if that reply passes
+the number check. The turn for a fix to Jordan's layup at 86-85 (Jazz v Bulls, 1998 NBA Finals Game 6), after
+the wrong line:
+
+```text
+Producer correction: Wrong leader
+The facts at this moment. Score: Utah Jazz 86, Chicago Bulls 85. Leader: Utah Jazz lead 86-85. Player total: Michael Jordan, 43 points tonight.
+The producer's line: Jordan drives and lays it in, his 43rd! Utah still lead 86-85.
+Say your line again, corrected: the line alone, at most 20 words.
+```
+
+Each fix stores this turn as `correction`, with `reply_passed`.
 The analyst's stat lines, the lead's replies to them and Ask answers get the same number check,
 against the stat and the match so far: a wrong number is tried once more, then the line is dropped
 and never said (an answer becomes the off-air line).
