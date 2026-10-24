@@ -1,13 +1,16 @@
 """The replayer: walks a match's Moments at `speed` (or, for a match with a video map, its mapped
-moments ahead of time), asks the commentator for a Line per moment, stores each Line and publishes
+moments ahead of time), asks the commentator for a Line per moment, and with a video map for stat
+lines in the quiet stretches between them (core/insight.py), stores each Line and publishes
 moment, line and stats events for the SSE stream."""
 
 import asyncio
+import itertools
 import logging
 import time
 import uuid
 from collections.abc import Callable
 
+from core import insight
 from core.stats import stats
 
 log = logging.getLogger("night_shift.replay")
@@ -80,6 +83,17 @@ async def run_replay(
     # A video map: only mapped moments are called, each tagged with its video time and sent as
     # soon as it is ready; the page holds each line until the player reaches that time.
     video_t = {m["idx"]: m["video_t"] for m in video["moments"]} if video else None
+    gaps = insight.Gaps(replay.match_id, store) if video else None
+
+    async def say(line: dict, moment: dict) -> None:
+        # shortcut: due as if the video starts with the replay at its `start` second;
+        # the player's own clock if the page ever sends it.
+        if speak:
+            due = replay.started + line["video_t"] - video.get("start", 0) if video else None
+            speak(line, moment, due)
+        await replay.publish("line", line)
+        await replay.publish("stats", stats(store))
+
     try:
         last = None
         history: list[dict] = []
@@ -99,17 +113,25 @@ async def run_replay(
             # commentate sees only moments up to this one: later events never reach the model
             line = await asyncio.to_thread(commentate, moment, list(history))
             history.append(moment)
-            if line is None:  # the commentator had nothing usable to say: the moment stays silent
+            if line is not None:  # None: the commentator had nothing usable to say
+                await say(store.append("lines", {**line, **tag, "speaker": "lead"}), moment)
+            if not tag:
                 continue
-            line = {**line, **tag}
-            store.append("lines", line)
-            # shortcut: due as if the video starts with the replay at its `start` second;
-            # the player's own clock if the page ever sends it.
-            if speak:
-                due = replay.started + tag["video_t"] - video.get("start", 0) if tag else None
-                speak(line, moment, due)
-            await replay.publish("line", line)
-            await replay.publish("stats", stats(store))
+            # the quiet stretch until the next mapped moment: stat lines, each due once the
+            # last line has likely been spoken
+            end = min((t for t in video_t.values() if t > tag["video_t"]), default=None)
+            t, said = tag["video_t"], (line or {}).get("text")
+            for n in itertools.count():
+                t = insight.due_after(t, said)
+                if end is None or t > end - insight.CLEAR_S:
+                    break
+                got = await asyncio.to_thread(gaps.line, list(history), n, t, commentate, said)
+                if got is None:
+                    break
+                stat, said_line = got
+                await replay.publish("moment", {**stat, "video_t": t})
+                await say({**said_line, "video_t": t}, stat)
+                said = said_line["text"]
     except Exception as exc:  # the stream says why it stopped instead of hanging open
         # the provider's status and error type, e.g. Mubit's 402 when its credit runs out
         name = type(exc).__name__
