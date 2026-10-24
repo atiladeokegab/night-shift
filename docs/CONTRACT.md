@@ -185,8 +185,8 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   `eleven_flash_v2_5` without the tag; `VOICE_MODEL_<SPORT>` overrides the model. The audio is
   made when the replay stores the line and cached, due before the video reaches its moment.
   404 for an unknown line or voice; 503 with no `ELEVENLABS_API_KEY`, every attempt failed,
-  today's spend past `DAILY_BUDGET_USD` or a line a cached replay (#244) is saying,
-  and the page then uses browser speech. The key never reaches the browser; each call logs
+  today's spend past `DAILY_BUDGET_USD` or a line a cached replay (#244) is saying with no audio
+  saved (saved audio is played again), and the page then uses browser speech. The key never reaches the browser; each call logs
   `voice line=<id> first_byte_ms=<n> model=<model>`. (core)
 - `GET /review` → `[{line_id, match_id, match, sport, moment_idx, clock, period, score, play, text,
   wrong, later_check, lines, others}]`, newest first: the producer's fix queue, one entry per
