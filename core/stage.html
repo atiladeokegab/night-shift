@@ -101,7 +101,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 </head>
 <body>
 <div id="video" class="off"><div id="player"></div></div>
-<p class="novideo" id="novideo" hidden>No video for this match: lines show as they arrive.</p>
+<p class="novideo" id="novideo" hidden>No video for this match: the commentary runs on its own clock.</p>
 <main class="live">
   <nav class="nav">
     <span class="wordmark">Touchline.</span>
@@ -128,22 +128,24 @@ const PICKS = [["Football", "football", "3906390"], ["Messi v Mbappé", "footbal
   ["Kobe", "basketball", "0020500591"], ["Hamilton", "f1", "9558"]];
 const LANG = { football: "en-GB", cricket: "en-IN", basketball: "en-US", f1: "en-GB" };
 const WINDOW = 0.5; // a line plays only within this many seconds after its video_t
+const GAP_MS = 6000; // with no video, a line shows at least this long, and never over the voice
+const HOLD_MS = 15000;
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => Object.assign(document.createElement(tag), cls ? { className: cls } : {}, text != null ? { textContent: text } : {});
 const mmss = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
 let matches = [], match = null, es = null, yt = null, player = null, ytFailed = false, apiFailed = false;
-let moments = {}, seen = new Set(), held = [], queue = [], logged = new Map(), lastT = 0;
+let moments = {}, seen = new Set(), held = [], queue = [], logged = new Map(), lastT = 0, paced = [], nextAt = 0;
 
-// YouTube IFrame API. If it cannot load (offline), lines fall back to showing as they arrive.
+// YouTube IFrame API. If it cannot load (offline), the commentary falls back to its own clock (pace).
 const ytApi = new Promise((resolve) => { window.onYouTubeIframeAPIReady = () => resolve(window.YT); });
 const ytScript = Object.assign(document.createElement("script"), { src: "https://www.youtube.com/iframe_api" });
 const noVideo = (e) => {
   ytFailed = true;
   $("video").classList.add("off");
-  $("novideo").textContent = `Video unavailable${e && e.data ? ` (YouTube error ${e.data})` : ""}: lines show as they arrive.`;
+  $("novideo").textContent = `Video unavailable${e && e.data ? ` (YouTube error ${e.data})` : ""}: the commentary runs on its own clock.`;
   $("novideo").hidden = false;
-  queue.splice(0).forEach(show);
+  paced.push(...queue.splice(0));
 };
 ytScript.onerror = () => { apiFailed = true; noVideo(); };
 document.head.append(ytScript);
@@ -286,11 +288,13 @@ function show(line) {
   refreshStats();
 }
 
-// A line with a video time waits for the picture; anything else shows at once.
+// A line with a video time waits for the picture; with no video it waits its turn (pace); anything
+// else shows at once.
 function arrive(line) {
   if (seen.has(line.line_id)) return; // a reconnecting stream replays from the start
   seen.add(line.line_id);
-  if (line.video_t == null || !match.youtube_id || ytFailed) return show(line);
+  if (!match.youtube_id || ytFailed) return paced.push(line);
+  if (line.video_t == null) return show(line);
   const byTime = (a, b) => a.video_t - b.video_t;
   held.push(line);
   held.sort(byTime);
@@ -300,7 +304,8 @@ function arrive(line) {
 
 // The gate: every 100 ms, release lines whose video_t the playing picture has reached.
 function tick() {
-  if (!player || !match || !match.youtube_id) return;
+  if (match && (!match.youtube_id || ytFailed)) return pace();
+  if (!player || !match) return;
   const playing = player.getPlayerState() === YT.PlayerState.PLAYING;
   const t = player.getCurrentTime();
   if (Math.abs(t - lastT) > 2) { // sought: drop what was said and re-arm from the new time
@@ -320,6 +325,19 @@ function tick() {
   }
 }
 setInterval(tick, 100);
+
+// No video: the replay streams lines faster than anyone can follow, so they go out one at a time,
+// GAP_MS apart and each after the last one's voice has finished.
+function pace() {
+  $("sync").textContent = `No video here · commentary on its own clock${paced.length ? ` · ${paced.length} waiting` : ""}`;
+  // ON AIR is set by the voice's real playing and ended events (a failed <audio> never says it stopped);
+  // a voice still on air HOLD_MS after its turn is taken as stuck.
+  const talking = $("onair").classList.contains("on") && Date.now() < nextAt + HOLD_MS;
+  if (!paced.length || talking || Date.now() < nextAt) return;
+  show(paced.shift());
+  nextAt = Date.now() + GAP_MS;
+  if (paced.length) prepare(paced[0]); // fetch the next line's audio while this one plays
+}
 
 function onState(e) {
   const playing = e.data === YT.PlayerState.PLAYING; // paused or buffering: the voice waits
@@ -351,7 +369,7 @@ async function start(id) {
   if (es) es.close();
   es = null;
   stopVoice();
-  match = m; ytFailed = apiFailed; moments = {}; seen = new Set(); held = []; queue = []; logged = new Map(); lastT = 0;
+  match = m; ytFailed = apiFailed; moments = {}; seen = new Set(); held = []; queue = []; logged = new Map(); lastT = 0; paced = []; nextAt = 0;
   $("log").replaceChildren();
   document.querySelectorAll("#sports button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.match === id));
   scorebar(null);

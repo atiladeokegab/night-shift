@@ -84,9 +84,12 @@ by Raju, in 6 to 20 seconds (measured).*
 
 ### 5. The fix (1:20–1:35)
 
-*In the Lines card, tap Fix on the wicket line. The sheet shows what Touchline said, with the line
-ready to correct. Type the correction and send. The line shows Fixed and the proof panel's fix count
-goes up by one.*
+*In the Lines card, pick a line and tap Fix. Lines are written afresh on every replay, so the line to
+fix can't be chosen in advance. If a line has a factual slip (for example 'hosts' for Spain), fix that.
+Otherwise, fix any line's wording, for example American spelling ('defense' to 'defence') or a vaguer
+line to name the player. Keep the correction to a word or two, typed in a few seconds. The sheet shows
+what Touchline said, with the line ready to correct. Type the correction and send. The line shows
+Fixed and the proof panel's fix count goes up by one.*
 
 "Say a line is wrong. A producer corrects it right here. The fix is kept beside the original, and it
 goes back through Mubit to train our own commentator."
