@@ -655,7 +655,10 @@ JSON lines on Cloud Storage, and streams moments and lines to the browser over s
 The commentator's tools and the shot map read per-match stats packs ([`data/packs/`](data/packs)).
 Follow a player reads the same packs as a graph in embedded SurrealDB (players, teams, matches and
 seasons, loaded in memory at startup in about a second), which also answers "Also in our library":
-the player's other matches and teammates. If the graph fails, it reads the packs.
+the player's other matches and teammates. A second, on-disk SurrealDB store (`data/graph/`, built by
+`scripts/build_graph.py`) holds every team and player of the four football competition-seasons we
+sample (612 matches), cut at kickoff; basketball, cricket and F1 are not in it yet. If the graph
+fails, it reads the packs.
 
 **At scale (a plan, not built).**
 
