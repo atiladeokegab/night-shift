@@ -1,0 +1,14 @@
+{
+  "source": "https://en.wikipedia.org/wiki/2018_Orlando_Pride_season (Regular season results, read 2026-10-24)",
+  "note": "Orlando Pride's NWSL 2018 results before 23 May, which StatsBomb open data does not cover. Dates are local; kickoff times unknown, so start is midnight.",
+  "fixtures": [
+    ["2018-03-24", "Orlando Pride", "Utah Royals", 1, 1],
+    ["2018-03-31", "Washington Spirit", "Orlando Pride", 2, 0],
+    ["2018-04-15", "Portland Thorns", "Orlando Pride", 2, 1],
+    ["2018-04-22", "Orlando Pride", "Houston Dash", 1, 0],
+    ["2018-04-28", "Orlando Pride", "Seattle Reign", 1, 1],
+    ["2018-05-02", "Chicago Red Stars", "Orlando Pride", 0, 2],
+    ["2018-05-09", "Utah Royals", "Orlando Pride", 0, 0],
+    ["2018-05-12", "Portland Thorns", "Orlando Pride", 1, 2]
+  ]
+}

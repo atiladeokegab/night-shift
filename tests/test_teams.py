@@ -104,17 +104,16 @@ def test_one_of_a_stat_is_singular():
 def test_a_teams_first_match_on_record_says_so():
     graph.start()
     assert (
-        graph.first_match("football", "Orlando Pride", "2018-05-24")
+        graph.first_match("football", "Orlando Pride", "2018-03-24")
         == "This is Orlando Pride's first match on record"
     )
-    assert (
-        graph.first_match("football", "North Carolina Courage", "2018-05-24") is None
-    )  # has earlier games
+    assert graph.first_match("football", "Orlando Pride", "2018-05-24") is None  # cited results
     assert graph.first_match("football", "Nobody FC", "2018-05-24") is None  # never in the store
-    body = teams.build("football", match_header("7457"))
-    orlando, courage = body["teams"]
-    assert (
-        orlando["note"] == "This is Orlando Pride's first match on record"
-        and orlando["squad"] == []
-    )
-    assert courage["note"] is None
+
+
+def test_orlando_has_form_and_a_squad_before_its_first_statsbomb_match():
+    graph.start()
+    orlando, courage = teams.build("football", match_header("7457"))["teams"]
+    assert len(orlando["form"]) >= 1 and len(orlando["squad"]) >= 1 and orlando["note"] is None
+    assert orlando["form"][0]["date"] == "2018-05-12" and orlando["form"][0]["score"] == "2-1"
+    assert len(courage["form"]) == 4 and all(g["date"] < "2018-05-24" for g in orlando["form"])

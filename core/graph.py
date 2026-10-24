@@ -26,6 +26,9 @@ from core.predict import PACKS
 log = logging.getLogger("touchline.graph")
 SAMPLE = Path(__file__).resolve().parent.parent / "data" / "sample"
 STORE = Path(__file__).resolve().parent.parent / "data" / "graph"  # scripts/build_graph.py
+RESULTS = (
+    Path(__file__).resolve().parent.parent / "data" / "results"
+)  # cited results the feeds lack
 
 _db = None  # the connection once loaded; None means the JSON path
 _kv = None  # the on-disk store of every team and player of each sample competition
@@ -226,6 +229,30 @@ def library(sport: str, match_id: str, name: str) -> list[dict]:
 # --- the competition store: data/graph on disk, read by the contract functions below -------------
 
 
+def _add_results(kv, results: Path) -> None:
+    """Fixtures from data/results/*.json, each naming its source: [date, home, away, hg, ag]."""
+    from surrealdb import RecordID
+
+    for path in sorted(results.glob("*.json")):
+        data = json.loads(path.read_text(encoding="utf-8"))
+        batch = [
+            {
+                "id": RecordID("fixture", ["football", f"{path.stem}-{d}"]),
+                "sport": "football",
+                "mid": f"{path.stem}-{d}",
+                "competition": "NWSL",
+                "season": "2018",
+                "start": f"{d}T00:00:00",
+                "home": home,
+                "away": away,
+                "hg": hg,
+                "ag": ag,
+            }
+            for d, home, away, hg, ag in data["fixtures"]
+        ]
+        kv.query("INSERT INTO fixture $rows RETURN NONE", {"rows": batch})
+
+
 def _open_store(path: Path = STORE) -> None:
     """Open data/graph. surrealkv writes to its directory even to read, and the image's is not
     writable by the app user, so it opens a copy under tmp; a failure leaves the contract off."""
@@ -238,6 +265,8 @@ def _open_store(path: Path = STORE) -> None:
         _kv = Surreal(f"surrealkv://{work}")
         _kv.connect()
         _kv.use("touchline", "follow")
+        if path == STORE:  # a test's own store is exactly what it built
+            _add_results(_kv, RESULTS)
     except Exception as exc:
         _kv = None
         log.warning("competition graph off, callers read the packs: %s", type(exc).__name__)

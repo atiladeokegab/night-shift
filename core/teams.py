@@ -31,7 +31,7 @@ def _pack_squad(pack: dict | None, team: str) -> list[dict]:
     mine = [(n, p) for n, p in ((pack or {}).get("players") or {}).items() if p.get("team") == team]
     mine.sort(key=lambda kv: (-kv[1].get("made", 0), -kv[1].get("games", 0), kv[0]))
     what = "goals from" if (pack or {}).get("sport") == "football" else "baskets from"
-    return [
+    played = [
         {
             "name": n,
             "matches": p["games"],
@@ -39,6 +39,10 @@ def _pack_squad(pack: dict | None, team: str) -> list[dict]:
         }
         for n, p in mine[:SQUAD_MAX]
         if p.get("games") and p.get("attempts")
+    ]
+    # No earlier appearances on file (StatsBomb has none for the side): the matchday squad, by name.
+    return played or [
+        {"name": n, "matches": 0, "headline": "in the matchday squad"} for n, _ in mine[:SQUAD_MAX]
     ]
 
 
