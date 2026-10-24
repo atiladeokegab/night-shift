@@ -8,6 +8,19 @@ export const offAir = (question: string, moment_idx: number): Answer => ({
   line_id: `off-air-${Date.now()}`, moment_idx, question, text: OFF_AIR, off_air: true,
 })
 
+// A 429 from the live site's budget guard (#244) carries a message for the viewer: thrown as this
+// when a replay can't start, shown as the off-air answer when a question can't be asked.
+export class Refused extends Error {}
+
+export async function refused(res: Response): Promise<string | null> {
+  if (res.status !== 429) return null
+  try {
+    return ((await res.json()) as { detail?: string }).detail ?? null
+  } catch {
+    return null
+  }
+}
+
 export type LogItem = { line: Line; answer?: undefined } | { answer: Answer; line?: undefined }
 
 // The Lines card's rows, newest first: each answer sits above the lines up to the moment it was asked at,

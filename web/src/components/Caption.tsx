@@ -6,7 +6,7 @@ interface Props {
   tag?: string // the moment tag of the line or answer
   fixed?: boolean // a producer's fix replaced the line
   asked?: string // an answer's question
-  offAir?: boolean // the answer came back off air: a calm state, never a headline (#153)
+  offAir?: boolean | string // the answer came back off air: a calm state, never a headline (#153); a string says why (#244)
   pending?: string // a viewer's question waiting for its answer, one line in the header (#153)
   title?: string // the match, at the header's end (a phone drops it while a question waits)
   children?: ReactNode // a state in place of the caption: waiting, off air
@@ -29,7 +29,7 @@ export function Caption({ caption, tag, fixed, asked, offAir, pending, title, ch
             {title && <span className="cap-side cap-title">{title}</span>}
           </div>
           {offAir ? (
-            <p className="cap-state">Couldn't answer that one. Try again.</p>
+            <p className="cap-state">{typeof offAir === 'string' ? offAir : "Couldn't answer that one. Try again."}</p>
           ) : caption.kind === 'question' ? (
             // The Viewer chip already says who asks.
             <p className="cap-asks">{caption.text.replace(/^A viewer asks:\s*/, '')}</p>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react'
+import { Refused } from './ask'
 import { askCommentator, createReplay, followReplay, getPlayers, getProfile, getShots, type StreamStatus } from './api'
 import { release, replayClock, speaks } from './gate'
 import type { Answer, Fix, Line, Moment, Stats } from './types'
@@ -16,6 +17,7 @@ export interface ReplayState {
   queuedLines: Line[]
   ended: boolean
   error: string | null // a server `error` event: the commentator failed mid-replay
+  refused: string | null // why the server turned the start away (#244): shown in place of the failure
   stats: Stats | null // the latest `stats` event; store-wide, so it outlives a single replay
   fixes: Record<string, Fix> // by line_id: from the `fixed` event or the fix request's answer
   answers: Answer[] // viewers' questions and the commentator's answers, newest first (#117)
@@ -24,7 +26,7 @@ export interface ReplayState {
 type Action =
   | { type: 'start'; gated: boolean }
   | { type: 'started' }
-  | { type: 'failed' }
+  | { type: 'failed'; refused: string | null }
   | { type: 'moment'; moment: Moment }
   | { type: 'line'; line: Line }
   | { type: 'tick'; t: number; playing: boolean; duration: number }
@@ -37,7 +39,7 @@ type Action =
 
 const initial: ReplayState = {
   phase: 'idle', stream: 'ok', gated: false, now: 0, duration: 0, moments: [], lines: [], late: [], queuedMoments: [], queuedLines: [],
-  ended: false, error: null, stats: null, fixes: {}, answers: [],
+  ended: false, error: null, refused: null, stats: null, fixes: {}, answers: [],
 }
 
 const waits = (s: ReplayState, item: { video_t?: number }) => s.gated && item.video_t !== undefined
@@ -48,7 +50,7 @@ function reduce(s: ReplayState, a: Action): ReplayState {
     case 'start': return { ...initial, phase: 'starting', gated: a.gated, stats: s.stats }
     case 'stats': return { ...s, stats: a.stats }
     case 'started': return { ...s, phase: 'live' }
-    case 'failed': return { ...s, phase: 'failed' }
+    case 'failed': return { ...s, phase: 'failed', refused: a.refused }
     case 'moment': {
       const seen = (m: Moment) => m.idx === a.moment.idx
       if (s.moments.some(seen) || s.queuedMoments.some(seen)) return s
@@ -199,8 +201,8 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
         replayId.current = id
         dispatch({ type: 'started' })
         follow(id, token)
-      } catch {
-        if (run.current === token) dispatch({ type: 'failed' })
+      } catch (e) {
+        if (run.current === token) dispatch({ type: 'failed', refused: e instanceof Refused ? e.message : null })
       }
     },
     [follow],

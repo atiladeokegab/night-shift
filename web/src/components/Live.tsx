@@ -120,7 +120,7 @@ export function Live(props: Props) {
   } else if (replay.phase === 'failed') {
     overlay = (
       <div className="overlay" role="alert">
-        <span>Couldn't start the replay.</span>
+        <span>{replay.refused ?? "Couldn't start the replay."}</span>
         <span className="actions">
           <button className="btn primary" onClick={onRetry}>Try again</button>
           <button className="btn" onClick={() => onGo('wall')}>Back to matches</button>
@@ -231,7 +231,7 @@ export function Live(props: Props) {
               // Full time replaces the last play; the overlay above holds Watch again (#153).
               <Caption caption={null}><p className="cap-text">{fullTimeText}</p></Caption>
             ) : caption ? (
-              <Caption caption={{ ...caption, speaker }} fixed={!!line && !!replay.fixes[line.line_id]} offAir={answer?.off_air}
+              <Caption caption={{ ...caption, speaker }} fixed={!!line && !!replay.fixes[line.line_id]} offAir={answer?.off_air && (answer.notice ?? true)}
                 tag={answer ? answeredAt(answer, shown.moments) ?? undefined : tagged ? momentTag(tagged) : undefined}
                 stale={!!answer && isStale(answer, shown.moments)} asked={answer?.question} pending={pending} title={title} announce={!voiced} />
             ) : (
