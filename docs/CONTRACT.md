@@ -86,6 +86,8 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
 
 - `GET /health` → `{status: "ok"}` (core)
 - `GET /matches` → `[Match]` (core over data/)
+- `GET /matches/{id}/start?at=<idx>` → `{video_start}` (core, #188): the second the video starts at for
+  a replay with `start_idx: idx`, as `peak_video_start` is for the peak; null without a video.
 - `POST /replays {match_id, speed>0, start_idx?}` → `{replay_id}` (core); `start_idx` (#163) starts the stream at
   that moment: earlier moments are never called. They are sent first, untimed (no `video_t`), so the score
   and clock are already there, each followed by the last line stored for it with `history: true`
