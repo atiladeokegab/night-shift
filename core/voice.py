@@ -273,6 +273,10 @@ class Speaker:
         # missed, so voice cost is a floor. Its usage API per request if that gap matters.
         if self.store is not None:
             said = {"line_id": line["line_id"], "replay_id": line.get("replay_id")}
+            # moment published to this audio ready (#233): the number check, retries and fallback
+            # all fall inside it; a line the page asked for again carries no moment_at
+            if line.get("moment_at") is not None:
+                said["audio_first_ms"] = round((time.monotonic() - line["moment_at"]) * 1000)
             await asyncio.to_thread(
                 self.store.append, "voice", {**said, "model": model, "chars": len(text)}
             )
