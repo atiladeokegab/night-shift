@@ -19,3 +19,11 @@ def no_budget_guard(monkeypatch):
 def fresh_stats(monkeypatch):
     """The live stats throttle is off in tests, so counts are current; a test sets its own."""
     monkeypatch.setattr("core.stats.STATS_EVERY_S", 0.0)
+
+
+@pytest.fixture(autouse=True)
+def long_stretches(monkeypatch, request):
+    """The turn cap on a quiet stretch is off, so tests of the stretch's machinery see long ones;
+    tests/test_pair_repeat.py keeps the real cap."""
+    if not request.module.__name__.endswith("test_pair_repeat"):
+        monkeypatch.setattr("core.insight.STRETCH_TURNS", 10**6)
