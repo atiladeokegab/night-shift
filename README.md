@@ -16,7 +16,7 @@
 
 ### The match nobody described
 
-Touchline describes the matches a platform streams with nobody describing them. It checks the score, the leader and the key numbers against the match data before it speaks, fixes what it can itself, sends the rest to a producer, and every fix is recorded in Mubit as training data for that platform's own describer.
+Touchline describes the matches a platform streams with nobody describing them. It checks the score, the leader and the key numbers against the match data before it speaks, fixes what it can itself, sends the rest to a producer, and each fix that passes the number check is recorded in Mubit as training data for that platform's own describer.
 
 What you hear are **replays, as if live**: real matches' event data played back over their broadcast highlights, each line called at its moment as if the match were on now. Sky Sports now describes [about 109 Premier League games a season](#the-problem) aloud, and none below the top flight.
 
@@ -42,9 +42,12 @@ so; the lines, voice timing and numbers are live.</sub>
 
 Every moment line goes through a number check before it is spoken: the score, who leads, the
 margin, the players' counts and, in football, what kind of event it was ([`core/insight.py`](core/insight.py)).
-A line that fails is tried once more. If the retry passes, the failed try is sent to Mubit as a
-correction, with no person involved; if it fails too, a line built from the match data is spoken
-instead. A producer fixes the rest from the page, and each fix goes to Mubit the same way.
+A line that fails is tried once more. If the retry passes, the failed try is sent to Mubit as an
+automatic correction attempt, with no person involved; if it fails too, a line built from the match
+data is spoken instead. A producer fixes the rest from the page, and each fix goes to Mubit the same
+way. Only a fix whose corrected reply passes the number check is recorded as training data; one that
+fails is stored but not recorded (`recorded: false`), and a fix to an analyst's stat line is never
+recorded.
 A correction is the next turn of the line's own call, so only the messages change, never the
 prompt, tools or model. It says what was wrong and gives the facts, and the commentator writes
 the fixed line itself. A correction is recorded only after an unrecorded try passes the number
@@ -275,8 +278,8 @@ Each criterion weighs the same; one line each, with where to check it.
   switch it on for the long tail of matches they stream with no describer, in any language or voice:
   lower-league and grassroots football, the women's game, club and county cricket.
 - **A describer per broadcaster, owned by them.** Each broadcaster gets its own cheap commentator as
-  a Mubit adapter, trained on its own matches, and every producer correction is recorded as
-  training data for it.
+  a Mubit adapter, trained on its own matches, and each producer correction that passes the
+  number check is recorded as training data for it.
 - **Built for fans who can't see the screen.** Audio first, with keyboard and screen reader working
   throughout (#170, built). Football shots already say where on the pitch they came from, from the
   event data's own locations (#172).
@@ -300,7 +303,7 @@ The totals count both, each priced at its own model's rate, and `by_speaker` spl
 | Full line, p50 / p95 | 904 ms / 1,795 ms | not measured |
 | Cost per line | $0.0019 | not reported by Mubit |
 | Tokens per line, in / out | about 1,600 / 31 (11,215,402 / 218,395 over 6,988 lines) | not measured |
-| Corrections | 67 recorded for training, all 67 counted toward the next adapter version: the team's, from the number-check fix list; and 27 the number check made itself (`fixes_auto`) | |
+| Corrections | 67 recorded for training, all 67 counted toward the next adapter version: the team's, from the number-check fix list; and 27 automatic correction attempts by the number check (`fixes_auto`), not recorded corrections | |
 
 Split by speaker (`by_speaker`, same read):
 
@@ -468,10 +471,11 @@ producer fixes go into the same task as corrections. That smaller model is what 
    off (`MUBIT_RECORD=off` in [`scripts/deploy.sh`](scripts/deploy.sh)); training traffic comes from
    the replay script on the owner's key. If the demo key runs out, the commentator moves to the
    owner's key, which records. Ask answers and side-by-side runs are always unrecorded.
-5. **A producer's fix is recorded to Mubit for training.** A fix is stored beside the original line
-   and sent as the next turn of that line's request on the owner's key (`MUBIT_FALLBACK_KEY`) with
-   recording on, whatever `MUBIT_RECORD` says; a fix to an analyst's stat line stays unrecorded,
-   like those lines. The Proof card shows the fixes recorded and how many count toward the next
+5. **A producer's fix that passes the number check is recorded to Mubit for training.** A fix is
+   stored beside the original line. Its corrected reply is checked first, unrecorded; only one that
+   passes is sent as the next turn of that line's request on the owner's key (`MUBIT_FALLBACK_KEY`)
+   with recording on, whatever `MUBIT_RECORD` says. One that fails is stored with `recorded: false`,
+   and a fix to an analyst's stat line stays unrecorded, like those lines. The Proof card shows the fixes recorded and how many count toward the next
    adapter. `/stats` shows 67 corrections recorded for training: the team's, from the number-check
    fix list. No adapter version trained on them is recorded yet; the 6 so far were trained on
    recorded commentary.
@@ -519,7 +523,7 @@ flowchart LR
     store -->|"SSE: moments and lines"| page
     voice -->|"audio"| page
     page -->|"a producer's fix"| store
-    store -.->|"each fix, recorded for training"| mubit
+    store -.->|"each fix that passes the check, recorded for training"| mubit
     store --- gcs
     stats --> page
 ```

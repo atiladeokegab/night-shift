@@ -27,8 +27,9 @@ export function About({ onGo }: { onGo: (screen: Screen) => void }) {
             match than the moment it is calling.
           </p>
           <p>
-            <strong>Every fix is recorded as training data.</strong> A producer can fix any line, and every fix,
-            the producer's or the check's own, is recorded in Mubit as training data for a smaller describer. No version has passed
+            <strong>Each fix that passes the check is recorded as training data.</strong> A producer can fix any
+            line, and each fix that passes the number check is recorded in Mubit as training data for a smaller
+            describer; fixes to the analyst's stat lines are left out. No version has passed
             Mubit's test yet, so we make no claim for it.
           </p>
         </div>

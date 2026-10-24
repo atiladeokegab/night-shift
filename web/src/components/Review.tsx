@@ -103,8 +103,8 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
           {items?.length ? queueTitle(items) : 'Lines to fix'}
         </h1>
         <p className="lede">
-          The number check found these stored lines saying a number their moment's data doesn't. Fix each by hand: the
-          fix goes back through Mubit, which records it as training data.
+          The number check found these stored lines saying a number their moment's data doesn't. Fix each by hand: a
+          fix that passes the number check goes back through Mubit, which records it as training data.
         </p>
         {said && <p className="hint" role="status">{said}</p>}
         {fixed?.mubit_request_id && (
