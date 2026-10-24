@@ -652,3 +652,20 @@ def test_a_request_waiting_on_a_dropped_job_starts_a_fresh_one(monkeypatch):
 
     assert asyncio.run(run()) == (AUDIO, "eleven_v3")
     assert len(calls) == 2
+
+
+def test_an_answer_is_read_excited_on_v3_and_plainly_on_the_fallback(monkeypatch):
+    # #131: a viewer's answer is spoken live; flash would read the tag aloud
+    import asyncio
+
+    from core.voice import VOICES, Speaker
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    said = {"line_id": "a1", "sport": "football", "question": "Who scores next?", "text": "Next?"}
+    seen = []
+    assert asyncio.run(Speaker(by_model(seen)).audio(said, VOICES[1])) == (AUDIO, "eleven_v3")
+    assert seen == [("eleven_v3", "[excited] Next?")]
+    seen = []
+    made = asyncio.run(Speaker(by_model(seen, fail={"eleven_v3"})).audio(said, VOICES[1]))
+    assert made == (AUDIO, "eleven_flash_v2_5")
+    assert seen[-1] == ("eleven_flash_v2_5", "Next?")

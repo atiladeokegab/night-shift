@@ -94,6 +94,8 @@ TAGS = {
     "Last lap": "[hushed]",
 }
 
+ANSWER_TAG = "[excited]"
+
 
 def _big_basket(m: dict) -> bool:
     """Basketball: a lead change, or a three, a dunk or any field goal in the last two minutes."""
@@ -200,7 +202,9 @@ class Speaker:
             return None
         end = deadline if deadline is not None else time.monotonic() + LIVE_BUDGET_S
         model = model_for(line.get("sport"))
-        tag = self.tags.get(line["line_id"]) if "v3" in model else None
+        # a viewer's answer (it carries its question) is spoken live, like a call
+        said = ANSWER_TAG if "question" in line else self.tags.get(line["line_id"])
+        tag = said if "v3" in model else None
         text = f"{tag} {line['text']}" if tag else line["text"]
         # made ahead (a video time still to come): one long v3 call, not two squeezed ones
         ahead = deadline is not None and deadline > time.monotonic()
