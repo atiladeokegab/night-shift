@@ -240,9 +240,8 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
     splits them by kind, e.g. `{"corrected": 2, "matched": 1}`. `heldout` (#317) is
     `eval/linecheck_heldout.json` as `eval/linecheck_eval.py --json` wrote it from one keyed,
     unrecorded run on the held-out labels: `{labels, lines, wrong, rules: {caught, false_alarms},
-    line_check: {caught, false_alarms}, errors}`, or `null` without the file (the card then shows
-    neither line below). The Proof card's
-    Checker model row says it in counts, e.g. "held-out: caught 3 of 5 wrong lines (rules: 1 of 5),
+    line_check: {caught, false_alarms}, errors}`, or `null` without the file, when the card shows
+    neither the result nor the note below. The Proof card's Checker model row says it in counts, e.g. "held-out: caught 3 of 5 wrong lines (rules: 1 of 5),
     5 false alarms", never as a percentage. A flag only sends a line to the fix queue; it never
     unsays it.
   - `by_speaker: {lead, analyst}`, each `{model, served_by, lines, first_word_ms_p50,
