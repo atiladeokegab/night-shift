@@ -45,7 +45,7 @@ export function Wall({ matches, error, onRetry, onOpen, onJump, onGo }: Props) {
         <p className="eyebrow">Touchline: the describer that checks itself</p>
         <h1>The match nobody described</h1>
         {/* #206's pitch, word for word */}
-        <p className="status-line">
+        <p className="status-line" style={{ maxWidth: '65ch' }}>
           Touchline describes the matches a platform streams with nobody describing them. It checks every number before
           it speaks, fixes what it can itself, sends the rest to a producer, and every fix trains that platform's own
           describer in Mubit. The matches below are replays, as if live.
