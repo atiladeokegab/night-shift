@@ -117,7 +117,7 @@ def test_teach_sends_nothing_it_cannot_label_or_already_sent():
     assert gold(*_at(), RIGHT)["score"] == "ok"
 
 
-def test_a_fix_sends_one_score_check_example(tmp_path):
+def test_a_fix_sends_the_line_and_the_fixed_text_as_score_check_examples(tmp_path):
     fake = Says('{"score":"ok"}')  # Claude says ok; the data says the line's score is wrong
 
     def commentate(m, history):
@@ -134,23 +134,41 @@ def test_a_fix_sends_one_score_check_example(tmp_path):
     client = TestClient(create_app(store=store, deps=deps))
     with client:
         store.append("lines", {"line_id": "w", "match_id": KOBE, "moment_idx": 6, "text": WRONG})
-        fix = {"corrected_text": RIGHT, "reason": "Wrong score"}
-        for _ in range(2):  # the same line fixed twice is one example
+        # the review page's reason, never a Wrong one: every fix reached no example before
+        fix = {"corrected_text": RIGHT, "reason": "fix list: wrong number"}
+        for _ in range(2):  # the same line fixed twice is still two examples
             assert client.post("/lines/w/fix", json=fix).status_code == 200
             for _ in range(100):
-                if store.all("scorecheck_examples"):
+                if len(store.all("scorecheck_examples")) == 2:
                     break
                 time.sleep(0.02)
             time.sleep(0.1)
-        assert client.post("/lines/w/fix", json={**fix, "reason": "Tone"}).status_code == 200
-        time.sleep(0.1)
-    (row,) = store.all("scorecheck_examples")
-    assert (row["source"], row["kind"], row["gold"], row["line_id"]) == (
-        "fix",
-        "corrected",
-        "wrong",
-        "w",
-    )
+    rows = store.all("scorecheck_examples")
+    assert [(r["source"], r["kind"], r["gold"], r["line_id"], r["text"]) for r in rows] == [
+        ("fix", "corrected", "wrong", "w", WRONG),
+        ("fix", "matched", "ok", "w", RIGHT),
+    ]
+
+
+def test_fixes_made_before_now_are_sent_once_and_counted(tmp_path):
+    from core.stats import stats
+
+    fake = Says('{"score":"ok"}')
+    store = Store(tmp_path)
+    store.append("lines", {"line_id": "w", "match_id": KOBE, "moment_idx": 6, "text": WRONG})
+    store.append("fixes", {"line_id": "w", "corrected_text": RIGHT, "reason": "Tone"})
+    store.append("fixes", {"line_id": "gone", "corrected_text": RIGHT, "reason": "Tone"})
+
+    def teach(line, sent):
+        return scorecheck.teach(line, sent, provider=fake)
+
+    assert seed_scorecheck.fixes(store, teach) == {"corrected": 1, "matched": 1}
+    assert seed_scorecheck.fixes(store, teach) == {}  # a rerun sends nothing again
+    sc = stats(store)["scorecheck"]
+    assert sc["by_source"]["human"] == 2 and sc["from_fixes_by_kind"] == {
+        "corrected": 1,
+        "matched": 1,
+    }
 
 
 def test_stats_show_examples_by_source_and_each_held_out_score(tmp_path):

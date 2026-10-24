@@ -17,7 +17,7 @@ export default defineConfig({
       command: `uv run uvicorn core.main:app --port ${API}`,
       cwd: '..',
       url: `http://localhost:${API}/health`,
-      env: { MUBIT_API_KEY: '', MUBIT_FALLBACK_KEY: '', ELEVENLABS_API_KEY: '', STORE_DIR: join(tmpdir(), 'touchline-e2e') },
+      env: { MUBIT_API_KEY: '', MUBIT_FALLBACK_KEY: '', ELEVENLABS_API_KEY: '', REPLAYS_PER_HOUR: '1000', STORE_DIR: join(tmpdir(), 'touchline-e2e') },
       reuseExistingServer: true,
     },
     {
