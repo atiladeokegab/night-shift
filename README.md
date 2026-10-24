@@ -149,7 +149,7 @@ the same numbers as `GET /stats` ([`web/src/components/ProofPanel.tsx`](web/src/
 
 Each criterion weighs the same; one line each, with where to check it.
 
-- **Use of Mubit (a correction becomes a model update):** every call goes through one Mubit task. Its recorded lines have trained [6 adapter versions](#real-numbers) so far (none passed yet), and a producer's [fix](#producer-fixes) is stored beside the line as a correction for the next one.
+- **Use of Mubit (a correction becomes a model update):** every call goes through one Mubit task; its recorded lines have trained [6 adapter versions](#real-numbers) so far (none passed yet), and a producer's [fix](#producer-fixes) is stored beside the line as the correction for the next version.
 - **Usefulness (a real recurring task):** most matches every weekend have no commentator; Touchline calls [six real matches in four sports](#the-six-matches) from their real event data.
 - **Technical execution:** a line in [0.53 s to its first word](#real-numbers) (p50), gated on the video's clock, an offline test suite (`make check`) and a live smoke test on every deploy; [architecture](docs/ARCHITECTURE.md) and [known limitations](#known-limitations).
 - **Demo:** two minutes on the live URL, scripted in [docs/demo.md](docs/demo.md); the [60-second path](#the-60-second-path) above is the short version.
