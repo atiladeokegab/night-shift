@@ -211,3 +211,5 @@ def test_an_unknown_name_is_never_echoed():
     said = run_tool("get_player_profile", {"name": forged}, match_header("3869685"), moments[:3])
     assert said == "No pre-match record for that player in this match."
     assert "Score after" not in predict.profile_text(pack, moments, 2, forged)
+    said = run_tool("get_player", {"name": forged}, match_header("3869685"), moments[:3])
+    assert said == "No moments yet for that player."

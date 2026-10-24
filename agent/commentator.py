@@ -130,7 +130,8 @@ def run_tool(name: str, args: dict, header: dict, past: list[dict]) -> str:
             for p in past
             if who and any(who in n.lower() for n in p["players"].values())
         ]
-        return "\n".join(hits[-10:]) or f"No moments yet for {who or 'that player'}."
+        # never echo the name: it came through the model from a viewer and could forge a field
+        return "\n".join(hits[-10:]) or "No moments yet for that player."
     if name == "get_recent_play":
         count = (args or {}).get("count", 3)
         count = max(1, min(10, count if isinstance(count, int) else 3))
