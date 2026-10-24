@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { getStats } from '../api'
+import { nextAdapter } from '../proof'
 import type { Adapter, SpeakerStats, Stats } from '../types'
 import { SideBySide } from './SideBySide'
 
@@ -25,6 +26,7 @@ export function ProofPanel({ live }: Props) {
   else {
     const empty = stats.lines === 0
     const adapter = stats.adapter
+    const next = stats.fixes_toward_next === undefined ? null : nextAdapter(stats.fixes_toward_next, adapter?.needed ?? 25)
     // the lead's calls (Haiku) and the analyst's stat lines (Sonnet) apart, so neither skews the other
     const groups: [string, SpeakerStats][] = stats.by_speaker
       ? [['Lead', stats.by_speaker.lead], ['Analyst', stats.by_speaker.analyst]]
@@ -37,12 +39,10 @@ export function ProofPanel({ live }: Props) {
           {/* own heading so the fix counts don't read as the analyst's */}
           <div className="wide">
             <dt className="label">Training</dt>
-            <dd>Your fixes Mubit trains on</dd>
+            <dd>{next?.note ?? 'Your fixes Mubit trains on'}</dd>
           </div>
           <Figure label="Fixes" value={String(stats.fixes_recorded ?? 0)} />
-          {stats.fixes_toward_next !== undefined && (
-            <Figure label="Next adapter" value={`${stats.fixes_toward_next} of ${adapter?.needed ?? 25}`} />
-          )}
+          {next && <Figure label="Next adapter" value={next.value} />}
           <div className="wide">
             <dt className="label">Adapter</dt>
             <dd className={adapter?.status === 'ready' ? 'good' : undefined}>{adapterText(adapter)}</dd>
