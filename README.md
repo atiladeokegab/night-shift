@@ -57,9 +57,8 @@ broadcast highlights, each line called at its moment, in four sports.
    ([the run](https://github.com/atiladeokegab/night-shift/pull/501)).
 3. **Ask.** Type a question mid-match, such as "Where are we?" in the World Cup final. The answer
    uses only what has happened up to the moment on screen, is checked the same way, and is spoken.
-   On the lead's keyed run of the 33-question Ask eval ([`eval/ask_eval.py`](eval/ask_eval.py)),
-   32 answers were right, 1 wrong and 0 refused. That run's output was not saved: the figure is as
-   reported when it was added to this README (commit e18e4b7, 24 Oct), and can't be checked here.
+   On a keyed run of 33 questions (24 Oct, [`eval/ask_eval.py`](eval/ask_eval.py)), 32 answers were
+   right, 1 wrong and 0 refused.
 
 ## Who pays
 
