@@ -8,7 +8,7 @@ import { SPORT_NAMES, type Answer, type Line, type Match, type Sport } from '../
 import { onScreen, type Clock, type ReplayState } from '../useReplay'
 import type { Player, Profile } from '../follow'
 import { latestShooter, MAPPED, pickedFor, type Picked, type Shots } from '../shots'
-import { CARD_COPY, matchTeams } from '../teams'
+import { CARD_COPY, coverage, matchTeams } from '../teams'
 import { Caption } from './Caption'
 import { Controls } from './Controls'
 import { FollowPicker } from './FollowPicker'
@@ -203,7 +203,7 @@ export function Live(props: Props) {
       <p className="sr-only" role="status">{replay.phase === 'live' ? `${paused ? 'Paused' : `Playing ${title}`}${covered ? ' · Video covered' : ''}` : ''}</p>
       <div className="live-body">
         <main className="live-main">
-          <section className="vcard" ref={card} aria-label={`${match.title ?? match.match_id} highlights`} data-video={noVideo ? 'off' : undefined}>
+          <section className="vcard" ref={card} aria-label={`${match.title ?? match.match_id} ${gated ? 'highlights' : 'match'}`} data-video={noVideo ? 'off' : undefined}>
             {/* A tap on the picture plays or pauses it; the Play button is the keyboard's way in. */}
             <div className="frame" data-eyes={covered ? 'closed' : undefined} onClick={canPlay ? toggle : undefined}>
               <div id="video" className={video === 'unavailable' && !busy ? 'off' : dim ? 'dim' : undefined}>
@@ -216,7 +216,10 @@ export function Live(props: Props) {
                 <ScoreBar match={match} moment={moment} moments={shown.moments} />
                 <OnAir voice={voice} label={onAirLabel} offAir={!!replay.error} onOpen={busy ? undefined : onVoiceSheet} />
               </div>
-              {showNoVideoCaption(replay, video) && (blocked ? (
+              {/* A whole match has no video by design; only a video that should play and can't says so (#284). */}
+              {!gated && replay.phase === 'live' && replay.stream === 'ok' && !replay.error ? (
+                <p className="novideo">{coverage(match)} · described from the match data</p>
+              ) : showNoVideoCaption(replay, video) && (blocked ? (
                 <p className="novideo">Commentary only · <a href={watchUrl(match)} target="_blank" rel="noopener noreferrer">highlights on YouTube ↗</a></p>
               ) : (
                 <p className="novideo">Highlights can't play here. Commentary carries on, timed to the replay.</p>
