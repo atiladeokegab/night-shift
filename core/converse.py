@@ -65,10 +65,18 @@ class Tap:
     when it asks for a tool, then returns the whole reply as the Ask path expects. One without a
     streaming client (the offline FakeProvider) gives its text in one piece when done."""
 
-    def __init__(self, inner, on_text, on_tool):
-        self.inner, self.on_text, self.on_tool = inner, on_text, on_tool
+    def __init__(self, inner, on_text, on_tool, on_tools=lambda outputs: None):
+        self.inner, self.on_text, self.on_tool, self.on_tools = inner, on_text, on_tool, on_tools
 
     def call(self, request: dict) -> dict:
+        msgs = request.get("messages") or []
+        last = msgs[-1].get("content") if msgs else None
+        if isinstance(last, list) and (
+            done := [
+                b["content"] for b in last if isinstance(b, dict) and b.get("type") == "tool_result"
+            ]
+        ):
+            self.on_tools(done)  # the final round: its sentences are checked against these
         client = getattr(self.inner, "client", None)
         if not hasattr(getattr(client, "messages", None), "stream"):
             reply = self.inner.call(request)
@@ -150,7 +158,7 @@ async def speak(ask, inner, question: str, past: list[dict], lines: list[dict]):
     def put(kind, value=None):
         loop.call_soon_threadsafe(pieces.put_nowait, (kind, value))
 
-    tap = Tap(inner, lambda t: put("text", t), lambda: put("tool"))
+    tap = Tap(inner, lambda t: put("text", t), lambda: put("tool"), lambda o: put("tools", o))
 
     def work():
         try:
@@ -163,10 +171,13 @@ async def speak(ask, inner, question: str, past: list[dict], lines: list[dict]):
         lambda t: t.cancelled() or t.exception() and fail("model call", t.exception())
     )
     buf, said, words_left, tooled, failed = "", [], commentator.ANSWER_WORDS, False, False
+    outputs: list = []
     while not failed:
         kind, value = await pieces.get()
         if kind == "tool":
-            tooled = True
+            tooled = True  # a tool round: nothing is said until its outputs are known
+        elif kind == "tools":
+            tooled, outputs, buf = False, value, ""  # the final round streams, checked against them
         elif kind == "text":
             buf += value
         ready = SENTENCE.split(buf)
@@ -178,7 +189,8 @@ async def speak(ask, inner, question: str, past: list[dict], lines: list[dict]):
             heard = commentator.spoken(sentence, words_left, ask=True)
             if not heard or ABOUT_VIEWER.match(heard):
                 continue
-            if not checked({"text": heard}, question, past, lines):
+            one = {"text": heard, "tool_calls": [{"output": o} for o in outputs]}
+            if not checked(one, question, past, lines):
                 log.warning("converse: a sentence failed the number check")
                 failed = True
                 break

@@ -17,6 +17,10 @@
 **Touchline describes matches aloud for fans who can't see them, and checks the score and the key
 numbers in each line against the match data before it goes on air.**
 
+**Why a fan comes back every match day:** for a blind or low-vision fan whose team's match has no
+described broadcast, Touchline calls that match aloud moment by moment, answers their questions
+about it at any point, and a producer's fix to one line carries into every later line of that match.
+
 <img src="docs/media/demo.gif" alt="A 9-second screen recording of the live Touchline page: lines are called one after another and stack in the Lines card as the match goes on, and one of them carries an auto-fixed tag." width="100%">
 
 <sub>Touchline calls match moments as spoken lines. Each line is checked against the match data, and one is marked auto-fixed.</sub>
@@ -71,19 +75,28 @@ Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026. Track: Own
 3. Tap **Fix** on any line: a producer corrects it, and the fix goes back through Mubit.
 4. Read the **Proof** card, then check it: `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/stats`.
 
+**Keyboard and screen reader:** E, T, W, Talk with Escape, focus order, live captions and the Follow
+card, each traced to its code and its test, or marked not tested:
+[the table](docs/evidence.md#keyboard-and-screen-reader).
+
+**Your check-in #2:** each point and where it landed: [docs/feedback.md](docs/feedback.md).
+
 ### What's new tonight
 
 - **A graph of teams and players:** SurrealDB holds the seasons around our matches in football (612 matches), basketball and cricket, and answers only from matches before this one, so nothing later leaks.
 - **Talk:** press **Talk** and the match pauses while you speak with the commentator; each answer goes through Claude via Mubit and the same check as Ask. Escape, or 12 s of silence, resumes.
-- **One speaking queue:** no line cuts another off mid-word; a big moment goes first, and routine lines that have gone stale are dropped.
+- **One speaking queue:** ordinary commentary lines queue; a decisive moment can fade and interrupt
+  a spoken answer, and routine lines that have gone stale are dropped.
 - **Teams tab:** press **T** for each side's form, their last meetings and the squad, as they stood before the match.
-- **One broadcast pair:** both voices share one tone per moment, lit up for a big moment and calm for a routine one, and in quiet stretches they take turns on one player.
+- **One broadcast pair:** the event call lifts for a big moment; stat interjections and comebacks stay
+  calm, and in quiet stretches the pair take turns on one player.
 
 Everything else, with its code and tests: [every feature](docs/features.md).
 
 ## Mubit: training, not serving
 
-Every model call goes through Mubit, which records the traffic as training data. Mubit's console,
+Every model call goes through Mubit. Training runs and eligible correction examples are recorded;
+Ask and Talk answers are unrecorded, and deployed commentary defaults to recording off. Mubit's console,
 read by hand on 24 October 2026 at about 19:15 UTC ([`data/mubit_console.json`](data/mubit_console.json)),
 shows 8 tasks, 7 adapters and 0 serving: the best commentary task scores 58.3% against a 95% target.
 No adapter has passed, the app cannot call one, and we make no claim that any matches the big model.
@@ -95,6 +108,38 @@ code's answer key on 74 of 74 held-out lines (live `/stats` `scorecheck`, saved 
 The Ask run (`eval.ask_eval --provider mubit`, recording off): the one wrong answer, "What just
 happened?" at Lakers 120-102, had an invented lead change; the check caught it and the safe answer
 was said.
+
+### Where Mubit is called
+
+Function names first, since line numbers drift; a test keeps every link below on its call.
+
+- **Commentary and check calls, `MubitProvider._stream`:** the Anthropic client's `base_url` is
+  Mubit, `MUBIT_URL` [`agent/commentator.py:36`](agent/commentator.py#L36), set at
+  [`:819`](agent/commentator.py#L819). [`_stream`, `:856`](agent/commentator.py#L856) calls
+  `client.messages.stream` at [`:858`](agent/commentator.py#L858) and reads Mubit's request id at
+  [`:871`](agent/commentator.py#L871) and the model that served it at [`:874`](agent/commentator.py#L874).
+  A moment's line is [`commentate`, `:334`](agent/commentator.py#L334), through
+  [`_call`, `:751`](agent/commentator.py#L751).
+- **Line check on each line:** the replay starts a second opinion on every line that passed the
+  number check, [`core/replay.py:361-363`](core/replay.py#L361);
+  [`live_check`, `agent/linecheck.py:106`](agent/linecheck.py#L106) runs
+  [`check`, `:88`](agent/linecheck.py#L88), which calls Mubit at [`:94`](agent/linecheck.py#L94).
+- **Producer fix (#245):** `POST /lines/{line_id}/fix`,
+  [`fix_line`, `core/app.py:434`](core/app.py#L434), calls
+  [`correct`, `agent/commentator.py:403`](agent/commentator.py#L403) at [`core/app.py:460`](core/app.py#L460).
+  The fix goes to Mubit as the next turn of the line's own call; the recorded send, on
+  `correction_provider`, is [`agent/commentator.py:447`](agent/commentator.py#L447), and its Mubit
+  request id is stored with the fix at [`core/app.py:473`](core/app.py#L473). Later lines of the
+  match carry the fixes, at most five ([`core/app.py:70`](core/app.py#L70)).
+- **Fix to Score check training:** the fix route starts `score_teach` at
+  [`core/app.py:490`](core/app.py#L490) (defined at [`:319`](core/app.py#L319)); it calls
+  [`send_fix`, `eval/seed_scorecheck.py:129`](eval/seed_scorecheck.py#L129), which labels each
+  example with [`teach`, `agent/scorecheck.py:83`](agent/scorecheck.py#L83) and sends it with
+  [`send`, `eval/seed_scorecheck.py:82`](eval/seed_scorecheck.py#L82). Each example sent is stored in
+  `scorecheck_examples` at [`eval/seed_scorecheck.py:143`](eval/seed_scorecheck.py#L143).
+- **Ledger:** `GET /ledger` at [`core/app.py:644`](core/app.py#L644) returns
+  [`ledger`, `core/ledger.py:43`](core/ledger.py#L43): every example sent to Score check, with its
+  Mubit session and request id.
 
 The console, the correction loop and a real fix step by step:
 [the evidence](docs/evidence.md).

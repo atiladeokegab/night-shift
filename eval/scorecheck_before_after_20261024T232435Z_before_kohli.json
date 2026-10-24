@@ -1,0 +1,18 @@
+{
+  "label": "before",
+  "case": "kohli",
+  "at": "2026-10-24T23:24:35+00:00",
+  "match_id": "1298150",
+  "idx": 53,
+  "line": "Kohli takes three byes on the free hit! India need just two from the final ball!",
+  "key": "ok",
+  "answer": "{\"score\":\"wrong\"}",
+  "label_parsed": "wrong",
+  "matches_key": false,
+  "mubit_request_id": "mreq_01a1703ae6a774d088940b22edbc7a80",
+  "served_by": "claude-sonnet-5-5",
+  "middleware": {
+    "x-middleware-request-id": "mreq_01a1703ae6a774d088940b22edbc7a80"
+  },
+  "record": false
+}

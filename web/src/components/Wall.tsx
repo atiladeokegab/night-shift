@@ -20,8 +20,8 @@ interface Props {
 // The match wall (A-6.5): the home page, one tile per match, each playing its highlights muted with no
 // commentary. Tapping a tile opens it on the full live stage, where the commentator calls it.
 export function Wall({ matches, error, onRetry, onOpen, onJump, onGo }: Props) {
-  const [stats, setStats] = useState<Stats | null>(null)
-  useEffect(() => { getStats().then(setStats, () => {}) }, []) // no cost figure is better than a stuck page
+  const [stats, setStats] = useState<Stats | null | undefined>(undefined) // undefined while loading
+  useEffect(() => { getStats().then(setStats, () => setStats(null)) }, []) // no cost figure is better than a stuck page
   const perMatch = stats?.cost_per_match_usd
   // #314: one first action for a cold visitor, a match whose highlights play under the commentary
   const first = matches?.find((m) => embeds(m)) ?? matches?.[0]
@@ -55,6 +55,10 @@ export function Wall({ matches, error, onRetry, onOpen, onJump, onGo }: Props) {
         <p className="status-line" style={{ maxWidth: '65ch', color: 'var(--fg)', fontSize: '1.15rem' }}>
           Most matches have no audio description. A blind or low-vision fan following one gets no description.
         </p>
+        {/* the loading placeholders keep the height the real button and cost line take, so the page below doesn't jump */}
+        {matches === null && !error && (
+          <p className="hero-go" aria-hidden style={{ visibility: 'hidden' }}><button className="btn primary" tabIndex={-1}>▶ Hear a match called</button></p>
+        )}
         {first && (
           <p className="hero-go">
             <button className="btn primary" onClick={() => onOpen(first)}>▶ Hear a match called</button>
@@ -72,6 +76,11 @@ export function Wall({ matches, error, onRetry, onOpen, onJump, onGo }: Props) {
           <p className="status-line" style={{ maxWidth: '65ch' }}>
             A full replay, mostly highlights, costs ${perMatch.toFixed(2)} on average. A whole match calls every moment, so it
             costs more.
+          </p>
+        )}
+        {stats === undefined && (
+          <p className="status-line" aria-hidden style={{ maxWidth: '65ch', visibility: 'hidden' }}>
+            A full replay, mostly highlights, costs $0.00 on average. A whole match calls every moment, so it costs more.
           </p>
         )}
         {body}

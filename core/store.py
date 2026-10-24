@@ -20,6 +20,7 @@ KINDS = (
     "linecheck_fixes",  # producer fixes sent to Line check as examples (#298)
     "scorecheck_examples",  # every Score check example sent, seeded or from a fix (#321)
     "scorecheck_evals",  # a model's score on Score check's held-out lines (#321)
+    "scorecheck_receipts",  # one per fix once its Score check send ends: how many went (#400)
     "looks",  # frame calls and screen-note lines: that viewer's only (#291)
 )
 
