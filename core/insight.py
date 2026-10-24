@@ -296,6 +296,19 @@ def _look_back(pack, past):
     return out
 
 
+def _form(pack, past):
+    """Each team's form and their head-to-head before tonight, from the graph."""
+    from data.matches import match_header
+
+    try:
+        h = match_header(past[-1]["match_id"])
+    except KeyError:
+        return []
+    if not (h.get("home") and h.get("away")):  # a race has no two sides
+        return []
+    return predict.form_texts(h["sport"], h["home"], h["away"], h.get("date", ""))
+
+
 KINDS = (
     ("player profile", _profiles),
     ("next to score", _odds),
@@ -304,6 +317,7 @@ KINDS = (
     ("look back", _look_back),
     ("momentum", _momentum),
     ("positions", _positions),
+    ("form", _form),
 )
 # what each kind is about, told to the analyst in the user message, so the lines never loop (#297)
 ANGLES = {
@@ -314,6 +328,7 @@ ANGLES = {
     "look back": "look back at an earlier moment",
     "momentum": "the game state",
     "positions": "the game state",
+    "form": "the teams' form before tonight",
 }
 
 
@@ -366,7 +381,7 @@ class Gaps:
 
     def pack(self, m: dict):
         if self._pack is None:
-            self._pack = predict.load_pack(m.get("sport", ""), self.match_id) or {}
+            self._pack = predict.pack(m.get("sport", ""), self.match_id) or {}
         return self._pack
 
     def wrong(self, text: str, stat: dict, past: list[dict]) -> list[str]:

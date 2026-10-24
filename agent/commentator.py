@@ -224,12 +224,19 @@ def run_tool(name: str, args: dict, header: dict, past: list[dict]) -> str:
         count = max(1, min(10, count if isinstance(count, int) else 3))
         return "\n".join(describe(p) for p in past[-count - 1 : -1]) or "No earlier moments."
     if name in ("get_player_profile", "get_next_score_odds"):
-        pack = predict.load_pack(header["sport"], header["match_id"])
+        pack = predict.pack(header["sport"], header["match_id"])
         if pack is None:
             return "No pre-match record for this event."
         if name == "get_next_score_odds":
             return predict.odds_text(pack, past, len(past) - 1)
-        return predict.profile_text(pack, past, len(past) - 1, str((args or {}).get("name", "")))
+        who = str((args or {}).get("name", ""))
+        said = predict.profile_text(pack, past, len(past) - 1, who)
+        try:
+            who = predict.find(pack, who)
+        except KeyError:
+            return said
+        season = predict.season_text(header["sport"], who, header.get("date", ""))
+        return f"{said}\n{season}" if season else said
     return f"Unknown tool {name}."
 
 
@@ -617,7 +624,7 @@ def _strangers(question: str, header: dict, past: list[dict]) -> list[str]:
         moments = load_moments(header["match_id"])
     except KeyError:  # a match with no data file: its moments so far
         moments = past
-    pack = predict.load_pack(header["sport"], header["match_id"]) or {}
+    pack = predict.pack(header["sport"], header["match_id"]) or {}
     names = [str(header.get(k) or "") for k in ("home", "away", "competition", "stage", "venue")]
     names += [str(m.get("team") or "") for m in moments]
     names += [str(v) for m in moments for v in (m.get("players") or {}).values()]
