@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { momentTag } from '../moment'
 import { embeds, posterUrl, showNoVideoCaption, watchUrl } from '../player'
 import { commentatorName } from '../teams'
@@ -42,6 +43,16 @@ export function Live(props: Props) {
   const gated = !!match.youtube_id
   // The owner blocks embedding: a still poster and a YouTube link, never the player's error screen.
   const blocked = gated && !embeds(match)
+  // On phones the no-video caption sits under the score bar, whose height follows its content (F1's is up to
+  // four rows), so the stage carries the bar's bottom edge for the CSS.
+  const hud = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = hud.current
+    if (!el) return
+    const ro = new ResizeObserver(() => el.parentElement?.style.setProperty('--hud-bottom', `${el.offsetTop + el.offsetHeight}px`))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
   const voiceLabel = commentatorName(voice.name)
 
   let overlay = null
@@ -79,7 +90,7 @@ export function Live(props: Props) {
       <section className="stage" aria-label={`${match.title ?? match.match_id} highlights`}>
         <div className="shade" />
         <Nav current="live" onGo={onGo} />
-        <div className="lane hud">
+        <div className="lane hud" ref={hud}>
           <ScoreBar match={match} moment={moment} moments={shown.moments} />
           <OnAir voice={voice} label={voiceLabel} />
         </div>

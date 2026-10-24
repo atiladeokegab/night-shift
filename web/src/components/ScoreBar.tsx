@@ -13,7 +13,7 @@ interface Props {
 // lap and the top three (f1), and "REPLAY".
 export function ScoreBar({ match, moment, moments }: Props) {
   return (
-    <div className={`scorebar glass ${match.sport}`} role="status">
+    <div className="scorebar glass" role="status">
       {match.sport === 'cricket' ? <Cricket match={match} moment={moment} moments={moments} />
         : match.sport === 'f1' ? <F1 moment={moment} />
         : <Football match={match} moment={moment} />}
