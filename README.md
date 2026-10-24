@@ -79,6 +79,8 @@ Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026. Track: Own
 card, each traced to its code and its test, or marked not tested:
 [the table](docs/evidence.md#keyboard-and-screen-reader).
 
+**Your check-in #2:** each point and where it landed: [docs/feedback.md](docs/feedback.md).
+
 ### What's new tonight
 
 - **A graph of teams and players:** SurrealDB holds the seasons around our matches in football (612 matches), basketball and cricket, and answers only from matches before this one, so nothing later leaks.
