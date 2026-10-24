@@ -112,6 +112,11 @@ export function LineLog({ lines, late, fixes, checks = {}, examples = {}, moment
                     title="A second model checks each line's score, leader, player total and event">{check}</span>}
                   {example && <span className="pill check" title={examples[l.line_id].mubit_request_id ?? undefined}>{example}</span>}
                   {l.fixed && !fix && <span className="pill fixed producer">Fixed by producer</span>}
+                  {l.retried && !fix && !l.fixed && (
+                    <span className="pill fixed auto" title="Its first try failed the number check; the retry passed, so the right line was said">
+                      Auto-fixed<span className="sr-only">: its first try failed the number check, and the retry passed</span>
+                    </span>
+                  )}
                   {isLate && !fix && <span className="pill late" title="The video had moved past it, so it was not shown or spoken">Late</span>}
                 </div>
               </li>
