@@ -45,6 +45,11 @@ test("a failed gate in the console's words; a ready version with no verdict neve
     adapterRows({ where_are_we: { ...record, version: 1, score: 55.8, target: 95, passed: false } })[1],
     'Where are we?: v1, 55.8%, below 95% target',
   )
+  // a failed verdict the score doesn't explain stays "Failed": no score, a score at the target, a 0 target
+  const failed = { ...record, version: 1, passed: false, target: 95 }
+  assert.equal(adapterRows({ line_check: { ...failed, score: null } })[2], 'Line check: v1, Failed')
+  assert.equal(adapterRows({ line_check: { ...failed, score: 95 } })[2], 'Line check: v1, 95%, Failed')
+  assert.equal(adapterRows({ line_check: { ...failed, score: 0, target: 0 } })[2], 'Line check: v1, 0%, Failed')
   assert.deepEqual(adapterRows({ commentary: { ...record, version: 2, passed: false } })[0], 'Commentary: v2, Failed')
   assert.deepEqual(adapterRows({ commentary: { ...record, version: 3, score: 64.5 } })[0], 'Commentary: v3, 64.5%, verdict not recorded')
   assert.deepEqual(adapterRows({ commentary: { ...record, status: 'not_trained' } })[0], 'Commentary: not trained')

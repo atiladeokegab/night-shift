@@ -30,7 +30,8 @@ export function adapterRows(adapters: Record<string, TaskAdapter> | undefined): 
 
 function adapterRow(a: TaskAdapter | undefined): string {
   if (!a) return 'not recorded'
-  const failed = a.target === null ? 'Failed' : `below ${a.target}% target`
+  // the console's own wording only where the record shows it: a score under its target; else its verdict
+  const failed = a.score !== null && a.target !== null && a.score < a.target ? `below ${a.target}% target` : 'Failed'
   const verdict = a.passed === null ? (a.status === 'ready' ? 'verdict not recorded' : null) : a.passed ? 'Passed' : failed
   return [
     a.status === 'ready' ? null : a.status === 'training' ? 'training' : 'not trained',
