@@ -35,6 +35,7 @@ declare namespace YT {
     getCurrentTime(): number
     getDuration(): number
     getPlayerState(): PlayerState
+    getIframe?(): HTMLIFrameElement // optional: the test stand-ins have no frame
     destroy(): void
   }
 }

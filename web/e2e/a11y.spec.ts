@@ -79,6 +79,18 @@ for (const width of WIDTHS) {
   })
 }
 
+test('axe on the review queue: each Fix button says its visible words first', async ({ page }) => {
+  const item = {
+    line_id: 'l1', match_id: '3754092', match: 'Chelsea v Tottenham Hotspur', sport: 'football', moment_idx: 28,
+    clock: '57:41', period: 2, score: 'Chelsea 1, Tottenham 2', play: 'A substitution', text: 'Tottenham still lead one-nil.',
+    wrong: ['one-nil is not the score (1-2)'], lines: 2, others: ['Spurs lead one-nil.'], later_check: false,
+  }
+  await page.route('**/review', (r) => r.fulfill({ json: [item] }))
+  await page.goto('/#review')
+  await expect(page.locator('.flag .btn.primary')).toBeVisible()
+  expect(await serious(page), 'review').toEqual([])
+})
+
 test('keyboard only: Tab to Kobe, Enter, it is called aloud; Tab to Ask, Enter, the answer is spoken', async ({ page }) => {
   await listen(page)
   await page.setViewportSize({ width: 1280, height: 900 })

@@ -32,6 +32,8 @@ class FakePlayer {
   getDuration() { return 600 }
   getPlayerState() { return this.state }
   destroy() { this.destroyed = true }
+  frame: Record<string, string> = {}
+  getIframe() { return { setAttribute: (k: string, v: string) => (this.frame[k] = v) } }
   ready() { this.options.events!.onReady!({ target: this as unknown as YT.Player }) }
   change(state: number) { this.options.events!.onStateChange!({ target: this as unknown as YT.Player, data: state }) }
   error() { this.options.events!.onError!({ target: this as unknown as YT.Player }) }
@@ -55,6 +57,12 @@ function mount(startMs = 1000, vars?: Record<string, string | number>) {
   const cleanup = mountPlayer(api, {} as HTMLElement, 'abcdefghijk', 485, hooks, startMs, vars)
   return { player: FakePlayer.made.at(-1)!, calls, cleanup, transport: () => transport, clock: () => clock }
 }
+
+test('Tab never walks into the embed: the page drives the player, so its frame takes no focus', () => {
+  const m = mount()
+  assert.equal(m.player.frame.tabindex, '-1')
+  m.cleanup()
+})
 
 test('the video starts at the given second', () => {
   const m = mount()
