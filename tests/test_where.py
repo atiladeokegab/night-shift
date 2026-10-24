@@ -2,8 +2,9 @@
 
 import pytest
 
+from agent.commentator import render_message
 from core.insight import wrong_numbers
-from data.matches import _where, load_moments
+from data.matches import _where, load_moments, match_header
 
 FINAL = "3869685"  # Argentina v France, the 2022 World Cup final
 
@@ -64,3 +65,11 @@ def test_the_number_check_takes_a_where_distance_as_given():
     assert wrong_numbers("Messi from 20 yards, and Argentina lead!", penalty) == [
         "20 is not in the moment"
     ]
+
+
+def test_the_place_is_in_the_event_line_beside_the_outcome():
+    moments = load_moments(FINAL)
+    message = render_message(match_header(FINAL), moments[:10])  # up to Di María's goal
+    assert "Event: Shot, Goal, from 11 yards, left of centre\n" in message
+    foul = render_message(match_header(FINAL), moments[:54])  # Montiel's handball
+    assert "Event: Foul Committed, Yellow Card, inside their own box\n" in foul
