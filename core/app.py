@@ -7,7 +7,6 @@ import logging
 import re
 import time
 import uuid
-from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -94,89 +93,6 @@ def asked_so_far(replay: Replay, moments: list[dict], on_screen: int | None):
         e["data"] for e in replay.events if e["event"] == "line" and e["data"]["moment_idx"] <= upto
     ]
     return past, lines
-
-
-# "Messi hasn't scored yet" with his penalty in (#236); "his second", a brace, a hat-trick
-NOT_SCORED = re.compile(
-    r"\b(?:hasn't|has not|hadn't|yet to|still to|not|never|no)\s+(?:\w+\s+){0,2}?"
-    r"(?:scor\w*|goals?\b|netted|found the net)",
-    re.I,
-)
-NTH = re.compile(
-    r"\bhis (first|second|third|fourth)\b(?=\s*(?:goal|of\b|[.!?,]|$))|\b(brace|hat[- ]trick)\b",
-    re.I,
-)
-NTH_GOAL = {"first": 1, "second": 2, "third": 3, "fourth": 4, "brace": 2}
-HALVES_SAID = {"second half": 2, "first half of extra time": 3, "second half of extra time": 4}
-
-
-def wrong_claims(text: str, past: list[dict]) -> list[str]:
-    """What a football answer says that the numbers check can't see: a player's goals so far, and
-    a half of the match it hasn't reached ("the second half of extra time" at 105:41)."""
-    from agent.commentator import goals_so_far
-
-    m = past[-1]
-    if m.get("sport") != "football":
-        return []
-    wrong = [
-        f"the match has not reached the {part}"
-        for part, period in HALVES_SAID.items()
-        if period > m.get("period", period) and re.search(rf"\b{part}\b", text, re.I)
-    ]
-    goals = Counter(p["players"].get("shooter") for p in goals_so_far(past) if p.get("players"))
-    names = {n for p in past for n in (p.get("players") or {}).values() if isinstance(n, str)}
-    surnames = Counter(n.split()[-1] for n in names)
-    for sentence in re.split(r"(?<=[.!?;])\s+", text):  # a clause each: "Messi; Mbappé's brace"
-        for name in names:
-            last = name.split()[-1]
-            said = name if surnames[last] > 1 else last  # two Martínez: only the full name counts
-            if not re.search(rf"\b{re.escape(said)}\b", sentence):
-                continue
-            g = goals[name]
-            if g and NOT_SCORED.search(sentence):
-                wrong.append(f"{name} has scored {g} so far")
-            for nth, many in NTH.findall(sentence):
-                n = NTH_GOAL.get((nth or many).lower(), 3)
-                if n > g:
-                    wrong.append(f"{name} has scored {g} so far, not {n}")
-    return wrong
-
-
-def checked_ask(ask, question: str, past: list[dict], lines: list[dict]) -> dict | None:
-    """An Ask answer checked before it is spoken (#236): its numbers (insight.wrong_answer), and a
-    player's goals and the half (wrong_claims). Asked once more with the reasons, then the plain
-    data sentence, never the wrong answer. None, the off-air line, when the model gives nothing or
-    the match has no data to build the sentence from."""
-    from agent.commentator import goals_so_far
-    from agent.status import fallback_text
-    from data.matches import match_header
-
-    wrong: list[str] = []
-    for retry in (False, True):
-        said = ask(question, past, lines, **({"wrong": wrong} if retry else {}))
-        if said is None:
-            return None
-        wrong = insight.wrong_answer(said, question, past, lines) + wrong_claims(said["text"], past)
-        if not wrong:
-            return {**said, "checked": True, **({"retried": True} if retry else {})}
-    try:
-        text = fallback_text(match_header(past[-1]["match_id"]), past[-1])
-    except KeyError:
-        return None
-    goals = [
-        f"{p['players'].get('shooter')} after {int(p['clock'].split(':')[0])} minutes"
-        for p in goals_so_far(past)
-        if p.get("players")
-    ]
-    text += f" Goals: {'; '.join(goals)}." if goals else ""
-    return {
-        **said,
-        "text": text,
-        "fallback": True,
-        "tried": said["text"],
-        "wrong": wrong,
-        "checked": True,
-    }
 
 
 def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> FastAPI:
@@ -355,7 +271,7 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
                 said = await asyncio.to_thread(d.status, past)
             else:
                 ask = (d.ask, req.question, past, lines)
-                said = await asyncio.to_thread(checked_ask, *ask) if d.ask else None
+                said = await asyncio.to_thread(insight.checked_answer, *ask) if d.ask else None
         except Exception as exc:  # the calm off-air state, never the provider's error
             name = type(exc).__name__
             log.warning("ask %s off air: %s: %s", replay.match_id, name, str(exc)[:300])

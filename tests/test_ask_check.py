@@ -6,7 +6,8 @@ from types import SimpleNamespace
 from fastapi.testclient import TestClient
 
 from agent.commentator import FakeProvider, answer
-from core.app import Deps, asked_so_far, checked_ask, create_app, wrong_claims
+from core.app import Deps, asked_so_far, create_app
+from core.insight import checked_answer, wrong_claims
 from core.smoke import read_stream
 from core.store import Store
 from data.matches import list_matches, load_moments
@@ -59,7 +60,7 @@ def model(*texts):
 def test_a_wrong_answer_is_asked_again_with_the_reasons():
     past, lines = past_at_105_41()
     ask, asked = model(WRONG, RIGHT)
-    said = checked_ask(ask, ASKED, past, lines)
+    said = checked_answer(ask, ASKED, past, lines)
     assert said["text"] == RIGHT and said["retried"]
     assert asked[0] == [] and "Lionel Messi has scored 1 so far" in asked[1]
 
