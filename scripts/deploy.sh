@@ -25,6 +25,20 @@ COMMIT="$(git rev-parse --short=12 HEAD)"
 # Every gcloud call below runs as the deployer scripts/bootstrap.sh made, never as you: its roles
 # bound what a deploy can change. DEPLOY_AS_SELF=1 is the one opt-out, said out loud.
 unset CLOUDSDK_AUTH_IMPERSONATE_SERVICE_ACCOUNT  # only this script decides who deploys
+# The backup ElevenLabs keys, comma-separated, are a pinned version of the same secret (no new
+# secret, so no new IAM grant); core/voice.py tries them once the main key's quota is gone.
+# ELEVENLABS_FALLBACK_VERSION=none mounts none. A missing version stops the deploy here rather
+# than ship a revision that can't start. This check reads only the version's metadata, as you:
+# the deployer has no Secret Manager role.
+ELEVENLABS_FALLBACK_VERSION="${ELEVENLABS_FALLBACK_VERSION:-4}"
+if [[ "$ELEVENLABS_FALLBACK_VERSION" != none ]]; then
+  [[ "$ELEVENLABS_FALLBACK_VERSION" =~ ^[0-9]+$ ]] || { echo "deploy: ELEVENLABS_FALLBACK_VERSION must be a version number or none" >&2; exit 1; }
+  if ! gcloud secrets versions describe "$ELEVENLABS_FALLBACK_VERSION" --secret elevenlabs-api-key \
+    --project "$PROJECT" >/dev/null; then
+    echo "deploy: elevenlabs-api-key has no version $ELEVENLABS_FALLBACK_VERSION; add the backup keys as it, or deploy with ELEVENLABS_FALLBACK_VERSION=none" >&2
+    exit 1
+  fi
+fi
 if [[ "${DEPLOY_AS_SELF:-}" == 1 ]]; then
   echo "deploy: deploying as $(gcloud config get-value account), not the deployer"
 else
@@ -41,6 +55,9 @@ MOUNTS="$(for s in $SECRETS; do printf '%s=%s:latest,' "$(tr 'a-z-' 'A-Z_' <<<"$
 MUBIT_FALLBACK_VERSION="${MUBIT_FALLBACK_VERSION:-3}"
 [[ "$MUBIT_FALLBACK_VERSION" =~ ^[0-9]+$ ]] || { echo "deploy: MUBIT_FALLBACK_VERSION must be a version number" >&2; exit 1; }
 MOUNTS+="MUBIT_FALLBACK_KEY=mubit-api-key:$MUBIT_FALLBACK_VERSION,"
+if [[ "$ELEVENLABS_FALLBACK_VERSION" != none ]]; then
+  MOUNTS+="ELEVENLABS_API_KEY_FALLBACKS=elevenlabs-api-key:$ELEVENLABS_FALLBACK_VERSION,"
+fi
 
 # The voice picks (docs/voice.md): VOICE_<SPORT>, VOICE_MODEL_<SPORT> and VOICE_LABEL_<SPORT>, from the environment or
 # .env, go to Cloud Run only when set, so an unset one keeps the code default. .env is never
