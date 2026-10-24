@@ -116,6 +116,7 @@ def test_one_tool_round_then_a_line():
         "moment_idx",
         "text",
         "model",
+        "served_by",
         "latency_ms",
         "first_word_ms",
         "tokens_in",
@@ -380,13 +381,13 @@ def test_mubit_record_off_keeps_lines_out_of_the_keys_training(monkeypatch, sett
     assert made == [recorded]
 
 
-def _sse(text: str) -> bytes:
+def _sse(text: str, model: str = commentator.MODEL) -> bytes:
     """A whole Messages stream saying `text`, as Mubit would send it."""
     message = {
         "id": "msg_1",
         "type": "message",
         "role": "assistant",
-        "model": commentator.MODEL,
+        "model": model,
         "content": [],
         "stop_reason": None,
         "stop_sequence": None,
@@ -540,3 +541,34 @@ def test_the_first_word_after_a_402_counts_the_failed_call(monkeypatch):
     line = line_for(FOOT, [moment(FOOT, 0)], 0, provider)
     # the viewer waited through the lent key's 402 too
     assert line["first_word_ms"] >= 300
+
+
+def test_a_line_says_which_model_served_it_from_the_reply_and_keeps_mubits_headers():
+    # #250: what answered comes from Mubit's reply, never from what was asked or a name in the app
+    import httpx2 as httpx
+
+    def handle(request):
+        return httpx.Response(
+            200,
+            content=_sse("Goal for Ann!", model="some-adapter-v3"),
+            headers={
+                "content-type": "text/event-stream",
+                "x-middleware-request-id": "mreq_1",
+                "X-Middleware-Route": "adapter",
+                "request-id": "req_provider",
+            },
+        )
+
+    provider = commentator.MubitProvider("fake-key")
+    provider.client = provider.client.with_options(
+        http_client=httpx.Client(transport=httpx.MockTransport(handle))
+    )
+    reply = provider.call(commentator.build_request(FOOT, [moment(FOOT, 0)]))
+    assert reply["served_by"] == "some-adapter-v3" and reply["request_id"] == "mreq_1"
+    assert reply["middleware"] == {
+        "x-middleware-request-id": "mreq_1",
+        "x-middleware-route": "adapter",
+    }
+    line = line_for(FOOT, [moment(FOOT, 0)], 0, provider)
+    assert line["served_by"] == "some-adapter-v3" and line["model"] == commentator.MODEL
+    assert line["mubit_request_ids"] == ["mreq_1"]
