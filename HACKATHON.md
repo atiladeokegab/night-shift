@@ -19,7 +19,7 @@ date, so this UTC column is the clock, never the milestone.
 |---|---|---|
 | spine | 2026-10-23T23:00+01:00 | 2026-10-23T22:00Z |
 | code freeze | 2026-10-25T09:00+00:00 | 2026-10-25T09:00Z |
-| submit | 2026-10-25T10:00+00:00 | 2026-10-25T10:00Z |
+| submit | Once submissions open: submit with `/submit`; final time in #announcements | Not fixed; our internal freeze is 09:00 UK |
 
 ## Judging criteria
 
