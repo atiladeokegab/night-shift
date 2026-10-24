@@ -98,6 +98,18 @@ def test_every_demo_match_has_a_map():
     }
 
 
+def test_only_the_embed_blocked_videos_say_so():
+    # FIFA, FOM and the ITV re-upload block embedding; the pages show a poster and a YouTube link.
+    assert {m["match_id"]: m.get("embed") for m in list_matches()} == {
+        "3906390": False,
+        "1298150": None,
+        "3869685": False,
+        "0049700088": None,
+        "0020500591": None,
+        "9558": False,
+    }
+
+
 @pytest.mark.parametrize("path", MAPS, ids=lambda p: p.stem)
 def test_map_file_validates_against_the_picker(path):
     sport, match_id = path.stem.split("-")

@@ -1,5 +1,6 @@
+import { useEffect, useRef } from 'react'
 import { momentTag } from '../moment'
-import { showNoVideoCaption } from '../player'
+import { embeds, posterUrl, showNoVideoCaption, watchUrl } from '../player'
 import { commentatorName } from '../teams'
 import { SPORT_NAMES, type Line, type Match, type Sport } from '../types'
 import { onScreen, type Clock, type ReplayState } from '../useReplay'
@@ -40,6 +41,18 @@ export function Live(props: Props) {
   const latest = shown.lines.find((l) => !replay.late.includes(l.line_id))
   const busy = replay.phase !== 'live'
   const gated = !!match.youtube_id
+  // The owner blocks embedding: a still poster and a YouTube link, never the player's error screen.
+  const blocked = gated && !embeds(match)
+  // On phones the no-video caption sits under the score bar, whose height follows its content (F1's is up to
+  // four rows), so the stage carries the bar's bottom edge for the CSS.
+  const hud = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = hud.current
+    if (!el) return
+    const ro = new ResizeObserver(() => el.parentElement?.style.setProperty('--hud-bottom', `${el.offsetTop + el.offsetHeight}px`))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
   const voiceLabel = commentatorName(voice.name)
 
   let overlay = null
@@ -71,16 +84,21 @@ export function Live(props: Props) {
   return (
     <div className="live">
       <div id="video" className={video === 'unavailable' && !busy ? 'off' : dim ? 'dim' : undefined}>
-        {replay.phase === 'live' && <VideoStage key={replayKey} youtubeId={match.youtube_id} start={match.video_start ?? 0} onClock={onClock} onState={onVideo} />}
+        {blocked && <img className="still" alt="" src={posterUrl(match.youtube_id!)} />}
+        {replay.phase === 'live' && <VideoStage key={replayKey} youtubeId={blocked ? undefined : match.youtube_id} start={match.video_start ?? 0} onClock={onClock} onState={onVideo} />}
       </div>
       <section className="stage" aria-label={`${match.title ?? match.match_id} highlights`}>
         <div className="shade" />
         <Nav current="live" onGo={onGo} />
-        <div className="lane hud">
+        <div className="lane hud" ref={hud}>
           <ScoreBar match={match} moment={moment} moments={shown.moments} />
           <OnAir voice={voice} label={voiceLabel} />
         </div>
-        {showNoVideoCaption(replay, video) && <p className="novideo">Highlights can't play here. Commentary carries on, timed to the replay.</p>}
+        {showNoVideoCaption(replay, video) && (blocked ? (
+          <p className="novideo">Commentary only · <a href={watchUrl(match)} target="_blank" rel="noopener noreferrer">highlights on YouTube ↗</a></p>
+        ) : (
+          <p className="novideo">Highlights can't play here. Commentary carries on, timed to the replay.</p>
+        ))}
         {replay.stream === 'reconnecting' && (
           <div className="banner"><div className="glass warn" role="alert"><b />Reconnecting to the replay…</div></div>
         )}
@@ -161,13 +179,14 @@ function Timeline({ replay, synced }: { replay: ReplayState; synced: boolean }) 
   const at = (t: number) => (length ? `${Math.min(100, (t / length) * 100)}%` : '0%')
   return (
     <div className="lane timeline">
-      <span className="yt">
+      {/* Empty with no picture: it would contradict the no-video caption. The span keeps the grid's columns. */}
+      <span className="yt">{synced && <>
         <svg viewBox="0 0 16 16" aria-hidden="true">
           <rect x="1" y="3" width="14" height="10" rx="3" fill="none" stroke="currentColor" strokeWidth="1.3" />
           <path d="M6.5 5.8v4.4L10.3 8z" fill="currentColor" />
         </svg>
         Broadcast highlights · YouTube · muted
-      </span>
+      </>}</span>
       <div className="track" aria-hidden>
         <span className="played" style={{ width: at(replay.now) }} />
         {marks.map((m) => (

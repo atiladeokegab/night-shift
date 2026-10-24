@@ -1,3 +1,4 @@
+import type { Match } from './types'
 import type { Clock, ReplayState } from './useReplay'
 
 // The YouTube player behind the stage, kept out of React so a test can hold its callbacks back.
@@ -9,6 +10,15 @@ export type VideoState = 'loading' | 'ok' | 'unavailable'
 export function showNoVideoCaption(replay: Pick<ReplayState, 'phase' | 'stream' | 'error'>, video: VideoState): boolean {
   return replay.phase === 'live' && video === 'unavailable' && replay.stream === 'ok' && !replay.error
 }
+
+type VideoMatch = Pick<Match, 'youtube_id' | 'video_start' | 'embed'>
+
+// A match plays its highlights here only when it has a video and the video's owner allows embedding.
+export const embeds = (m: VideoMatch): boolean => !!m.youtube_id && m.embed !== false
+export const posterUrl = (youtubeId: string) => `https://i.ytimg.com/vi/${encodeURIComponent(youtubeId)}/hqdefault.jpg`
+// A blocked video on YouTube itself, from just before its first mapped moment.
+export const watchUrl = (m: VideoMatch) =>
+  `https://www.youtube.com/watch?v=${encodeURIComponent(m.youtube_id ?? '')}&t=${Math.floor(m.video_start ?? 0)}s`
 
 export const LOAD_MS = 10_000 // the IFrame API script has this long to load
 export const START_MS = 15_000 // a new player has this long to be ready and start playing

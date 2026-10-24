@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { CARD_COPY } from '../teams'
 import { SPORT_NAMES, type Match } from '../types'
 import { Nav, type Screen } from './Nav'
-import { loadYouTube, mountPlayer } from '../player'
+import { embeds, loadYouTube, mountPlayer, posterUrl, watchUrl } from '../player'
 
 const TILE_START_MS = 8_000 // a tile clip has this long to start playing before the tile settles on its poster
 
@@ -46,7 +46,7 @@ export function Wall({ matches, error, onRetry, onOpen, onGo }: Props) {
         {body}
         <p className="foot">
           Match data: StatsBomb open data, Cricsheet, NBA play-by-play and OpenF1. Highlights: broadcast highlights on
-          YouTube, embedded, muted. Commentary is AI-generated.
+          YouTube, embedded and muted where their owners allow it, linked where they don't. Commentary is AI-generated.
         </p>
       </main>
     </div>
@@ -60,7 +60,9 @@ const phrases = (text: string) =>
 function Tile({ match, onOpen }: { match: Match; onOpen: (m: Match) => void }) {
   const host = useRef<HTMLDivElement>(null)
   const [playing, setPlaying] = useState(false)
-  const [broken, setBroken] = useState(!match.youtube_id)
+  const plays = embeds(match)
+  const blocked = !!match.youtube_id && !plays // the owner blocks embedding: the poster stays, with a YouTube link
+  const [broken, setBroken] = useState(!plays)
   const title = CARD_COPY[match.match_id]?.title ?? match.title?.split(',')[0] ?? match.match_id
   const detail = CARD_COPY[match.match_id]?.detail ?? match.title?.split(',').slice(1).join(',').trim()
 
@@ -68,7 +70,7 @@ function Tile({ match, onOpen }: { match: Match; onOpen: (m: Match) => void }) {
   // The clip shows only once it is really playing; a clip that errors or isn't playing in TILE_START_MS
   // gives up (player.ts's deadline, #73) and the tile keeps its thumbnail poster.
   useEffect(() => {
-    if (!match.youtube_id || !host.current) return
+    if (!plays || !host.current) return
     const target = document.createElement('div')
     host.current.appendChild(target)
     let unmount: (() => void) | null = null
@@ -88,12 +90,13 @@ function Tile({ match, onOpen }: { match: Match; onOpen: (m: Match) => void }) {
       unmount?.()
       target.remove()
     }
-  }, [match.youtube_id, match.video_start])
+  }, [plays, match.youtube_id, match.video_start])
 
   return (
+    <div className="tile-wrap">
     <button className="tile" onClick={() => onOpen(match)} aria-label={`Watch ${title} with commentary`}>
       {match.youtube_id && (
-        <img className="poster" alt="" loading="lazy" onError={(e) => { e.currentTarget.hidden = true }} src={`https://i.ytimg.com/vi/${encodeURIComponent(match.youtube_id)}/hqdefault.jpg`} />
+        <img className="poster" alt="" loading="lazy" onError={(e) => { e.currentTarget.hidden = true }} src={posterUrl(match.youtube_id)} />
       )}
       <div className={`clip${playing && !broken ? ' on' : ''}`} ref={host} aria-hidden />
       <span className="tile-shade" />
@@ -101,8 +104,11 @@ function Tile({ match, onOpen }: { match: Match; onOpen: (m: Match) => void }) {
         <span className="label">{SPORT_NAMES[match.sport]}</span>
         <span className="tile-title">{title}</span>
         {detail && <span className="tile-detail">{phrases(detail)}</span>}
-        <span className="tile-cta">{phrases(broken ? 'Highlights unavailable here · Tap for commentary' : 'Tap to hear it called →')}</span>
+        <span className="tile-cta">{phrases(blocked ? 'Commentary only · Tap to hear it called →' : broken ? 'Highlights unavailable here · Tap for commentary' : 'Tap to hear it called →')}</span>
       </span>
     </button>
+    {/* A sibling, not inside the button: a link can't sit inside another control. */}
+    {blocked && <a className="tile-yt" href={watchUrl(match)} target="_blank" rel="noopener noreferrer">Watch highlights on YouTube ↗</a>}
+    </div>
   )
 }

@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { loadYouTube, mountPlayer, showNoVideoCaption } from './player.ts'
+import { embeds, loadYouTube, mountPlayer, posterUrl, showNoVideoCaption, watchUrl } from './player.ts'
+
+test('an embed-blocked video never plays here: it gets a poster and a link to YouTube at its first moment', () => {
+  assert.equal(embeds({ youtube_id: '46nYnjGdQlk', video_start: 7 }), true)
+  assert.equal(embeds({ youtube_id: 'yPvoKz6tyJs', video_start: 0, embed: false }), false)
+  assert.equal(embeds({}), false)
+  assert.equal(posterUrl('yPvoKz6tyJs'), 'https://i.ytimg.com/vi/yPvoKz6tyJs/hqdefault.jpg')
+  assert.equal(watchUrl({ youtube_id: 'jD1GwCcJV-0', video_start: 25.6, embed: false }), 'https://www.youtube.com/watch?v=jD1GwCcJV-0&t=25s')
+})
 
 // A stand-in for the IFrame API: each player keeps its options, so a test fires its events when it likes.
 const PlayerState = { UNSTARTED: -1, ENDED: 0, PLAYING: 1, PAUSED: 2, BUFFERING: 3, CUED: 5 }

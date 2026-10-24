@@ -5,6 +5,7 @@ import { About } from './components/About'
 import type { FixPhase } from './components/FixSheet'
 import { FixSheet } from './components/FixSheet'
 import { submitFix } from './fix'
+import { embeds } from './player'
 import { Live, type VoiceStatus } from './components/Live'
 import type { Screen } from './components/Nav'
 import { Picker } from './components/Picker'
@@ -90,7 +91,7 @@ export default function App() {
     speech.hush()
     setFixing(null)
     setVoiceSheet(false)
-    setVideo(match.youtube_id ? 'loading' : 'unavailable')
+    setVideo(embeds(match) ? 'loading' : 'unavailable')
     setCurrent((prev) => ({ match, speed, key: (prev?.key ?? 0) + 1, switching }))
     setScreen('live')
     // A match with a highlights video holds its commentary for the player (A-6.4@2).
