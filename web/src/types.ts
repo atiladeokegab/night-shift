@@ -68,6 +68,7 @@ export interface Line {
   fixed?: boolean // #232: said in a producer's fixed words, not called; `fix_id` is the line it fixed
   fix_id?: string
   served_by?: string | null // #250: the model Mubit's reply said answered; none before #250 or offline
+  fill?: boolean // #297: the extra pair in a long quiet, dropped if the next moment comes first
 }
 
 // GET /stats and the `stats` SSE event (CONTRACT.md); percentiles are null until there is a line.

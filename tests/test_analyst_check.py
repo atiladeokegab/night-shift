@@ -116,7 +116,9 @@ def test_a_wrong_analyst_line_is_said_again_once_then_dropped(tmp_path):
 
     lines, _ = replay(KOBE, Store(tmp_path), calls=calls)
     assert asked and not any(gap(ln) for ln in lines)  # never said
-    assert set(Counter(asked).values()) == {2}  # one try, one retry, then the stretch ends
+    # one try and one retry a turn, the analyst's next turn the same, then the stretch ends; a
+    # stretch whose line was also too long for its room ends at once (#297)
+    assert set(Counter(asked).values()) == {2, 2 * (1 + insight.MISSES)}
 
 
 def test_a_right_retry_is_said_and_marked(tmp_path):
