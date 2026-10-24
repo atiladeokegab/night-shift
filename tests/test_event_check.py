@@ -128,6 +128,11 @@ OTHER_SPORTS = [
         "Three byes off Nawaz! Kohli was the man who took Pakistan six for one, years ago.",
     ),
     (INDIA, 52, "Kohli! SIX! India have 155 for 5, need just 5 more from 3 balls!", None),
+    # a six found or hit "for six" is a six; only a wanted one or a score is not
+    (INDIA, 53, "Kohli finds a six over long-on!", None),
+    (INDIA, 53, "KOHLI FINDS A SIX!", None),
+    (INDIA, 53, "Kohli hits it FOR SIX!", None),
+    (INDIA, 53, "KOHLI GOES FOR SIX! INDIA WIN!", None),
     # a run out called a stumping; "bowled" names the bowler and "run out of" is no dismissal
     (
         INDIA,

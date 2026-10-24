@@ -928,10 +928,14 @@ TIE = re.compile(
     r"|matched \w+'s (?:total|score)|all square)\b",
     re.I,
 )
-# capitals are a shout; a six wanted ("need a six", WANTED_SIX) or "160 for SIX" is no six hit
-SIX = re.compile(r"(?i:\b(?:a|the|another) six\b|\bmaximum\b)|(?<![Ff][Oo][Rr] )\bSIX\b")
+# capitals are a shout; a six wanted (WANTED_SIX) or a score, "160 for SIX", is no six hit
+SIX = re.compile(r"(?i:\b(?:a|the|another) six\b|\bmaximum\b)|(?<!\d [Ff][Oo][Rr] )\bSIX\b")
+# "need a six", "looking for a six"; "find a six" only asked or wished ("can he find a six?",
+# "unless he finds a six"): "Kohli finds a six!" is one hit
 WANTED_SIX = re.compile(
-    r"\b(?:needs?|needed|needing|finds?|finding|(?:look|looking|go|going) for) (?:a|another) six\b",
+    r"\b(?:needs?|needed|needing|look(?:ing)? for) (?:a|another) six\b"
+    r"|\b(?:unless|if|can|could|to)\b[^.!?]*?\bfind(?:s|ing)? (?:a|another) six\b"
+    r"|\bfind(?:s|ing)? (?:a|another) six\b[^.!?]*\?",
     re.I,
 )
 HOW_OUT = {
