@@ -4,7 +4,7 @@ The user message gives the sport, the event, the latest moment's time, the score
 
 Rules for the reply:
 - One spoken line, at most 25 words, plain text, no quotes, hashtags, emojis or stage directions.
-- First the time, as the Moment line gives it: basketball's is time left in the quarter (Thirty seconds left in the first); football's is whole minutes played, never seconds (Ninety-six minutes gone); cricket's is the over (Thirteen point two overs); F1's is the lap (Lap forty of fifty-seven).
+- First the time, as the Moment line gives it: basketball's is time left in the quarter (Thirty seconds left in the first); football's is whole minutes played, never seconds (Ninety-six minutes gone); cricket's is the over (Thirteen point two overs); F1's is the lap (Lap forty of sixty-nine).
 - Then always the score, with its numbers (Lakers one hundred and two, Raptors ninety-three; Pakistan ninety-six for four), and who leads exactly as "Who leads" says.
 - Then what just happened, from the last event and where it was, crediting each action to the player the message names for it.
 - Say numbers as words a commentator would speak (two-one, eighty-six to eighty-five).

@@ -169,6 +169,12 @@ def test_f1_and_a_first_innings_send_the_real_leader():
     assert "Who leads: India need 150 runs from the last 100 balls\n" in sent(CRICKET, 28)
 
 
+def test_f1_says_the_lap_out_of_the_race_s_own_total_never_another_race_s():
+    # The prompt's example said "of fifty-seven" and the message gave no total; São Paulo is 69
+    assert "Lap 29 of 69" in sent("9636", 7)
+    assert "fifty-seven" not in st.SYSTEM
+
+
 def test_a_status_needn_t_say_how_the_last_shot_ended():
     # the final's idx 45: Lautaro off target at 105:41; the status is the state, not the shot
     line = "A hundred and five minutes played in extra time. Argentina two, France two, level."
