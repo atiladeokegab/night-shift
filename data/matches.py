@@ -66,9 +66,9 @@ def _bundle(sport: str, match_id: str, meta: dict | None = None) -> None:
 
     header, moments = feed.load(sport, match_id, meta)
     path = SAMPLE / f"{sport}-{match_id}.json"
-    path.write_text(
-        json.dumps({"header": header, "moments": moments}, ensure_ascii=False, indent=1)
-    )
+    rows = ",\n".join(json.dumps(m, ensure_ascii=False) for m in moments)  # one moment per line
+    head = json.dumps(header, ensure_ascii=False)
+    path.write_text(f'{{"header": {head},\n "moments": [\n{rows}\n]}}\n', encoding="utf-8")
 
 
 if __name__ == "__main__":
