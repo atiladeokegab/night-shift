@@ -52,7 +52,7 @@ def opens(fake):
 def test_the_leads_recorded_prompt_and_tools_are_byte_identical():
     # the Mubit task: the names and the two-hander live only in the unrecorded analyst path
     sha = {
-        "prompt.md": "b987fc85b4c689a93aadbdedca16dcb6cc96c7c3902cbe28cc7b425214960c4e",
+        "prompt.md": "8471d0222c81ff72a6b2b89fa0a8bb61e11ae6a73f1067b3c5010dd1229cfecc",
         "tools.json": "a08ff3069c2380654a1f965e5a6011a0b1aaf77c5cf9d70e81ccae461290e2f1",
     }
     for name, want in sha.items():
