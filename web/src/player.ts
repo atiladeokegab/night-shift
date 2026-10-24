@@ -121,6 +121,8 @@ export function mountPlayer(api: typeof YT, target: HTMLElement, youtubeId: stri
       onError: fail,
     },
   })
+  // The page drives the player (controls off): Tab never walks into YouTube's own links inside the frame.
+  player.getIframe?.()?.setAttribute('tabindex', '-1')
   // Armed now, not on ready: an iframe that never answers at all still gives up.
   timer = setTimeout(() => started || fail(), startMs)
   return () => {
