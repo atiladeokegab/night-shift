@@ -10,8 +10,11 @@ SurrealDB's embedded surrealkv store to data/graph, shipped in the image. Two ta
     appearance  one per player per match: team, start, minutes, sport-specific totals
 """
 
+import csv
+import io
 import shutil
 import sys
+import tarfile
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -111,7 +114,110 @@ def football() -> tuple[list[dict], list[dict]]:
     return [f for f, _ in got], [a for _, apps in got for a in apps]
 
 
-BUILDERS = {"football": football}
+# --- basketball: stats.nba.com play-by-play for the score and totals, the shot archive for the date
+
+
+def _archive(name: str):
+    """The CSV rows of one season archive of shufinskiy/nba_data, streamed from the download."""
+    r = httpx.get(
+        feed.NBA_PBP.format(name=name), timeout=httpx.Timeout(300.0), follow_redirects=True
+    )
+    r.raise_for_status()
+    with tarfile.open(fileobj=io.BytesIO(r.content), mode="r:xz") as tar:
+        member = next(m for m in tar.getmembers() if m.isfile() and m.name.endswith(".csv"))
+        yield from csv.DictReader(io.TextIOWrapper(tar.extractfile(member), encoding="utf-8"))
+
+
+def basketball_season(year: int) -> tuple[list[dict], list[dict]]:
+    """Regular season and playoffs of the NBA season starting `year`, one fixture per game."""
+    season = f"{year}-{str(year + 1)[2:]}"
+    meta = {}  # game id -> (date, home abbreviation, away abbreviation)
+    for po in ("", "po_"):
+        for r in _archive(f"shotdetail_{po}{year}"):
+            d = r["GAME_DATE"]
+            meta[r["GAME_ID"]] = (f"{d[:4]}-{d[4:6]}-{d[6:8]}", r["HTM"], r["VTM"])
+    games: dict[str, dict] = {}
+    for po in ("", "po_"):
+        for r in _archive(f"nbastats_{po}{year}"):
+            gid = r["GAME_ID"]
+            if gid not in meta:
+                continue
+            g = games.setdefault(gid, {"names": {}, "totals": {}, "score": None})
+            _basketball_row(g, r, meta[gid])
+    fixtures, apps = [], []
+    for gid, g in games.items():
+        date, home, away = meta[gid]
+        if not g["score"] or home not in g["names"] or away not in g["names"]:
+            continue
+        mid, start = (
+            gid.zfill(10),
+            f"{date}T23:59:59",
+        )  # no kickoff in the archive: the whole day is "not before"
+        fixtures.append(
+            {
+                "sport": "basketball",
+                "mid": mid,
+                "competition": "NBA",
+                "season": season,
+                "start": start,
+                "home": g["names"][home],
+                "away": g["names"][away],
+                "hg": g["score"][1],
+                "ag": g["score"][0],
+            }
+        )
+        for (name, abbr), totals in g["totals"].items():
+            apps.append(
+                {
+                    "sport": "basketball",
+                    "mid": mid,
+                    "player": name,
+                    "team": g["names"][abbr],
+                    "start": start,
+                    "competition": "NBA",
+                    "season": season,
+                    "minutes": 0,  # the play-by-play has no minutes
+                    "totals": totals,
+                }
+            )
+    return fixtures, apps
+
+
+def _basketball_row(g: dict, r: dict, meta: tuple) -> None:
+    _, home, away = meta
+    text = r["HOMEDESCRIPTION"] + r["VISITORDESCRIPTION"]
+    if r["SCORE"]:
+        away_pts, home_pts = (int(x) for x in r["SCORE"].split(" - "))
+        g["score"] = (away_pts, home_pts)
+    kind, who = r["EVENTMSGTYPE"], {}
+    for n in (1, 2, 3):
+        abbr, name = r[f"PLAYER{n}_TEAM_ABBREVIATION"], feed._s(r[f"PLAYER{n}_NAME"])
+        if name and abbr in (home, away):
+            g["names"][abbr] = feed._team(r, n)
+            who[n] = g["totals"].setdefault(
+                (name, abbr), {"points": 0, "rebounds": 0, "assists": 0}
+            )
+    if 1 in who:
+        if kind == "1":
+            who[1]["points"] += 3 if "3PT" in text else 2
+            if 2 in who and "AST" in text:
+                who[2]["assists"] += 1
+        elif kind == "3" and "MISS" not in text:
+            who[1]["points"] += 1
+        elif kind == "4":
+            who[1]["rebounds"] += 1
+
+
+def basketball() -> tuple[list[dict], list[dict]]:
+    years = sorted(
+        {int(a[-4:]) for (sport, _), arch in MATCHES.items() if sport == "basketball" for a in arch}
+    )
+    print(f"basketball: seasons {years}", flush=True)
+    got = [basketball_season(y) for y in years]
+    return [f for fs, _ in got for f in fs], [a for _, aps in got for a in aps]
+
+
+BUILDERS = {"football": football, "basketball": basketball}
 
 
 def write(sport_rows: dict[str, tuple[list[dict], list[dict]]], path: Path = GRAPH) -> None:
