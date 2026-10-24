@@ -19,8 +19,9 @@ export function autonomyRows(stats: Pick<Stats, 'autonomy' | 'autonomy_by_match'
 
 const TASKS: [string, string][] = [['commentary', 'Commentary'], ['where_are_we', 'Where are we?'], ['line_check', 'Line check']]
 
-// The Proof card's row per Mubit task (#209), e.g. "Line check: v1, 82%, Passed", from only what the
-// task's latest record says. No record, or a ready one without Mubit's verdict, reads "not recorded".
+// The Proof card's row per Mubit task (#209) in the console's words, e.g. "Line check: v1, 82%, Passed"
+// or "v1, 55.8%, below 95% target", from only what the task's latest record says. No record, or a
+// ready one without Mubit's verdict, reads "not recorded".
 // None before core reports `adapters`.
 export function adapterRows(adapters: Record<string, TaskAdapter> | undefined): string[] {
   if (!adapters) return []
@@ -29,7 +30,8 @@ export function adapterRows(adapters: Record<string, TaskAdapter> | undefined): 
 
 function adapterRow(a: TaskAdapter | undefined): string {
   if (!a) return 'not recorded'
-  const verdict = a.passed === null ? (a.status === 'ready' ? 'verdict not recorded' : null) : a.passed ? 'Passed' : 'Failed'
+  const failed = a.target === null ? 'Failed' : `below ${a.target}% target`
+  const verdict = a.passed === null ? (a.status === 'ready' ? 'verdict not recorded' : null) : a.passed ? 'Passed' : failed
   return [
     a.status === 'ready' ? null : a.status === 'training' ? 'training' : 'not trained',
     a.version === null ? null : `v${a.version}`,

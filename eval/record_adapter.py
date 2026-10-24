@@ -2,8 +2,8 @@
 panel show it. Writes to the store the server uses: STORE_DIR locally, or MODE=cloud STORE_URL=gs://...
 
     uv run python -m eval.record_adapter --status ready --kept 31 --agree 23 --total 25
-    uv run python -m eval.record_adapter --task line_check --status ready \
-        --version 1 --score 82 --passed
+    uv run python -m eval.record_adapter --task where_are_we --status ready --kept 0 \
+        --version 1 --score 55.8 --target 95 --failed
 
 --task defaults to commentary. Each task keeps its own records; /stats shows each task's latest.
 
@@ -32,11 +32,12 @@ def main(argv=None, env=os.environ) -> dict:
     p = argparse.ArgumentParser(prog="python -m eval.record_adapter", description=__doc__)
     p.add_argument("--task", default="commentary", choices=TASKS)
     p.add_argument("--status", required=True, choices=["not_trained", "training", "ready"])
-    p.add_argument("--kept", type=int, help="kept examples Mubit's console shows for the task")
+    p.add_argument("--kept", type=int, help="kept examples Mubit's console shows (not requests)")
     p.add_argument("--agree", type=int, help="moments where the adapter agreed with the big model")
     p.add_argument("--total", type=int, help="held-out moments compared")
     p.add_argument("--version", type=int, help="the adapter version Mubit's console shows")
-    p.add_argument("--score", type=float, help="its test score in Mubit's console, 0 to 100")
+    p.add_argument("--score", type=float, help="matched N%% of the provider model's answers")
+    p.add_argument("--target", type=float, help="the console's target for --score, e.g. 95")
     gate = p.add_mutually_exclusive_group()
     gate.add_argument("--passed", action="store_true", default=None, help="Mubit marks it Passed")
     gate.add_argument("--failed", dest="passed", action="store_false", help="Mubit marks it Failed")
@@ -51,6 +52,8 @@ def main(argv=None, env=os.environ) -> dict:
         p.error("--version starts at 1")
     if a.score is not None and not 0 <= a.score <= 100:
         p.error("need 0 <= --score <= 100")
+    if a.target is not None and not 0 <= a.target <= 100:
+        p.error("need 0 <= --target <= 100")
     record = {
         "task": a.task,
         "status": a.status,
@@ -59,6 +62,7 @@ def main(argv=None, env=os.environ) -> dict:
         "total": a.total,
         "version": a.version,
         "score": a.score,
+        "target": a.target,
         "passed": a.passed,
         "created_at": datetime.now(UTC).isoformat(),
     }

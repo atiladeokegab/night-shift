@@ -53,6 +53,7 @@ def _adapters(by_task: dict[str, dict]) -> dict:
             "status": r.get("status", "not_trained"),
             "version": r.get("version"),
             "score": r.get("score"),
+            "target": r.get("target"),
             "passed": r.get("passed"),
             "kept": r.get("kept"),
             "recorded_at": r.get("created_at"),

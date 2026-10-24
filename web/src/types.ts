@@ -140,9 +140,10 @@ export interface Adapter {
 export interface TaskAdapter {
   status: 'not_trained' | 'training' | 'ready'
   version: number | null
-  score: number | null // the test score, 0 to 100
+  score: number | null // "matched N% of the provider model's answers", 0 to 100
+  target: number | null // the console's target for score, e.g. 95
   passed: boolean | null // Mubit's gate: Passed or Failed
-  kept: number | null
+  kept: number | null // Mubit's kept examples from the console, never requests sent
   recorded_at: string | null
 }
 
