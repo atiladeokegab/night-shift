@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { getLedger, getReview, postFix, waitForExample } from '../api'
+import { getLedger, getReview, getStats, postFix, waitForExample, waitForScoreExamples } from '../api'
 import { submitFix, type Refused } from '../fix'
-import { exampleText, TEACHES } from '../proof'
-import type { Fix, Ledger, LineCheckExample, ReviewItem } from '../types'
+import { adapterText, exampleText, scoreExampleLabel, TEACHES } from '../proof'
+import type { Fix, Ledger, LineCheckExample, ReviewItem, ScoreCheckExample, ScoreCheckStats } from '../types'
 import { FixSheet, type FixPhase } from './FixSheet'
 import { Nav, type Screen } from './Nav'
 
@@ -16,6 +16,7 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
   const [fixed, setFixed] = useState<Fix | null>(null) // the last fix sent: its Mubit request id (#239)
   const [example, setExample] = useState<LineCheckExample | null>(null) // the Line check example it sent (#305)
   const [ledger, setLedger] = useState<Ledger | null>(null)
+  const [training, setTraining] = useState<Training | null>(null) // the last fix's Score check examples (#400)
   const heading = useRef<HTMLHeadingElement>(null)
 
   const load = () => {
@@ -32,6 +33,7 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
     if (!fixing) return
     const { item } = fixing
     setFixing({ item, phase: 'sending' })
+    const before = (await getStats().catch(() => null))?.scorecheck ?? null
     await submitFix(
       () => postFix(item.line_id, text, reason),
       () => true,
@@ -43,6 +45,12 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
         setExample(null)
         if (TEACHES.includes(reason))
           waitForExample(fix).then((ex) => ex && setExample(ex), () => {})
+        setTraining({ fix, before, examples: [], after: null, done: false })
+        const mine = (f: (t: Training) => Training) => setTraining((t) => (t?.fix === fix ? f(t) : t))
+        waitForScoreExamples(fix, (examples) => mine((t) => ({ ...t, examples })))
+          .then(() => getStats())
+          .then((s) => mine((t) => ({ ...t, after: s.scorecheck ?? null, done: true })))
+          .catch(() => mine((t) => ({ ...t, done: true })))
         heading.current?.focus() // its card is gone: focus goes back to the top of the queue
       },
       // A 503 stores nothing (CONTRACT.md): the sheet stays open with the text to send again.
@@ -122,6 +130,7 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
           </p>
         )}
         {example?.line_id === fixed?.line_id && example && <p className="hint" title={example.mubit_request_id ?? undefined}>{exampleText(example)}</p>}
+        {training && <TrainingPanel training={training} />}
         {body}
         {ledger && <Corrections ledger={ledger} />}
       </main>
@@ -145,6 +154,41 @@ function when(item: ReviewItem): string {
   if (item.sport === 'cricket') return `Over ${item.clock}`
   if (item.sport === 'f1') return `Lap ${item.period ?? ''}`.trim()
   return item.clock ?? ''
+}
+
+interface Training {
+  fix: Fix
+  before: ScoreCheckStats | null // /stats `scorecheck` as the fix was sent
+  examples: ScoreCheckExample[]
+  after: ScoreCheckStats | null // and once its examples are in
+  done: boolean
+}
+
+// #400: one fix becoming Score check training data, step by step, with the ids core already has.
+// "Sent to training", never that a model was updated.
+function TrainingPanel({ training: { fix, before, examples, after, done } }: { training: Training }) {
+  const count = (sc: ScoreCheckStats | null) => sc?.examples_sent.toLocaleString('en-GB') ?? '…'
+  return (
+    <section className="flag glass training" aria-labelledby="training-h">
+      <h2 id="training-h">Sent to training</h2>
+      <ol aria-live="polite">
+        <li>
+          Fix saved{fix.mubit_request_id && <>: request <code>{fix.mubit_request_id}</code></>}
+        </li>
+        {examples.map((ex) => (
+          <li key={ex.created_at + ex.text}>
+            Score check example · {scoreExampleLabel(ex, fix)} · request <code>{ex.mubit_request_id ?? 'none'}</code>
+          </li>
+        ))}
+        {!done && examples.length < 2 && <li>Sending Score check examples…</li>}
+        {done && !examples.length && <li>No Score check example sent for this fix</li>}
+        <li>
+          Score check examples: {count(before)} → {done ? count(after) : '…'}
+        </li>
+        <li>{adapterText(after ?? before)}</li>
+      </ol>
+    </section>
+  )
 }
 
 // Every correction sent to Mubit, newest first, each with the session and request that find it in Mubit's
