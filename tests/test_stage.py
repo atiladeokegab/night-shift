@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
 from core.app import create_app
@@ -20,3 +22,11 @@ def test_stage_without_video_paces_lines_on_its_own_clock(tmp_path):
     page = TestClient(create_app(store=Store(tmp_path))).get("/stage").text
     assert "commentary on its own clock" in page and "return pace();" in page
     assert "lines show as they arrive" not in page  # the old no-video mode raced through the match
+
+
+def test_stage_matches_the_app_and_hides_empty_pieces(tmp_path):
+    page = TestClient(create_app(store=Store(tmp_path))).get("/stage").text
+    assert '<link rel="icon" type="image/svg+xml" href="/favicon.svg">' in page
+    assert (Path(__file__).parents[1] / "web" / "public" / "favicon.svg").is_file()
+    assert '<span class="wordmark">Touchline.</span>' in page
+    assert "#score:empty, #sync:empty, .panel.lines:has(.log:empty)" in page
