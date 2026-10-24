@@ -134,7 +134,9 @@ map, it reads only moments up to the one on screen ([`core/app.py`](core/app.py)
 
 A producer corrects a wrong line on the page. The server stores the fix beside the original and sends
 it back through the same Mubit task and session, as a second turn: that is how a correction is built to become
-training signal. No fix has been made on the live site yet, so no fix has trained a model ([`core/app.py`](core/app.py) `fix_line`, [`tests/test_core_fix.py`](tests/test_core_fix.py)).
+training signal. `/stats` shows 66 corrections recorded for training: the team's, from the
+number-check fix list, applied on the live site. No adapter version trained on them is recorded
+yet ([`core/app.py`](core/app.py) `fix_line`, [`tests/test_core_fix.py`](tests/test_core_fix.py)).
 
 #### Big model vs ours
 
@@ -152,7 +154,7 @@ every live page.
 
 #### The Proof panel
 
-<img src="docs/img/proof.png" alt="The Proof card, split by speaker. Lead: claude-haiku-4-5, claude-sonnet-5-5, its line count across all matches; first word median 0.54 s and p95 0.86 s, cost per line $0.0018. Analyst: claude-haiku-4-5, claude-sonnet-5-5, its line count across all matches; first word median 0.78 s and p95 2.94 s, cost per line $0.0024. Training: Your fixes Mubit trains on, Fixes 0, Next adapter 0 of 25. Adapter: Training, Mubit is building the adapter. Under it, a note: first word is the time from the moment to the first word of the model's text reply, measured through Mubit, not counting the rest of the line, speech synthesis or playback; the adapter's cost is not measurable, because Mubit doesn't report it to the app." width="50%">
+<img src="docs/img/proof.png" alt="The Proof card, split by speaker. Lead: claude-haiku-4-5, claude-sonnet-5-5, its line count across all matches; first word median 0.54 s and p95 0.86 s, cost per line $0.0018. Analyst: claude-haiku-4-5, claude-sonnet-5-5, its line count across all matches; first word median 0.81 s and p95 2.94 s, cost per line $0.0024. Training: Your fixes Mubit trains on, Fixes 66, Next adapter 66 of 25. Adapter: Training, Mubit is building the adapter. Under it, a note: first word is the time from the moment to the first word of the model's text reply, measured through Mubit, not counting the rest of the line, speech synthesis or playback; the adapter's cost is not measurable, because Mubit doesn't report it to the app." width="50%">
 
 Live latency, cost per line and lines called, split by lead and analyst (#166); the fixes Mubit trains
 on and how many count toward the next adapter; and the adapter's state. All computed from the store,
@@ -163,7 +165,7 @@ the same numbers as `GET /stats` (its `by_speaker`) ([`web/src/components/ProofP
 
 Each criterion weighs the same; one line each, with where to check it.
 
-- **Use of Mubit (a correction becomes a model update):** every call goes through one Mubit task; its recorded lines have trained [6 adapter versions](#real-numbers) so far (none passed yet), and a producer's [fix](#producer-fixes) is stored beside the line as the correction for the next version.
+- **Use of Mubit (a correction becomes a model update):** every call goes through one Mubit task; its recorded lines have trained [6 adapter versions](#real-numbers) so far (none passed yet), and a producer's [fix](#producer-fixes) is stored beside the line as the correction for the next version: 66 corrections recorded for training so far, the team's, from the number-check fix list.
 - **Usefulness (a real recurring task):** a major broadcaster now describes [only some Premier League games (about 109 of 380)](#the-problem), and elsewhere live audio description is voluntary and patchy; Touchline speaks the key moments of [six real matches in four sports](#the-six-matches) from their real event data.
 - **Technical execution:** a line in [0.54 s to its first word](#real-numbers) (median), gated on the video's clock, an offline test suite (`make check`) and a live smoke test on every deploy; [architecture](docs/ARCHITECTURE.md) and [known limitations](#known-limitations).
 - **Demo:** two minutes on the live URL, scripted in [docs/demo.md](docs/demo.md); the [60-second path](#the-60-second-path) above is the short version.
@@ -179,8 +181,8 @@ Each criterion weighs the same; one line each, with where to check it.
   a Mubit adapter, trained on its own matches, and every producer correction is a training signal
   that makes it better.
 - **Built for fans who can't see the screen.** Audio first, with keyboard and screen reader working
-  throughout (#170), and football moments that say where on the pitch they happened, from the event
-  data's own locations (#172). Both are in progress.
+  throughout (#170, in progress). Football shots already say where on the pitch they came from,
+  from the event data's own locations (#172).
 - **The fan layer.** Ask by typing or voice, a choice of voices, and Follow a player, on any match.
 - **At scale,** Redis fans each match's lines out to every viewer and caches them across instances,
   and SurrealDB holds players, teams, matches and seasons as a graph
@@ -189,28 +191,28 @@ Each criterion weighs the same; one line each, with where to check it.
 ## Real numbers
 
 Read once from the live service's [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats)
-on 24 October 2026 at 14:11 UTC, adapter status included; every number below comes from that one
+on 24 October 2026 at 14:18 UTC, adapter status included; every number below comes from that one
 read, and they move as people use the site. Moment lines are `claude-haiku-4-5` calls, recorded;
 since #142 the analyst's stat lines and the lead's replies to it are `claude-sonnet-5-5`, unrecorded.
 The totals count both, each priced at its own model's rate, and `by_speaker` splits them.
 
 | | Big model via Mubit (all lines) | Our trained commentator (Mubit adapter) |
 |---|---|---|
-| Lines called | 5,760 (5,895 Mubit calls, counted by their request ids) | none: not callable by the app |
-| First word of the model's text, p50 / p95 | 541 ms / 1,335 ms | not measured |
-| Full line, p50 / p95 | 896 ms / 1,740 ms | not measured |
+| Lines called | 5,773 (5,908 Mubit calls, counted by their request ids) | none: not callable by the app |
+| First word of the model's text, p50 / p95 | 541 ms / 1,333 ms | not measured |
+| Full line, p50 / p95 | 896 ms / 1,733 ms | not measured |
 | Cost per line | $0.0019 | not reported by Mubit |
-| Tokens per line, in / out | about 1,608 / 31 (9,264,736 / 179,234 over 5,760 lines) | not measured |
-| Producer fixes | 0 so far (0 recorded for training); the first is made in the demo | |
+| Tokens per line, in / out | about 1,608 / 31 (9,285,273 / 179,591 over 5,773 lines) | not measured |
+| Producer fixes | 66 corrections recorded for training, all 66 counted toward the next adapter version: the team's, from the number-check fix list | |
 
 Split by speaker (`by_speaker`, same read):
 
 | | Lines | First word, p50 / p95 | Cost per line |
 |---|---|---|---|
-| Lead (Haiku moment lines, Sonnet replies) | 4,981 | 536 ms / 864 ms | $0.0018 |
+| Lead (Haiku moment lines, Sonnet replies) | 4,994 | 536 ms / 863 ms | $0.0018 |
 | Analyst (stat lines; Haiku before #142, Sonnet since) | 779 | 788 ms / 2,939 ms | $0.0024 |
 
-The overall p95 (1,335 ms) is above the lead's (864 ms) because the analyst's lines are slower.
+The overall p95 (1,333 ms) is above the lead's (863 ms) because the analyst's lines are slower.
 
 "First word" is from the moment to the first word of the model's text reply, not the audio:
 speech synthesis and playback come after it.
@@ -218,7 +220,7 @@ speech synthesis and playback come after it.
 **The adapter, exactly as it stands.** Mubit has trained 6 adapter versions on our task's recorded lines. All 6 are "not
 ready": none has passed Mubit's test yet, and the best scored 55.8% on Mubit's test. That is the record in [`data/side_by_side.json`](data/side_by_side.json), copied by hand from
 Mubit's console on 24 October 2026. We make no claim that the adapter matches the big model until a
-result shows it. `/stats` reports the adapter's status as `training` (at 14:11 UTC), recorded from
+result shows it. `/stats` reports the adapter's status as `training` (at 14:18 UTC), recorded from
 the console with [`eval/record_adapter.py`](eval/record_adapter.py); it reports no agreement result,
 because no version has passed.
 
@@ -262,8 +264,9 @@ streaming platforms, for the long tail of matches they stream with no describer.
 **Touchline** describes a match aloud for fans who can't see it. It plays a match's broadcast
 highlights, and as each key moment plays (a goal, a wicket, a three) it calls it in one short line,
 read aloud in a commentator's voice and shown as a large subtitle. It describes key moments, not
-every pass: what happened and who did it, often with the score. Making the page itself work without sight
-(#170) and saying where on the pitch a football moment happened (#172) are in progress.
+every pass: what happened and who did it, often with the score. Football shots say where on the pitch they came
+from, from the event data's own locations (#172). Making the page itself work without sight
+(#170) is in progress.
 
 One agent calls every sport. It reads the match's real event feed, looks up the score, the player and
 recent play with tools, and never sees anything from later in the match than the moment it is
@@ -294,8 +297,9 @@ producer fixes go into the same task as corrections. That smaller model is what 
    and sent as the next turn of that line's request on the owner's key (`MUBIT_FALLBACK_KEY`) with
    recording on, whatever `MUBIT_RECORD` says; a fix to an analyst's stat line stays unrecorded,
    like those lines. The Proof card shows the fixes recorded and how many count toward the next
-   adapter. No fix has been made on the live site yet (`fixes` is 0 in `/stats`), so the adapters
-   so far were trained on recorded commentary only.
+   adapter. `/stats` shows 66 corrections recorded for training: the team's, from the number-check
+   fix list. No adapter version trained on them is recorded yet; the 6 so far were trained on
+   recorded commentary.
 6. **Mubit request ids we stored.** Each line stores the Mubit request id of every call it made,
    and `GET /stats` counts calls from those ids; nothing checks them against Mubit's console.
 7. **The trained model is measured, not assumed.** 6 adapter versions trained, none has passed Mubit's
