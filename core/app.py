@@ -355,7 +355,13 @@ def create_app(
             raise HTTPException(404, f"no line {line_id!r}")
         # its latest fix, Mubit request id included: one correction traced end to end (#239)
         fix = next((f for f in reversed(store.all("fixes")) if f.get("line_id") == line_id), None)
-        return {**line, "fix": fix} if fix else line
+        # the fix sent to Line check as a training example (#305), once it is sent
+        sent = [x for x in store.all("linecheck_fixes") if x.get("line_id") == line_id]
+        return {
+            **line,
+            **({"fix": fix} if fix else {}),
+            **({"linecheck_example": sent[-1]} if sent else {}),
+        }
 
     @app.post("/lines/{line_id}/fix")
     async def fix_line(line_id: str, req: FixRequest, x_producer_token: str = Header(default="")):
