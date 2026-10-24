@@ -1,8 +1,14 @@
-import type { Clock } from './useReplay'
+import type { Clock, ReplayState } from './useReplay'
 
 // The YouTube player behind the stage, kept out of React so a test can hold its callbacks back.
 
 export type VideoState = 'loading' | 'ok' | 'unavailable'
+
+// The "highlights can't play here" caption shares its phone slot with the alert banners, so it waits
+// while one is up.
+export function showNoVideoCaption(replay: Pick<ReplayState, 'phase' | 'stream' | 'error'>, video: VideoState): boolean {
+  return replay.phase === 'live' && video === 'unavailable' && replay.stream === 'ok' && !replay.error
+}
 
 export const LOAD_MS = 10_000 // the IFrame API script has this long to load
 export const START_MS = 15_000 // a new player has this long to be ready and start playing

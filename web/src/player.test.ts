@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { loadYouTube, mountPlayer } from './player.ts'
+import { loadYouTube, mountPlayer, showNoVideoCaption } from './player.ts'
 
 // A stand-in for the IFrame API: each player keeps its options, so a test fires its events when it likes.
 const PlayerState = { UNSTARTED: -1, ENDED: 0, PLAYING: 1, PAUSED: 2, BUFFERING: 3, CUED: 5 }
@@ -125,4 +125,14 @@ test('an IFrame API script that never loads rejects after the timeout, and the n
   await assert.rejects(loadYouTube(20), /did not load in time/)
   await assert.rejects(loadYouTube(20))
   assert.equal(scripts.length, 2)
+})
+
+test('the no-video caption shows only while no alert banner holds its slot', () => {
+  const live = { phase: 'live', stream: 'ok', error: null } as const
+  assert.equal(showNoVideoCaption(live, 'unavailable'), true)
+  assert.equal(showNoVideoCaption(live, 'ok'), false)
+  assert.equal(showNoVideoCaption({ ...live, phase: 'starting' }, 'unavailable'), false)
+  assert.equal(showNoVideoCaption({ ...live, stream: 'reconnecting' }, 'unavailable'), false)
+  assert.equal(showNoVideoCaption({ ...live, stream: 'disconnected' }, 'unavailable'), false)
+  assert.equal(showNoVideoCaption({ ...live, error: 'The commentator stopped.' }, 'unavailable'), false)
 })
