@@ -21,6 +21,15 @@ export interface Released<T> {
 export const speaks = (line: { line_id: string; history?: boolean }, late: string[]) =>
   !late.includes(line.line_id) && !line.history
 
+// The lines in `lines` (newest first) not yet handed to the speaking queue, oldest first, marked as
+// seen. Several can land in one render (a call and an analyst fill), and each must reach the queue:
+// it, not the page, decides which one to drop.
+export function fresh<T extends { line_id: string; history?: boolean }>(lines: T[], seen: Set<string>, late: string[]): T[] {
+  const out = lines.filter((l) => !seen.has(l.line_id))
+  out.forEach((l) => seen.add(l.line_id))
+  return out.filter((l) => speaks(l, late)).reverse()
+}
+
 // Splits queued items by the player's current time `t`, keeping arrival order within each group.
 export function release<T extends Timed>(queue: T[], t: number): Released<T> {
   const out: Released<T> = { live: [], late: [], waiting: [] }

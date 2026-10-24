@@ -1204,7 +1204,7 @@ def test_a_429_opens_the_breaker_so_queued_lines_skip_to_subtitles(monkeypatch):
     assert asyncio.run(run()) == (None, None, 1, (AUDIO, "eleven_v3"))
 
 
-def test_a_goal_is_more_intense_than_a_pass_and_the_pair_is_voiced_to_match(monkeypatch):
+def test_a_goal_is_more_intense_than_a_pass_but_the_stat_after_it_reads_calm(monkeypatch):
     import asyncio
     import time
 
@@ -1215,7 +1215,7 @@ def test_a_goal_is_more_intense_than_a_pass_and_the_pair_is_voiced_to_match(monk
     routine = {"type": "Pass", "detail": {}, "score": {}}
     assert (intensity(goal), intensity(routine)) == ("high", "calm")
     said_as = {"kind": "form", "detail": "x", "heard": "Goal!"}
-    assert stat_moment(goal, said_as, False)["detail"]["intensity"] == "high"
+    assert stat_moment(goal, said_as, False)["detail"]["intensity"] == "calm"
 
     monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
     seen = []
@@ -1235,9 +1235,64 @@ def test_a_goal_is_more_intense_than_a_pass_and_the_pair_is_voiced_to_match(monk
     asyncio.run(run(goal, "a"))
     asyncio.run(run(routine, "b"))
     assert seen == [
-        ("[excited] Two.", {"stability": 0.0}),
+        ("Two.", {"stability": 0.5}),
         ("Two.", {"stability": 0.5}),
     ]
+
+
+def test_kobe_dunks_then_a_stat_line_reads_calm():
+    from core.insight import stat_moment
+    from core.voice import STABILITY, intensity, tag_for
+    from data.matches import load_moments
+
+    dunk = load_moments("0020500591")[9]
+    said_as = {"kind": "form", "detail": "x", "heard": "Kobe!"}
+    stat = stat_moment(dunk, said_as, False)
+    assert tag_for(dunk) == "[shouting]"
+    assert (tag_for(stat), STABILITY[intensity(stat)]) == (None, 0.5)
+    # a stat stored before this change still carries its moment's intensity: it reads calm too
+    stored = {**stat, "detail": {**stat["detail"], "intensity": "high"}}
+    assert (tag_for(stored), intensity(stored)) == (None, "calm")
+
+
+def test_a_stat_line_after_a_dunk_is_spoken_with_full_stops_and_the_dunk_keeps_its_shout(
+    monkeypatch,
+):
+    import asyncio
+    import time
+
+    from core.insight import stat_moment
+    from core.voice import Speaker, analyst_voice, voice_of
+    from data.matches import load_moments
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    seen = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        seen.append(json.loads(request.content)["text"])
+        return httpx.Response(200, content=AUDIO)
+
+    speaker = Speaker(httpx.MockTransport(handle))
+    dunk = load_moments("0020500591")[9]
+    said_as = {"kind": "form", "detail": "x", "heard": "Kobe!"}
+    call = {"line_id": "c", "sport": "basketball", "text": "Kobe with the slam dunk!"}
+    stat = {
+        "line_id": "s", "sport": "basketball", "speaker": "analyst",
+        "text": "Fifty-one and counting! Really?! Rose is 3 of 8.",
+    }  # fmt: skip
+
+    async def run():
+        speaker.prepare(call, dunk, time.monotonic() + 30)
+        await speaker.audio(call, voice_of(call))
+        speaker.prepare(stat, stat_moment(dunk, said_as, False), time.monotonic() + 30)
+        await speaker.audio(stat, analyst_voice("basketball"))
+
+    asyncio.run(run())
+    assert seen == [
+        "[shouting] Kobe with the slam dunk!",
+        "Fifty-one and counting. Really? Rose is 3 of 8.",
+    ]
+    assert stat["text"].startswith("Fifty-one and counting!")  # the page still shows it as said
 
 
 def test_a_football_goal_is_as_big_as_the_game_state_makes_it():

@@ -31,7 +31,7 @@ def _pack_squad(pack: dict | None, team: str) -> list[dict]:
     mine = [(n, p) for n, p in ((pack or {}).get("players") or {}).items() if p.get("team") == team]
     mine.sort(key=lambda kv: (-kv[1].get("made", 0), -kv[1].get("games", 0), kv[0]))
     what = "goals from" if (pack or {}).get("sport") == "football" else "baskets from"
-    return [
+    played = [
         {
             "name": n,
             "matches": p["games"],
@@ -40,12 +40,23 @@ def _pack_squad(pack: dict | None, team: str) -> list[dict]:
         for n, p in mine[:SQUAD_MAX]
         if p.get("games") and p.get("attempts")
     ]
+    # No earlier appearances on file (StatsBomb has none for the side): the matchday squad, by name.
+    return played or [
+        {"name": n, "matches": 0, "headline": "in the matchday squad"} for n, _ in mine[:SQUAD_MAX]
+    ]
+
+
+def side(sport: str, header: dict) -> dict:
+    """Cricsheet files men's and women's sides under one team name: the competition says which."""
+    if sport != "cricket":
+        return {}
+    return {"gender": "female" if "women" in header.get("competition", "").lower() else "male"}
 
 
 def build(sport: str, header: dict) -> dict:
-    before = header["date"]
+    before, g = header["date"], side(sport, header)
     sides = [header[k] for k in ("home", "away") if k in header]  # a race has no sides
-    squads = {t: _ask("squad", sport, t, before)[:SQUAD_MAX] for t in sides}
+    squads = {t: _ask("squad", sport, t, before, **g)[:SQUAD_MAX] for t in sides}
     if not all(squads.values()):  # the graph lacks a side's squad: the packs, once, for this match
         pack = graph.pack(header["match_id"]) or load_pack(sport, header["match_id"])
         squads = {t: sq or _pack_squad(pack, t) for t, sq in squads.items()}
@@ -53,12 +64,13 @@ def build(sport: str, header: dict) -> dict:
         "teams": [
             {
                 "team": t,
-                "form": _ask("team_form", sport, t, before),
+                "form": _ask("team_form", sport, t, before, **g),
                 "squad": squads[t],
+                "note": None if squads[t] else _ask("first_match", sport, t, before) or None,
             }
             for t in sides
         ],
-        "head_to_head": _ask("head_to_head", sport, *sides, before) if len(sides) == 2 else [],
+        "head_to_head": _ask("head_to_head", sport, *sides, before, **g) if len(sides) == 2 else [],
     }
 
 

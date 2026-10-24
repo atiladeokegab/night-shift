@@ -24,6 +24,22 @@ MIN_INSTANCES="${MIN_INSTANCES:-0}"  # set 1 for a demo: no cold start
 SECRETS="mubit-api-key elevenlabs-api-key"
 OPTIONAL_SECRETS="converse-llm-secret"
 
+check_secret_version() {
+  local secret="$1" version="$2" state
+  # gcloud's own stderr goes to the terminal: a warning (an update notice) is not the state
+  if ! state="$(gcloud secrets versions describe "$version" --secret "$secret" \
+    --project "$PROJECT" --format='value(state)')"; then
+    echo "deploy: could not inspect $secret version $version in $PROJECT (check Secret Manager API and caller metadata permissions; gcloud's error is above)" >&2
+    return 1
+  fi
+  state="${state//$'\r'/}"
+  if [[ "$state" != ENABLED ]]; then
+    [[ -n "$state" ]] || state="UNKNOWN"
+    echo "deploy: $secret version $version is $state; mounted versions must be ENABLED" >&2
+    return 1
+  fi
+}
+
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "deploy: the working tree is dirty; commit first so the commit label names what ships" >&2
   exit 1
@@ -41,12 +57,19 @@ unset CLOUDSDK_AUTH_IMPERSONATE_SERVICE_ACCOUNT  # only this script decides who 
 ELEVENLABS_FALLBACK_VERSION="${ELEVENLABS_FALLBACK_VERSION:-4}"
 if [[ "$ELEVENLABS_FALLBACK_VERSION" != none ]]; then
   [[ "$ELEVENLABS_FALLBACK_VERSION" =~ ^[0-9]+$ ]] || { echo "deploy: ELEVENLABS_FALLBACK_VERSION must be a version number or none" >&2; exit 1; }
-  if ! gcloud secrets versions describe "$ELEVENLABS_FALLBACK_VERSION" --secret elevenlabs-api-key \
-    --project "$PROJECT" >/dev/null; then
-    echo "deploy: elevenlabs-api-key has no version $ELEVENLABS_FALLBACK_VERSION; add the backup keys as it, or deploy with ELEVENLABS_FALLBACK_VERSION=none" >&2
-    exit 1
-  fi
+  check_secret_version elevenlabs-api-key "$ELEVENLABS_FALLBACK_VERSION"
 fi
+# Every secret the deploy will mount must exist, or the revision can't start, found only after the
+# ten-minute build. Checked here, before the build and the impersonation, from the same lists as MOUNTS
+# below (metadata only, as you). converse-llm-secret is mounted only with CONVERSE_AGENT_ID.
+MUBIT_FALLBACK_VERSION="${MUBIT_FALLBACK_VERSION:-3}"
+NEEDED="$(for s in $SECRETS; do echo "$s latest"; done)"
+[[ "$MUBIT_FALLBACK_VERSION" =~ ^[0-9]+$ ]] || { echo "deploy: MUBIT_FALLBACK_VERSION must be a version number" >&2; exit 1; }
+NEEDED+=$'\n'"mubit-api-key $MUBIT_FALLBACK_VERSION"
+[[ -n "${CONVERSE_AGENT_ID:-}" ]] && NEEDED+=$'\n'"converse-llm-secret latest"
+while read -r secret version; do
+  check_secret_version "$secret" "$version"
+done <<<"$NEEDED"
 if [[ "${DEPLOY_AS_SELF:-}" == 1 ]]; then
   echo "deploy: deploying as $(gcloud config get-value account), not the deployer"
 else
@@ -61,7 +84,6 @@ MOUNTS="$(for s in $SECRETS; do printf '%s=%s:latest,' "$(tr 'a-z-' 'A-Z_' <<<"$
 # The owner's key, a pinned version of the same secret (no new secret, so no new IAM grant): the
 # commentator moves to it if the demo key above runs out of credit (402).
 MUBIT_FALLBACK_VERSION="${MUBIT_FALLBACK_VERSION:-3}"
-[[ "$MUBIT_FALLBACK_VERSION" =~ ^[0-9]+$ ]] || { echo "deploy: MUBIT_FALLBACK_VERSION must be a version number" >&2; exit 1; }
 MOUNTS+="MUBIT_FALLBACK_KEY=mubit-api-key:$MUBIT_FALLBACK_VERSION,"
 if [[ "$ELEVENLABS_FALLBACK_VERSION" != none ]]; then
   MOUNTS+="ELEVENLABS_API_KEY_FALLBACKS=elevenlabs-api-key:$ELEVENLABS_FALLBACK_VERSION,"

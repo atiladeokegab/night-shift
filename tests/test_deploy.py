@@ -1,6 +1,7 @@
 """scripts/deploy.sh with stub gcloud, curl and uv: which env vars it would deploy, no network."""
 
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -11,7 +12,18 @@ SCRIPT = Path(__file__).parent.parent / "scripts" / "deploy.sh"
 BOOTSTRAP = Path(__file__).parent.parent / "scripts" / "bootstrap.sh"
 STUB = """#!/usr/bin/env bash
 printf '%s\\n' "$*" >> "$CALLS"
-[[ -n "${FAIL_ON:-}" && "$*" == *"$FAIL_ON"* ]] && exit 1
+if [[ -n "${FAIL_ON:-}" && "$*" == *"$FAIL_ON"* ]]; then
+  printf '%s\\n' "${FAIL_MESSAGE:-fake gcloud error}" >&2
+  exit 1
+fi
+if [[ "$*" == *"secrets versions describe"* ]]; then
+  [[ -n "${WARN:-}" ]] && printf 'WARNING: %s\\n' "$WARN" >&2
+  if [[ -n "${DISABLED_MATCH:-}" && "$*" == *"$DISABLED_MATCH"* ]]; then
+    printf 'DISABLED\\n'
+  else
+    printf 'ENABLED\\n'
+  fi
+fi
 [[ "$*" == *"services describe"* ]] && printf 'https://x.run.app\\trev-1\\n'
 exit 0
 """
@@ -61,6 +73,10 @@ def bootstrap(tmp_path, *, optional_missing=False, **env):
 printf '%s\\n' "$*" >> "$CALLS"
 if [[ "${OPTIONAL_MISSING:-}" == 1 && \
   "$*" == *"secrets describe converse-llm-secret"* ]]; then
+  exit 1
+fi
+if [[ -n "${FAIL_ON:-}" && "$*" == *"$FAIL_ON"* ]]; then
+  printf '%s\\n' "${FAIL_MESSAGE:-fake gcloud error}" >&2
   exit 1
 fi
 if [[ "$*" == *"projects describe"* ]]; then printf '123456\\n'; fi
@@ -217,6 +233,49 @@ def test_bootstrap_skips_an_unconfigured_optional_talk_secret(tmp_path):
     assert not any("secrets add-iam-policy-binding converse-llm-secret" in call for call in calls)
 
 
+def test_bootstrap_gives_deploy_caller_secret_scoped_metadata_viewer_only(tmp_path):
+    done, calls, _ = bootstrap(tmp_path)
+    assert done.returncode == 0, done.stderr
+    viewer = [c for c in calls if "--role roles/secretmanager.viewer" in c]
+    assert {c.split("secrets add-iam-policy-binding ")[1].split()[0] for c in viewer} == {
+        "mubit-api-key",
+        "elevenlabs-api-key",
+        "converse-llm-secret",
+    }
+    assert all("--member user:tester@example.com" in c for c in viewer)
+    assert not any(
+        "projects add-iam-policy-binding" in c and "roles/secretmanager." in c for c in calls
+    )
+    assert not any(
+        "--member user:tester@example.com" in c and "roles/secretmanager.secretAccessor" in c
+        for c in calls
+    )
+    assert any(
+        "--member user:tester@example.com" in c and "roles/iam.serviceAccountTokenCreator" in c
+        for c in calls
+    )
+
+
+def test_bootstrap_uses_service_account_member_for_metadata_and_token_creator(tmp_path):
+    done, calls, _ = bootstrap(tmp_path, DEPLOY_AS="deployer-caller@p.iam.gserviceaccount.com")
+    assert done.returncode == 0, done.stderr
+    viewer = [c for c in calls if "--role roles/secretmanager.viewer" in c]
+    assert viewer and all(
+        "--member serviceAccount:deployer-caller@p.iam.gserviceaccount.com" in c for c in viewer
+    )
+    assert any(
+        "--member serviceAccount:deployer-caller@p.iam.gserviceaccount.com" in c
+        and "roles/iam.serviceAccountTokenCreator" in c
+        for c in calls
+    )
+
+
+def test_bootstrap_does_not_grant_metadata_viewer_for_absent_optional_secret(tmp_path):
+    done, calls, _ = bootstrap(tmp_path, optional_missing=True)
+    assert done.returncode == 0, done.stderr
+    assert not any("secrets add-iam-policy-binding converse-llm-secret" in c for c in calls)
+
+
 def test_bootstrap_creates_and_grants_the_talk_secret_without_printing_it(tmp_path):
     secret = "dummy-talk-bearer"
     done, calls, secret_data = bootstrap(
@@ -257,7 +316,9 @@ def test_the_backup_voice_version_can_be_overridden_or_turned_off(tmp_path):
     done, deployed = deploy(tmp_path / "b", ELEVENLABS_FALLBACK_VERSION="none")
     assert done.returncode == 0, done.stderr
     assert not any(s.startswith("ELEVENLABS_API_KEY_FALLBACKS") for s in secrets(deployed))
-    assert "secrets versions" not in (tmp_path / "b" / "calls").read_text()
+    calls = (tmp_path / "b" / "calls").read_text()
+    assert "versions describe latest --secret elevenlabs-api-key" in calls  # still mounted
+    assert not re.search(r"versions describe \d+ --secret elevenlabs-api-key", calls)
 
 
 @pytest.mark.parametrize(
@@ -266,7 +327,12 @@ def test_the_backup_voice_version_can_be_overridden_or_turned_off(tmp_path):
 )
 def test_a_bad_or_missing_backup_voice_version_stops_the_deploy(tmp_path, env):
     done, deployed = deploy(tmp_path, **env)
-    assert done.returncode == 1 and "ELEVENLABS_FALLBACK_VERSION" in done.stderr and not deployed
+    assert done.returncode == 1 and not deployed
+    if "FAIL_ON" in env:
+        assert "could not inspect elevenlabs-api-key version 4" in done.stderr
+        assert "fake gcloud error" in done.stderr
+    else:
+        assert "ELEVENLABS_FALLBACK_VERSION" in done.stderr
 
 
 def test_a_daily_budget_rides_along_only_when_set(tmp_path):
@@ -301,3 +367,59 @@ def test_empty_daily_budget_uses_guard_default_and_zero_disables_it():
     assert Guard(env={}).budget == 50
     guard = Guard(env={"DAILY_BUDGET_USD": "0"})
     assert guard.budget == 0 and not guard.off_air(store)
+
+
+@pytest.mark.parametrize(
+    ("secret", "env"),
+    [
+        ("converse-llm-secret", {"CONVERSE_AGENT_ID": "agent_1"}),
+        ("elevenlabs-api-key", {}),
+        ("mubit-api-key", {}),
+    ],
+)
+def test_a_missing_secret_stops_the_deploy_before_the_build(tmp_path, secret, env):
+    done, deployed = deploy(tmp_path, FAIL_ON=f"--secret {secret}", **env)
+    assert done.returncode == 1 and not deployed
+    assert secret in done.stderr
+
+
+def test_the_converse_secret_is_checked_only_when_it_will_mount(tmp_path):
+    done, deployed = deploy(tmp_path, FAIL_ON="--secret converse-llm-secret")
+    assert done.returncode == 0 and deployed
+
+
+@pytest.mark.parametrize(
+    "match,env",
+    [
+        ("latest --secret mubit-api-key", {}),
+        ("latest --secret elevenlabs-api-key", {}),
+        ("3 --secret mubit-api-key", {}),
+        ("4 --secret elevenlabs-api-key", {}),
+        ("latest --secret converse-llm-secret", {"CONVERSE_AGENT_ID": "agent-1"}),
+    ],
+)
+def test_disabled_mounted_secret_version_stops_before_deploy(tmp_path, match, env):
+    done, deployed = deploy(tmp_path, DISABLED_MATCH=match, **env)
+    assert done.returncode == 1 and not deployed
+    assert "DISABLED" in done.stderr and match.split(" --secret")[1].strip() in done.stderr
+
+
+def test_metadata_permission_error_is_not_reported_as_missing(tmp_path):
+    done, deployed = deploy(
+        tmp_path,
+        FAIL_ON="secrets versions describe latest --secret mubit-api-key",
+        FAIL_MESSAGE="PERMISSION_DENIED: caller lacks secret versions get",
+    )
+    assert done.returncode == 1 and not deployed
+    assert "PERMISSION_DENIED" in done.stderr
+    assert "does not exist" not in done.stderr
+
+
+def test_enabled_mounted_secret_versions_pass(tmp_path):
+    done, deployed = deploy(tmp_path)
+    assert done.returncode == 0 and deployed
+
+
+def test_a_gcloud_warning_on_a_secret_check_is_not_its_state(tmp_path):
+    done, deployed = deploy(tmp_path, WARN="Updates are available for some components")
+    assert done.returncode == 0 and deployed, done.stderr

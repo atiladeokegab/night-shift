@@ -15,7 +15,7 @@ from collections import Counter
 from agent.packs import phase
 from core import predict
 from core.fallback import fallback_text  # noqa: F401  checked() says it; tests import it here
-from core.voice import NAMES, intensity
+from core.voice import NAMES
 from data.matches import CLUB_SUFFIX
 
 log = logging.getLogger(__name__)
@@ -364,6 +364,7 @@ class Gaps:
         self.calls = 0
         self.overran = False  # the last line was dropped for running into the next moment (#297)
         self._pack = None
+        self._form_facts = None
         self._header = None
         self._balls = None
 
@@ -393,6 +394,15 @@ class Gaps:
             self._pack = predict.pack(m.get("sport", ""), self.match_id) or {}
         return self._pack
 
+    def form(self, past: list[dict]) -> list[str]:
+        """Reuse successful pre-match form facts for this replay; empty lookups may recover."""
+        if self._form_facts:
+            return self._form_facts
+        facts = _form(self.pack(past[-1]), past)
+        if facts:
+            self._form_facts = facts
+        return facts
+
     def wrong(self, text: str, stat: dict, past: list[dict]) -> list[str]:
         """What an analyst line or reply gets wrong against its stat and the moments before it."""
         return wrong_numbers(text, stat, self.header() or None, past)
@@ -417,7 +427,8 @@ class Gaps:
         order.sort(key=lambda k: KINDS[k][0] != prefer)  # what the lead just asked about, first
         for k in order:
             kind, make = KINDS[k]
-            for detail in make(self.pack(past[-1]), past):
+            details = self.form(past) if kind == "form" else make(self.pack(past[-1]), past)
+            for detail in details:
                 if detail not in self.used:
                     if opens:
                         self.opens = k + 1
@@ -1228,6 +1239,59 @@ def _flipped_lead(text: str, m: dict, header: dict) -> list[str]:
     return wrong
 
 
+def _swapped_teams(text: str, m: dict, header: dict) -> list[str]:
+    """The two scores said against the wrong teams: "Lakers 88, Raptors 95" or "88-95 to the Lakers"
+    at 95-88. Only an exact swap fails, and a number counts as a score only when a team's name
+    comes right before it and nothing but the end or the other team follows ("Lakers 12 rebounds"
+    is a tally)."""
+    s = m["score"]
+    if s["home"] == s["away"]:
+        return []
+    side, _ = _sides(header)
+    one = {n: v for n, v in side.items() if " " not in n}  # said() gives a team name in words
+    wrong = []
+    for sentence in re.split(r"(?<=[.!?])\s+", text):
+        toks = said(sentence)
+        toks = [
+            1.0 if t == "one" and isinstance(prev, float) else t
+            for prev, t in zip(["", *toks], toks, strict=False)
+        ]
+        claims: dict[str, float] = {}
+        for i, (t, n) in enumerate(zip(toks, toks[1:], strict=False)):
+            after = toks[i + 2] if i + 2 < len(toks) else None
+            if (
+                t in one
+                and isinstance(n, float)
+                and (after is None or after in one or after == "and")
+            ):
+                claims[one[t]] = n
+        if len(claims) == 2 and claims == {"home": s["away"], "away": s["home"]}:
+            wrong.append(
+                f"{claims['home']:g}, {claims['away']:g} puts the scores on the wrong teams"
+            )
+        for i, t in enumerate(toks):  # "a-b to the X"
+            if t not in one:
+                continue
+            j = i - 1
+            if j >= 0 and toks[j] == "the":
+                j -= 1
+            if j < 0 or toks[j] != "to":  # "113-96, Toronto ..." is no "to Toronto"
+                continue
+            j -= 1
+            b = toks[j] if j >= 0 else None
+            a = toks[j - 1] if j >= 1 and isinstance(toks[j - 1], float) else None
+            if a is None and j >= 2 and toks[j - 1] == "to":
+                a = toks[j - 2] if isinstance(toks[j - 2], float) else None
+            other = "away" if one[t] == "home" else "home"
+            if any(one.get(w) == other for w in toks[:j]):  # "Orlando trails 2-3 to the Courage"
+                continue
+            if isinstance(b, float) and a is not None and a != b:
+                mine = s[one[t]]
+                if (a, b) == (s["away" if one[t] == "home" else "home"], mine) and a != mine:
+                    wrong.append(f"{a:g}-{b:g} to {header[one[t]]} puts their score last")
+    return wrong
+
+
 MARGIN = (  # "Bulls down three", "Utah up by five", "the Jazz lead by two"; not "lead 86-85"
     r"\s+(?:(?:are|is|now|still)\s+)*(?:down|up|leads?|trails?|ahead|behind)\s+(?:by\s+)?"
     r"(\d+|[a-z]+(?:-[a-z]+)?)\b(?!\s*[-–]\s*\w|\s+(?:to|seconds?|minutes?|left)\b)"
@@ -1241,7 +1305,7 @@ def _wrong_margin(text: str, m: dict, header: dict) -> list[str]:
     margins = {float(abs(s["home"] - s["away"]))}
     if so:
         margins.add(float(abs(so["home"] - so["away"])))
-    _, names = _sides(header)
+    side, names = _sides(header)
     wrong = []
     for hit in re.finditer(rf"\b(?:{names}){MARGIN}", text, re.I):
         # the whole spoken number, then what follows it: "lead one hundred and two to ninety-three"
@@ -1251,7 +1315,8 @@ def _wrong_margin(text: str, m: dict, header: dict) -> list[str]:
         n, *after = said(text[hit.start(1) : hit.start(1) + 48]) or [None]
         n = 1.0 if n == "one" else n
         if isinstance(n, float) and not (
-            after and (isinstance(after[0], float) or after[0] in ("to", "one"))  # "lead two, one"
+            # "lead two, one"; "Lakers lead 121, Raptors 102" (a team's name after it is a score)
+            after and (isinstance(after[0], float) or after[0] in ("to", "one", *side))
         ):
             if n not in margins:
                 wrong.append(f"{n:g} is not the margin ({min(margins):g})")
@@ -1312,6 +1377,7 @@ def wrong_numbers(
             _false_lead(text, m, header)
             + _wrong_margin(text, m, header)
             + _flipped_lead(text, m, header)
+            + _swapped_teams(text, m, header)
         )
         if m.get("sport") == "football":
             wrong += _wrong_score(text, m)
@@ -1930,8 +1996,8 @@ def stat_moment(m: dict, said_as: dict, reply: bool) -> dict:
             if "next" in said_as
             else {}
         ),
-        # how big the moment is: the pair matches its delivery to it (#378); the voice reads it too
-        "intensity": "calm" if said_as.get("kind") == OPEN else intensity(m),
+        # a stat line reads calm whatever moment it follows: only the call is lifted
+        "intensity": "calm",
         f"{NAMES[by]} just said": said_as["heard"],
         **({"never open with": said_as["never open with"]} if "never open with" in said_as else {}),
         **({"never say": said_as["never say"]} if "never say" in said_as else {}),

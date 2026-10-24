@@ -10,8 +10,8 @@ updates for a recurring task." Track: Own your intelligence layer.
 
 Demo: Kobe Bryant's 81 against Toronto (2006) replays and Touchline calls it aloud, the first word of text in
 about 0.5 s (median), the producer fixes one wrong line, the big model's recorded lines are shown
-where our trained commentator's will go (6 versions trained, none has passed Mubit's test yet, best
-55.8%, and the app does not call an adapter), then one tap switches to India v Pakistan 2022 and the same commentator calls cricket.
+where our trained commentator's will go (7 adapters on Mubit's console, none has passed its test yet, best
+58.3%, and the app does not call an adapter), then one tap switches to India v Pakistan 2022 and the same commentator calls cricket.
 
 ## Shared core
 

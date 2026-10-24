@@ -8,6 +8,7 @@ starts playing before the whole file is made. The key stays on the server."""
 import asyncio
 import logging
 import os
+import re
 import sys
 import time
 from datetime import UTC, datetime
@@ -144,24 +145,21 @@ def _goal_stakes(m: dict) -> str | None:
 
 def intensity(moment: dict) -> str:
     """How big a moment is: the tag its call gets, and for a football goal the game's state; a stat
-    line carries its moment's (#378)."""
+    line is always calm, whatever it follows (the lead's call, over #378's shared lift)."""
     if moment.get("type") == "Stat":
-        return (moment.get("detail") or {}).get("intensity", "calm")
+        return "calm"
     return _goal_stakes(moment) or {"[shouting]": "high", "[excited]": "medium"}.get(
         _call_tag(moment), "calm"
     )
 
 
-# How the pair sounds at each intensity: one tag for both voices, so they share a pitch and tone
-# like two people in one booth (#378); a big moment lifts them together.
-PAIR_TAG = {"high": "[excited]", "medium": "[warmly]", "calm": None}  # routine reads plain
 # eleven_v3 takes stability at 0 (creative), 0.5 (natural) or 1 (robust) only
 STABILITY = {"high": 0.0, "medium": 0.5, "calm": 0.5}
 
 
 def tag_for(moment: dict) -> str | None:
-    if moment.get("type") == "Stat":  # a stat line or comeback: its moment's intensity, by speaker
-        return PAIR_TAG[intensity(moment)]
+    if moment.get("type") == "Stat":  # a stat line or comeback reads plain, whatever it follows
+        return None
     tag = _call_tag(moment)
     return None if tag == "[shouting]" and intensity(moment) == "medium" else tag  # not a big one
 
@@ -289,6 +287,7 @@ class Speaker:
         self.clips: dict[tuple[str, str], Clip] = {}  # each job's audio as it streams in
         self.tags: dict[str, str | None] = {}
         self.stability: dict[str, float] = {}
+        self.stats: dict[str, bool] = {}  # a stat line is spoken calm: its "!" read as "."
         self.slots = asyncio.Semaphore(CONCURRENCY)
         self.closed_until = 0.0  # time.monotonic() the 429 breaker lets calls through again
         # shortcut: per process; one Cloud Run instance today, a shared store if it ever runs more
@@ -342,6 +341,7 @@ class Speaker:
         moment plays, None to speak it as it arrives."""
         self.tags[line["line_id"]] = tag_for(moment)
         self.stability[line["line_id"]] = STABILITY[intensity(moment)]
+        self.stats[line["line_id"]] = moment.get("type") == "Stat"
         if os.environ.get("ELEVENLABS_API_KEY"):
             self._job(line, voice_of(line), deadline)
 
@@ -396,6 +396,8 @@ class Speaker:
             del self.tags[next(iter(self.tags))]
         while len(self.stability) > KEEP_JOBS * 4:
             del self.stability[next(iter(self.stability))]
+        while len(self.stats) > KEEP_JOBS * 4:
+            del self.stats[next(iter(self.stats))]
         return job
 
     def _ended(self, key: tuple[str, str], job: asyncio.Task, clip: Clip) -> None:
@@ -434,7 +436,10 @@ class Speaker:
         else:
             said = self.tags.get(line["line_id"])
         tag = said if "v3" in model else None
-        text = f"{tag} {line['text']}" if tag else line["text"]
+        text = line["text"]
+        if self.stats.get(line["line_id"]) and "question" not in line:
+            text = re.sub(r"!+", ".", re.sub(r"\?!+", "?", text))  # read calm, not hot
+        text = f"{tag} {text}" if tag else text
         # made ahead (a video time still to come): one long v3 call, not two squeezed ones
         ahead = deadline is not None and deadline > time.monotonic()
         async with httpx.AsyncClient(transport=self.transport) as client:

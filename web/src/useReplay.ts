@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react'
 import { Refused } from './ask'
 import { askCommentator, createReplay, followReplay, getPlayers, getProfile, getShots, lookAt, waitForExample, type StreamStatus } from './api'
-import { release, replayClock, speaks } from './gate'
+import { fresh, release, replayClock } from './gate'
+import { ENDED, gone } from './ended'
 import { TEACHES } from './proof'
 import type { Answer, Fix, Line, LineCheck, LineCheckExample, Moment, Stats } from './types'
 
@@ -130,17 +131,16 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
   }, [onLine, onRewind])
 
   // Speak each newly presented line once, unless it was released late or said before a jump (#163).
-  const spoken = useRef<string | null>(null)
+  // Every line new in a render goes to the speaking queue, oldest first: it drops a fill, never a call.
+  const seen = useRef(new Set<string>())
   const spokenAt = useRef<number | null>(null) // video time of the line being spoken
-  const newest = state.lines[0]
   useEffect(() => {
-    if (!newest || newest.line_id === spoken.current) return
-    spoken.current = newest.line_id
-    if (speaks(newest, state.late)) {
-      spokenAt.current = newest.video_t ?? null
-      said.current(newest)
+    if (!state.lines.length) seen.current.clear() // a new replay
+    for (const line of fresh(state.lines, seen.current, state.late)) {
+      spokenAt.current = line.video_t ?? null
+      said.current(line)
     }
-  }, [newest, state.late])
+  }, [state.lines, state.late])
 
   // Seeking back before the line being spoken stops the voice: it would describe the future.
   const at = useRef(0) // where the picture was at the last tick
@@ -232,6 +232,18 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
 
   useEffect(() => () => stop.current?.(), [])
 
+  // The server dropped this replay (#454): it has ended, and the page offers to start it again.
+  useEffect(() => {
+    const on = (e: Event) => {
+      if ((e as CustomEvent<string>).detail !== replayId.current) return
+      stop.current?.()
+      stop.current = null
+      dispatch({ type: 'failed', refused: ENDED })
+    }
+    gone.addEventListener('replay-gone', on)
+    return () => gone.removeEventListener('replay-gone', on)
+  }, [])
+
   // A fix's answer marks the line at once; the `fixed` event that follows on the stream is the same Fix.
   // A fix with a Wrong reason also sends Line check an example (#305), shown on its line once core has it.
   const markFixed = useCallback((fix: Fix) => {
@@ -248,7 +260,7 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
     const id = replayId.current
     if (!id) return null
     const answer = await askCommentator(id, question, momentIdx)
-    if (run.current !== token) return null
+    if (!answer || run.current !== token) return null
     dispatch({ type: 'answer', answer })
     return answer
   }, [])

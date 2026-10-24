@@ -26,6 +26,9 @@ from core.predict import PACKS
 log = logging.getLogger("touchline.graph")
 SAMPLE = Path(__file__).resolve().parent.parent / "data" / "sample"
 STORE = Path(__file__).resolve().parent.parent / "data" / "graph"  # scripts/build_graph.py
+RESULTS = (
+    Path(__file__).resolve().parent.parent / "data" / "results"
+)  # cited results the feeds lack
 
 _db = None  # the connection once loaded; None means the JSON path
 _kv = None  # the on-disk store of every team and player of each sample competition
@@ -155,12 +158,17 @@ def start() -> float | None:
         return took
 
 
+def _ready() -> bool:
+    """True once the graph is loaded. start() holds the lock while it loads, so a reader waits for
+    the load in progress here instead of reading the packs."""
+    with _lock:
+        return _db is not None
+
+
 def _query(sql: str, params: dict):
-    if _db is None:
-        return None
     try:
         with _lock:
-            return _db.query(sql, params)
+            return _db.query(sql, params) if _db is not None else None
     except Exception as exc:
         log.warning("graph query failed, reading the pack: %s", type(exc).__name__)
         return None
@@ -175,7 +183,7 @@ FROM ONLY $m"""
 def pack(match_id: str) -> dict | None:
     """What Follow a player reads of the match's pack, from the graph, in the pack's shape; None
     when the graph is off or lacks the match."""
-    if _db is None:
+    if not _ready():
         return None
     from surrealdb import RecordID
 
@@ -207,7 +215,7 @@ FROM $p->played_in WHERE out != $m ORDER BY date"""
 def library(sport: str, match_id: str, name: str) -> list[dict]:
     """Also in our library: the player's other matches, each with their teammates there. Never the
     match on screen, so nothing from it, later moments included, can show."""
-    if _db is None:
+    if not _ready():
         return []
     from surrealdb import RecordID
 
@@ -219,6 +227,30 @@ def library(sport: str, match_id: str, name: str) -> list[dict]:
 
 
 # --- the competition store: data/graph on disk, read by the contract functions below -------------
+
+
+def _add_results(kv, results: Path) -> None:
+    """Fixtures from data/results/*.json, each naming its source: [date, home, away, hg, ag]."""
+    from surrealdb import RecordID
+
+    for path in sorted(results.glob("*.json")):
+        data = json.loads(path.read_text(encoding="utf-8"))
+        batch = [
+            {
+                "id": RecordID("fixture", ["football", f"{path.stem}-{d}"]),
+                "sport": "football",
+                "mid": f"{path.stem}-{d}",
+                "competition": "NWSL",
+                "season": "2018",
+                "start": f"{d}T00:00:00",
+                "home": home,
+                "away": away,
+                "hg": hg,
+                "ag": ag,
+            }
+            for d, home, away, hg, ag in data["fixtures"]
+        ]
+        kv.query("INSERT INTO fixture $rows RETURN NONE", {"rows": batch})
 
 
 def _open_store(path: Path = STORE) -> None:
@@ -233,17 +265,17 @@ def _open_store(path: Path = STORE) -> None:
         _kv = Surreal(f"surrealkv://{work}")
         _kv.connect()
         _kv.use("touchline", "follow")
+        if path == STORE:  # a test's own store is exactly what it built
+            _add_results(_kv, RESULTS)
     except Exception as exc:
         _kv = None
         log.warning("competition graph off, callers read the packs: %s", type(exc).__name__)
 
 
 def _rows(sql: str, params: dict) -> list[dict] | None:
-    if _kv is None:
-        return None
     try:
-        with _lock:
-            return _kv.query(sql, params)
+        with _lock:  # waits for a load in progress
+            return _kv.query(sql, params) if _kv is not None else None
     except Exception as exc:
         log.warning("graph query failed, reading the packs: %s", type(exc).__name__)
         return None
@@ -288,24 +320,43 @@ def _gender(sport: str, team: str, cut: str) -> str | None:
     return last[0].get("gender") if last else None
 
 
-def team_form(sport: str, team: str, before: str, n: int = 5) -> list[dict]:
-    """The team's last `n` matches before `before`, newest first, score as the team's own."""
+def team_form(
+    sport: str, team: str, before: str, n: int = 5, gender: str | None = None
+) -> list[dict]:
+    """The team's last `n` matches before `before`, newest first, score as the team's own. `gender`
+    ("male"/"female") says which side a shared team name means; else the latest match's."""
     if (cut := _utc(before)) is None:
         return []
-    g = _gender(sport, team, cut)
+    g = gender or _gender(sport, team, cut)
     more, extra = (GENDERED, {"g": g}) if g else ("", {})
     found = _rows(FIXTURES.format(more=more), {"s": sport, "t": team, "b": cut, "n": n, **extra})
     return [_result(f, team) for f in found or []]
 
 
-def head_to_head(sport: str, a: str, b: str, before: str, n: int = 5) -> list[dict]:
+def head_to_head(
+    sport: str, a: str, b: str, before: str, n: int = 5, gender: str | None = None
+) -> list[dict]:
     """The last `n` meetings of a and b before `before`, newest first, seen from a."""
     if (cut := _utc(before)) is None:
         return []
-    g = _gender(sport, a, cut)
+    g = gender or _gender(sport, a, cut)
     sql = FIXTURES.format(more="AND (home = $o OR away = $o)" + (GENDERED if g else ""))
     found = _rows(sql, {"s": sport, "t": a, "o": b, "b": cut, "n": n, **({"g": g} if g else {})})
     return [_result(f, a) for f in found or []]
+
+
+def first_match(sport: str, team: str, before: str) -> str | None:
+    """The "first match on record" note when the store has the team only from `before` on."""
+    if (cut := _utc(before)) is None:
+        return None
+    found = _rows(FIXTURES.format(more=""), {"s": sport, "t": team, "b": cut, "n": 1})
+    if found != []:  # off, failed, or there is an earlier game
+        return None
+    anywhere = _rows(
+        "SELECT * FROM fixture WHERE sport = $s AND (home = $t OR away = $t) LIMIT 1",
+        {"s": sport, "t": team},
+    )
+    return f"This is {team}'s first match on record" if anywhere else None
 
 
 APPEARANCES = "SELECT * FROM appearance WHERE sport = $s AND {who} = $w"
@@ -368,9 +419,15 @@ def player_season(sport: str, name: str, before: str) -> dict | None:
     }
 
 
-def squad(sport: str, team: str, before: str) -> list[dict]:
+def _headline(n: float, stat: str, games: int) -> str:
+    return f"{n:g} {stat[:-1] if n == 1 else stat} in {games}"  # "1 goal", "2 goals"
+
+
+def squad(sport: str, team: str, before: str, gender: str | None = None) -> list[dict]:
     """Who played for the team in its newest competition-season before `before`, best first."""
     apps = _games(sport, "team", team, before)
+    if apps and gender:
+        apps = [a for a in apps if a["gender"] == gender]
     if not apps:
         return []
     by: dict[str, list[dict]] = {}
@@ -379,7 +436,7 @@ def squad(sport: str, team: str, before: str) -> list[dict]:
     lead = LEAD.get(sport, "points")
     ranked = sorted(by.items(), key=lambda kv: (-_sum(kv[1]).get(lead, 0), -len(kv[1]), kv[0]))
     return [
-        {"name": n, "matches": len(a), "headline": f"{_sum(a).get(lead, 0):g} {lead} in {len(a)}"}
+        {"name": n, "matches": len(a), "headline": _headline(_sum(a).get(lead, 0), lead, len(a))}
         for n, a in ranked
     ]
 

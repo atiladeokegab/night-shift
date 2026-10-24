@@ -136,7 +136,7 @@ def test_the_fallback_says_the_time_and_the_lead_once():
     cricket = upto(14, CRICKET)[-1]
     assert (
         st.fallback_text(match_header(CRICKET), cricket)
-        == "Innings 1, over 13.2. Pakistan 96 for 4."
+        == "Innings 1, over 13.2. Pakistan 96 for 4. Shan Masood batting."
     )
 
 
@@ -165,8 +165,13 @@ def test_one_nil_is_a_score_and_a_milestone_is_not_asked_for():
 
 def test_f1_and_a_first_innings_send_the_real_leader():
     assert "Who leads: Esteban Ocon leads\n" in sent("9636", 7)  # P1 on lap 29
-    assert "Who leads: no one yet, Pakistan batting first\n" in sent(CRICKET, 14)
-    assert "Who leads: India need 150 runs from the last 100 balls\n" in sent(CRICKET, 28)
+    assert "Who leads: no one yet, Pakistan batting first, 4 down; Shan Masood batting\n" in sent(
+        CRICKET, 14
+    )
+    assert (
+        "Who leads: India need 150 runs from the last 100 balls, 2 down; V Kohli batting\n"
+        in sent(CRICKET, 28)
+    )
 
 
 def test_f1_says_the_lap_out_of_the_race_s_own_total_never_another_race_s():
@@ -245,3 +250,27 @@ def test_at_the_end_the_winner_never_still_leads():
 )
 def test_the_status_phrases(question, yes):
     assert wants_status(question) is yes
+
+
+def test_cricket_status_names_the_batters_and_the_wickets():
+    # Pakistan v India over 17.2: 129 for 7, Masood and Afridi in; it said "No one yet" and no names
+    assert (
+        "Who leads: no one yet, Pakistan batting first, 7 down; "
+        "Shan Masood and Shaheen Shah Afridi batting\n" in sent(CRICKET, 20)
+    )
+    m = upto(20, CRICKET)
+    out = st.status(
+        m, provider=Says("Pakistan 129 for 7, no one yet.")
+    )  # names no batter: the data speaks
+    assert (
+        "Shan Masood and Shaheen Shah Afridi batting" in out["text"] and "129 for 7" in out["text"]
+    )
+    named = st.status(m, provider=Says("Pakistan 129 for 7, Masood and Afridi in."))
+    assert named["text"] == "Pakistan 129 for 7, Masood and Afridi in."
+    assert wants_status("Who's batting?") and wants_status("who is at the crease")
+
+
+def test_a_batter_is_named_by_whole_surname_only():
+    assert not st.names_a_batter("Pakistan 129 for 7, really holding on.", "Moeen Ali")
+    assert st.names_a_batter("Pakistan 129 for 7, Moeen Ali in.", "Moeen Ali")
+    assert st.names_a_batter("ali and masood see it out", "Shan Masood and Moeen Ali")

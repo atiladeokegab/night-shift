@@ -378,8 +378,8 @@ def test_the_final_round_after_a_tool_streams_its_first_sentence_early():
 
 
 def test_a_final_round_sentence_is_checked_against_the_tools_outputs():
-    given = converse.checked("Reds 7, Blues 0.", "Who scored?", MOMENTS[:2], [])
-    with_tool = converse.checked(
-        "Reds 7, Blues 0.", "Who scored?", MOMENTS[:2], [], ["Reds 7, Blues 0"]
-    )
+    text = "Reds 7, Blues 0."
+    given = converse.checked({"text": text}, "Who scored?", MOMENTS[:2], [])
+    tool = {"text": text, "tool_calls": [{"output": "Reds 7, Blues 0"}]}
+    with_tool = converse.checked(tool, "Who scored?", MOMENTS[:2], [])
     assert not given and with_tool

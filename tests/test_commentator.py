@@ -324,7 +324,7 @@ def test_jordans_last_shot_reaches_the_model_with_names_and_score():
     message = commentator.render_message(match_header("0049700088"), moments[: shot["idx"] + 1])
     assert "Sport: basketball" in message and "Moment: quarter 4, 00:05" in message
     assert "shooter: Michael Jordan" in message
-    assert "Score after this moment: Utah Jazz 86, Chicago Bulls 87" in message
+    assert "Score after this moment: Chicago Bulls 87, Utah Jazz 86" in message
 
 
 def test_kobes_81st_point_reaches_the_model():
@@ -613,3 +613,37 @@ def test_a_line_says_which_model_served_it_from_the_reply_and_keeps_mubits_heade
     line = line_for(FOOT, [moment(FOOT, 0)], 0, provider)
     assert line["served_by"] == "some-adapter-v3" and line["model"] == commentator.MODEL
     assert line["mubit_request_ids"] == ["mreq_1"]
+
+
+def test_the_side_ahead_is_named_first_in_the_score_the_model_reads():
+    """Live 00163: given "Lakers 53, Raptors 69", the model said "Toronto leads fifty-three to
+    sixty-nine". Away ahead flips the order; home ahead and level keep it; so does cricket."""
+    moments, header = load_moments("0020500591"), match_header("0020500591")
+    away = next(m for m in moments if m["idx"] == 3)  # Raptors 69, Lakers 53
+    home = next(m for m in moments if m["idx"] == 22)  # Lakers 121, Raptors 102
+    tied = next(m for m in moments if m["idx"] == 2)  # 5-5
+    score = commentator._score_leader_first
+    assert score(header, away) == "Toronto Raptors 69, Los Angeles Lakers 53"
+    assert score(header, home) == "Los Angeles Lakers 121, Toronto Raptors 102"
+    assert score(header, tied) == "Los Angeles Lakers 5, Toronto Raptors 5"
+    assert "Score after this moment: Toronto Raptors 69, Los Angeles Lakers 53" in (
+        commentator.render_message(header, moments[:4])
+    )
+    cricket = load_moments("1298150")
+    h = match_header("1298150")
+    assert score(h, cricket[5]) == commentator._score(h, cricket[5])
+
+
+def test_a_leader_first_line_passes_the_number_check():
+    from core import insight
+
+    moments, header = load_moments("0020500591"), match_header("0020500591")
+    m = next(m for m in moments if m["idx"] == 3)
+    line = "Bryant's ten-footer, thirty points, but Toronto lead sixty-nine to fifty-three."
+    assert insight.wrong_numbers(line, m, header, moments[:3]) == []
+    assert (
+        insight.wrong_numbers(
+            "Toronto Raptors 69, Los Angeles Lakers 53, Bryant has thirty.", m, header, moments[:3]
+        )
+        == []
+    )
