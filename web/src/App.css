@@ -279,7 +279,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   .scorebar { flex: 1 1 auto; min-width: 0; gap: 6px 10px; padding: 8px 12px; font-size: .95rem; }
   .onair { flex: none; padding: 9px 12px; }
   .score { font-size: 1.25rem; }
-  .onair .who, .onair .bars, .dock .back { display: none; }
+  .onair .who, .onair .bars { display: none; }
   /* The score bar keeps two rows (teams and score; clock and period or chase): no REPLAY tag or rule. */
   .scorebar .replay, .scorebar .sep { display: none; }
   .subtitle { bottom: 170px; gap: 12px; }
@@ -293,10 +293,10 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   .subtitle p { font-size: 1.45rem; }
   .dock { bottom: 56px; }
   .dock .btn { padding: 0 10px; }
-  /* Four sports: the sport tabs take the dock's first row whole, the voice and next match the second;
-     the subtitle sits above both. The tabs still scroll if a fifth sport ever doesn't fit. */
+  /* Four sports: the sport tabs take the dock's first row whole, the back arrow, the voice and next match
+     the second; the subtitle sits above both. The tabs still scroll if a fifth sport ever doesn't fit. */
   .dock .glass { max-width: 100%; }
-  .seg { flex: 1 1 100%; justify-content: center; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+  .seg { order: -1; flex: 1 1 100%; justify-content: center; min-width: 0; overflow-x: auto; scrollbar-width: none; }
   .seg button { padding: 0 12px; flex: none; }
   /* A long voice name shortens with an ellipsis rather than pushing "Next match" onto a third row,
      which would rise over the subtitle; the voice sheet shows the full name. */
@@ -314,6 +314,11 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
      so a tall phone shows no empty band (375x667 is already at that height). */
   :root:has(.novideo) { --stage-h: min(76svh, 510px); }
 }
+/* On a phone the way back stays: an icon-only arrow with a full 44px tap target (its name is in aria-label). */
+@media (max-width: 760px), (orientation: landscape) and (max-height: 500px) {
+  .dock .back { display: inline-flex; flex: none; width: 44px; height: 44px; padding: 0; font-size: 1.1rem; }
+  .dock .back span { display: none; }
+}
 /* A phone on its side: the stage takes the whole screen and the dock one row, so the score bar, the
    no-video caption, the subtitle and the dock stack without touching. */
 @media (orientation: landscape) and (max-height: 500px) {
@@ -324,10 +329,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   .subtitle { bottom: 124px; gap: 8px; }
   .subtitle p { font-size: 1.2rem; max-width: 52ch; }
   .dock { bottom: 60px; }
-  /* The way back stays: an icon-only arrow with a full 44px tap target (its name is in aria-label). */
-  .dock .back { display: inline-flex; flex: none; width: 44px; height: 44px; padding: 0; font-size: 1.1rem; }
-  .dock .back span { display: none; }
-  .seg { flex: 0 0 auto; }
+  .seg { order: 0; flex: 0 0 auto; }
   .dock .voice { flex: 1 1 0; min-width: 0; }
   .dock .voice span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .timeline { bottom: 18px; }
