@@ -79,3 +79,68 @@ def parse(text: str) -> dict | None:
     if not isinstance(out, dict) or list(out) != list(FIELDS):
         return None
     return out if all(out[f] in LABELS for f in FIELDS) else None
+
+
+# A producer's fix with one of these reasons also teaches Line check (#298); Tone and Other don't
+TEACHES = ("Wrong score", "Wrong player", "Wrong fact")
+
+
+def check(header: dict, m: dict, past: list[dict], text: str, provider) -> dict:
+    """The live second opinion (#298) on `text` said over moment m: the seeded request exactly
+    (eval/linecheck.py `build_request`), so the call joins the recorded task. `wrong` lists the
+    fields it calls wrong; `labels` is None when the reply isn't the one canonical line."""
+    from eval.linecheck import build_request
+
+    reply = provider.call(build_request(header, m, past, text))
+    labels = parse("".join(b.get("text", "") for b in reply["content"] if b["type"] == "text"))
+    return {
+        "labels": labels,
+        "wrong": [f for f in FIELDS if labels and labels[f] == "wrong"],
+        "model": MODEL,
+        "tokens_in": reply["usage"]["input_tokens"],
+        "tokens_out": reply["usage"]["output_tokens"],
+        "mubit_request_id": reply.get("request_id"),
+    }
+
+
+def live_check(line: dict, m: dict, past: list[dict]) -> dict:
+    """`check` as the replay runs it: recorded as MUBIT_RECORD says, but a held-out match's line
+    never, so the test set never trains the adapter."""
+    from agent.commentator import default_provider, unrecorded_provider
+    from data.matches import match_header
+    from eval.linecheck import HELD_OUT
+
+    held = line["match_id"] in HELD_OUT
+    provider = unrecorded_provider() if held else default_provider()
+    return check(match_header(line["match_id"]), m, past, line["text"], provider)
+
+
+def teach(line: dict, provider=None) -> dict | None:
+    """A producer's fix as one recorded Line check example (#298): the line as first said, its
+    moment's facts, and the answer key code gives (eval/linecheck.py `gold`); a reply that
+    disagrees gets the correction turn with the key's exact JSON, as the seeding does. None, and
+    no call, when code can't decide a field, for a held-out match, a stat line, or no recorder
+    (the owner's key, else the lines' provider when it records)."""
+    from agent.commentator import correction_provider, default_provider
+    from data.matches import load_moments, match_header
+    from eval.linecheck import HELD_OUT, example_id, gold
+    from eval.seed_linecheck import _go_one
+
+    mid, idx, text = line.get("match_id"), line.get("moment_idx"), line.get("tried") or line["text"]
+    if mid in HELD_OUT or line.get("speaker") == "analyst" or "reply" in line or "insight" in line:
+        return None
+    if provider is None:
+        provider = correction_provider() or default_provider()
+        if not getattr(provider, "record", False):
+            return None
+    try:
+        header, moments = match_header(mid), load_moments(mid)
+    except KeyError:  # not a bundled match: no facts to check against
+        return None
+    i = next((i for i, m in enumerate(moments) if m["idx"] == idx), None)
+    key = gold(header, moments[i], moments[:i], text) if i is not None else None
+    if key is None:
+        return None
+    ex = {"id": example_id(mid, idx, text), "match_id": mid, "idx": idx, "text": text, "gold": key}
+    kind, _ = _go_one(ex, provider)  # matched, corrected, uncorrected, leader_only or error
+    return {"kind": kind, "gold": dumps(key)}
