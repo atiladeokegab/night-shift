@@ -33,7 +33,7 @@ class Deps:
     list_matches: Callable[[], list[dict]]
     load_moments: Callable[[str], list[dict]]
     commentate: Callable[[dict, list[dict]], dict]
-    video_map: Callable[[str], dict | None] = lambda match_id: None
+    video_map: Callable[..., dict | None] = lambda match_id, start_idx=None: None
     correct: Callable[[dict, str], dict] | None = None
     ask: Callable[[str, list[dict], list[dict]], dict] | None = None
 
@@ -51,6 +51,7 @@ def default_deps() -> Deps:
 class ReplayRequest(BaseModel):
     match_id: str
     speed: float = Field(10.0, gt=0)
+    start_idx: int | None = Field(None, ge=0)  # start at this moment: nothing before it is called
 
 
 class FixRequest(BaseModel):
@@ -109,11 +110,15 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
             moments = d.load_moments(req.match_id)
         except (KeyError, FileNotFoundError) as exc:
             raise HTTPException(404, f"no match {req.match_id!r}") from exc
+        jump = req.start_idx
+        if jump is not None and not any(m["idx"] == jump for m in moments):
+            raise HTTPException(422, f"no moment {jump} in {req.match_id!r}")
         replay = Replay(req.match_id, req.speed)
         replays[replay.id] = replay
-        video = d.video_map(req.match_id)
+        # a jump starts the video just before its moment (#163), as GET /matches' peak_video_start
+        video = d.video_map(req.match_id) if jump is None else d.video_map(req.match_id, jump)
         task = asyncio.create_task(
-            run_replay(replay, moments, d.commentate, store, video, speaker.prepare)
+            run_replay(replay, moments, d.commentate, store, video, speaker.prepare, jump or 0)
         )
         tasks.add(task)
         task.add_done_callback(tasks.discard)
@@ -188,6 +193,7 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
                 "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
                 "mubit_request_id": sent["mubit_request_id"],
                 "reply_matched": sent["reply_matched"],
+                "recorded": sent.get("recorded", False),  # sent to Mubit for training (#161)
             },
         )
         for replay in replays.values():

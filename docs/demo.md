@@ -107,7 +107,7 @@ fix can't be chosen in advance. If a line has a factual slip, fix that. Otherwis
 wording, for example American spelling ('defense' to 'defence') or a vaguer line to name the player.
 Keep the correction to a word or two, typed in a few seconds. The sheet shows what Touchline said,
 with the line ready to correct. Type the correction and send. The line shows Fixed and the proof
-panel's fix count goes up by one.*
+card's Training "Fixes" goes up by one.*
 
 "Say a line is wrong. A producer corrects it right here. The fix is kept beside the original, and it
 is recorded for training on the owner's Mubit app."
@@ -151,6 +151,40 @@ date, the commit deployed on main and the total time. Check in particular:
 - the wall's Kobe tap calls the 30-point jumper at 8:10;
 - the voice changes when the sport changes;
 - a fix shows as Fixed and the proof panel's fix count goes up by one.
+
+### Timed rehearsal with "Jump to the big moment" (#163)
+
+Every wall tile has a **Jump to the big moment** pill at its top left. It opens the same live stage
+with the video 10 s before the match's peak and the commentary starting at that moment: nothing
+earlier is called, but the commentator knows the score. It replaces the Stage tab's pause and drag.
+
+Seconds are from when the video starts playing (a second or two after the tap), taken from the
+checked-in video map; nobody has watched them live yet. Run it with a stopwatch and correct this table.
+
+| Match | Button | Video starts | Beats (s after play) | Ends |
+|---|---|---|---|---|
+| Kobe's 81 v Toronto | Jump to the big moment | 23:43 | 10 free throw for 80 · 20 free throw for 81 · 40 Bonner's jumper | 79 buzzer |
+| Jordan's last shot as a Bull | Jump to the big moment | 22:34 | 10.5 the steal · 23.5 the shot | 54 buzzer |
+| India v Pakistan | Jump to the big moment | 13:56 | 10 last-over wicket · 33 six · 102 wicket | 150 last ball |
+| Messi v Mbappé | Jump to the big moment | 10:18 | 10.8 first penalty, then one about every 6 s | 46.4 full time |
+| Verstappen, P17 to P1 | Jump to the big moment | 2:08 | 10.4 into P1 | 24.2 chequered flag |
+| Battle of the Bridge | Jump to the big moment | 1:54 | 10.4 Hazard's equaliser | 10.4 |
+
+The two-minute run with the jump, Kobe as the peak:
+
+1. **0:00** Wall tab. The promise (script step 1).
+2. **0:15** Tap Kobe's **Jump to the big moment**. "Forty-three seconds left. Kobe's on the line."
+3. **0:27** The free throw for 80 is called; **0:37** the free throw for 81. Stop talking for both.
+4. **0:45** "Those lines were written from the real play-by-play and held until each shot reached the
+   picture."
+5. **1:36** The buzzer is called. **Ask after full time:** type or say "How many did Kobe score?" in
+   the Ask box. A finished replay keeps answering for at least a minute after the buzzer
+   (REJOIN_S + 60 s, #163 and #157).
+6. **1:45** If there's time, ← Wall, then India v Pakistan's **Jump to the big moment**: the last-over
+   wicket is called by Raju 10 s after play (script step 4), then the proof (step 6) and close.
+
+Kobe's buzzer at 79 s leaves no room for the fix (script step 5) inside two minutes; do the fix on
+India v Pakistan's lines instead of Ask, or drop Ask.
 
 ### Kobe cue check, 2026-10-24 about 07:25 UTC
 
