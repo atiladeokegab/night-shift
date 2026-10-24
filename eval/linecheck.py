@@ -9,35 +9,15 @@ otherwise decide, gets no label (`gold` returns None) and is dropped, never gues
 from __future__ import annotations
 
 import hashlib
-import json
 import re
-from string import Template
 
 from agent.commentator import _match, _outcome, _score
+from agent.linecheck import FIELDS, LABELS, MESSAGE, dumps, parse, request  # noqa: F401
 from agent.status import _lead, _people
 from core import insight
 from data.matches import leader
 
-FIELDS = ("score", "leader", "player_total", "event")
-LABELS = ("ok", "wrong", "not_said")
 HELD_OUT = ("3913122", "9636")  # the WSL match and the F1 race: never sent to Mubit
-
-SYSTEM = """You check one line of live sports commentary against the facts of its moment.
-
-The user message gives the line, then the moment's facts: the score, who leads, the named player's running total, and what happened. For each of four fields, say whether the line's claim about it matches the facts:
-- "ok": the line states it, and it matches the facts.
-- "wrong": the line states it, and it contradicts the facts.
-- "not_said": the line does not state it.
-
-Fields: score (the score or standing, in any form, including a margin or a cricket chase's need), leader (who is in front, or that it is level), player_total (the named player's own running total tonight: points, goals), event (what just happened: the kind of event and how it ended).
-
-Reply with exactly one JSON object and nothing else, in this form:
-{"score": "ok", "leader": "not_said", "player_total": "not_said", "event": "ok"}"""  # noqa: E501
-
-MESSAGE = Template(
-    "Line: $line\nSport: $sport\nMatch: $match\nScore: $score\nLeader: $lead\n"
-    "Player total: $total\nEvent: $event"
-)
 
 
 def example_id(match_id: str, idx: int, text: str) -> str:
@@ -84,30 +64,8 @@ def facts(header: dict, m: dict, past: list[dict]) -> str:
     )
 
 
-def build_request(header: dict, m: dict, past: list[dict], text: str, model: str) -> dict:
-    return {
-        "model": model,
-        "max_tokens": 60,
-        "temperature": 0,
-        "system": SYSTEM,
-        "metadata": {"user_id": "line-check"},
-        "messages": [{"role": "user", "content": facts(header, m, past).replace("$line", text, 1)}],
-    }
-
-
-def parse(text: str) -> dict | None:
-    """The reply as {field: label}, or None unless it is exactly one such JSON object."""
-    try:
-        out = json.loads(text)
-    except (TypeError, ValueError):
-        return None
-    if not isinstance(out, dict) or set(out) != set(FIELDS):
-        return None
-    return out if all(out[f] in LABELS for f in FIELDS) else None
-
-
-def dumps(label: dict) -> str:
-    return json.dumps({f: label[f] for f in FIELDS})
+def build_request(header: dict, m: dict, past: list[dict], text: str) -> dict:
+    return request(facts(header, m, past).replace("$line", text, 1))
 
 
 # --- the claims ------------------------------------------------------------------------------
