@@ -13,7 +13,7 @@ import time
 from datetime import UTC, datetime
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import Response, StreamingResponse
 
 log = logging.getLogger("touchline.voice")
@@ -532,6 +532,15 @@ def env_with_dotenv(path=".env", env=os.environ) -> dict:
     return out
 
 
+def safari(user_agent: str | None) -> bool:
+    """Safari, desktop or iOS (every iOS browser is Safari underneath): it may not play a chunked
+    mp3 with no length, so it gets the whole file."""
+    ua = user_agent or ""
+    if "iPhone" in ua or "iPad" in ua:
+        return True
+    return "Safari" in ua and not any(b in ua for b in ("Chrome", "Chromium", "Android"))
+
+
 def voice_router(store, speaker: Speaker) -> APIRouter:
     router = APIRouter()
 
@@ -552,7 +561,9 @@ def voice_router(store, speaker: Speaker) -> APIRouter:
         ]
 
     @router.get("/lines/{line_id}/audio")
-    async def line_audio(line_id: str, voice: str | None = None):
+    async def line_audio(
+        line_id: str, voice: str | None = None, user_agent: str | None = Header(None)
+    ):
         # only stored lines, answers and screen-note lines (#291) are spoken, so the key can't read
         # out arbitrary text
         kinds = ("lines", "answers", "looks")
@@ -575,7 +586,11 @@ def voice_router(store, speaker: Speaker) -> APIRouter:
             raise HTTPException(503, "voice upstream failed")
         ms = (time.perf_counter() - started) * 1000
         log.info("voice line=%s first_byte_ms=%d model=%s", line_id, ms, clip.model)
-        if clip.whole:  # made already: a plain file, with its length
+        if safari(user_agent):
+            await clip.ended.wait()
+            if not clip.whole:  # cut off mid-stream: no whole file to send
+                raise HTTPException(503, "voice upstream failed")
+        if clip.whole:  # made already, or for Safari: a plain file, with its length
             return Response(b"".join(clip.chunks), media_type="audio/mpeg")
         return StreamingResponse(clip.follow(), media_type="audio/mpeg")
 
