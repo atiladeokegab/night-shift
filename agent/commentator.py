@@ -395,6 +395,7 @@ def line_for(header: dict, moments: list[dict], idx: int, provider) -> dict:
         "moment_idx": past[-1]["idx"],
         "text": text,
         "model": request["model"],
+        "served_by": reply.get("served_by"),  # None from FakeProvider: nothing answered
         "latency_ms": round((time.monotonic() - start) * 1000),
         "first_word_ms": round(offset + first) if first is not None else None,
         "tokens_in": sum(r["usage"]["input_tokens"] for r in replies),
@@ -567,15 +568,19 @@ class MubitProvider:
                 if first is None:
                     first = (time.monotonic() - start) * 1000
             msg = stream.get_final_message()
-            request_id = stream.response.headers.get("x-middleware-request-id")
+            headers = stream.response.headers
+        middleware = {k: v for k, v in headers.items() if k.lower().startswith("x-middleware-")}
         return {
             "content": [_block(b) for b in msg.content],
             "usage": {
                 "input_tokens": msg.usage.input_tokens,
                 "output_tokens": msg.usage.output_tokens,
             },
-            "request_id": request_id,
+            "request_id": middleware.get("x-middleware-request-id"),
             "first_word_ms": first,
+            # what answered, per Mubit's reply: the provider model, or an adapter once one serves
+            "served_by": msg.model,
+            "middleware": middleware,
         }
 
 
