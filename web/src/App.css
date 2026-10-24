@@ -9,7 +9,7 @@
   --body: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --ease: cubic-bezier(.2, .7, .2, 1);
   --mic: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='5' y='1' width='6' height='9' rx='3'/%3E%3Cpath d='M3 7.5a5 5 0 0 0 10 0M8 12.5V15' fill='none' stroke='black' stroke-width='1.5'/%3E%3C/svg%3E");
-  --stage-h: 100svh; --side-w: 384px; --gut: 32px;
+  --side-w: 384px; --gut: 32px; --nav-h: 76px;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -91,26 +91,39 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .about p { margin: 0; }
 .about strong { color: var(--fg); font-weight: 500; }
 
-/* Live page: the YouTube player is a layer (#video) under the overlays, filling the stage edge to edge. */
-#video { position: absolute; top: 0; left: 0; right: 0; height: var(--stage-h); overflow: hidden; background: #03050A; z-index: 0; }
-#video .player { position: absolute; inset: 0; }
-#video iframe { position: absolute; top: 50%; left: 50%; border: 0; pointer-events: none;
-  width: max(100%, calc(var(--stage-h) * 16 / 9)); height: max(100%, calc(100vw * 9 / 16)); transform: translate(-50%, -50%); }
+/* Live page (#132): a bounded 16:9 video card, the caption card docked under it and the sport bar above it;
+   Lines and Proof in a scrollable sidebar. Only the score bug and the ON AIR pill sit on the picture. */
+.live { min-height: 100svh; }
+.live-body { display: grid; grid-template-columns: minmax(0, 1fr) var(--side-w); gap: 24px; align-items: start; padding: 0 var(--gut) 24px; }
+/* The column is as tall as the sidebar beside it; the caption card takes the slack so both end together. */
+.live-main { display: flex; flex-direction: column; gap: 12px; align-items: center; min-width: 0; min-height: calc(100svh - var(--nav-h) - 24px); }
+.live-main > .caption { flex: 1 0 auto; }
+/* The card is as wide as the column allows while the nav, the bar, the card, its controls and a two-line
+   caption fit the screen's height, so the column ends where the sidebar does; never under 480px on a desktop. */
+.live-main > * { width: min(100%, max(480px, calc((100svh - var(--nav-h) - 300px) * 16 / 9))); }
+.pickbar { display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 16px; flex-wrap: wrap; }
+.pickbar .btn { height: 38px; border-color: transparent; background: none; font-size: .88rem; white-space: nowrap; }
+.pickbar .btn:hover:not(:disabled) { background: rgba(255, 255, 255, .07); border-color: transparent; }
+.pickbar .voice { margin-left: auto; min-width: 0; }
+.pickbar .voice span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.vcard { position: relative; display: flex; flex-direction: column; border-radius: 20px; overflow: hidden; background: #03050A;
+  border: 1px solid var(--line); box-shadow: 0 24px 64px -28px rgba(0, 0, 0, .7); }
+.frame { position: relative; aspect-ratio: 16 / 9; overflow: hidden; }
+#video { position: absolute; inset: 0; overflow: hidden; background: #03050A; }
+#video .player, #video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; pointer-events: none; }
 #video.dim .player { opacity: .45; filter: saturate(.6); transition: opacity .4s; }
 #video.off .player { display: none; }
-/* An embed-blocked video's poster: a still, darkened so the overlays read as they do over the picture. */
+/* An embed-blocked video's poster: a still, darkened so the no-video caption reads over it. */
 #video .still { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .3; }
-.live { position: relative; z-index: 1; }
-.stage { position: relative; height: var(--stage-h); }
-/* The bottom scrim is pinned in px to the subtitle lane (bottom 150px, two lines and the tag), so it sits
-   at 85% or more under the text at any stage height, however bright the frame. */
-.shade { position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(180deg, rgba(6, 8, 15, .78) 0%, rgba(6, 8, 15, 0) 24%),
-              linear-gradient(0deg, rgba(6, 8, 15, .92) 0, rgba(6, 8, 15, .85) 340px, rgba(6, 8, 15, 0) 520px),
-              radial-gradient(120% 90% at 40% 50%, transparent 55%, rgba(0, 0, 0, .5)); }
-.live .nav { position: absolute; top: 0; left: 0; right: 0; z-index: 3; }
-.lane { position: absolute; left: var(--gut); right: calc(var(--side-w) + var(--gut) + 16px); z-index: 2; }
-.hud { top: 84px; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+/* The score bug and ON AIR pill: small, inside the card's top edge, and the only things on the picture. */
+.bug { position: absolute; top: 10px; left: 10px; right: 10px; z-index: 2; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; pointer-events: none; }
+.bug .scorebar { padding: 7px 12px; gap: 6px 10px; font-size: .9rem; border-radius: 12px; min-width: 0; }
+.bug .score { font-size: 1.1rem; }
+.bug .clock { font-size: .95rem; }
+.bug .team i { height: 16px; }
+.bug .scorebar .replay, .bug .scorebar .sep { display: none; }
+.bug .onair { flex: none; padding: 7px 11px 7px 10px; }
+
 .scorebar { display: flex; align-items: center; gap: 14px; padding: 10px 16px; border-radius: 14px; font: 600 1.05rem/1 var(--display); flex-wrap: wrap; }
 .team { display: inline-flex; align-items: center; gap: 8px; letter-spacing: .02em; }
 .team i { width: 6px; height: 22px; border-radius: 3px; background: var(--c); box-shadow: 0 0 12px var(--c); }
@@ -131,32 +144,30 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .onair.on .bars span { animation: eq .55s ease-in-out infinite alternate; }
 .onair.on .bars span:nth-child(2) { animation-delay: .18s; } .onair.on .bars span:nth-child(3) { animation-delay: .36s; } .onair.on .bars span:nth-child(4) { animation-delay: .1s; }
 @keyframes eq { to { height: 14px; } }
-.subtitle { bottom: 150px; display: grid; justify-items: center; gap: 16px; text-align: center; }
-.subtitle .tag { font: 600 .7rem/1 var(--body); letter-spacing: .18em; text-transform: uppercase; color: var(--amber); padding: 7px 11px; border-radius: 999px;
-  background: rgba(255, 181, 71, .1); border: 1px solid rgba(255, 181, 71, .28); }
-.subtitle .tag.fixed { color: var(--fix); background: rgba(124, 212, 255, .1); border-color: rgba(124, 212, 255, .3); }
-.subtitle::before { content: ""; position: absolute; inset: -64px -18% -40px; z-index: -1; pointer-events: none; background: radial-gradient(closest-side, rgba(4, 6, 12, .82), rgba(4, 6, 12, .5) 62%, transparent); }
-.subtitle p { margin: 0; max-width: 34ch; font: 600 clamp(1.6rem, 3vw, 3rem)/1.12 var(--display); letter-spacing: -.02em; text-wrap: balance;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, .9), 0 2px 12px rgba(0, 0, 0, .8), 0 2px 30px rgba(0, 0, 0, .65); animation: rise .38s var(--ease); }
-.subtitle.fixed p { color: var(--fix); }
-.subtitle.waiting p { font: 500 1.15rem/1.4 var(--body); color: var(--muted); letter-spacing: 0; }
 @keyframes rise { from { opacity: 0; transform: translateY(10px); filter: blur(4px); } }
-.dock { bottom: 70px; display: flex; justify-content: center; }
-.dock .glass { display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 16px; flex-wrap: wrap; justify-content: center; }
-.dock .btn { height: 38px; border-color: transparent; background: none; font-size: .88rem; white-space: nowrap; }
-.dock .btn:hover:not(:disabled) { background: rgba(255, 255, 255, .07); border-color: transparent; }
 .seg { display: inline-flex; background: rgba(255, 255, 255, .05); border-radius: 12px; padding: 3px; }
 .seg button { height: 32px; padding: 0 16px; border: 0; background: none; border-radius: 9px; color: var(--muted); font: 500 .88rem/1 var(--body); transition: background .2s, color .2s; }
 .seg button[aria-pressed="true"] { background: rgba(255, 255, 255, .13); color: var(--fg); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1); }
-.timeline { bottom: 26px; display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; font: 500 .72rem/1 var(--body); color: var(--faint); }
+.controls { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-top: 1px solid var(--line); background: var(--glass); font: 500 .78rem/1 var(--body); color: var(--muted); }
+.ctl { flex: none; display: inline-grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 10px; background: none; color: var(--fg); }
+.ctl:hover:not(:disabled) { background: rgba(255, 255, 255, .08); }
+.ctl svg { width: 16px; height: 16px; }
+.controls .time { flex: none; min-width: 74px; }
+/* The scrubber: the moment track drawn under a transparent range input that takes the seeks. */
+.scrub { position: relative; flex: 1; min-width: 60px; height: 36px; display: flex; align-items: center; }
+.scrub .track { flex: 1; }
+.controls input[type="range"] { margin: 0; accent-color: var(--amber); background: none; cursor: pointer; }
+.scrub input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; }
+.scrub input:disabled { cursor: default; }
+.scrub:has(input:focus-visible) .track { outline: 2px solid var(--amber); outline-offset: 6px; }
+.controls .vol { flex: none; width: 76px; }
+.vcard:fullscreen { border: 0; border-radius: 0; justify-content: center; }
+.vcard:fullscreen .frame { width: min(100%, calc((100svh - 50px) * 16 / 9)); margin: 0 auto; }
+
 .track { position: relative; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, .14); }
 .track .played { position: absolute; inset: 0 auto 0 0; border-radius: 2px; background: rgba(255, 255, 255, .7); transition: width .6s var(--ease); }
 .track .mk { position: absolute; top: 50%; width: 7px; height: 7px; border-radius: 50%; transform: translate(-50%, -50%); background: rgba(255, 255, 255, .3); }
 .track .mk.done { background: var(--amber); box-shadow: 0 0 10px rgba(255, 181, 71, .7); }
-.clockline { display: inline-flex; align-items: center; gap: 10px; }
-.sync { padding: 4px 8px; border-radius: 999px; border: 1px solid var(--line-hi); color: var(--muted); }
-.yt { display: inline-flex; align-items: center; gap: 8px; }
-.yt svg { width: 14px; height: 14px; }
 .overlay { position: absolute; inset: 0; z-index: 4; display: grid; place-content: center; justify-items: center; gap: 18px; text-align: center; padding: 24px;
   background: rgba(6, 8, 15, .55); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); font: 500 1.35rem/1.3 var(--display); }
 /* A busy overlay (starting, loading highlights) dims the stage but never blocks the dock or the nav. */
@@ -165,20 +176,44 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .spin { width: 28px; height: 28px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .15); border-top-color: var(--amber); animation: spin .9s linear infinite; }
 .spin.sm { width: 16px; height: 16px; }
 @keyframes spin { to { transform: rotate(360deg); } }
-/* Its own small backdrop, so it reads over a bright frame like the subtitle does. */
-.novideo { position: absolute; top: 46%; left: var(--gut); right: calc(var(--side-w) + var(--gut) + 16px); transform: translateY(-50%); z-index: 1; width: fit-content; margin: 0 auto; padding: 6px 12px; border-radius: 10px; background: rgba(6, 8, 15, .78); text-align: center; color: var(--muted); font-size: .95rem; text-shadow: 0 1px 2px rgba(0, 0, 0, .9); }
+/* Its own small backdrop, so it reads over the blocked video's poster. */
+.novideo { position: absolute; top: 50%; left: 16px; right: 16px; transform: translateY(-50%); z-index: 1; width: fit-content; max-width: calc(100% - 32px); margin: 0 auto; padding: 6px 12px; border-radius: 10px; background: rgba(6, 8, 15, .78); text-align: center; color: var(--muted); font-size: .9rem; }
 .novideo a { color: var(--amber); display: inline-block; padding: 10px 4px; margin: -10px -4px; white-space: nowrap; } /* a bigger tap target, same layout */
-.banner { position: absolute; top: 148px; left: var(--gut); right: calc(var(--side-w) + var(--gut) + 16px); z-index: 3; display: flex; justify-content: center; }
+.banner { display: flex; justify-content: center; }
+
 .banner > div { display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 16px; border-radius: 14px; font: 500 .92rem/1.3 var(--body); }
 .banner .warn { border-color: rgba(255, 181, 71, .45); }
 .banner .err { border-color: rgba(255, 107, 107, .5); }
 .banner b { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 .banner .warn b { background: var(--amber); animation: rec 1.4s ease-out infinite; }
 .banner .err b { background: var(--err); }
+/* The caption card: the speaker chip and moment tag, then the line; long text wraps, never clipped. */
+.caption { padding: 14px 18px; min-height: 96px; display: grid; align-content: center; }
+.cap-h { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+.chip { font: 600 .65rem/1 var(--body); letter-spacing: .14em; text-transform: uppercase; padding: 5px 8px; border-radius: 6px; color: var(--fg); background: rgba(255, 255, 255, .1); }
+.chip.analyst { color: var(--fix); background: rgba(124, 212, 255, .12); }
+.chip.viewer { color: var(--muted); }
+.caption .tag { font: 600 .65rem/1 var(--body); letter-spacing: .16em; text-transform: uppercase; color: var(--amber); padding: 5px 9px; border-radius: 999px;
+  background: rgba(255, 181, 71, .1); border: 1px solid rgba(255, 181, 71, .28); }
+.caption .tag.fixed { color: var(--fix); background: rgba(124, 212, 255, .1); border-color: rgba(124, 212, 255, .3); }
+.caption p { margin: 0; overflow-wrap: anywhere; }
+.caption .cap-text { font: 600 clamp(1.15rem, 1.7vw, 1.55rem)/1.25 var(--display); letter-spacing: -.01em; text-wrap: pretty; animation: rise .38s var(--ease); }
+.caption.fixed .cap-text { color: var(--fix); }
+.caption .cap-asks { color: var(--muted); font-style: italic; font-size: .95rem; }
+.caption .cap-asks + .cap-text { margin-top: 6px; }
+.cap-state { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 12px; color: var(--muted); font: 500 1.05rem/1.4 var(--body); }
 
-.side { position: absolute; top: 84px; right: var(--gut); bottom: 26px; width: var(--side-w); z-index: 2; display: flex; flex-direction: column; gap: 16px; }
+/* The sidebar scrolls on its own beside the video; the tab bar shows only in one column. */
+.side { position: sticky; top: 16px; max-height: calc(100svh - var(--nav-h) - 24px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.side .pane { display: flex; flex-direction: column; flex: none; } /* cards keep their height; the sidebar scrolls, nothing is squeezed */
+.tabs { display: none; }
+.live .label, .controls { color: var(--muted); } /* the small labels and the clock pass AA on the panels */
+/* Ask reads as off until there is a question, then as the amber primary. */
+.ask .btn.primary:disabled { opacity: 1; background: rgba(255, 255, 255, .06); color: var(--muted); border-color: var(--line-hi); box-shadow: none; }
+.shots-card { display: grid; gap: 12px; justify-items: start; }
 .panel { padding: 20px; }
 .panel.lines { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.panel.lines .log { max-height: calc(100svh - var(--nav-h) - 180px); } /* the Lines card fits the sidebar's window, Proof peeks below */
 .panel-h { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
 .panel h3 { margin: 0; font: 600 1.05rem/1 var(--display); letter-spacing: -.01em; }
 .panel .hint { margin: 0; color: var(--muted); font-size: .85rem; }
@@ -190,14 +225,14 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .log li:first-child .text > span:first-child { animation: rise .38s var(--ease); }
 .log .when { font: 600 .8rem/1.55 var(--display); color: var(--amber); }
 .log .text { min-width: 0; font-size: .92rem; line-height: 1.45; }
-.log .orig { color: var(--faint); text-decoration: line-through; font-size: .82rem; margin-top: 4px; }
+.log .orig { color: var(--muted); text-decoration: line-through; font-size: .82rem; margin-top: 4px; }
 .log .meta-l { grid-column: 2; display: flex; gap: 8px; align-items: center; font-size: .72rem; color: var(--muted); }
 .log .fixed .text > span:first-child { color: var(--fix); }
-.log .late .text > span:first-child { color: var(--faint); text-decoration: line-through; }
+.log .late .text > span:first-child { color: var(--muted); text-decoration: line-through; }
 .log .btn.sm { grid-column: 3; grid-row: 1; }
 .pill { font: 600 .62rem/1 var(--body); letter-spacing: .14em; text-transform: uppercase; border-radius: 5px; padding: 4px 6px; }
 .pill.fixed { color: #06202d; background: var(--fix); }
-.pill.late { color: var(--faint); border: 1px solid var(--line-hi); }
+.pill.late { color: var(--muted); border: 1px solid var(--line-hi); }
 /* Ask the commentator (#117): the form under the Lines heading; a question and its answer sit in the log on a
    tint of their own, apart from the play-by-play. 16px text so a phone doesn't zoom into the field. */
 .ask { display: flex; gap: 8px; margin-bottom: 12px; }
@@ -269,17 +304,22 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .switch[aria-checked="true"]::after { transform: translateX(18px); }
 .toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 30; padding: 12px 18px; border-radius: 999px; font-weight: 500; font-size: .92rem; animation: lift .3s var(--ease); }
 
-/* Tablet: the panels move under the stage. */
-@media (max-width: 1100px) {
-  :root { --stage-h: 74svh; }
-  .lane, .novideo, .banner { right: var(--gut); }
-  .subtitle::before { inset: -64px 0 -40px; } /* on a full-width lane the -18% glow made the page scroll sideways */
-  .side { position: static; width: auto; display: grid; grid-template-columns: 1fr 1fr; padding: 16px var(--gut) 32px; align-items: start; }
-  .panel.lines .log { max-height: 420px; }
+/* Below 900px one column: the video card, the caption card, then a tab bar for Lines and Proof. The card
+   keeps its picture and controls inside the screen's height, so a phone on its side still sees all of it. */
+@media (max-width: 899px) {
+  .live-body { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .live-main { min-height: 0; }
+  .live-main > * { width: min(100%, max(320px, calc((100svh - 120px) * 16 / 9))); }
+  .side { position: static; max-height: none; overflow: visible; width: min(100%, 720px); justify-self: center; }
+  .tabs { display: flex; gap: 4px; padding: 4px; border-radius: 14px; background: rgba(255, 255, 255, .05); border: 1px solid var(--line); }
+  .tabs button { flex: 1; height: 40px; border: 0; border-radius: 10px; background: none; color: var(--muted); font: 500 .92rem/1 var(--body); }
+  .tabs button[aria-selected="true"] { background: rgba(255, 255, 255, .13); color: var(--fg); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1); }
+  .side .pane[data-on="false"] { display: none; }
+  .panel.lines .log { max-height: 60svh; }
 }
 /* Phone */
 @media (max-width: 760px) {
-  :root { --gut: 16px; --stage-h: 76svh; }
+  :root { --gut: 16px; }
   .nav { padding: 14px var(--gut); }
   .wordmark { font-size: 1.3rem; }
   .links button { padding: 7px 9px; font-size: .82rem; }
@@ -294,65 +334,37 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   .card-body { max-width: none; padding: calc(62.5% - 24px) 22px 22px; }
   .card h2 { font-size: 1.8rem; }
   .meta { margin-top: 4px; padding-top: 8px; }
-  .hud { top: 60px; flex-wrap: nowrap; }
-  .scorebar { flex: 1 1 auto; min-width: 0; gap: 6px 10px; padding: 8px 12px; font-size: .95rem; }
-  .onair { flex: none; padding: 9px 12px; }
-  .score { font-size: 1.25rem; }
-  .onair .who, .onair .bars { display: none; }
-  /* The score bar keeps two rows (teams and score; clock and period or chase): no REPLAY tag or rule. */
-  .scorebar .replay, .scorebar .sep { display: none; }
-  .subtitle { bottom: 170px; gap: 12px; }
-  /* Under the score bar, clear of the moment tag; an alert banner takes the spot while it shows. */
-  .novideo { top: calc(var(--hud-bottom, 136px) + 12px); transform: none; font-size: .85rem; }
-  /* The scrim sized to the phone's subtitle lane (two lines and the tag above the two-row dock), so
-     the players above it stay in the clear (docs/design.md "never sits on the players"). */
-  .shade { background: linear-gradient(180deg, rgba(6, 8, 15, .78) 0%, rgba(6, 8, 15, 0) 24%),
-                       linear-gradient(0deg, rgba(6, 8, 15, .92) 0, rgba(6, 8, 15, .85) 270px, rgba(6, 8, 15, 0) 340px),
-                       radial-gradient(120% 90% at 40% 50%, transparent 55%, rgba(0, 0, 0, .5)); }
-  .subtitle p { font-size: 1.45rem; }
-  .dock { bottom: 56px; }
-  .dock .btn { padding: 0 10px; }
-  /* Four sports: the sport tabs take the dock's first row whole, the back arrow, the voice and next match
-     the second; the subtitle sits above both. The tabs still scroll if a fifth sport ever doesn't fit. */
-  .dock .glass { max-width: 100%; }
+  /* The score bug keeps to the picture's top edge: no period, no voice name or bars. */
+  .bug { top: 6px; left: 6px; right: 6px; }
+  .bug .scorebar { padding: 5px 9px; font-size: .78rem; gap: 4px 8px; }
+  .bug .score { font-size: .95rem; }
+  .bug .clock { font-size: .82rem; }
+  .bug .period, .bug .onair .who, .bug .onair .bars { display: none; }
+  .bug .onair { padding: 6px 9px; font-size: .62rem; }
+  .pickbar .btn { padding: 0 10px; }
+  /* Four sports: the sport tabs take the bar's first row whole, the back arrow, the voice and next match
+     the second. The tabs still scroll if a fifth sport ever doesn't fit. */
   .seg { order: -1; flex: 1 1 100%; justify-content: center; min-width: 0; overflow-x: auto; scrollbar-width: none; }
   .seg button { padding: 0 12px; flex: none; }
-  /* A long voice name shortens with an ellipsis rather than pushing "Next match" onto a third row,
-     which would rise over the subtitle; the voice sheet shows the full name. */
-  .dock .voice { flex: 1 1 0; min-width: 0; }
-  .dock .voice span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-  .timeline { bottom: 18px; grid-template-columns: 1fr auto; }
-  .timeline .yt { display: none; }
-  .banner { top: 112px; }
-  .side { grid-template-columns: 1fr; }
+  .pickbar .voice { flex: 1 1 0; margin-left: 0; }
+  .controls { gap: 4px; padding: 4px 6px; }
+  .controls .time { min-width: 0; }
+  .controls .vol { display: none; } /* a phone's own buttons set the volume; mute stays */
+  .caption { padding: 12px 14px; min-height: 84px; }
   .stats { grid-template-columns: 1fr 1fr; }
   .voices { grid-template-columns: 1fr; }
   .sheet { --pad: 20px; max-height: calc(100svh - 16px); }
   .scrim { place-items: end center; padding: 8px; }
-  /* With no video the stage only needs the height that fits the caption, a two-line subtitle and the dock,
-     so a tall phone shows no empty band (375x667 is already at that height). */
-  :root:has(.novideo) { --stage-h: min(76svh, 510px); }
 }
 /* On a phone the way back stays: an icon-only arrow with a full 44px tap target (its name is in aria-label). */
 @media (max-width: 760px), (orientation: landscape) and (max-height: 500px) {
-  .dock .back { display: inline-flex; flex: none; width: 44px; height: 44px; padding: 0; font-size: 1.1rem; }
-  .dock .back span { display: none; }
-  .dock .voice .pre { display: none; } /* the name alone fits; the button's label keeps "Voice:" */
+  .pickbar .back { display: inline-flex; flex: none; width: 44px; height: 44px; padding: 0; font-size: 1.1rem; }
+  .pickbar .back span { display: none; }
+  .pickbar .voice .pre { display: none; } /* the name alone fits; the button's label keeps "Voice:" */
 }
-/* A phone on its side: the stage takes the whole screen and the dock one row, so the score bar, the
-   no-video caption, the subtitle and the dock stack without touching. */
+/* A phone on its side: the sport bar keeps one row. */
 @media (orientation: landscape) and (max-height: 500px) {
-  :root, :root:has(.novideo) { --stage-h: 100svh; }
-  .live .nav { padding-top: 12px; padding-bottom: 12px; }
-  .hud { top: 56px; flex-wrap: nowrap; }
-  .novideo { top: calc(var(--hud-bottom, 94px) + 12px); transform: none; font-size: .85rem; }
-  .subtitle { bottom: 124px; gap: 8px; }
-  .subtitle p { font-size: 1.2rem; max-width: 52ch; }
-  .dock { bottom: 60px; }
   .seg { order: 0; flex: 0 0 auto; }
-  .dock .voice { flex: 1 1 0; min-width: 0; }
-  .dock .voice span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-  .timeline { bottom: 18px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 

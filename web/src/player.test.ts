@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { embeds, loadYouTube, mountPlayer, posterUrl, showNoVideoCaption, watchUrl } from './player.ts'
+import { embeds, loadYouTube, mountPlayer, posterUrl, showNoVideoCaption, watchUrl, type Transport } from './player.ts'
+import type { Clock } from './useReplay.ts'
 
 test('an embed-blocked video never plays here: it gets a poster and a link to YouTube at its first moment', () => {
   assert.equal(embeds({ youtube_id: '46nYnjGdQlk', video_start: 7 }), true)
@@ -21,9 +22,12 @@ class FakePlayer {
     this.options = options
     FakePlayer.made.push(this)
   }
-  playVideo() {}
+  t = 0
+  playVideo() { this.state = 1 }
+  pauseVideo() { this.state = 2 }
+  seekTo(t: number) { this.t = t }
   mute() {}
-  getCurrentTime() { return 0 }
+  getCurrentTime() { return this.t }
   getDuration() { return 600 }
   getPlayerState() { return this.state }
   destroy() { this.destroyed = true }
@@ -36,13 +40,19 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 function mount(startMs = 1000, vars?: Record<string, string | number>) {
   const calls: string[] = []
+  let clock: Clock | null = null
   const hooks = {
-    onClock: (c: unknown) => calls.push(c ? 'clock' : 'clock null'),
+    onClock: (c: Clock | null) => {
+      calls.push(c ? 'clock' : 'clock null')
+      clock = c
+    },
     onState: (s: string) => calls.push(s),
     onPlaying: () => calls.push('playing'),
+    onTransport: (t: Transport | null) => (transport = t),
   }
+  let transport: Transport | null = null
   const cleanup = mountPlayer(api, {} as HTMLElement, 'abcdefghijk', 485, hooks, startMs, vars)
-  return { player: FakePlayer.made.at(-1)!, calls, cleanup }
+  return { player: FakePlayer.made.at(-1)!, calls, cleanup, transport: () => transport, clock: () => clock }
 }
 
 test('the video starts at the given second', () => {
@@ -75,6 +85,22 @@ test('a player that errors gives up once: clock cleared, video unavailable, play
   m.cleanup()
   assert.deepEqual(m.calls, ['ok', 'clock', 'clock null', 'unavailable'])
   assert.ok(m.player.destroyed)
+})
+
+test("the controls pause, play and seek the player, and the clock holds while it is paused (A-6.4)", () => {
+  const m = mount()
+  assert.equal(m.transport(), null) // no controls before the player is ready
+  m.player.ready()
+  const t = m.transport()!
+  t.pause()
+  assert.equal(m.player.state, PlayerState.PAUSED)
+  assert.equal(m.clock()!().playing, false)
+  t.seek(512)
+  assert.deepEqual(m.clock()!(), { t: 512, playing: false, duration: 600 })
+  t.play()
+  assert.equal(m.clock()!().playing, true)
+  m.cleanup()
+  assert.equal(m.transport(), null) // a destroyed player hands its controls back
 })
 
 test('a ready player that never starts playing gives up after the start timeout', async () => {
