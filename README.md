@@ -240,11 +240,14 @@ producer fixes go into the same task as corrections. That smaller model is what 
    off (`MUBIT_RECORD=off` in [`scripts/deploy.sh`](scripts/deploy.sh)); training traffic comes from
    the replay script on the owner's key. If the lent key runs out, the commentator moves to the
    owner's key, which records. Ask answers and side-by-side runs are always unrecorded.
-5. **A producer's fix is built as training signal.** A fix is stored beside the original line and
-   sent back through the same Mubit task and session. No fix has been made on the live site yet
-   (`fixes` is 0 in `/stats`), so the adapters so far were trained on recorded commentary only.
-6. **Counted at Mubit.** Each line stores the Mubit request id of every call it made, and
-   `GET /stats` counts calls from those ids.
+5. **A producer's fix is recorded to Mubit for training.** A fix is stored beside the original line
+   and sent as the next turn of that line's request on the owner's key (`MUBIT_FALLBACK_KEY`) with
+   recording on, whatever `MUBIT_RECORD` says; a fix to an analyst's stat line stays unrecorded,
+   like those lines. The Proof card shows the fixes recorded and how many count toward the next
+   adapter. No fix has been made on the live site yet (`fixes` is 0 in `/stats`), so the adapters
+   so far were trained on recorded commentary only.
+6. **Mubit request ids we stored.** Each line stores the Mubit request id of every call it made,
+   and `GET /stats` counts calls from those ids; nothing checks them against Mubit's console.
 7. **The trained model is measured, not assumed.** 6 adapters so far, none ready, best 55.8% on Mubit's test
    ([Real numbers](#real-numbers)). The aim is that it matches the big model at lower cost; we make
    no claim that it beats it.

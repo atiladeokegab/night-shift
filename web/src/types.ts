@@ -81,6 +81,17 @@ export interface Stats {
   tokens_out: number
   cost_per_line_usd?: number | null
   adapter?: Adapter | null
+  by_speaker?: { lead: SpeakerStats; analyst: SpeakerStats } // #161: Haiku's calls apart from Sonnet's stat lines
+  fixes_recorded?: number // fixes Mubit recorded for training; `fixes` counts every stored fix
+  fixes_toward_next?: number // recorded fixes since the latest adapter record (#161)
+}
+
+export interface SpeakerStats {
+  model: string // the models seen, comma-separated
+  lines: number
+  first_word_ms_p50: number | null
+  first_word_ms_p95: number | null
+  cost_per_line_usd: number | null
 }
 
 export interface Adapter {
@@ -99,6 +110,7 @@ export interface Fix {
   reason: string
   created_at?: number | string
   reply_matched?: boolean
+  recorded?: boolean // Mubit recorded it for training (#161)
 }
 
 // POST /replays/{id}/ask's answer and the `answer` SSE event (#117). `line_id` so it is spoken like a line;
