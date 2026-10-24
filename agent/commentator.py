@@ -278,28 +278,37 @@ def spoken(text: str, limit: int = MAX_WORDS, ask: bool = False) -> str:
         if para and not _META.search(para):
             kept.append(para)
     said = " ".join(kept)
-    return _fit(said, limit) or (_clause(said, limit) if ask else "")
+    return _fit(said, limit, ask)
 
 
-def _fit(text: str, limit: int = MAX_WORDS) -> str:
+def _fit(text: str, limit: int = MAX_WORDS, ask: bool = False) -> str:
     """The whole line, else its first and last sentences (the score usually closes it), else the
-    first sentence; one long first sentence is no line."""
+    first sentence; one long first sentence is no line. An answer (`ask`) keeps its longest opening
+    that fits instead of the first sentence alone (`_opening`)."""
     # a sentence ends at punctuation before a space, so "19.4 overs" stays whole
     s = re.split(r"(?<=[.!?…])\s+", text.strip())
-    for out in (s, s[:1] + s[-1:], s[:1]):
+    for out in (s, s[:1] + s[-1:], *(() if ask else (s[:1],))):
         if len(" ".join(out).split()) <= limit:
             return " ".join(out)
-    return ""
+    return _opening(text, limit) if ask else ""
 
 
-def _clause(text: str, limit: int) -> str:
-    """An answer's first sentence cut at its last comma, semicolon or dash that fits, so a long
-    "They have had eighteen shots so far, absolutely dominating ..." still answers (#340)."""
-    first = re.split(r"(?<=[.!?…])\s+", text.strip())[0]
-    end = first[-1:] if first[-1:] in ("!", "?") else "."
-    cuts = [first[: m.start()].rstrip() for m in re.finditer(r"[,;:](?=\s)|\s[—–-](?=\s)", first)]
-    fits = [c for c in cuts if 3 <= len(c.split()) <= limit]
-    return fits[-1] + end if fits else ""
+def _opening(text: str, limit: int) -> str:
+    """An answer's longest opening that fits and ends at a sentence end, comma, semicolon or dash:
+    one long sentence still answers ("They have had eighteen shots so far!", #340), and a second
+    sentence's first clause is kept rather than lost with the rest of it (#349)."""
+    text, best = text.strip(), ""
+    for m in re.finditer(r"[.!?…](?=\s|$)|[,;:](?=\s)|\s[—–-](?=\s)", text):
+        if m.group() in ".!?…":  # a sentence end keeps its own mark
+            cut = text[: m.end()]
+        else:  # a clause ends as its sentence does, a question's as a statement
+            end = re.search(r"[.!?…](?=\s|$)", text[m.end() :])
+            cut = text[: m.start()].rstrip() + ("!" if end and end.group() == "!" else ".")
+        if len(cut.split()) > limit:
+            break
+        if m.group() in ".!?…" or len(cut.split()) >= 3:
+            best = cut
+    return best
 
 
 def commentate(

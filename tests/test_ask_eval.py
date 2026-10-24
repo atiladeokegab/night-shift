@@ -55,6 +55,27 @@ def test_a_long_answer_sentence_is_cut_at_a_clause_not_dropped():
     assert said["text"] == "They have had eighteen shots so far!" and "fallback" not in said
 
 
+def test_a_long_answer_keeps_its_longest_opening_not_its_first_sentence_alone():
+    # #349: keyed #2 named only Di María and #21 said only "The Lakers are winning!": the first
+    # sentence of a longer reply. The opening up to the last clause that fits is kept instead.
+    lakers = (
+        "The Lakers are winning! Kobe Bryant has just slammed down a dunk, his fifty-first point,"
+        " to give Los Angeles an 87-85 lead with just over a minute left in the third quarter."
+    )
+    assert said_to("0020500591", 9, lakers)["text"] == (
+        "The Lakers are winning! Kobe Bryant has just slammed down a dunk, his fifty-first point."
+    )
+    argentina = (
+        "Ángel Di María has just made it two for Argentina with a finish from the left, after"
+        " Lionel Messi's penalty in the twenty-third minute, and Argentina are cruising here"
+        " in Lusail!"
+    )
+    assert said_to("3869685", 9, argentina)["text"] == (
+        "Ángel Di María has just made it two for Argentina with a finish from the left, after"
+        " Lionel Messi's penalty in the twenty-third minute!"
+    )
+
+
 def test_an_answer_with_nothing_to_say_gives_the_status_not_off_air():
     tool = [{"type": "tool_use", "id": "t1", "name": "get_score", "input": {}}]
     for replies in (["I have all the information I need."], ["How long is left?"], [tool, tool]):
@@ -112,6 +133,23 @@ def test_the_verdicts():
     assert verdict(said, keyed("Who wins the World Cup?", 26)) == "correct"
     said = "The last goal in this match was an own goal!"
     assert verdict(said, keyed("Who scored the last goal?", 42)) == "correct"
+    # #349: the run after #343
+    said = (
+        "We're in the final stretch here at two-two, with just over a minute to play in the ninety!"
+    )
+    assert verdict(said, keyed("How much time is left?", 40)) == "correct"
+    assert verdict("The Lakers are winning!", keyed("Who's winning?", 9)) == "correct"
+    assert verdict("The Raptors lead, the Lakers trail.", keyed("Who's winning?", 9)) == "wrong"
+    said = "Kobe Bryant just hit his 67th point of the night with that three-pointer!"
+    assert verdict(said, keyed("How many points does Kobe have?", 14)) == "correct"
+    said = (
+        "The Courage have had 18 shots, with Merritt Mathias just finding the net to make it 1-0!"
+    )
+    assert verdict(said, keyed("How many shots have the Courage had?", 20)) == "wrong"
+    said = (
+        "Ángel Di María has just made it two for Argentina with a brilliant finish from the left!"
+    )
+    assert verdict(said, keyed("Who scored for Argentina?", 9)) == "wrong"  # Messi left out
     said = "How much time remains in this final?"  # the echo stays wrong
     assert verdict(said, keyed("How long is left?", 30)) == "wrong"
 

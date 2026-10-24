@@ -13,6 +13,10 @@ the first run, three regexes (time left twice, Mbappé's goals) were narrowed: t
 score's "2" or "3" as the answer. The facts they expect are unchanged. After the first keyed run
 (#332), three were widened to take a true answer to the question asked: Mbappé's "second goal" for
 what just happened, "we'll find out" for who wins, and "an own goal" alone for who scored last.
+After the keyed run on #343 (#349), three more were widened the same way ("just over a minute" at
+88:31, "the Lakers are winning" with no score, Kobe's "67th point"), and the Courage's shots gained
+a `never`: that run's "Merritt Mathias just finding the net" was graded right, and her shot went
+off target.
 
 An answer is correct when it says everything in `say` and nothing in `never`; refused when it says
 neither but declines (or is off air); wrong otherwise. `in message` is whether the request the
@@ -175,7 +179,17 @@ QUESTIONS = [
         "match": CHE,
         "idx": 40,
         "q": "How much time is left?",
-        "say": [n("88", "eighty-eight") + "|" + n("2 minutes", "two minutes")],
+        "say": [
+            n(
+                "88",
+                "eighty-eight",
+                "2 minutes",
+                "two minutes",
+                "a minute",
+                "one minute",
+                "1 minute",
+            )
+        ],
         "gold": "Time left? 88 minutes played, about two minutes of normal time to go at 2-2.",
     },
     {
@@ -215,7 +229,8 @@ QUESTIONS = [
         "match": KOBE,
         "idx": 9,
         "q": "Who's winning?",
-        "say": ["Lakers", n("87"), n("85")],
+        "say": ["Lakers"],
+        "never": [r"Raptors (?:are |have )?(?:winning|lead|ahead|in front)"],
         "gold": "Who's in front? The Los Angeles Lakers, 87-85.",
     },
     {
@@ -229,7 +244,7 @@ QUESTIONS = [
         "match": KOBE,
         "idx": 14,
         "q": "How many points does Kobe have?",
-        "say": [n("67", "sixty-seven")],
+        "say": [n("67", "67th", "sixty-seven", "sixty-seventh")],
         "gold": "Kobe's points? 67 tonight, and the Lakers lead 108-96.",
     },
     {
@@ -277,6 +292,7 @@ QUESTIONS = [
         "idx": 20,
         "q": "How many shots have the Courage had?",
         "say": [n("18", "eighteen")],
+        "never": [r"Mathias[^.!?]*\b(?:net|scor\w*|goal)\b"],  # her shot went off target
         "gold": "The Courage's shots? Eighteen so far, and they lead 1-0.",
     },
     {
@@ -324,11 +340,12 @@ class Recording:
     """The provider the run uses, with every request kept: the first one is what the model saw."""
 
     def __init__(self, provider):
-        self.provider, self.requests = provider, []
+        self.provider, self.requests, self.replies = provider, [], []
 
     def call(self, request: dict) -> dict:
         self.requests.append(request)
-        return self.provider.call(request)
+        self.replies.append(self.provider.call(request))
+        return self.replies[-1]
 
 
 class Gold:
@@ -383,7 +400,10 @@ def ask(q: dict, kind: str) -> dict:
         "text": text,
         "verdict": verdict(text, q),
         "fallback": bool(said.get("fallback")),
-        "tried": said.get("tried"),  # the model's reply a fallback replaced
+        "reply": " ".join(  # the model's own last words, before Ask cut or replaced them
+            " ".join(b["text"] for b in r["content"] if b["type"] == "text")
+            for r in rec.replies[-1:]
+        ).strip(),
         "in_message": facts,
     }
 
@@ -397,8 +417,10 @@ def main(argv: list[str] | None = None) -> int:
     print("| # | Match | At | Question | Route | In message | Answer | Verdict |")
     print("|---|---|---|---|---|---|---|---|")
     for i, (q, r) in enumerate(rows, 1):
-        tried = f"; the model said: {' '.join(r['tried'].split())}" if r["tried"] else ""
-        said = (r["text"] + (f" (fallback{tried})" if r["fallback"] else "")).replace("|", "/")
+        reply = " ".join(r["reply"].split())
+        said = r["text"] + (" (fallback)" if r["fallback"] else "")
+        said += f" (model said: {reply or 'no text'})" if reply != r["text"] else ""
+        said = said.replace("|", "/").replace("\n", " ")
         facts = {True: "yes", False: "no"}.get(r["in_message"], r["in_message"])
         print(
             f"| {i} | {q['match']} | {q['idx']} | {q['q']} | {r['route']} | {facts} "
