@@ -134,6 +134,37 @@ def score_pairs(t: list, header: dict) -> list[tuple[dict | tuple, list[int]]]:
     return out
 
 
+def _goalless_claims(text: str) -> tuple[bool, bool]:
+    """Current match-wide assertions and ambiguous mentions. Past states and a deadlock being
+    broken are not today's score; a named subject might be one player or team instead."""
+    current = ambiguous = False
+    boundaries = list(re.finditer(r"[.,;!?]|\b(?:and|but|yet|although|however)\b", text, re.I))
+    for hit in re.finditer(r"\b(?:goalless|scoreless)\b", text, re.I):
+        start = max((b.end() for b in boundaries if b.end() <= hit.start()), default=0)
+        end = min((b.start() for b in boundaries if b.start() >= hit.end()), default=len(text))
+        clause = text[start:end]
+        before, after = clause[: hit.start() - start], clause[hit.end() - start :]
+        if (
+            re.search(r"\b(?:was|were|had been|ended|went)\s+(?:still\s+)?$", before, re.I)
+            or re.search(r"\b(?:previously|formerly|earlier)\s*$", before, re.I)
+            or (
+                re.search(r"\b(?:break(?:s|ing)?|broke|broken)\b", before, re.I)
+                and re.search(r"\bdeadlock\b", after, re.I)
+            )
+        ):
+            continue
+        if re.fullmatch(
+            r"\s*(?:(?:it|it's|the (?:match|game|score)|this (?:match|game))\s+)?"
+            r"(?:(?:is|remains?|stays?|still|currently|now)\s+)*",
+            before,
+            re.I,
+        ):
+            current = True
+        else:
+            ambiguous = True
+    return current, ambiguous
+
+
 def _margins(text: str, header: dict) -> list[float]:
     """The margins a line gives a team ("Lakers down ten"), read as `insight._wrong_margin` does."""
     _, names = insight._sides(header)
@@ -490,7 +521,11 @@ def gold(header: dict, m: dict, past: list[dict], text: str) -> dict | None:
         diff = {abs(tl["home"] - tl["away"]) for tl in tallies}
         right += [n in diff for n in margins]
         if sport == "football" and re.search(r"\b(?:goalless|scoreless)\b", text, re.I):
-            right.append(want["home"] == want["away"] == 0)  # "still goalless" is 0-0
+            current, ambiguous = _goalless_claims(text)
+            if ambiguous:
+                return None  # not enough context to say this is the current match score
+            if current:
+                right.append(want["home"] == want["away"] == 0)
         for _, idx in pairs:
             used |= set(idx)
         used |= {i for i in heard if t[i] in margins}
