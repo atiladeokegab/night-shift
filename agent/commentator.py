@@ -22,6 +22,7 @@ AGENT = Path(__file__).resolve().parent
 SYSTEM = (AGENT / "prompt.md").read_text(encoding="utf-8")
 MESSAGE = (AGENT / "message.md").read_text(encoding="utf-8")
 ASK = (AGENT / "ask.md").read_text(encoding="utf-8")
+ANALYST = (AGENT / "analyst.md").read_text(encoding="utf-8")
 TOOLS = json.loads((AGENT / "tools.json").read_text(encoding="utf-8"))
 # Ask only: Mubit fingerprints the tools, so a new one in every line would split the lines' task
 ASK_TOOLS = TOOLS + json.loads((AGENT / "ask_tools.json").read_text(encoding="utf-8"))
@@ -109,8 +110,10 @@ def render_message(header: dict, past: list[dict]) -> str:
 
 
 def build_request(header: dict, past: list[dict]) -> dict:
-    """The exact production request for the last moment in `past`."""
-    return {
+    """The exact production request for the last moment in `past`. A Stat moment (an insight or
+    reply, core/insight.py) gets the analyst's own prompt and no tools: it is never recorded, so
+    the frozen prompt and tools the lines train on stay one task."""
+    request = {
         "model": MODEL,
         "max_tokens": MAX_TOKENS,
         "system": SYSTEM,
@@ -119,6 +122,10 @@ def build_request(header: dict, past: list[dict]) -> dict:
         "metadata": {"user_id": session_id(header["sport"], header["match_id"])},
         "messages": [{"role": "user", "content": render_message(header, past)}],
     }
+    if past[-1]["type"] == "Stat":
+        request["system"] = ANALYST
+        del request["tools"], request["tool_choice"]
+    return request
 
 
 def run_tool(name: str, args: dict, header: dict, past: list[dict]) -> str:
@@ -205,7 +212,7 @@ def commentate(
         header = match_header(moment["match_id"])
     moments = [*history, moment]
     try:
-        return line_for(header, moments, len(history), provider or default_provider())
+        return line_for(header, moments, len(history), provider or provider_for(moment))
     except NoLine:
         return None  # the replay skips the moment
 
@@ -222,12 +229,13 @@ def correct(
 
         header = header or match_header(line["match_id"])
         moments = moments if moments is not None else load_moments(line["match_id"])
-    request = build_request(header, [m for m in moments if m["idx"] <= line["moment_idx"]])
+    past = [m for m in moments if m["idx"] <= line["moment_idx"]]
+    request = build_request(header, past)
     request["messages"] += [
         {"role": "assistant", "content": line["text"]},
         {"role": "user", "content": CORRECTION.format(text=corrected_text)},
     ]
-    reply = (provider or default_provider()).call(request)
+    reply = (provider or provider_for(past[-1])).call(request)
     # the echo, not a spoken line: untrimmed, so a correction over 20 words can still match
     said = " ".join(b["text"] for b in reply["content"] if b["type"] == "text").split()
     return {
@@ -254,6 +262,11 @@ def default_provider():
 
 
 _unrecorded = None
+
+
+def provider_for(moment: dict):
+    """The analyst's Stat lines go unrecorded, like Ask; every moment's line is recorded."""
+    return unrecorded_provider() if moment["type"] == "Stat" else default_provider()
 
 
 def unrecorded_provider():
