@@ -1,6 +1,9 @@
 """Proof-panel numbers, computed from the store only."""
 
 import json
+import threading
+import time
+import weakref
 from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
@@ -20,6 +23,11 @@ ADAPTER_NEEDED = 25
 HELDOUT = Path(__file__).parent.parent / "eval" / "linecheck_heldout.json"
 # Mubit's console overview as read by hand on a stated day (#317): a dated reading, never live data
 CONSOLE = Path(__file__).parent.parent / "data" / "mubit_console.json"
+# one computation serves every replay's lines and every /stats poll this long: stats() parses the
+# whole store, and once per line per replay it saturated the one CPU (Cloud Run 429s, 24 Oct)
+STATS_EVERY_S = 2.0
+_recent: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()  # store: (when, stats)
+_recent_lock = threading.Lock()
 
 
 def _pct(values: list[float], p: float) -> float | None:
@@ -224,7 +232,7 @@ def _linecheck(store) -> dict:
     }
 
 
-def stats(store) -> dict:
+def _stats(store) -> dict:
     lines = store.all("lines")
     fixes = store.all("fixes")
     # a stat line between moments is the analyst's; a line with no speaker predates #130: the lead
@@ -275,3 +283,15 @@ def stats(store) -> dict:
         "scorecheck": _scorecheck(store),
         **_per_match(store, lines, voice),
     }
+
+
+def stats(store, fresh: bool = False) -> dict:
+    """The proof panel, computed at most once every STATS_EVERY_S however many replays and pages
+    ask; a caller arriving mid-computation waits for it instead of starting another. `fresh`
+    computes now (a fix must show at once), and the next callers get that."""
+    with _recent_lock:
+        at, made = _recent.get(store, (None, None))
+        if fresh or at is None or time.monotonic() - at >= STATS_EVERY_S:
+            made = _stats(store)
+            _recent[store] = (time.monotonic(), made)
+        return made

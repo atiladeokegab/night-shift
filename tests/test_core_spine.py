@@ -66,6 +66,23 @@ FOUR = [
 ]
 
 
+def test_a_replay_works_out_the_proof_panel_once_not_once_per_line(tmp_path, monkeypatch):
+    # stats() reads the whole store: once per line per replay it held the live site's one CPU, and
+    # Cloud Run answered 429 to pages and audio (24 Oct)
+    from core import stats as core_stats
+
+    monkeypatch.setattr(core_stats, "STATS_EVERY_S", 60.0)
+    store, reads = Store(tmp_path), []
+    real = store.all
+    monkeypatch.setattr(store, "all", lambda kind: reads.append(kind) or real(kind))
+    deps = Deps(lambda: [], lambda mid: FOUR, fake_commentate)
+    with TestClient(create_app(store=store, deps=deps)) as client:
+        rid = client.post("/replays", json={"match_id": "f1", "speed": 1e6}).json()["replay_id"]
+        names = [n for n, _ in read_stream(client, rid)]
+    assert names.count("stats") == 4  # every line still carries the panel
+    assert reads.count("scorecheck_evals") == 1  # a store kind only stats() reads
+
+
 def stream(tmp_path, commentate):
     deps = Deps(lambda: [], lambda mid: FOUR, commentate)
     with TestClient(create_app(store=Store(tmp_path), deps=deps)) as client:
@@ -350,10 +367,10 @@ def test_a_replay_started_while_a_fix_counts_stats_does_not_break_the_fix(tmp_pa
     entered, release = threading.Event(), threading.Event()
     real = core_app.stats
 
-    def slow_stats(store):
+    def slow_stats(store, *fresh):
         entered.set()
         release.wait(5)
-        return real(store)
+        return real(store, *fresh)
 
     sent = {"mubit_request_id": "r-fix", "reply_matched": True}
     deps = Deps(lambda: [], lambda mid: LONG[:1], fake_commentate, correct=lambda *a, **k: sent)
