@@ -131,7 +131,12 @@ function Speaker({ name, s }: { name: string; s: SpeakerStats }) {
     <>
       <div className="wide">
         <dt className="label">{name}</dt>
-        <dd>{[s.served_by ? `Served by ${s.served_by}` : s.model, `${s.lines.toLocaleString()} lines · all matches`].filter(Boolean).join(' · ')}</dd>
+        <dd>
+          {s.served_by && 'Served by '}
+          {/* each model id on one line (.nw): never "claude-sonnet-5-" / "5" */}
+          {(s.served_by || s.model).split(', ').filter(Boolean).map((id, i) => <span key={id}>{i > 0 && ', '}<span className="nw">{id}</span></span>)}
+          {(s.served_by || s.model) && ' · '}{`${s.lines.toLocaleString()} lines · all matches`}
+        </dd>
       </div>
       {/* one "First word" caption over both, so each label fits one line at 1280 px; "Cost" over its own */}
       <div className="cap" aria-hidden="true"><dt className="label">First word</dt></div>
