@@ -22,7 +22,7 @@ flowchart LR
     end
 
     store[("Store<br/>[Cloud Storage: JSON lines]<br/>lines, fixes, answers, adapter")]
-    mubit["Mubit<br/>[External: Anthropic endpoint]<br/>claude-haiku-4-5; records calls, trains the adapter"]
+    mubit["Mubit<br/>[External: Anthropic endpoint]<br/>claude-haiku-4-5 moment lines, recorded, train the adapter;<br/>claude-sonnet-5-5 analyst lines, unrecorded"]
     eleven["ElevenLabs<br/>[External: text to speech]<br/>eleven_v3, one voice per role and sport"]
     yt["YouTube<br/>[External: embedded player]<br/>muted broadcast highlights"]
 
@@ -67,7 +67,7 @@ The live site runs on a teammate's Mubit key with recording off (`MUBIT_RECORD=o
 the commentator moves to the owner's key, which records
 ([`agent/commentator.py`](../agent/commentator.py)). Training traffic comes from
 [`scripts/replay_matches.py`](../scripts/replay_matches.py), which replays real football and cricket
-matches through the owner's key. Ask answers are always unrecorded: they have their own prompt and
+matches through the owner's key. Ask answers and the analyst's stat lines are always unrecorded: they have their own prompts and
 would split the one task the lines train.
 
 ## At scale: a plan, not built
