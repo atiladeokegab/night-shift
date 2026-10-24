@@ -918,16 +918,21 @@ ENDED = re.compile(
 # play", "Pakistan six for one"). A wrong leader and the model talking to itself are wrong_numbers'.
 THREE = re.compile(
     r"\b(?:three[- ]pointer|3[- ]pointer|from (?:deep|(?:way )?downtown|beyond the arc|long range)"
-    r"|beyond the arc)\b",
+    r"|beyond the arc)\b(?!\s+earlier)",  # "who hit from deep earlier" recalls a past three
     re.I,
 )
 TIE = re.compile(
     r"\b(?:a tie|it's a tie|their tie|the tie|tie it|tied (?:the match|it)|match is tied"
-    r"|level the scores?|levels? it|level (?:with|on)|scores? level|super over"
+    r"|level the scores?|levels? it|level (?:with|on)(?! the (?:[\w-]+ )?rate)|scores? level"
+    r"|super over"
     r"|matched \w+'s (?:total|score)|all square)\b",
     re.I,
 )
-SIX = re.compile(r"(?i:\b(?:a|the|another) six\b|\bmaximum\b)|\bSIX\b")  # capitals are a shout
+# capitals are a shout; a six wanted ("need a six") or "160 FOR SIX" is no six hit
+SIX = re.compile(
+    r"(?i:(?<!need )(?<!needs )(?<!needing )(?<!find )\b(?:a|the|another) six\b|\bmaximum\b)"
+    r"|(?<!FOR )\bSIX\b"
+)
 HOW_OUT = {
     "stumped": re.compile(r"\bstump(?:ed|ing)\b", re.I),
     "lbw": re.compile(r"\blbw\b|\bleg before\b", re.I),
@@ -969,7 +974,8 @@ def _team_scores(text: str, m: dict) -> bool:
         return False
     return bool(
         re.search(
-            rf"\b(?:{names})\s+(?:(?:have|has|just|now)\s+)?score[sd]?\b(?!\s+(?:level|is|are|was))",
+            rf"\b(?:{names})\s+(?:(?:have|has|just|now)\s+)?score[sd]?\b"
+            r"(?!\s+(?:level|is|are|was|twice|once|none|nothing))",  # "scored twice": a recap
             text,
             re.I,
         )
@@ -994,7 +1000,12 @@ def wrong_event(text: str, m: dict) -> list[str]:
         wrong.append(f"a goal is called, but the moment is {m['type']}, {m.get('outcome')}")
     tally = d.get("shootout") or s
     if goal and LEVEL.search(text) and tally.get("home") != tally.get("away"):
-        wrong.append("the scores are not level after this goal")
+        # a shootout kick levels only the shootout: the match was level before it
+        wrong.append(
+            f"the shootout is {tally['home']}-{tally['away']} after this kick, not level"
+            if "shootout" in d
+            else "the scores are not level after this goal"
+        )
     gives_one = "own box" in d.get("where", "") or "shootout" in d  # a foul there can be one
     if "card" in d and not gives_one and PENALTY.search(text):
         wrong.append(f"a penalty is called, but the moment is a {d['card']}")
