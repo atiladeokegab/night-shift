@@ -3,9 +3,9 @@ import { isDemo, lineAudioUrl } from './api'
 import { Floor, loudness, voiceOf, type Speaker } from './turns'
 import type { Line, Voice } from './types'
 
-type Said = Pick<Line, 'line_id' | 'text'> & { speaker?: Speaker }
+type Said = Pick<Line, 'line_id' | 'text' | 'fill'> & { speaker?: Speaker }
 // `start` and `end` follow a viewer's answer on and off the air; `end(true)` when a decisive moment cut it off.
-type OnAir = { line: Said; voice: Voice | null; speaker: Speaker; answer?: boolean; big?: boolean; decisive?: boolean; start?: () => void; end?: (cut?: boolean) => void }
+type OnAir = { line: Said; voice: Voice | null; speaker: Speaker; answer?: boolean; big?: boolean; decisive?: boolean; fill?: boolean; start?: () => void; end?: (cut?: boolean) => void }
 
 // Reads each line aloud (A-6.3@1): the server's ElevenLabs audio (GET /lines/{id}/audio?voice=<id>, #25)
 // first, the browser's own speech in that voice's language when the route answers 503 or fails, or
@@ -142,7 +142,7 @@ export function useSpeech() {
   const say = useCallback(
     (line: Said, voice: Voice | null, big = false, decisive = false) => {
       if (!on || silent.current) return
-      const item: OnAir = { line, voice, speaker: line.speaker ?? 'lead', big, decisive }
+      const item: OnAir = { line, voice, speaker: line.speaker ?? 'lead', big, decisive, fill: line.fill }
       if (floor.current.take(item, performance.now())) play(item)
       else if (!isDemo && !voice?.browser) {
         const url = lineAudioUrl(line.line_id, voiceOf(item.speaker, voice?.id).id)

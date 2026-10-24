@@ -29,6 +29,7 @@ export interface Turn {
   answer?: boolean // a viewer's answer: only a decisive moment cuts it off, and it waits for a gap
   big?: boolean
   decisive?: boolean
+  fill?: boolean // the extra pair in a long quiet (#297): any other line cuts it, so a moment is never late
 }
 
 // The floor: one voice at a time. A line by the same speaker cuts off the one before it, so the voice
@@ -50,7 +51,7 @@ export class Floor<T extends Turn> {
       return this.gap() === item
     }
     const on = this.on
-    const waits = !!on && (on.answer ? !item.decisive : on.speaker !== item.speaker && !item.big)
+    const waits = !!on && (on.answer ? !item.decisive : on.speaker !== item.speaker && !item.big && !(on.fill && !item.fill))
     if (waits) {
       this.held = { item, due: now }
       return false

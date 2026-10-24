@@ -166,3 +166,17 @@ test('a goal, a wicket, a lead change and the final whistle are decisive; a bask
   for (const type of ['Field goal', 'Six', 'Overtake', 'Shot']) assert.equal(isDecisive({ type, outcome: 'Saved' }), false, type)
   assert.equal(isDecisive(undefined), false)
 })
+
+test('the extra pair in a long quiet gives way to any other line, so the next moment is never late (#297)', () => {
+  const floor = new Floor<Said>()
+  const aside: Said = { id: 'aside', speaker: 'lead', fill: true }
+  assert.equal(floor.take(aside, 0), true)
+  assert.equal(floor.take({ id: 'more', speaker: 'analyst', fill: true }, 3000), false) // its own pair takes turns
+  const save = lead('save')
+  assert.equal(floor.take(save, 3500), true) // the next moment's call comes first
+  assert.equal(floor.ended(save, 6000), null) // and the held extra line was dropped, never said after it
+  const late = new Floor<Said>()
+  late.take({ id: 'more', speaker: 'analyst', fill: true }, 0)
+  assert.equal(late.take(lead('corner'), 1000), true) // a routine call cuts the extra analyst line
+  assert.equal(late.take(analyst('stat'), 2000), false) // an ordinary line still waits for the lead
+})
