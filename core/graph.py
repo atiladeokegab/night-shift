@@ -167,7 +167,8 @@ FROM ONLY $m"""
 
 
 def pack(match_id: str) -> dict | None:
-    """The match's pack as data/packs holds it, read from the graph; None when the graph is off."""
+    """What Follow a player reads of the match's pack, from the graph, in the pack's shape; None
+    when the graph is off or lacks the match."""
     from surrealdb import RecordID
 
     m = _query(PACK, {"m": RecordID("match", str(match_id))})
@@ -196,8 +197,8 @@ FROM $p->played_in WHERE out != $m ORDER BY date"""
 
 
 def library(sport: str, match_id: str, name: str) -> list[dict]:
-    """ "Also in our library": the player's other matches, each with their teammates there. Never
-    the match on screen, so nothing from it, later moments included, can show."""
+    """Also in our library: the player's other matches, each with their teammates there. Never the
+    match on screen, so nothing from it, later moments included, can show."""
     from surrealdb import RecordID
 
     found = _query(
