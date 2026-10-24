@@ -144,5 +144,13 @@ def teach(line: dict, provider=None) -> dict | None:
     if key is None:
         return None
     ex = {"id": example_id(mid, idx, text), "match_id": mid, "idx": idx, "text": text, "gold": key}
-    kind, _ = _go_one(ex, provider)  # matched, corrected, uncorrected, leader_only or error
-    return {"kind": kind, "gold": dumps(key)}
+    ids = []  # each call's Mubit request id: the last is the example, its correction if it has one
+
+    class Seen:
+        def call(self, req):
+            reply = provider.call(req)
+            ids.append(reply.get("request_id"))
+            return reply
+
+    kind, _ = _go_one(ex, Seen())  # matched, corrected, uncorrected, leader_only or error
+    return {"kind": kind, "gold": dumps(key), "mubit_request_id": ids[-1] if ids else None}
