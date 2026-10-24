@@ -30,3 +30,5 @@ def test_stage_matches_the_app_and_hides_empty_pieces(tmp_path):
     assert (Path(__file__).parents[1] / "web" / "public" / "favicon.svg").is_file()
     assert '<span class="wordmark">Touchline.</span>' in page
     assert "#score:empty, #sync:empty, .panel.lines:has(.log:empty)" in page
+    # The sync text wraps on a phone, so its pill drops the full round.
+    assert ".sync { border-radius: 12px; line-height: 1.3; text-wrap: balance; }" in page
