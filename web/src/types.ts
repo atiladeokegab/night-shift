@@ -156,6 +156,7 @@ export interface Answer {
   question: string
   text: string
   off_air?: boolean
+  notice?: string // off air on purpose (#244): the page shows this, not its calm try-again copy
 }
 
 export type StreamEvent =

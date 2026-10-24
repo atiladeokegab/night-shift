@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { withAnswers } from './ask.ts'
+import { refused, withAnswers } from './ask.ts'
 
 const line = (idx: number) => ({ line_id: `l${idx}`, match_id: 'm', moment_idx: idx, text: `line ${idx}`, latency_ms: 1 })
 const answer = (id: string, idx: number) => ({ line_id: id, moment_idx: idx, question: '?', text: 'a' })
@@ -14,4 +14,11 @@ test('each answer sits above the lines up to its moment, newest first', () => {
 
 test('answers with no lines yet still show', () => {
   assert.deepEqual(withAnswers([], [answer('a', 0)]).map((x) => x.answer?.line_id), ['a'])
+})
+
+test("a 429's message is the viewer's; any other failure has none", async () => {
+  const busy = new Response(JSON.stringify({ detail: 'Try again in a minute.' }), { status: 429 })
+  assert.equal(await refused(busy), 'Try again in a minute.')
+  assert.equal(await refused(new Response('{"detail": "boom"}', { status: 500 })), null)
+  assert.equal(await refused(new Response('not json', { status: 429 })), null)
 })

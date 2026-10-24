@@ -149,7 +149,8 @@ def test_over_the_daily_cap_lines_replay_from_the_store_and_ask_is_off_air(tmp_p
         unknown = start(client, match_id="8")
     assert budget == {"daily_budget_usd": 2.0, "spent_today_usd": 3.0, "off_air": True}
     assert lines == ["Stored 0", "Stored 1", "Stored 2"] and calls == []
-    assert answer["text"] == "Commentator is off air for today" and answer["off_air"]
+    assert answer["text"] == answer["notice"] == "Commentator is off air for today"
+    assert answer["off_air"]
     assert asked == []
     assert audio.status_code == 503 and audio.json()["detail"] == "voice off air for today"
     assert unknown.status_code == 429

@@ -310,6 +310,7 @@ def create_app(
                 "question": req.question,
                 "text": OFF_TODAY if off_today else OFF_AIR,
                 "off_air": True,
+                **({"notice": OFF_TODAY} if off_today else {}),
             }
         else:
             reply = await asyncio.to_thread(
