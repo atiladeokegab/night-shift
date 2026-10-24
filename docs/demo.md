@@ -39,7 +39,7 @@ earlier headless check, the first cricket audio returned 503 and then 200 on ret
    speaks a short line in every voice, the sport picks included, and prints FAILED for any that fail.
 2. Still do the taps, which prove the voices play in the browser. On the wall tab, tap India v
    Pakistan and wait until Raju speaks one line, then tap ← Wall.
-3. Tap Jordan's last shot and wait until Sam, the basketball voice, speaks one line, then tap ← Wall.
+3. Tap Jordan's last shot as a Bull and wait until Sam, the basketball voice, speaks one line, then tap ← Wall.
    Jordan, not Kobe, so the Kobe tap in the script is still fresh.
 
 While the wall is open, read the proof panel's numbers and the adapter's state once, so the spoken
@@ -110,7 +110,7 @@ with the line ready to correct. Type the correction and send. The line shows Fix
 panel's fix count goes up by one.*
 
 "Say a line is wrong. A producer corrects it right here. The fix is kept beside the original, and it
-goes back through Mubit to train our own commentator."
+is recorded for training on the owner's Mubit app."
 
 ### 6. The proof (1:35–1:55)
 
@@ -119,20 +119,23 @@ goes back through Mubit to train our own commentator."
 "The model's first word comes in about half a second, and a line costs a fraction of a cent." Read
 both numbers off the panel. The half second is the model's text, not the audio.
 
-The one line on the tech: "Every call goes through Mubit, which trains a smaller commentator of our
-own on these calls and every producer fix."
+The one line on the tech: "Every call goes through Mubit, which has trained 6 versions of a smaller
+commentator of our own on these calls. None has passed Mubit's test yet, best 55.8%, so the app
+doesn't call one."
 
 Then one of these, matching the adapter's state on the panel:
 
 - **Adapter scored:** "Here's our trained commentator, scored against the big model on matches it
   never saw." Read the result off the panel as shown, and claim nothing beyond it.
 - **Adapter not ready (the fallback):** *Point at the Lines card, then switch to the Mubit console
-  tab.* "Every line you heard today came from the big model, Claude Haiku. This is Mubit's console,
-  not our product: it holds those calls, the data our own commentator trains on. Our own commentator
-  isn't trained yet, so we won't show you a number we don't have."
+  tab.* "Every line you heard today came from the big models: Claude Haiku for the calls, Claude
+  Sonnet for the analyst. This is Mubit's console, not our product: it holds the recorded calls, the
+  data our own commentator trains on. None of our own commentator's 6 versions has passed Mubit's
+  test yet, so we won't show you a line it hasn't earned."
 
   On the off-air path no line was heard today, so open with "Every line Touchline has called came from
-  the big model, Claude Haiku" instead, and skip pointing at the Lines card: it is empty.
+  the big models: Claude Haiku for the calls, Claude Sonnet for the analyst" instead, and skip
+  pointing at the Lines card: it is empty.
 
 ### 7. Close (1:55–2:00)
 

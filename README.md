@@ -243,11 +243,11 @@ producer fixes go into the same task as corrections. That smaller model is what 
 5. **A producer's fix is built as training signal.** A fix is stored beside the original line and
    sent back through the same Mubit task and session. No fix has been made on the live site yet
    (`fixes` is 0 in `/stats`), so the adapters so far were trained on recorded commentary only.
-6. **Counted at Mubit.** Each line stores the Mubit request id of every call it made, and
+6. **Mubit request ids we stored.** Each line stores the Mubit request id of every call it made, and
    `GET /stats` counts calls from those ids.
-7. **The trained model is measured, not assumed.** 6 adapters so far, none ready, best 55.8% on Mubit's test
-   ([Real numbers](#real-numbers)). The aim is that it matches the big model at lower cost; we make
-   no claim that it beats it.
+7. **The trained model is measured, not assumed.** 6 adapter versions trained, none has passed Mubit's
+   test yet (best 55.8%), and the app does not call an adapter ([Real numbers](#real-numbers)). The
+   aim is that one matches the big model at lower cost; we make no claim that any does.
 
 ## Architecture
 
