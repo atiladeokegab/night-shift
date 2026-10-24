@@ -16,7 +16,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 
-from core import insight, predict
+from core import insight, predict, review
 from core.predict import load_pack, shot_points
 from core.replay import OFF_AIR, Replay, run_replay
 from core.stats import stats
@@ -314,6 +314,11 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
             if name not in {p["name"] for p in predict.players(pack, past)}:
                 raise HTTPException(404, "no such player in this match") from None
         return predict.profile(pack, past, len(past) - 1, name)
+
+    @app.get("/review")
+    def get_review():
+        """Stored lead lines the number check flags, for the producer to fix by hand (#171)."""
+        return review.queue(store, need_deps())
 
     @app.get("/stats")
     def get_stats():

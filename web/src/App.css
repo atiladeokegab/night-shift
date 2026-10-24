@@ -445,3 +445,18 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .following { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; padding: 8px 8px 8px 12px; border-radius: 10px;
   border: 1px solid rgba(255, 181, 71, .35); background: rgba(255, 181, 71, .08); font-size: .88rem; color: var(--muted); }
 .following b { color: var(--fg); font-weight: 600; }
+
+/* Review (#171): one card per stored line the number check flags */
+.review .lede { max-width: 720px; margin: -16px 0 24px; color: var(--muted); }
+.review h1:focus:not(:focus-visible) { outline: none; }
+.review > .hint { margin: 0 0 20px; color: var(--muted); }
+.queue { list-style: none; margin: 0; padding: 0; display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 520px), 1fr)); }
+.flag { padding: 20px; border-radius: 16px; display: grid; gap: 14px; align-content: start; }
+.flag > .label { line-height: 1.4; }
+.flag .moment { margin: 0; color: var(--fg); }
+.flag .moment span { color: var(--muted); }
+.flag .field { display: grid; gap: 6px; }
+.flag .wrong { margin: 0; padding-left: 18px; color: var(--amber); }
+.flag .said { padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); color: var(--muted); }
+.flag .btn { justify-self: start; }
+.stats dd a { color: var(--amber); display: inline-block; padding: 12px 0; margin: -12px 0; } /* a 44 px tap target, same layout (#170) */
