@@ -316,7 +316,7 @@ Each criterion weighs the same; one line each, with where to check it.
   event data's own locations (#172).
 - **The fan layer.** Ask by typing or voice, a choice of voices, and Follow a player, on any match.
 - **At scale,** Redis fans each match's lines out to every viewer and caches them across instances,
-  and SurrealDB holds players, teams, matches and seasons as a graph
+  and SurrealDB, already the graph behind Follow a player, takes over every pack
   ([docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#at-scale-a-plan-not-built)).
 
 ## Real numbers
@@ -626,14 +626,18 @@ page ([`web/`](web)). It replays a match's event feed, asks the commentator agen
 ([`agent/`](agent)) for each line through Mubit, has ElevenLabs voice it, keeps lines and fixes as
 JSON lines on Cloud Storage, and streams moments and lines to the browser over server-sent events.
 The commentator's tools and the shot map read per-match stats packs ([`data/packs/`](data/packs)).
+Follow a player reads the same packs as a graph in embedded SurrealDB (players, teams, matches and
+seasons, loaded in memory at startup in about a second), which also answers "Also in our library":
+the player's other matches and teammates. If the graph fails, it reads the packs.
 
 **At scale (a plan, not built).**
 
 - **Redis** as a shared cache of lines, stat lines and voice clips across instances (today each
   replay pays for its own lines, and voice clips sit in one instance's memory); pub/sub fan-out of
   each match's lines to thousands of viewers; per-viewer Ask limits.
-- **SurrealDB** for players, teams, matches and seasons as a graph, behind the commentator's tools,
-  Follow a player and the heat maps, replacing per-match JSON packs at thousands of matches.
+- **SurrealDB** as its own service behind the commentator's tools and the heat maps too, replacing
+  per-match JSON packs at thousands of matches. Built so far: the embedded graph behind Follow a
+  player.
 - **What stays:** Mubit for every model call and the trained adapter, and Cloud Run as the host.
 
 ## Known limitations

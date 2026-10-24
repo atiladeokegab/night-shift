@@ -148,7 +148,8 @@ def test_a_frames_note_goes_in_the_next_line_once_digits_stripped(tmp_path):
         (0, "players celebrate the goal at"),
         (1, "players celebrate the goal at"),
     )
-    assert seen[0] == (0, "Shot", None)  # called before the frame
+    # called before the frame, after the cold open's lines (#297)
+    assert next(s for s in seen if s[1] != "Stat") == (0, "Shot", None)
     sent = eyes.requests[0]
     assert sent["system"] == look.SYSTEM and "tools" not in sent
     assert sent["messages"][0]["content"][0]["source"]["data"] == FRAME
@@ -209,7 +210,7 @@ def test_a_line_made_with_a_note_is_only_that_viewers(tmp_path, monkeypatch):
         shown = client.get(f"/lines/{mine['line_id']}")
     assert mine["moment_idx"] == 1 and [note for *_, note in seen].count("a corner kick") == 1
     # never stored for other viewers' replays, or fixed by a producer
-    lines = store.all("lines")
+    lines = [ln for ln in store.all("lines") if not {"open", "insight", "reply"} & set(ln)]
     assert len(lines) == 2 and mine["moment_idx"] not in {ln["moment_idx"] for ln in lines}
     again = cached_commentator(store, "7")
     assert again(MOMENTS[mine["moment_idx"]], []) is None

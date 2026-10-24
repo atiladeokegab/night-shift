@@ -247,7 +247,7 @@ def test_a_replay_never_says_a_line_heard_wrong(tmp_path):
         assert [ln["text"] for ln in store.all("lines")] == said
 
 
-def test_the_analyst_says_at_most_two_lines_a_gap(tmp_path):
+def test_the_analyst_keeps_talking_through_a_long_gap(tmp_path):
     r, store = Replay(KOBE, 1e9), Store(tmp_path)
 
     def commentate(m, history):
@@ -260,7 +260,8 @@ def test_the_analyst_says_at_most_two_lines_a_gap(tmp_path):
     for ln in lines:
         if "insight" in ln:
             per_gap[ln["insight"]["after_idx"]] = per_gap.get(ln["insight"]["after_idx"], 0) + 1
-    assert per_gap and max(per_gap.values()) == 2
+    # voice after voice until the next moment (#297): Kobe's longest quiet is 140 s
+    assert per_gap and max(per_gap.values()) >= 10
 
 
 def auto_fixed(tmp_path, texts):

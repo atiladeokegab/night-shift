@@ -31,7 +31,10 @@ export interface Profile {
   n: number
   small_sample: boolean
   text: string
+  library?: LibraryMatch[] // the graph's "Also in our library" (#300): only when there is one
 }
+
+export interface LibraryMatch { match_id: string; title: string; date: string; team: string; teammates: string[] }
 
 export const PHASES = ['powerplay', 'middle', 'death'] as const
 
@@ -107,6 +110,13 @@ export function sampleNote(p: Profile): string | null {
   if (!p.small_sample) return null
   const unit = p.sport === 'f1' ? 'race' : p.sport === 'cricket' ? 'ball' : p.sport === 'football' ? 'shot' : 'attempt'
   return `Small sample: ${many(p.n, unit)} before tonight`
+}
+
+// One of the player's other matches: where, when, for whom, and the first few beside them there.
+export function libraryLine(m: LibraryMatch, shown = 3): string {
+  const more = m.teammates.length - shown
+  const mates = m.teammates.slice(0, shown).join(', ') + (more > 0 ? ` and ${more} more` : '')
+  return `${m.title}, ${m.date}, for ${m.team}${mates ? ` · with ${mates}` : ''}`
 }
 
 // An answer kept with what it was asked for (the #128 lesson): it shows only for the same replay and

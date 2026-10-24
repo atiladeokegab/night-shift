@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { answerFor, cutAt, names, playersUrl, shortName, recordLine, sampleNote, search, tonightLine, type Player, type Profile } from './follow.ts'
+import { answerFor, cutAt, libraryLine, names, playersUrl, shortName, recordLine, sampleNote, search, tonightLine, type Player, type Profile } from './follow.ts'
 
 const p = (name: string, team: string): Player => ({ name, team, record: true, named: false })
 const players = [p('Kylian Mbappé', 'France'), p('Lionel Messi', 'Argentina'), p('Ángel Di María', 'Argentina')]
@@ -79,4 +79,11 @@ test('a shared surname needs the full name or an unshared initial', () => {
   const ali = ['Haider Ali', 'Asif Ali', 'V Kohli']
   assert.equal(names('Asif Ali goes big', 'Haider Ali', ali), false)
   assert.equal(names('Haider Ali goes big', 'Haider Ali', ali), true)
+})
+
+test("the library line names the match, the side and the first few teammates", () => {
+  const spurs = { match_id: '3754092', title: 'Chelsea v Tottenham Hotspur, Premier League', date: '2016-05-02', team: 'Tottenham Hotspur', teammates: ['Dele Alli', 'Harry Kane', 'Son Heung-Min', 'Toby Alderweireld', 'Kyle Walker'] }
+  assert.equal(libraryLine(spurs), 'Chelsea v Tottenham Hotspur, Premier League, 2016-05-02, for Tottenham Hotspur · with Dele Alli, Harry Kane, Son Heung-Min and 2 more')
+  assert.equal(libraryLine({ ...spurs, teammates: ['Harry Kane'] }), 'Chelsea v Tottenham Hotspur, Premier League, 2016-05-02, for Tottenham Hotspur · with Harry Kane')
+  assert.equal(libraryLine({ ...spurs, teammates: [] }), 'Chelsea v Tottenham Hotspur, Premier League, 2016-05-02, for Tottenham Hotspur')
 })

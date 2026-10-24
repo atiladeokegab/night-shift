@@ -17,6 +17,7 @@ import httpx
 
 LIVE = "https://night-shift-5zvig7nbvq-ew.a.run.app"
 FIRST_LINE_S = 30.0
+MIN_CHARACTERS = 30_000  # ElevenLabs characters left on the main key: a demo's worth and more
 
 
 def first_line(client: httpx.Client, within: float) -> tuple[dict, float]:
@@ -83,8 +84,14 @@ def check(base_url: str, within: float = FIRST_LINE_S, transport=None) -> list[t
 
         def voice():
             v = got["stats"].get("voice") or {}
+            left = v.get("characters_left")
             ok = v.get("provider") == "elevenlabs" and not v.get("last_error")
-            return ok, f"provider {v.get('provider')}, last_error {v.get('last_error')}"
+            ok = ok and left is not None and left >= MIN_CHARACTERS
+            return ok, (
+                f"provider {v.get('provider')}, last_error {v.get('last_error')}, "
+                f"{'unknown' if left is None else f'{left:,}'} characters left "
+                f"(need {MIN_CHARACTERS:,})"
+            )
 
         def budget():
             b = got["stats"]["budget"]

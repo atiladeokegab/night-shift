@@ -4,7 +4,6 @@ lines in the quiet stretches between them (core/insight.py), stores each Line an
 moment, line and stats events for the SSE stream."""
 
 import asyncio
-import itertools
 import logging
 import time
 import uuid
@@ -153,7 +152,7 @@ async def run_replay(
         await asyncio.to_thread(insight.Gaps, replay.match_id, store, replay.id) if video else None
     )
 
-    async def say(line: dict, moment: dict) -> None:
+    async def say(line: dict, moment: dict, timed: bool = True) -> None:
         # shortcut: due as if the video starts with the replay at its `start` second;
         # the player's own clock if the page ever sends it.
         if speak:
@@ -161,7 +160,10 @@ async def run_replay(
             # this replay's id, so a cached line spoken again is charged to the replay that spoke it
             speak({**line, "replay_id": replay.id, "moment_at": replay.moment_at}, moment, due)
         spoke.append(line["line_id"])
-        await replay.publish("line", line)
+        # untimed: said as soon as it is here, not when the video's clock reaches it
+        await replay.publish(
+            "line", line if timed else {k: v for k, v in line.items() if k != "video_t"}
+        )
         await replay.publish("stats", await asyncio.to_thread(stats, store))
 
     failed = 0  # provider errors in a row
@@ -185,6 +187,46 @@ async def run_replay(
 
     fixes: list[asyncio.Task] = []
     spoke: list[str] = []  # every line this replay said, cached ones too: what the match cost
+
+    async def stretch(moment, history, t, said, end, recent, orient=True) -> None:
+        """The quiet after `moment` (its line `said` at video time `t`) until the next mapped
+        moment at `end`: stat lines, voice after voice, each due once the last has likely been
+        spoken, while one still fits (#297). A dropped line leaves the turn to that voice's next."""
+        n, misses = 0, 0
+        held = []  # the lead's question, said only once the analyst's answer is made
+        while end is not None:
+            # each voice as the other ends; the page holds a line until the one on air ends
+            at = insight.due_after(*(held[-1][2:] if held else (t, said)), insight.TURN_S)
+            if insight.room(at, end) < insight.MIN_WORDS:
+                break
+            got = await call(
+                moment["idx"],
+                gaps.line,
+                list(history),
+                n,
+                at,
+                commentate,
+                held[-1][3] if held else said,
+                [*recent, *(h[3] for h in held)],
+                end,
+                orient,
+            )
+            if got is None:  # dropped: that voice tries again on its next turn, a question too
+                misses += 1
+                if misses > insight.MISSES or gaps.overran:  # less room next turn, not more
+                    break
+                n, held = n + (1 if held else 2), []
+                continue
+            n += 1
+            held.append((*got, at, got[1]["text"]))
+            if "next" in got[1].get("reply", {}):
+                continue  # may ask the analyst something: the answer goes out with it
+            for stat, said_line, at, _ in held:
+                await replay.publish("moment", {**stat, "video_t": at})
+                await say({**said_line, "video_t": at}, stat)
+                recent.append(said_line["text"])
+            t, said, held = at, got[1]["text"], []
+
     try:
         last = None
         history: list[dict] = []
@@ -220,12 +262,26 @@ async def run_replay(
                 video_t[first],
                 commentate,
             )
-            for stat, said_line in (
-                opened or []
-            ):  # its score is the one before the first mapped moment
-                await replay.publish("moment", {**stat, "video_t": said_line["video_t"]})
-                await say(said_line, stat)
+            # its score is the one before the first mapped moment; the welcome is untimed, so it
+            # plays as soon as it is here, before the video clock starts (#297)
+            for i, (stat, said_line) in enumerate(opened or []):
+                await replay.publish(
+                    "moment", {**stat, **({"video_t": said_line["video_t"]} if i else {})}
+                )
+                await say(said_line, stat, timed=bool(i))
                 recent.append(said_line["text"])
+            before = [m for m in moments if m["idx"] < first]
+            if opened and before:  # then the analyst's fact, and on until the first moment
+                _, last_open = opened[-1]
+                await stretch(
+                    before[-1],
+                    before,
+                    last_open["video_t"],
+                    last_open["text"],
+                    video_t[first],
+                    recent,
+                    False,
+                )
         # a jump (#163): earlier play is on screen from the start, its score and clock and the lines
         # already said for it, untimed so nothing waits for the picture; it is never called again
         if start_idx:
@@ -290,38 +346,9 @@ async def run_replay(
                     fixes.append(asyncio.create_task(auto_fix(store, correct, rejected, line)))
             if not tag:
                 continue
-            # the quiet stretch until the next mapped moment: stat lines, each due once the
-            # last line has likely been spoken
+            # the quiet stretch until the next mapped moment
             end = min((t for t in video_t.values() if t > tag["video_t"]), default=None)
-            t, said = tag["video_t"], (line or {}).get("text")
-            held = []  # the lead's question, said only once its answer is made
-            for n in itertools.count():
-                # each voice as the other ends; the page holds a line until the one on air ends
-                t = insight.due_after(t, said, insight.TURN_S)
-                if end is None or t > end - insight.CLEAR_S:
-                    break
-                got = await call(
-                    moment["idx"],
-                    gaps.line,
-                    list(history),
-                    n,
-                    t,
-                    commentate,
-                    said,
-                    [*recent, *(ln["text"] for _, ln, _ in held)],
-                    end,
-                )
-                if got is None:
-                    break
-                held.append((*got, t))
-                said = got[1]["text"]
-                if "next" in got[1].get("reply", {}):
-                    continue  # may ask the analyst something: the answer goes out with it
-                for stat, said_line, at in held:
-                    await replay.publish("moment", {**stat, "video_t": at})
-                    await say({**said_line, "video_t": at}, stat)
-                    recent.append(said_line["text"])
-                held = []
+            await stretch(moment, history, tag["video_t"], (line or {}).get("text"), end, recent)
         # played from kick-off to its last moment: a match for cost per full replay
         if not start_idx and not replay.smoke:
             done = {"replay_id": replay.id, "match_id": replay.match_id, "line_ids": spoke}
