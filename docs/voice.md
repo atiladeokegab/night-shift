@@ -34,6 +34,19 @@ Measured on 2026-10-23 on Kohli v Pakistan (32 lines, first 12 fetched): all 12 
 
 Run `uv run python -m core.voice` before the demo. It speaks one line in every voice, the sport picks included, on both models and any `VOICE_MODEL_<SPORT>`, so no demo line pays for a cold start. It reads the `VOICE_*` settings from the environment, and from `.env` for any the environment leaves unset; nothing else is read from `.env`, so `ELEVENLABS_API_KEY` must be in the environment. Nothing runs it at service start or deploy.
 
+## Keys and credit
+
+The main key is `ELEVENLABS_API_KEY`, mounted from the `elevenlabs-api-key` secret at `:latest`. `GET /stats` shows how many characters it has left (`voice.characters_left`), and `make demo-check` fails below 30,000.
+
+Backup keys are `ELEVENLABS_API_KEY_FALLBACKS`, comma-separated, tried in order once the main key answers `quota_exceeded`. A free-plan backup key can speak only George, so its 402 on another voice is tried once more in George. `scripts/deploy.sh` mounts them from a pinned version of the same secret, `ELEVENLABS_FALLBACK_VERSION` (default 4), so they need no new secret or IAM grant. The deploy stops if that version doesn't exist, and `ELEVENLABS_FALLBACK_VERSION=none` mounts nothing. To set them up, add the backup keys as a version, then the main key again on top, so `:latest` stays the main key:
+
+```bash
+printf '%s' "key2,key3" | gcloud secrets versions add elevenlabs-api-key --data-file=- --project hackathon-starter-ao  # say it is version 4
+printf '%s' "key1"      | gcloud secrets versions add elevenlabs-api-key --data-file=- --project hackathon-starter-ao  # :latest again
+```
+
+Deploy with `ELEVENLABS_FALLBACK_VERSION=<n>` if the backup version is not 4.
+
 ## Voices
 
 The lead picked these on 2026-10-23, after the listening test below: Raju, Cricket Match Commentator, for cricket and the British Football Announcer for football, both on `eleven_v3`.
