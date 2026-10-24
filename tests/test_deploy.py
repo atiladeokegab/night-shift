@@ -260,9 +260,7 @@ def test_the_backup_voice_version_can_be_overridden_or_turned_off(tmp_path):
     assert not any(s.startswith("ELEVENLABS_API_KEY_FALLBACKS") for s in secrets(deployed))
     calls = (tmp_path / "b" / "calls").read_text()
     assert "versions describe latest --secret elevenlabs-api-key" in calls  # still mounted
-    assert not re.search(
-        r"versions describe \d+ --secret elevenlabs-api-key", calls
-    )
+    assert not re.search(r"versions describe \d+ --secret elevenlabs-api-key", calls)
 
 
 @pytest.mark.parametrize(
