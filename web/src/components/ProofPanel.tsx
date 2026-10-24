@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { getReview, getStats } from '../api'
 import type { Adapter, Autonomy, SpeakerStats, Stats } from '../types'
 import { SideBySide } from './SideBySide'
-import { adapterGood, adapterRows, autonomyRows, TRAINING_LABEL } from '../proof'
+import { adapterGood, adapterRows, autonomyRows, linecheckRow, TRAINING_LABEL } from '../proof'
 
 interface Props {
   live: Stats | null // the latest `stats` event from the replay, newer than the first GET /stats
@@ -53,6 +53,13 @@ export function ProofPanel({ live, matchId }: Props) {
             <div className="wide">
               <dt className="label">To review</dt>
               <dd><a href="#review">{flagged} flagged line{flagged === 1 ? '' : 's'} to fix</a></dd>
+            </div>
+          )}
+          {/* a second model on every live lead line (#298): what it flagged, and the fixes that teach it */}
+          {stats.linecheck && (
+            <div className="wide">
+              <dt className="label">Checker model</dt>
+              <dd>{linecheckRow(stats.linecheck)}</dd>
             </div>
           )}
           {stats.fixes_toward_next !== undefined && (
