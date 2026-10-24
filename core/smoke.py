@@ -41,17 +41,18 @@ def replay_match(client: TestClient, store: Store, match_id: str) -> int:
 
 def live(base_url: str, sport: str = "football") -> int:
     """The live smoke on a deployed URL: health, then one sample replay streams moments and lines,
-    and the service's own store grows by exactly the lines it streamed."""
+    and each line it streamed is in the service's own store."""
     with httpx.Client(base_url=base_url, timeout=httpx.Timeout(30, read=300)) as client:
         assert client.get("/health").json() == {"status": "ok"}
         match = next(m for m in client.get("/matches").json() if m["sport"] == sport)
-        before = client.get("/stats").json()["lines"]
         rid = client.post("/replays", json={"match_id": match["match_id"], "speed": 1e6})
         events = read_stream(client, rid.raise_for_status().json()["replay_id"])
         names = [n for n, _ in events]
         lines = names.count("line")
         assert "error" not in names and names[-1] == "end" and lines >= 1, names
-        assert client.get("/stats").json()["lines"] - before >= lines, "lines missing from store"
+        # by id, not a /stats count: a video replay streams its stored insight lines again
+        for line_id in {d["line_id"] for n, d in events if n == "line"}:
+            assert client.get(f"/lines/{line_id}").status_code == 200, f"{line_id} not in store"
     moments = names.count("moment")
     print(f"live smoke: {base_url} {match['match_id']}: {moments} moments, {lines} lines")
     return 0
