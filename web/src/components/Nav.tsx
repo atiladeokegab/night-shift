@@ -1,7 +1,7 @@
 import { isDemo } from '../api'
 
 // The wall (A-6.5) is home; Fixtures keeps the picker for choosing a speed.
-export type Screen = 'wall' | 'picker' | 'about' | 'live'
+export type Screen = 'wall' | 'picker' | 'about' | 'live' | 'review'
 
 interface Props {
   current: Screen
@@ -25,6 +25,7 @@ export function Nav({ current, onGo }: Props) {
       <nav className="links" aria-label="Main">
         {link('wall', 'Live', true)}
         {link('picker', 'Fixtures')}
+        {link('review', 'Review')}
         {link('about', 'About')}
       </nav>
     </header>

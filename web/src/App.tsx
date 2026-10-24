@@ -9,6 +9,7 @@ import { embeds } from './player'
 import { Live, type VoiceStatus } from './components/Live'
 import type { Screen } from './components/Nav'
 import { Picker } from './components/Picker'
+import { Review } from './components/Review'
 import type { VideoState } from './components/VideoStage'
 import { VoiceSheet } from './components/VoiceSheet'
 import { Wall } from './components/Wall'
@@ -162,6 +163,7 @@ export default function App() {
   // through go(), which stops the replay and hushes the voice.
   useEffect(() => {
     const onPop = (e: PopStateEvent) => {
+      if (window.location.hash === '#review') return // the #review link (#171): onHash below opens Review
       const to = e.state as { screen?: Screen; match?: string; speed?: number } | null
       const m = to?.screen === 'live' ? matches?.find((x) => x.match_id === to.match) : undefined
       if (m) start(m, to?.speed ?? 1, false, true)
@@ -169,6 +171,19 @@ export default function App() {
     }
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
+  })
+
+  // #171: the Proof card links to #review, so it opens the Review screen without a route through Live.
+  // The hash is replaced by Review's own entry, so the link works again next time.
+  useEffect(() => {
+    const onHash = () => {
+      if (window.location.hash !== '#review') return
+      window.history.replaceState({ screen: 'review' }, '', window.location.pathname + window.location.search)
+      go('review', true)
+    }
+    onHash()
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
   })
 
   const sendFix = async (text: string, reason: string) => {
@@ -258,6 +273,8 @@ export default function App() {
         />
       ) : screen === 'about' ? (
         <About onGo={go} />
+      ) : screen === 'review' ? (
+        <Review onGo={go} />
       ) : screen === 'wall' ? (
         <Wall
           matches={matches}

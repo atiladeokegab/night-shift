@@ -7,7 +7,7 @@ import { demoMatches, demoStats, streamDemo } from './demo'
 import { offAir } from './ask'
 import { playersUrl, type Player, type Profile } from './follow'
 import type { Shots } from './shots'
-import type { Answer, Fix, Line, Match, Moment, Stats, StreamEvent, Voice } from './types'
+import type { Answer, Fix, Line, Match, Moment, ReviewItem, Stats, StreamEvent, Voice } from './types'
 
 export const isDemo = new URLSearchParams(window.location.search).has('demo')
 
@@ -91,6 +91,14 @@ export class FixError extends Error {
     super(`POST /lines/{id}/fix failed (${status})`)
     this.status = status
   }
+}
+
+// GET /review (#171): stored lines the number check flags. The demo has no store, so nothing.
+export async function getReview(): Promise<ReviewItem[]> {
+  if (isDemo) return []
+  const res = await fetch('/review')
+  if (!res.ok) throw new Error(`GET /review failed (${res.status})`)
+  return res.json()
 }
 
 export async function postFix(lineId: string, correctedText: string, reason: string): Promise<Fix> {
