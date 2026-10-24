@@ -60,7 +60,7 @@ Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026. Track: Own
 
 #### The six matches
 
-<img src="docs/img/wall.png" alt="The home page: the line A live AI commentator for matches nobody calls above the heading Pick a match, then tiles for Battle of the Bridge (Chelsea 2-2 Tottenham, 2016), Messi v Mbappé (the 2022 World Cup final) and India v Pakistan (T20 World Cup 2022), each with its sport, result, voice and a Start replay button; below them the tops of Kobe's 81 v Toronto, Jordan's last shot and Verstappen, P17 to P1." width="100%">
+<img src="docs/img/wall.png" alt="The home page, under the Touchline. logo and the Live, Fixtures and About links: the line A live AI commentator for matches nobody calls above the heading Tap a match to hear it called, then six tiles, each with its sport, title, competition and date and the link Tap to hear it called: Battle of the Bridge (Premier League, Chelsea v Tottenham, 2 May 2016), Messi v Mbappé (2022 World Cup final, Argentina v France, 18 Dec 2022), India v Pakistan (T20 World Cup, MCG, Melbourne, 23 Oct 2022), Kobe's 81 v Toronto (Lakers v Raptors, 22 Jan 2006), Jordan's last shot as a Bull (1998 NBA Finals, Game 6, Jazz v Bulls, 14 Jun 1998) and Verstappen, P17 to P1 (2024 São Paulo Grand Prix, Interlagos, 3 Nov 2024). Below them, the credits for the match data and the highlights." width="100%">
 
 Six famous matches in four sports, each replayed from real event data over its broadcast highlights
 and called by the same commentator with the same prompt. A line is never shown or spoken before its
@@ -143,7 +143,7 @@ every live page.
 
 #### The Proof panel
 
-<img src="docs/img/proof.png" alt="The Proof card: model first text word p50 0.53 s and p95 0.78 s, cost per line $0.0018, the lines count and 0 fixes; the adapter: Training, Mubit is building the adapter; adapter cost not measurable, because Mubit doesn't report it to the app; and a note on what first text word measures." width="50%">
+<img src="docs/img/proof.png" alt="The Proof card: first word median 0.54 s and p95 1.34 s, cost per line $0.0019, the count of lines across all matches, and 0 fixes; the adapter: Training, Mubit is building the adapter. Under it, a note: first word is the time from the moment to the first word of the model's text reply, measured through Mubit, not counting the rest of the line, speech synthesis or playback; the adapter's cost is not measurable, because Mubit doesn't report it to the app." width="50%">
 
 Live latency, cost per line, lines called, fixes and the adapter's state, computed from the store and
 the same numbers as `GET /stats` ([`web/src/components/ProofPanel.tsx`](web/src/components/ProofPanel.tsx),
