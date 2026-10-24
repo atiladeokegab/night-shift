@@ -72,7 +72,7 @@ def player_total(m: dict, past: list[dict]) -> tuple[str, float] | None:
 
 def facts(header: dict, m: dict, past: list[dict]) -> str:
     total = player_total(m, past)
-    unit = "points" if m["sport"] == "basketball" else "goals"
+    unit = ("point" if m["sport"] == "basketball" else "goal") + "s" * bool(total and total[1] != 1)
     return MESSAGE.substitute(
         line="$line",
         sport=m["sport"],
