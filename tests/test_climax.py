@@ -147,7 +147,8 @@ TRUE_FROM_RECENT_PLAY = [
         "Another six! Iftikhar Ahmed blazing away, three sixes in four balls from AR Patel! "
         "Pakistan 88 for 2.",
     ),
-    (CRICKET, 11, "Another six! Iftikhar Ahmed to 18 off six balls, Pakistan 88 for 2!"),
+    # his last six balls made 24; "18 off six balls" is a wrong span (#293)
+    (CRICKET, 11, "Another six! Iftikhar Ahmed to 24 off six balls, Pakistan 88 for 2!"),
     (CRICKET, 10, "Iftikhar Ahmed, another six! Pakistan 82 for 2, three sixes in five balls!"),
     (
         JORDAN,
