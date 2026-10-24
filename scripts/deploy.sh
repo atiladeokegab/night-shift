@@ -36,6 +36,11 @@ else
   export CLOUDSDK_AUTH_IMPERSONATE_SERVICE_ACCOUNT="$DEPLOYER"
 fi
 MOUNTS="$(for s in $SECRETS; do printf '%s=%s:latest,' "$(tr 'a-z-' 'A-Z_' <<<"$s")" "$s"; done)"
+# The owner's key, a pinned version of the same secret (no new secret, so no new IAM grant): the
+# commentator moves to it if the lent key above runs out of credit (402).
+MUBIT_FALLBACK_VERSION="${MUBIT_FALLBACK_VERSION:-3}"
+[[ "$MUBIT_FALLBACK_VERSION" =~ ^[0-9]+$ ]] || { echo "deploy: MUBIT_FALLBACK_VERSION must be a version number" >&2; exit 1; }
+MOUNTS+="MUBIT_FALLBACK_KEY=mubit-api-key:$MUBIT_FALLBACK_VERSION,"
 
 # The voice picks (docs/voice.md): VOICE_<SPORT>, VOICE_MODEL_<SPORT> and VOICE_LABEL_<SPORT>, from the environment or
 # .env, go to Cloud Run only when set, so an unset one keeps the code default. .env is never
