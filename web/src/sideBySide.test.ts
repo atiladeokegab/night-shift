@@ -17,6 +17,7 @@ test('no adapter line: the big model is the baseline, ours is not yet measured',
   assert.equal(view.paired, false)
   assert.ok(Math.abs(view.bigCost! - 0.0017) < 1e-12)
   assert.equal(view.oursCost, null)
+  assert.equal(view.ours, "no version has passed Mubit's test yet") // never "training"
 })
 
 test('a recorded adapter line: both lines side by side, ours costed from its own lines only', () => {
@@ -24,6 +25,7 @@ test('a recorded adapter line: both lines side by side, ours costed from its own
   assert.equal(view.paired, true)
   assert.equal(view.bigCost, 0.002)
   assert.equal(view.oursCost, 0.0002)
+  assert.equal(view.ours, 'not ready') // the recorded status, as eval/side_by_side.py wrote it
 })
 
 test('an adapter line with no cost stays unmeasured, never $0', () => {

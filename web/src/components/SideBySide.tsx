@@ -22,7 +22,7 @@ export function SideBySide() {
         </p>
       )}
       <p className="hint">
-        <strong>Our commentator: {view.paired ? adapter.status : 'training on Mubit'}.</strong> {adapter.adapters}{' '}
+        <strong>Our commentator: {view.ours}.</strong> {adapter.adapters}{' '}
         adapter versions so far, best {adapter.best_match_pct}% on Mubit's test
         {view.paired
           ? ` (${adapter.status}).`
@@ -73,7 +73,7 @@ function Costs({ big, ours }: { big: number | null; ours: number | null }) {
   return (
     <div style={{ display: 'grid', gap: 6, marginTop: 14 }} aria-label="Cost per line">
       {row('Big model', big, 'not recorded')}
-      {row('Ours', ours, 'training')}
+      {row('Ours', ours, 'not served')}
     </div>
   )
 }
