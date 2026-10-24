@@ -122,6 +122,18 @@ def safe_line(past: list[dict]) -> str:
         return OFF_AIR
 
 
+def counted(ask, record):
+    """`ask` that hands each answer it makes (a model call's cost) to `record`."""
+
+    def call(*args, **kwargs):
+        made = ask(*args, **kwargs)
+        if made:
+            record(made)
+        return made
+
+    return call
+
+
 async def speak(ask, inner, question: str, past: list[dict], lines: list[dict]):
     """The answer's sentences, each as soon as the model has written it and Ask's checks pass it.
     A sentence that fails stops the answer there; if nothing was said yet (or a tool was used, so
@@ -259,6 +271,7 @@ def converse_router(*, need_deps, viewed, asked_so_far, guard, store, env=os.env
             "moment_idx": past[-1]["idx"],
             "expires": now + CTX_TTL_S,
             "turns": 0,
+            "ip": client_ip(request),  # every turn counts against this client's ask limit
         }
         return {"signed_url": url, "ctx": ctx}
 
@@ -284,41 +297,41 @@ def converse_router(*, need_deps, viewed, asked_so_far, guard, store, env=os.env
         replay = viewed(held["replay_id"])
         past, lines = asked_so_far(replay, d.load_moments(replay.match_id), held["moment_idx"])
         question = question_of(messages)
-        if question and body.get("stream", True) and d.ask:
-            if await asyncio.to_thread(guard.off_air, store):
-                return StreamingResponse(sse(OFF_TODAY), media_type="text/event-stream")
-            said = speak(d.ask, commentator.unrecorded_provider(), question, past, lines)
-            return StreamingResponse(sse_of(said), media_type="text/event-stream")
-        text = OFF_AIR
-        if question:
-            try:
-                if await asyncio.to_thread(guard.off_air, store):
-                    text = OFF_TODAY
-                elif d.ask and (
-                    said := await asyncio.to_thread(
-                        insight.checked_answer, d.ask, question, past, lines
-                    )
-                ):
-                    text = said["text"]
-            except Exception as exc:  # the status line, never the provider's error
-                fail("answer", exc)
-                text = safe_line(past)
+
+        def respond(text: str):
+            if body.get("stream", True):
+                return StreamingResponse(sse(text), media_type="text/event-stream")
+            message = {"role": "assistant", "content": text}
+            choice = {"index": 0, "message": message, "finish_reason": "stop"}
+            return JSONResponse(
+                {
+                    "id": f"chatcmpl-{uuid.uuid4().hex}",
+                    "object": "chat.completion",
+                    "created": int(time.time()),
+                    "model": "touchline",
+                    "choices": [choice],
+                }
+            )
+
+        if not question or not d.ask:
+            return respond(OFF_AIR)
+        if await asyncio.to_thread(guard.off_air, store):
+            return respond(OFF_TODAY)
+        if guard.asks.hit(held["ip"]):
+            return respond("That's a lot of questions. Try again in a few minutes.")
+
+        def record(made: dict) -> None:  # as Ask stores its answer: its tokens count in spent_today
+            store.append("answers", {**made, "replay_id": held["replay_id"]})
+
+        ask = counted(d.ask, record)
         if body.get("stream", True):
-            return StreamingResponse(sse(text), media_type="text/event-stream")
-        return JSONResponse(
-            {
-                "id": f"chatcmpl-{uuid.uuid4().hex}",
-                "object": "chat.completion",
-                "created": int(time.time()),
-                "model": "touchline",
-                "choices": [
-                    {
-                        "index": 0,
-                        "message": {"role": "assistant", "content": text},
-                        "finish_reason": "stop",
-                    }
-                ],
-            }
-        )
+            said = speak(ask, commentator.unrecorded_provider(), question, past, lines)
+            return StreamingResponse(sse_of(said), media_type="text/event-stream")
+        try:
+            said = await asyncio.to_thread(insight.checked_answer, ask, question, past, lines)
+        except Exception as exc:  # the status line, never the provider's error
+            fail("answer", exc)
+            return respond(safe_line(past))
+        return respond(said["text"] if said else safe_line(past))
 
     return router
