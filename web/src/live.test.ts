@@ -285,3 +285,11 @@ test('while they watch, a chip says so with a Stop button, and a screen reader h
   const asking = renderToStaticMarkup(createElement(Watching, { on: false, asking: true, onStart: noop, onStop: noop }))
   assert.match(asking, /<span class="sr-only" role="status"><\/span><button class="ctl eyes-btn watch-btn" disabled=""/)
 })
+
+test('a line whose retry passed the number check is tagged Auto-fixed, with its reason for a screen reader (#338)', () => {
+  const html = render({ replay: { ...replay, now: 510, lines: [{ ...line(4, 508, LATER), retried: true }, line(3, 490.5, EARLY)] } })
+  const log = html.slice(html.indexOf('<ul class="log">'))
+  const li = (text: string) => log.slice(log.lastIndexOf('<li', log.indexOf(text)), log.indexOf('</li>', log.indexOf(text)))
+  assert.match(li(LATER), /<span class="pill fixed auto" title="[^"]+">Auto-fixed<span class="sr-only">: its first try failed the number check, and the retry passed<\/span><\/span>/)
+  assert.ok(!li(EARLY).includes('Auto-fixed'))
+})
