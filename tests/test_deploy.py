@@ -30,7 +30,9 @@ def deploy(tmp_path, dotenv="", **env):
     subprocess.run([*git, "add", "-A"], check=True)
     subprocess.run([*git, "commit", "-qm", "x"], check=True)
     calls = tmp_path / "calls"
-    base = {k: v for k, v in os.environ.items() if not k.startswith(("VOICE_", "GIT_"))}
+    base = {
+        k: v for k, v in os.environ.items() if not k.startswith(("VOICE_", "GIT_", "PRODUCER_"))
+    }
     run_env = {**base, "PATH": f"{bin_}:{os.environ['PATH']}", "CALLS": str(calls)}
     run_env |= {"PROJECT": "p", "DEPLOY_AS_SELF": "1", **env}
     done = subprocess.run(
@@ -126,3 +128,19 @@ def test_one_instance_with_a_gibibyte(tmp_path):
     done, deployed = deploy(tmp_path)
     assert done.returncode == 0, done.stderr
     assert "--max-instances 1 " in deployed and "--memory 1Gi " in deployed
+
+
+def test_the_producer_token_rides_along_only_when_the_deploy_has_it(tmp_path):
+    # #255: --set-env-vars replaces every var, so a token set by hand would go at the next deploy
+    done, deployed = deploy(tmp_path, PRODUCER_TOKEN="Zk3-x_9.Q/a+b=")
+    assert done.returncode == 0, done.stderr
+    assert "PRODUCER_TOKEN=Zk3-x_9.Q/a+b=" in env_vars(deployed)
+    done, deployed = deploy(tmp_path / "unset", "PRODUCER_TOKEN=from-dotenv\n")
+    assert done.returncode == 0, done.stderr
+    assert not [v for v in env_vars(deployed) if v.startswith("PRODUCER_TOKEN")]
+
+
+def test_a_producer_token_that_could_inject_another_var_stops_the_deploy(tmp_path):
+    done, deployed = deploy(tmp_path, PRODUCER_TOKEN="ab@MUBIT_RECORD=on")
+    assert done.returncode == 1 and "PRODUCER_TOKEN" in done.stderr and not deployed
+    assert "ab@MUBIT" not in done.stderr + done.stdout
