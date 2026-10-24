@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { momentTag } from '../moment'
 import { embeds, posterUrl, showNoVideoCaption, watchUrl } from '../player'
-import { commentatorName } from '../teams'
 import { SPORT_NAMES, type Line, type Match, type Sport } from '../types'
 import { onScreen, type Clock, type ReplayState } from '../useReplay'
 import { LineLog } from './LineLog'
@@ -18,7 +17,7 @@ interface Props {
   replayKey: number // changes with every started replay, so the video restarts with it
   switching: boolean // started from the sport switch: "Switching to cricket…"
   sports: Sport[] // the sports the server has matches for
-  voice: { status: VoiceStatus; name: string; chip: string; speaking: boolean }
+  voice: { status: VoiceStatus; chip: string; speaking: boolean }
   video: VideoState
   onVideo: (state: VideoState) => void
   onClock: (clock: Clock | null) => void
@@ -53,7 +52,7 @@ export function Live(props: Props) {
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
-  const voiceLabel = commentatorName(voice.name)
+  const voiceLabel = voice.chip // the dock chip's name, never a lone nationality
 
   let overlay = null
   if (replay.phase === 'starting') {

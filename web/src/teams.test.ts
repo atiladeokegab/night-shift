@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import type { Match, Moment, Sport } from './types.ts'
 import { chipName, commentatorName, cricketScore, sheetVoices, voiceName } from './teams.ts'
@@ -44,8 +45,15 @@ test('the dock chip shows a voice by its own name or its role, never a lone nati
   assert.equal(chipName(voice('Sam, Engaging Game Narrator')), 'Sam')
   assert.equal(chipName(voice('Connor: British, energetic')), 'Connor')
   assert.equal(chipName(voice('Viraj: Indian English, energetic')), 'Viraj')
+  assert.equal(chipName(voice('George: British, warm')), 'George')
   assert.equal(chipName(voice('British Football Announcer')), 'Football Announcer')
   assert.equal(chipName(voice('Football pick')), 'Football pick')
   assert.equal(chipName({ ...voice('British (browser)'), browser: true }), 'Browser voice')
   assert.equal(chipName(null), '')
+})
+
+test('the ON AIR badge names the voice as the dock chip does', () => {
+  const live = readFileSync(new URL('./components/Live.tsx', import.meta.url), 'utf8')
+  assert.match(live, /const voiceLabel = voice\.chip\b/)
+  assert.match(live, /<OnAir voice=\{voice\} label=\{voiceLabel\} \/>/)
 })
