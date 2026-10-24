@@ -503,6 +503,66 @@ def goals_so_far(past: list[dict]) -> list[dict]:
     ]
 
 
+def _goals(past: list[dict]) -> list[dict]:
+    """Every goal so far, own goals too, in order: Ask's score must add up (#319)."""
+    shots = {id(p) for p in goals_so_far(past)}
+    return [p for p in past if id(p) in shots or p.get("outcome") == "Own goal"]
+
+
+def _goal(header: dict, p: dict) -> str:
+    if p["outcome"] == "Own goal":
+        other = header["away"] if p["team"] == header["home"] else header["home"]
+        return f"- {p['clock']} {p['players'].get('scorer')} ({p['team']}), own goal for {other}"
+    shot = p["detail"].get("shot_type", "goal").lower()
+    return f"- {p['clock']} {p['players'].get('shooter')} ({p['team']}), {shot}"
+
+
+def _counted(n: int, thing: str) -> str:
+    return f"{n} {thing}{'s' * (n != 1)}"
+
+
+def _tally(header: dict, past: list[dict]) -> str:
+    """The counts a judge asks for and the recent play can't give (#319): each side's shots and
+    cards and each scorer's goals, or a basketball player's points at their latest basket here and
+    the clock as time left."""
+    from agent.status import _when
+
+    m = past[-1]
+    if m["sport"] == "basketball":
+        points: dict[str, tuple[int, str]] = {}
+        for p in past:
+            if (who := p["players"].get("shooter")) and p["detail"].get("player_points"):
+                points[who] = (p["detail"]["player_points"], _when(p))
+        said = sorted(points.items(), key=lambda kv: -kv[1][0])
+        return (
+            f"\nClock: {_when(m)}"
+            + "\nPoints, as of each player's latest basket so far: "
+            + ("; ".join(f"{who} {n} ({at})" for who, (n, at) in said) or "none yet")
+        )
+    if m["sport"] != "football":
+        return ""
+    sides = (header["home"], header["away"])
+    shots = [p["team"] for p in past if p["type"] == "Shot" and "shootout" not in p["detail"]]
+    cards = [p for p in past if (p["detail"] or {}).get("card")]
+    scorers: dict[str, int] = {}
+    for p in goals_so_far(past):
+        who = p["players"].get("shooter")
+        scorers[who] = scorers.get(who, 0) + 1
+
+    def side_cards(team: str) -> str:
+        kinds = [p["detail"]["card"].lower() for p in cards if p["team"] == team]
+        return ", ".join(_counted(kinds.count(k), k) for k in dict.fromkeys(kinds)) or "none"
+
+    return (
+        "\nShots so far (not shootout kicks): "
+        + ", ".join(f"{t} {shots.count(t)}" for t in sides)
+        + "\nCards so far: "
+        + "; ".join(f"{t} {side_cards(t)}" for t in sides)
+        + "\nGoals by player: "
+        + (", ".join(f"{who} {_counted(n, 'goal')}" for who, n in scorers.items()) or "none yet")
+    )
+
+
 def answer(
     question: str,
     past: list[dict],
@@ -526,16 +586,12 @@ def answer(
     quoted = json.dumps(" ".join(question.split()), ensure_ascii=False)
     # the message's recent play is three moments: a goal before them was missing (#236)
     if past[-1]["sport"] == "football":
-        goals = [
-            f"- {p['clock']} {p['players'].get('shooter')} ({p['team']}), "
-            f"{p['detail'].get('shot_type', 'goal').lower()}"
-            for p in goals_so_far(past)
-        ]
         request["messages"][0]["content"] += (
             f"\nPart of the match: {PARTS[past[-1]['period']]}"
             + "\nGoals so far:\n"
-            + ("\n".join(goals) or "- none yet")
+            + ("\n".join(_goal(header, p) for p in _goals(past)) or "- none yet")
         )
+    request["messages"][0]["content"] += _tally(header, past)
     request["messages"][0]["content"] += "\n" + QUESTION.format(lines=heard, question=quoted)
     if wrong:
         request["messages"][0]["content"] += (
