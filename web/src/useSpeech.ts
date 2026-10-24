@@ -49,6 +49,16 @@ export function useSpeech() {
     aired.current = null
   }, [stop])
 
+  // A conversation mode talks over the booth: pause holds the sound where it is, resume carries on.
+  const pause = useCallback(() => {
+    playing.current?.pause()
+    if (available) window.speechSynthesis.pause()
+  }, [available])
+  const resume = useCallback(() => {
+    void playing.current?.play().catch(() => {})
+    if (available) window.speechSynthesis.resume()
+  }, [available])
+
   // Mic on heard the viewer (#286): stop at once, so the mic doesn't hear the booth, and start no fill
   // line until the booth has answered them (#297).
   const duck = useCallback(() => {
@@ -194,5 +204,5 @@ export function useSpeech() {
 
   const airing = useCallback(() => saying.current.filter((s) => s.until > performance.now()).map((s) => s.text), [])
 
-  return { available, on, setOn: toggle, speaking, fellBack, say, sayAnswer, hush, duck, airing, volume, muted, setVolume }
+  return { available, on, setOn: toggle, speaking, fellBack, say, sayAnswer, hush, duck, pause, resume, airing, volume, muted, setVolume }
 }
