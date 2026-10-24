@@ -161,7 +161,7 @@ export default function App() {
           replayKey={current.key}
           switching={current.switching}
           sports={sports}
-          voice={{ status: voiceStatus, name: voiceName(voice), chip: chipName(voice), speaking: speech.speaking }}
+          voice={{ status: voiceStatus, chip: chipName(voice), speaking: speech.speaking }}
           video={video}
           onVideo={onVideo}
           onClock={replay.setClock}
