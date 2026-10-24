@@ -83,6 +83,39 @@ def test_gold_on_real_moments(match_id, idx, text, want):
     assert _gold(match_id, idx, text) == want
 
 
+@pytest.mark.parametrize(
+    "match_id, idx, text, want",
+    [  # the audit's misses, each fixed
+        (
+            "1298150",
+            0,
+            "Babar Azam is lbw! Pakistan one for one!",
+            _labels("ok", "not_said", "not_said", "ok"),
+        ),  # noqa: E501
+        (
+            "0049700088",
+            24,
+            "Ron Harper from fifteen, he ties it up! Seventy-nine all!",
+            _labels("ok", "ok", "not_said", "ok"),
+        ),  # noqa: E501
+        (
+            "9636",
+            14,
+            "MAX VERSTAPPEN! WINS THE SÃO PAULO GRAND PRIX!",
+            _labels("not_said", "ok", "not_said", "ok"),
+        ),  # noqa: E501
+        (
+            "9636",
+            12,
+            "Verstappen takes the lead! Max Verstappen ahead of Ocon, into first place!",
+            _labels("not_said", "ok", "not_said", "ok"),
+        ),  # noqa: E501
+    ],
+)
+def test_gold_after_the_audit(match_id, idx, text, want):
+    assert _gold(match_id, idx, text) == want
+
+
 def test_gold_never_guesses_a_number_it_cannot_place():
     # 47 is Bryant's total, said without "points": a total or not, code can't tell
     assert _gold("0020500591", 6, "Kobe Bryant from deep, 47 now!") is None

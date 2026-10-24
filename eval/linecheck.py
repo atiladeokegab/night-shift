@@ -168,7 +168,7 @@ def score_pairs(t: list, header: dict) -> list[tuple[dict | tuple, list[int]]]:
             out.append(((a, 0.0), [i, i + 1]))
         elif len(rest) > 1 and rest[0] == "to" and _num(rest[1]) is not None:  # "113 to 96"
             out.append(((a, _num(rest[1])), [i, i + 2]))
-        elif rest and rest[0] in ("all", "apiece", "each") and isinstance(t[i], float):
+        elif rest and rest[0] in ("all", "apiece", "each"):  # "one apiece"
             out.append(((a, a), [i]))
         else:
             continue
@@ -183,7 +183,8 @@ def _margins(text: str, header: dict) -> list[float]:
     for hit in re.finditer(rf"\b(?:{names}){insight.MARGIN}", text, re.I):
         if len(insight.said(hit[1])) > 1:
             continue
-        n, *after = insight.said(text[hit.start(1) : hit.start(1) + 48]) or [None]
+        # tokens, not said: "down one, eighteen seconds left" is a margin, not a score
+        n, *after = tokens(text[hit.start(1) : hit.start(1) + 48]) or [None]
         n = 1.0 if n == "one" else n
         if isinstance(n, float) and not (
             after and (isinstance(after[0], float) or after[0] in ("to", "one"))
@@ -194,8 +195,10 @@ def _margins(text: str, header: dict) -> list[float]:
 
 TRAILS = r"\s+(?:(?:are|is|now|still)\s+){0,2}(?:trail|trails|trailing|behind|down)\b(?!\s+(?:the|to|in|on|at)\b)"  # noqa: E501
 WINS = r"\s+(?:(?:have|has|will)\s+)?(?:win|wins|won|take it|takes it|beat|beats)\b(?!\s+away)(?!\s+(?:the|a|in|on)\s+(?:ball|toss|header|free|corner|penalty))"  # noqa: E501
+_NUMBER = "|".join([*insight.UNITS[1:], *insight.TENS, r"\d+", "nil"])
 LEVEL = re.compile(
-    r"\b(?:level|all square|tied|apiece|equali[sz]e[sd]?|(?:\d+|one|two|three|four|five|nil)[ -]all)\b(?! the)",  # noqa: E501
+    rf"\b(?:level|all square|tied|apiece|equali[sz]e[sd]?|ties it|tie it|(?:{_NUMBER})[ -]all)\b"
+    r"(?! the)",
     re.I,
 )
 
@@ -456,11 +459,18 @@ def _f1_leader(text: str, m: dict) -> str | None:
     p1 = min(m["score"]["top"], key=lambda c: c["pos"])["driver"]
     names = {n.lower(): d for d in drivers for n in (d, d.split()[-1])}
     alt = "|".join(re.escape(n) for n in sorted(names, key=len, reverse=True))
-    claim = rf"\b({alt})\s+(?:(?:still|now|is|has)\s+)?(?:leads|takes? the lead|in the lead|wins|won|takes? the win|into the lead|is the leader|in P1|into P1|takes P1)\b"  # noqa: E501
+    # a driver, then a claim of P1 right after: "Ocon still leads", "MAX VERSTAPPEN! WINS"
+    claim = (
+        rf"\b({alt})[\s!—–-]*(?:(?:still|now|is|has|just)\s+)?(?:leads|leading|takes? the lead"
+        r"|in the lead|into the lead|wins|won|takes? (?:it|the win|victory)|is the leader"
+        r"|(?:in|into|takes) (?:P1|first place))\b"
+    )
     said = [names[c.lower()] for c in re.findall(claim, text, re.I)]
-    said += [names[c.lower()] for c in re.findall(rf"\bleader,?\s+({alt})\b", text, re.I)]
-    if not said:
-        return "not_said"
+    said += [
+        names[c.lower()] for c in re.findall(rf"\b(?:leader|lead to),?\s+({alt})\b", text, re.I)
+    ]
+    if not said:  # "Red Bull Racing wins": a team's claim, which code doesn't read
+        return None if _re(r"wins?|won|victory").search(text) else "not_said"
     return "ok" if all(d == p1 for d in said) else "wrong"
 
 
@@ -502,9 +512,10 @@ def gold(header: dict, m: dict, past: list[dict], text: str) -> dict | None:
     elif sport == "cricket":
         claims = []
         for i in range(1, len(t) - 1):
-            if t[i] == "for" and isinstance(t[i - 1], float) and isinstance(t[i + 1], float):
+            a, b = _num(t[i - 1]), _num(t[i + 1])  # "one for one" too
+            if t[i] == "for" and a is not None and b is not None:
                 runs_w = {(s["runs"], s["wickets"]), (s["wickets"], s["runs"])}
-                claims.append((t[i - 1], t[i + 1]) in runs_w)
+                claims.append((a, b) in runs_w)
                 used |= {i - 1, i + 1}
         if "target" in s:
             need = float(max(0, s["target"] - s["runs"]))
@@ -522,6 +533,8 @@ def gold(header: dict, m: dict, past: list[dict], text: str) -> dict | None:
     # leader
     if "home" in s:
         claims = lead_claims(text, header)
+        if not claims and _re(r"wins?|won|victory|winners?|champions?").search(text):
+            return None  # "the Albion hold on for the win": a claim code doesn't read
         # "level at three all" is true of a shootout's match too, whoever leads the kicks
         right = [c == leader(m) or (c is None and s["home"] == s["away"]) for c in claims]
         lead = "not_said" if not claims else "ok" if all(right) else "wrong"
@@ -533,6 +546,8 @@ def gold(header: dict, m: dict, past: list[dict], text: str) -> dict | None:
         lead = "not_said"
     else:
         lead = _f1_leader(text, m)
+        if lead is None:
+            return None
 
     # player total
     if sport == "basketball":
