@@ -34,6 +34,13 @@ test("an answer carries its own time, from the moment it was asked at", () => {
   assert.equal(answeredAt(answer('a', 9), moments), null) // its moment isn't on screen: no time is guessed
 })
 
+test('an answer at a repeated idx uses the latest visible moment, never a queued one', () => {
+  const cold = at(0, '0.0', 'cricket')
+  const wicket = at(0, '1.1', 'cricket')
+  assert.equal(answeredAt(answer('a', 0), [cold]), 'at Over 0.0')
+  assert.equal(answeredAt(answer('a', 0), [cold, wicket]), 'at Over 1.1')
+})
+
 test('an answer goes stale once a later key moment is on screen, never before', () => {
   assert.equal(isStale(answer('a', 66), [at(65, '103:00'), at(66, '104:30')]), false)
   assert.equal(isStale(answer('a', 66), [at(66, '104:30'), at(67, '105:41')]), true)
