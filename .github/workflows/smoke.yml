@@ -33,3 +33,25 @@ jobs:
           if [ ! -f Dockerfile ]; then echo "No Dockerfile yet: no image to check."; exit 0; fi
           docker build -t app .
           docker run --rm -e STORE_DIR=/tmp/store app python -c "import core.main"
+  web:
+    # The page's own checks (#248): unit tests, lint, typecheck and build, then the browser tests (axe, and
+    # the voice heard) against the match server with no keys and Vite, which playwright.config.ts starts.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run lint
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test
