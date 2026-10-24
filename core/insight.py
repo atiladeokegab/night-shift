@@ -457,7 +457,8 @@ class Gaps:
                 wrong_orientation(said["text"], m, said_as, self.header(), past)
                 or self.stale(said["text"])
             ):
-                said = {**said, "text": said_as["detail"], "fallback": True}
+                # built from the data: the model that was rejected didn't serve it (#250)
+                said = {**said, "text": said_as["detail"], "fallback": True, "served_by": None}
             key = {"match_id": self.match_id, "after_idx": m["idx"], "n": n}
             ln = self.store.append(
                 "lines",
@@ -1031,7 +1032,14 @@ def checked(commentate, moment: dict, history: list[dict]) -> dict | None:
     else:  # nothing usable the second time: the first try is the one the producer fixes
         again, wrong = line, wrong_numbers(line["text"], moment, header, history)
     tried = {"tried": again["text"], "wrong": wrong, "checked": True}
-    return {**again, "text": fallback_text(header, moment), "fallback": True, **tried}
+    # built from the data: the model that was rejected didn't serve it (#250)
+    return {
+        **again,
+        "text": fallback_text(header, moment),
+        "fallback": True,
+        "served_by": None,
+        **tried,
+    }
 
 
 # where the ball goes next is not in the data: an orientation line never says it

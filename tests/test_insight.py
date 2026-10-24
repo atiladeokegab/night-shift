@@ -590,7 +590,7 @@ def test_an_orientation_line_that_gets_it_wrong_says_the_ball_instead(tmp_path, 
         line = commentator.commentate(moment, history, provider=FakeProvider())
         if moment["outcome"].startswith("orientation") and moment["idx"] == 5:
             line["text"] = wrong
-        return line
+        return line and {**line, "served_by": "adapter-test"}
 
     lines, _ = replay(FINAL, Store(tmp_path), calls=calls)
     after = [
@@ -598,6 +598,7 @@ def test_an_orientation_line_that_gets_it_wrong_says_the_ball_instead(tmp_path, 
     ]
     assert after, "the gap after Messi's penalty opens on the ball"
     assert after[0]["text"] == after[0]["insight"]["detail"] and after[0]["fallback"] is True
+    assert after[0]["served_by"] is None  # #250: the data's ball line, not the rejected model's
 
 
 def test_a_stretch_stored_before_the_ball_now_opens_on_it(tmp_path, monkeypatch):
