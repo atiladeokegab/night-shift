@@ -12,7 +12,7 @@ import { Picker } from './components/Picker'
 import type { VideoState } from './components/VideoStage'
 import { VoiceSheet } from './components/VoiceSheet'
 import { Wall } from './components/Wall'
-import { commentatorName, defaultVoice, voiceName } from './teams'
+import { chipName, commentatorName, defaultVoice, voiceName } from './teams'
 import { SPORTS, type Line, type Match, type Sport, type Voice } from './types'
 import { useReplay } from './useReplay'
 import { useSpeech } from './useSpeech'
@@ -161,7 +161,7 @@ export default function App() {
           replayKey={current.key}
           switching={current.switching}
           sports={sports}
-          voice={{ status: voiceStatus, name: voiceName(voice), speaking: speech.speaking }}
+          voice={{ status: voiceStatus, name: voiceName(voice), chip: chipName(voice), speaking: speech.speaking }}
           video={video}
           onVideo={onVideo}
           onClock={replay.setClock}

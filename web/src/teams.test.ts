@@ -39,9 +39,13 @@ test('the voice sheet lists a voice once per sport, as that sport\'s own entry',
   assert.deepEqual(ids('football', 'announcer'), ['viraj', 'connor', 'announcer', 'sam', 'cricket-pick']) // the chosen entry stays checked
 })
 
-test('the dock chip shortens a long pick label to its last two words; a short name stays whole', () => {
-  assert.equal(chipName('British Football Announcer'), 'Football Announcer')
-  assert.equal(chipName('Sam, Engaging Game Narrator'), 'Game Narrator')
-  assert.equal(chipName('British'), 'British')
-  assert.equal(chipName('Football pick'), 'Football pick')
+test('the dock chip shows a voice by its own name or its role, never a lone nationality', () => {
+  assert.equal(chipName(voice('Raju, Cricket Commentator')), 'Raju')
+  assert.equal(chipName(voice('Sam, Engaging Game Narrator')), 'Sam')
+  assert.equal(chipName(voice('Connor: British, energetic')), 'Connor')
+  assert.equal(chipName(voice('Viraj: Indian English, energetic')), 'Viraj')
+  assert.equal(chipName(voice('British Football Announcer')), 'Football Announcer')
+  assert.equal(chipName(voice('Football pick')), 'Football pick')
+  assert.equal(chipName({ ...voice('British (browser)'), browser: true }), 'Browser voice')
+  assert.equal(chipName(null), '')
 })
