@@ -322,6 +322,9 @@ def _games(sport: str, who: str, w: str, before: str) -> list[dict] | None:
             {
                 **{k: r[k] for k in ("player", "team", "competition", "season")},
                 "gender": r.get("gender"),
+                # shortcut: the shipped graph lacks IDs; rebuild it to recover transfers.
+                # Legacy rows are team-scoped meanwhile.
+                "identity": r.get("identity") or f"team:{r['team']}:{r['player']}",
                 "start": g[0],
                 "totals": dict(zip(r["keys"], g[2:], strict=True)),
             }  # fmt: skip
@@ -349,9 +352,11 @@ def _latest(apps: list[dict]) -> list[dict]:
 
 
 def player_season(sport: str, name: str, before: str) -> dict | None:
-    """The player's newest competition-season before `before`: team, matches and summed totals."""
+    """An unambiguous player's newest competition-season before `before`."""
     apps = _games(sport, "player", name, before)
     if not apps:
+        return None
+    if len({a["identity"] for a in apps}) != 1:
         return None
     mine = _latest(apps)
     return {
