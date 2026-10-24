@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { isDemo } from '../api'
 
-// The wall (A-6.5) is home; Fixtures keeps the picker for choosing a speed.
+// The wall (A-6.5) is home; Replays keeps the picker for choosing a speed.
 export type Screen = 'wall' | 'picker' | 'about' | 'live' | 'review'
 
 interface Props {
@@ -10,7 +10,7 @@ interface Props {
   children?: ReactNode // the live page's match bar, between the wordmark and the links (#153)
 }
 
-// The top nav (docs/design.md): "Touchline." left; "Matches" (green dot), "Fixtures", "Review", "About" right.
+// The top nav (docs/design.md): "Touchline." left; "Matches" (green dot), "Replays", "Review", "About" right.
 export function Nav({ current, onGo, children }: Props) {
   const link = (screen: Screen, label: string, dot = false) => (
     <button aria-current={current === screen || (screen === 'wall' && current === 'live') ? 'page' : undefined} onClick={() => onGo(screen)}>
@@ -27,7 +27,7 @@ export function Nav({ current, onGo, children }: Props) {
       {children}
       <nav className="links" aria-label="Main">
         {link('wall', 'Matches', true)}
-        {link('picker', 'Fixtures')}
+        {link('picker', 'Replays')}
         {link('review', 'Review')}
         {link('about', 'About')}
       </nav>

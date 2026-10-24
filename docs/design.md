@@ -118,7 +118,7 @@ voice speaks. Cards lift 3px on hover and their artwork scales 3.5% over 1.2s. S
 
 | Component | Shows | Behaviour |
 |---|---|---|
-| Nav | "Touchline." left; "Live" (green dot), "Fixtures", "About" right; the current page tinted | Live opens the live page; Fixtures is the match picker |
+| Nav | "Touchline." left; "Live" (green dot), "Replays", "About" right; the current page tinted | Live opens the live page; Replays is the match picker |
 | Match card | Night-stadium artwork with the two teams' crests (shield in team colour, three-letter code), sport label, title, detail (the date never wraps), result, a meta row (highlights length, key moments, default voice), the speed chips, "Start replay →" | Starts the replay |
 | Video stage | The broadcast highlights (re-uploads of the TV coverage on YouTube): an embedded YouTube player, muted, full-bleed. In the mockup an SVG night stadium stands in | Plays from the start. The player's current time drives the commentary, so a line never runs ahead of the picture (A-6.4@2) |
 | Score bar | Team colour bars and codes, the score, the clock (football "69:01" and the half; cricket "Over 19.4", "need 6 off 3" in an amber chip, with both teams' totals at the same weight: "IND 154/5 PAK 159/8"), "REPLAY" | Updates with each moment |
@@ -169,7 +169,7 @@ flowchart LR
 | Where | Words |
 |---|---|
 | Wordmark | "Touchline." |
-| Nav | "Live", "Fixtures", "About" |
+| Nav | "Live", "Replays", "About" |
 | Tagline on the picker | "Touchline: the describer that checks itself" |
 | Picker heading | "Pick a match" |
 | Football card | "Football" / "Battle of the Bridge" / "Premier League · Chelsea v Tottenham · 2 May 2016" / "Chelsea 2–2 Tottenham: Leicester are champions" |
