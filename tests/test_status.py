@@ -192,6 +192,20 @@ def test_offline_a_tie_is_said_once():
     assert st.fallback_text(match_header(JORDAN), upto(19)[-1]) == out["text"]
 
 
+def test_at_the_end_whoever_leads_has_won():
+    f1 = upto(14, "9636")[-1]  # the chequered flag
+    assert "Who leads: Max Verstappen won\n" in sent("9636", 14)
+    assert st.fallback_text(match_header("9636"), f1).endswith(
+        "P5 Charles Leclerc 30.1 seconds. Max Verstappen won."
+    )
+    assert "Who leads: Argentina won the shootout 4-2\n" in sent(FINAL, 68)  # full time
+    assert st.fallback_text(match_header(FINAL), upto(68, FINAL)[-1]) == (
+        "Penalty shootout, 3-3 after extra time. Argentina won the shootout 4-2."
+    )
+    assert "Who leads: Argentina lead the shootout 4-2\n" in sent(FINAL, 67)  # one kick before
+    assert "Who leads: level at 2-2\n" in sent("3754092", 46)  # a draw stays level
+
+
 @pytest.mark.parametrize(
     "question,yes",
     [

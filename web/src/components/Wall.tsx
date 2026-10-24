@@ -42,8 +42,8 @@ export function Wall({ matches, error, onRetry, onOpen, onJump, onGo }: Props) {
     <div className="page">
       <Nav current="wall" onGo={onGo} />
       <main className="wrap">
-        <p className="eyebrow">A live AI commentator for matches nobody calls.</p>
-        <h1>Tap a match to hear it called</h1>
+        <p className="eyebrow">Audio description for live sport</p>
+        <h1>For the matches no human describer covers</h1>
         {body}
         {/* --muted: .foot's --faint is 3.77:1 at 13 px, under WCAG AA (#154); App.css is #153's until it merges */}
         <p className="foot" style={{ color: 'var(--muted)' }}>
@@ -67,6 +67,7 @@ function Tile({ match, onOpen, onJump }: { match: Match; onOpen: (m: Match) => v
   const [broken, setBroken] = useState(!plays)
   const title = CARD_COPY[match.match_id]?.title ?? match.title?.split(',')[0] ?? match.match_id
   const detail = CARD_COPY[match.match_id]?.detail ?? match.title?.split(',').slice(1).join(',').trim()
+  const note = CARD_COPY[match.match_id]?.note
 
   // Muted, looping, without controls or captions: the tile is a moving picture, never a second commentary.
   // The clip shows only once it is really playing; a clip that errors or isn't playing in TILE_START_MS
@@ -97,14 +98,14 @@ function Tile({ match, onOpen, onJump }: { match: Match; onOpen: (m: Match) => v
 
   return (
     <div className="tile-wrap">
-    <button className="tile" onClick={() => onOpen(match)} aria-label={`Watch ${title} with commentary`}>
+    <button className="tile" onClick={() => onOpen(match)}>
       {match.youtube_id && (
         <img className="poster" alt="" loading="lazy" onError={(e) => { e.currentTarget.hidden = true }} src={posterUrl(match.youtube_id)} />
       )}
       <div className={`clip${playing && !broken ? ' on' : ''}`} ref={host} aria-hidden />
       <span className="tile-shade" />
       <span className="tile-body">
-        <span className="label">{SPORT_NAMES[match.sport]}</span>
+        <span className="label">{SPORT_NAMES[match.sport]}{note && ` · ${note}`}</span>
         <span className="tile-title">{title}</span>
         {detail && <span className="tile-detail">{phrases(detail)}</span>}
         <span className="tile-cta">{phrases(blocked ? 'Commentary only · Tap to hear it called →' : 'Tap to hear it called →')}</span>

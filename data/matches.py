@@ -8,11 +8,14 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from pathlib import Path
 
 SAMPLE = Path(__file__).resolve().parent / "sample"
 VIDEO = Path(__file__).resolve().parent / "video"
 VIDEO_LEAD_S = 10  # the video starts this long before its first mapped moment: time for v3
+# StatsBomb's women's sides: "Bristol City WFC", "Spain Women's"; said "Bristol City", "Spain"
+CLUB_SUFFIX = re.compile(r"\s+(?:WFC|LFC|FC|Women's|Women)$", re.I)
 # "Jump to the big moment" (#163): the moment each jump starts at, a beat before its peak.
 PEAKS = {
     "0020500591": 22,  # Kobe: free throws for 80 and 81
@@ -100,6 +103,7 @@ def _where(header: dict, m: dict) -> str:
         )
         return f"from {yards} yard{'s' * (yards != 1)}, {side}"
     own, other = m["team"], header["away"] if m["team"] == header["home"] else header["home"]
+    own, other = CLUB_SUFFIX.sub("", own), CLUB_SUFFIX.sub("", other)
     if x >= 114 and 30 <= y <= 50:
         return f"inside {other}'s six-yard box"
     if x > 104 and not wide:
@@ -144,7 +148,7 @@ def _lead(header: dict, m: dict) -> str:
     side = leader(m)
     if side is None:
         return f"level at {h}-{a}" + (" in the shootout" if shootout else "")
-    return f"{header[side]} lead{shootout} {max(h, a)}-{min(h, a)}"
+    return f"{CLUB_SUFFIX.sub('', header[side])} lead{shootout} {max(h, a)}-{min(h, a)}"
 
 
 def _chase(header: dict, m: dict) -> str:

@@ -11,6 +11,7 @@ from collections import Counter
 from agent.packs import phase
 from core import predict
 from core.fallback import fallback_text  # noqa: F401  checked() says it; tests import it here
+from data.matches import CLUB_SUFFIX
 
 WORDS_PER_S = 2.7  # a line has likely finished speaking after its words at this rate
 PAUSE_S = 2.0  # then this breath before the next insight
@@ -595,10 +596,6 @@ LEADS = (  # a claim that a team is in front now; "led" and questions are no cla
     r"|leads?(?!\s+(?:has|had|is|was|became|of|over|to)\b)|go ahead|goes ahead|ahead"
     r"|in front(?!\s+of\b))\b"
 )
-
-
-# StatsBomb's women's sides: "Bristol City WFC", "Spain Women's"; a line says "Bristol City lead"
-CLUB_SUFFIX = re.compile(r"\s+(?:WFC|LFC|FC|Women's|Women)$", re.I)
 
 
 def _sides(header: dict) -> tuple[dict[str, str], str]:

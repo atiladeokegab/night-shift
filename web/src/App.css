@@ -353,9 +353,11 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 /* Phone */
 @media (max-width: 760px) {
   :root { --gut: 16px; }
-  .nav { padding: 14px var(--gut); }
-  .wordmark { font-size: 1.3rem; }
-  .links button { padding: 7px 9px; font-size: .82rem; }
+  /* four links and the wordmark fit at 375 px, each link a 44 px tap target */
+  .nav { gap: 8px; padding: 6px var(--gut); }
+  .wordmark { font-size: 1.2rem; }
+  .links { gap: 0; }
+  .links button { padding: 0 6px; min-height: 44px; font-size: .8rem; }
   .wrap { padding-top: 16px; }
   h1 { margin-bottom: 24px; }
   .cards { grid-template-columns: 1fr; gap: 16px; }
@@ -495,6 +497,29 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   border: 1px solid rgba(255, 181, 71, .35); background: rgba(255, 181, 71, .08); font-size: .88rem; color: var(--muted); }
 .following b { color: var(--fg); font-weight: 600; }
 
+/* #170: every control is a 44 px target (WCAG 2.5.5) without moving anything: the small ones get an
+   invisible hit area around them, and the range inputs reach past their row without growing it. */
+:is(.wordmark, .links button, .seg button, .ctl, .btn.sm, .pickbar .btn, .tabs button) { position: relative; }
+:is(.wordmark, .links button, .seg button, .ctl, .btn.sm, .pickbar .btn, .tabs button)::after {
+  content: ""; position: absolute; inset: min(0px, calc(50% - 22px));
+}
+.tile-yt::after { content: ""; position: absolute; inset: min(0px, calc(50% - 22px)); } /* already absolute, on the tile */
+.scrub input { inset: -4px 0; height: auto; }
+.controls input.vol { height: 44px; margin-block: -4px; } /* 44 px to tap, still 36 in the bar's layout */
+.ask :is(input, textarea), .ask .btn.sm { min-height: 44px; }
+.ask { margin-bottom: 6px; } /* each row keeps its old height plus margin (38 + 12, the Lines textarea 40 + 12), */
+.lines .ask { margin-bottom: 8px; } /* so Lines, the log and Proof stay where they were */
+.log { padding-top: 6px; margin-top: -6px; } /* room inside the scroller for the first row's Fix target */
+@media (max-width: 760px) {
+  /* The sport tabs scroll sideways, which clips anything around them, and the controls sit flush on the
+     card's edge: both take 44 px for real, in the same bar height for the controls. */
+  .seg button { height: 44px; }
+  .controls { padding-block: 0; }
+  .ctl { width: 44px; height: 44px; }
+  /* On the live page the links wrap 10 px under the wordmark: its hit area reaches up, theirs down, so they don't overlap. */
+  .live .wordmark::after { inset: -14px min(0px, calc(50% - 22px)) auto; height: 44px; }
+  .live .links button::after { inset: 0 min(0px, calc(50% - 22px)) auto; height: 44px; }
+}
 /* Review (#171): one card per stored line the number check flags */
 .review .lede { max-width: 720px; margin: -16px 0 24px; color: var(--muted); }
 .review h1:focus:not(:focus-visible) { outline: none; }

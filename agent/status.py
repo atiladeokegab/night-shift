@@ -5,6 +5,7 @@ lines' frozen prompt, template and tools stay one task."""
 from __future__ import annotations
 
 import logging
+import re
 import time
 import uuid
 from datetime import UTC, datetime
@@ -32,6 +33,7 @@ MESSAGE = Template(
 )
 QUARTERS = ("First", "Second", "Third", "Fourth")
 HALVES = {1: "First half", 2: "Second half", 5: "Penalty shootout"}
+END = {"Finish", "Full time", "End of game"}  # a match's last moment: whoever leads has won
 log = logging.getLogger(__name__)
 
 
@@ -65,15 +67,18 @@ def _people(m: dict) -> str:
 
 
 def _lead(m: dict) -> str:
-    """Who leads (#185), a chase's state, F1's P1, or nobody yet in a first innings."""
+    """Who leads (#185), a chase's state, F1's P1, or nobody yet in a first innings; at the end,
+    who won ("Argentina won the shootout 4-2")."""
     d, s = m["detail"], m["score"]
     if d.get("lead") or d.get("chase"):
-        return d.get("lead") or d["chase"]
-    if s.get("top"):
-        return f"{min(s['top'], key=lambda c: c['pos'])['driver']} leads"
-    if m["sport"] == "cricket":
+        lead = d.get("lead") or d["chase"]
+    elif s.get("top"):
+        lead = f"{min(s['top'], key=lambda c: c['pos'])['driver']} leads"
+    elif m["sport"] == "cricket":
         return f"no one yet, {m['team']} batting first"
-    return "see the score"
+    else:
+        return "see the score"
+    return re.sub(r"\bleads?\b", "won", lead, count=1) if m["type"] in END else lead
 
 
 def build_request(header: dict, m: dict) -> dict:
@@ -101,7 +106,9 @@ def fallback_text(header: dict, m: dict) -> str:
     """The status from the moment's data alone: said when the model's line stays wrong, or it is
     off air, so "Where are we?" always gets an answer. The score once: who leads says it."""
     d, s = m["detail"], m["score"]
-    state = d.get("lead") or _score(header, m)
+    if s.get("top"):  # F1: its score line gives the lap
+        return f"{_score(header, m)}. {_lead(m)}."
+    state = _lead(m) if d.get("lead") else _score(header, m)
     if "shootout" in d:  # the shootout's lead alone hides the match score
         return (
             f"{_when(m)}, {s['home']}-{s['away']} after extra time. {state[0].upper()}{state[1:]}."
