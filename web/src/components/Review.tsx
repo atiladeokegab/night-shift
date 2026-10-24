@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { getLedger, getReview, postFix, waitForExample } from '../api'
+import { getLedger, getReview, getStats, postFix, waitForExample } from '../api'
 import { submitFix, type Refused } from '../fix'
 import { exampleText, TEACHES } from '../proof'
 import type { Fix, Ledger, LineCheckExample, ReviewItem } from '../types'
@@ -16,10 +16,12 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
   const [fixed, setFixed] = useState<Fix | null>(null) // the last fix sent: its Mubit request id (#239)
   const [example, setExample] = useState<LineCheckExample | null>(null) // the Line check example it sent (#305)
   const [ledger, setLedger] = useState<Ledger | null>(null)
+  const [degraded, setDegraded] = useState(false) // #401: Mubit's key unset or its last call failed
   const heading = useRef<HTMLHeadingElement>(null)
 
   const load = () => {
     getLedger().then(setLedger, () => setLedger(null))
+    getStats().then((s) => setDegraded(s.mubit === 'degraded'), () => {})
     return getReview().then(setItems, () => setFailed(true))
   }
   useEffect(() => void load(), [])
@@ -115,6 +117,7 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
           The number check found these stored lines saying a number their moment's data doesn't. Fix each by hand: a
           fix that passes the number check goes back through Mubit, which records it as training data.
         </p>
+        {degraded && <p className="hint" role="status">Mubit unavailable: lines use the fallback</p>}
         {said && <p className="hint" role="status">{said}</p>}
         {fixed?.mubit_request_id && (
           <p className="hint">

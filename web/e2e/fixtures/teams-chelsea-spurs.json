@@ -1,0 +1,182 @@
+{
+ "date": "2016-05-02",
+ "match_id": "3754092",
+ "sport": "football",
+ "teams": {
+  "teams": [
+   {
+    "team": "Chelsea",
+    "form": [
+     {
+      "date": "2016-04-23",
+      "opponent": "AFC Bournemouth",
+      "home": false,
+      "score": "4-1",
+      "result": "W"
+     },
+     {
+      "date": "2016-04-16",
+      "opponent": "Manchester City",
+      "home": true,
+      "score": "0-3",
+      "result": "L"
+     },
+     {
+      "date": "2016-04-09",
+      "opponent": "Swansea City",
+      "home": false,
+      "score": "0-1",
+      "result": "L"
+     },
+     {
+      "date": "2016-04-02",
+      "opponent": "Aston Villa",
+      "home": false,
+      "score": "4-0",
+      "result": "W"
+     },
+     {
+      "date": "2016-03-19",
+      "opponent": "West Ham United",
+      "home": true,
+      "score": "2-2",
+      "result": "D"
+     }
+    ],
+    "squad": [
+     {
+      "name": "Diego Costa",
+      "matches": 26,
+      "headline": "11 goals in 26"
+     },
+     {
+      "name": "Pedro",
+      "matches": 26,
+      "headline": "7 goals in 26"
+     },
+     {
+      "name": "Willian",
+      "matches": 31,
+      "headline": "5 goals in 31"
+     },
+     {
+      "name": "Cesc F\u00e0bregas",
+      "matches": 33,
+      "headline": "4 goals in 33"
+     },
+     {
+      "name": "Oscar",
+      "matches": 25,
+      "headline": "3 goals in 25"
+     },
+     {
+      "name": "C\u00e9sar Azpilicueta",
+      "matches": 33,
+      "headline": "2 goals in 33"
+     },
+     {
+      "name": "Branislav Ivanovi\u0107",
+      "matches": 30,
+      "headline": "2 goals in 30"
+     },
+     {
+      "name": "Eden Hazard",
+      "matches": 27,
+      "headline": "2 goals in 27"
+     }
+    ]
+   },
+   {
+    "team": "Tottenham Hotspur",
+    "form": [
+     {
+      "date": "2016-04-25",
+      "opponent": "West Bromwich Albion",
+      "home": true,
+      "score": "1-1",
+      "result": "D"
+     },
+     {
+      "date": "2016-04-18",
+      "opponent": "Stoke City",
+      "home": false,
+      "score": "4-0",
+      "result": "W"
+     },
+     {
+      "date": "2016-04-10",
+      "opponent": "Manchester United",
+      "home": true,
+      "score": "3-0",
+      "result": "W"
+     },
+     {
+      "date": "2016-04-02",
+      "opponent": "Liverpool",
+      "home": false,
+      "score": "1-1",
+      "result": "D"
+     },
+     {
+      "date": "2016-03-20",
+      "opponent": "AFC Bournemouth",
+      "home": true,
+      "score": "3-0",
+      "result": "W"
+     }
+    ],
+    "squad": [
+     {
+      "name": "Harry Kane",
+      "matches": 35,
+      "headline": "24 goals in 35"
+     },
+     {
+      "name": "Dele Alli",
+      "matches": 33,
+      "headline": "10 goals in 33"
+     },
+     {
+      "name": "Christian Eriksen",
+      "matches": 32,
+      "headline": "6 goals in 32"
+     },
+     {
+      "name": "Toby Alderweireld",
+      "matches": 35,
+      "headline": "4 goals in 35"
+     },
+     {
+      "name": "Erik Lamela",
+      "matches": 31,
+      "headline": "4 goals in 31"
+     },
+     {
+      "name": "Eric Dier",
+      "matches": 34,
+      "headline": "3 goals in 34"
+     },
+     {
+      "name": "Mousa Demb\u00e9l\u00e9",
+      "matches": 28,
+      "headline": "3 goals in 28"
+     },
+     {
+      "name": "Nacer Chadli",
+      "matches": 26,
+      "headline": "3 goals in 26"
+     }
+    ]
+   }
+  ],
+  "head_to_head": [
+   {
+    "date": "2015-11-29",
+    "opponent": "Tottenham Hotspur",
+    "home": false,
+    "score": "0-0",
+    "result": "D"
+   }
+  ]
+ }
+}

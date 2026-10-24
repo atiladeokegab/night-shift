@@ -83,6 +83,8 @@ export interface VoiceHealth {
 
 export interface Stats {
   voice?: VoiceHealth // GET /stats only: the `stats` event leaves it out
+  mubit?: 'ok' | 'degraded' // GET /stats only (#401): key unset or the last Mubit call failed
+  mubit_reason?: string | null // e.g. "MUBIT_API_KEY unset", "503 engine_unavailable"
   lines: number
   fixes: number
   mubit_requests: number
