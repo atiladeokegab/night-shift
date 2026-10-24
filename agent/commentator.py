@@ -250,6 +250,7 @@ def correction_turn(header: dict, past: list[dict], corrected_text: str, reason:
     """The user turn a fix sends after the line it corrects: the reason, the facts the number
     check reads, and the producer's text as the reference."""
     from agent.status import _lead
+    from data.matches import _lead as _score_lead
     from eval.linecheck import player_total
 
     m = past[-1]
@@ -257,11 +258,14 @@ def correction_turn(header: dict, past: list[dict], corrected_text: str, reason:
     said_at = past[-2] if m["type"] == "Stat" and len(past) > 1 else m
     total = player_total(m, past[:-1]) if m["type"] != "Stat" else None
     unit = ("point" if m["sport"] == "basketball" else "goal") + "s" * bool(total and total[1] != 1)
+    lead = _lead(said_at)
+    if lead == "see the score":  # no lead in the data: who leads by the score, or level
+        lead = _score_lead(header, said_at)
     return FIX.substitute(
         # one line each: a line break in either must not forge a field the model reads
         reason=" ".join(reason.split()) or "the line is wrong.",
         score=_score(header, m),
-        lead=_lead(said_at),
+        lead=lead[0].upper() + lead[1:],
         total=f"{total[0]}, {total[1]:g} {unit} tonight" if total else "none",
         fixed=" ".join(corrected_text.split()),
         words=ANALYST_WORDS if m["type"] == "Stat" else MAX_WORDS,
@@ -277,7 +281,9 @@ def correct(
     reason: str = "",
 ) -> dict:
     """A producer's fix as the next turn of the line's own call: same task, same session. Only
-    the messages differ from the line's request; the reply counts if it passes the number check."""
+    the messages differ from the line's request. It goes unrecorded first (`provider`, else
+    `unrecorded_provider()`); only a reply that passes the number check is sent again, the same
+    request, on the recording provider, so Mubit never trains on a failing correction."""
     from core.insight import wrong_numbers
     from core.review import UNSAID
 
@@ -293,21 +299,31 @@ def correct(
         {"role": "assistant", "content": line["text"]},
         {"role": "user", "content": turn},
     ]
-    if provider is None:  # a moment's fix trains on the owner's key; a Stat's stays unrecorded
-        trainer = correction_provider() if past[-1]["type"] != "Stat" else None
-        provider = trainer or provider_for(past[-1])
-    reply = provider.call(request)
     limit = ANALYST_WORDS if past[-1]["type"] == "Stat" else MAX_WORDS
-    said = spoken(" ".join(b["text"] for b in reply["content"] if b["type"] == "text"), limit)
+
+    def ask(p) -> tuple[dict, str, bool]:
+        reply = p.call(copy.deepcopy(request))
+        said = spoken(" ".join(b["text"] for b in reply["content"] if b["type"] == "text"), limit)
+        # the number check a fix itself passes (#232): a reply that fails it is no correction
+        wrong = [w for w in wrong_numbers(said, past[-1], header, past[:-1]) if UNSAID not in w]
+        return reply, said, bool(said) and not wrong
+
+    reply, said, passed = ask(provider or unrecorded_provider())
+    trainer = None
+    if passed and past[-1]["type"] != "Stat":  # a Stat's fix stays unrecorded, like its line
+        # the owner's key; without one, the lines' own provider when it records
+        trainer = correction_provider() or (
+            default_provider() if getattr(default_provider(), "record", False) else None
+        )
+    if trainer is not None:
+        reply, said, passed = ask(trainer)  # the recorded example: its own reply, checked again
     return {
         "mubit_request_id": reply.get("request_id"),  # None when the provider gives none
         "correction": turn,  # exactly what Mubit was given after the line
         "reply": said,
-        # the number check a fix itself passes (#232): a reply that fails it is no correction
-        "reply_passed": bool(said)
-        and not [w for w in wrong_numbers(said, past[-1], header, past[:-1]) if UNSAID not in w],
-        # True only when Mubit records it for training (FakeProvider never does)
-        "recorded": getattr(provider, "record", False),
+        "reply_passed": passed,
+        # True only when Mubit recorded it for training: never a reply that failed the check first
+        "recorded": getattr(trainer, "record", False),
     }
 
 

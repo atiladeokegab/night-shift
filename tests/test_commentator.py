@@ -485,37 +485,46 @@ def test_the_owners_key_records_and_the_lent_key_stays_unrecorded(monkeypatch):
     assert seen == [("fake-lent", "off"), ("fake-owner", None), ("fake-owner", None)]
 
 
+GOAL = {"outcome": "Goal", "score": {"home": 1, "away": 0}}  # "Goal from the ... key." passes
+
+
 def test_a_fix_records_on_the_owners_key_while_lines_stay_unrecorded(monkeypatch):
-    # #161: the lent key never records, so a fix sent on it trained nothing
+    # #161: the lent key never records, so a fix sent on it trained nothing; #245: the fix is
+    # checked unrecorded first, then sent once more on the owner's key
     provider, seen = _mubit(monkeypatch, 200, record="off")
-    moments = [moment(FOOT, 0)]
+    moments = [moment(FOOT, 0, **GOAL)]
     line = line_for(FOOT, moments, 0, provider)
-    sent = commentator.correct(line, "Ann saves it!", FOOT, moments)
-    assert seen == [("fake-lent", "off"), ("fake-owner", None)] and sent["recorded"] is True
+    sent = commentator.correct(line, "Ann scores!", FOOT, moments)
+    assert seen == [("fake-lent", "off"), ("fake-lent", "off"), ("fake-owner", None)]
+    assert sent["recorded"] is True and sent["mubit_request_id"] == "fake-owner"
 
 
-@pytest.mark.parametrize(("outcome", "passed"), [("Goal", True), ("Saved", False)])
-def test_a_fix_through_the_sdk_changes_only_the_messages_and_checks_the_reply(
-    monkeypatch, outcome, passed
-):
-    # #245: the correction goes through the real SDK call; its reply ("Goal from the fake-owner
-    # key.") counts only when it passes the number check
+@pytest.mark.parametrize("outcome", ["Goal", "Saved"])
+def test_a_fix_through_the_sdk_is_recorded_only_when_its_reply_passes(monkeypatch, outcome):
+    # #245: through the real SDK call. The correction goes unrecorded first; its reply ("Goal from
+    # the fake-lent key.") passes on a goal, so the same request is sent once more, recorded; on a
+    # save it fails, and nothing is recorded
     bodies = []
-    provider, _ = _mubit(monkeypatch, 200, record="off", bodies=bodies)
-    score = {"home": int(outcome == "Goal"), "away": 0}
-    moments = [moment(FOOT, 0, outcome=outcome, score=score)]
+    provider, seen = _mubit(monkeypatch, 200, record="off", bodies=bodies)
+    moments = [moment(FOOT, 0, **(GOAL if outcome == "Goal" else {}))]
     line = line_for(FOOT, moments, 0, provider)
     sent = commentator.correct(line, "Ann scores!", FOOT, moments, reason="Wrong event")
-    said, fix = bodies
-    assert {k: v for k, v in fix.items() if k != "messages"} == {
+    said, checked, *recorded = bodies
+    assert {k: v for k, v in checked.items() if k != "messages"} == {
         k: v for k, v in said.items() if k != "messages"
     }
-    assert fix["messages"] == said["messages"] + [
+    assert checked["messages"] == said["messages"] + [
         {"role": "assistant", "content": line["text"]},
         {"role": "user", "content": sent["correction"]},
     ]
     assert sent["correction"].startswith("Producer correction: Wrong event\n")
-    assert sent["reply_passed"] is passed and sent["recorded"] is True
+    assert seen[1] == ("fake-lent", "off")  # the check is never recorded
+    if outcome == "Goal":
+        assert recorded == [checked] and seen[2:] == [("fake-owner", None)]
+        assert sent["reply_passed"] is True and sent["recorded"] is True
+    else:
+        assert recorded == [] and len(seen) == 2
+        assert sent["reply_passed"] is False and sent["recorded"] is False
 
 
 def test_a_fix_to_an_analyst_line_goes_unrecorded_and_says_so(monkeypatch):
@@ -527,13 +536,18 @@ def test_a_fix_to_an_analyst_line_goes_unrecorded_and_says_so(monkeypatch):
     assert seen[-1] == ("fake-lent", "off") and sent["recorded"] is False
 
 
-def test_a_fix_after_a_402_reports_the_owners_key_recording_it(monkeypatch):
-    # the lent key is unrecorded; once a 402 moves the provider to the owner's key, it records
+def test_a_fix_after_a_402_is_checked_unrecorded_then_recorded_on_the_owners_key(monkeypatch):
     provider, seen = _mubit(monkeypatch, 402, record="off")
-    moments = [moment(FOOT, 0)]
+    moments = [moment(FOOT, 0, **GOAL)]
     line = line_for(FOOT, moments, 0, provider)
-    sent = commentator.correct(line, "Ann saves it!", FOOT, moments, provider=provider)
-    assert seen == [("fake-lent", "off"), ("fake-owner", None), ("fake-owner", None)]
+    sent = commentator.correct(line, "Ann scores!", FOOT, moments)
+    assert seen == [
+        ("fake-lent", "off"),  # the line: 402, then the owner's key
+        ("fake-owner", None),
+        ("fake-lent", "off"),  # the check: 402, then the owner's key, still unrecorded
+        ("fake-owner", "off"),
+        ("fake-owner", None),  # the recorded correction
+    ]
     assert sent["recorded"] is True
 
 

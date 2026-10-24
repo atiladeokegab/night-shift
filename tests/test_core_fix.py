@@ -124,7 +124,7 @@ def test_correction_is_the_next_turn_of_the_same_task_and_session(said, passed):
     # #245: what was wrong, the facts and the producer's line; the provider writes the fix itself
     turn = (
         "Producer correction: Wrong event\n"
-        "The facts at this moment. Score: Reds 0, Blues 0. Leader: see the score."
+        "The facts at this moment. Score: Reds 0, Blues 0. Leader: Level at 0-0."
         " Player total: Ann, 0 goals tonight.\n"
         "The producer's line: Ann's shot is saved!\n"
         "Say your line again, corrected: the line alone, at most 20 words."
