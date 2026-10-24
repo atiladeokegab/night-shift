@@ -21,12 +21,14 @@ export function Converse({ sport, matchId, momentIdx, paused, getReplayId, onPau
   const session = useRef<Conversation | null>(null)
   const pause = useRef(new TalkPause())
   const quiet = useRef<number | undefined>(undefined)
+  const tries = useRef(0) // each start and each end moves it on, so a talk ended while connecting stays ended
   const latest = useRef({ paused, onPause, onPlay })
   useEffect(() => {
     latest.current = { paused, onPause, onPlay }
   })
 
   const over = () => {
+    tries.current++
     window.clearTimeout(quiet.current)
     const s = session.current
     session.current = null
@@ -40,26 +42,32 @@ export function Converse({ sport, matchId, momentIdx, paused, getReplayId, onPau
     if (phase !== 'idle' || !id || momentIdx === null) return
     setPhase('starting')
     pause.current.begin(latest.current.paused, () => latest.current.onPause())
+    const mine = ++tries.current
+    const live = () => tries.current === mine
     const door = await converseDoor(id, sport, matchId, momentIdx)
+    if (!live()) return
     if (!door) return fail('Talking is not available just now. Ask still works.')
     try {
-      session.current = await Conversation.startSession({
+      const s = await Conversation.startSession({
         signedUrl: door.signed_url,
         dynamicVariables: { ctx: door.ctx },
-        onConnect: () => setPhase('talking'),
-        onDisconnect: over,
-        onError: () => fail('The conversation dropped. Ask still works.'),
+        onConnect: () => live() && setPhase('talking'),
+        onDisconnect: () => live() && over(),
+        onError: () => live() && fail('The conversation dropped. Ask still works.'),
         // the commentator has finished: if the fan says nothing, the talk is over and the match resumes
         onModeChange: ({ mode }) => {
+          if (!live()) return
           window.clearTimeout(quiet.current)
           if (mode === 'listening') quiet.current = window.setTimeout(over, SILENT_MS)
         },
         onMessage: ({ source }) => {
-          if (source === 'user') window.clearTimeout(quiet.current)
+          if (live() && source === 'user') window.clearTimeout(quiet.current)
         },
       })
+      if (live()) session.current = s
+      else void s.endSession().catch(() => {}) // ended while it connected: hang up, the match already plays
     } catch {
-      fail('Could not open the microphone. Ask still works.')
+      if (live()) fail('Could not open the microphone. Ask still works.')
     }
   }
 
