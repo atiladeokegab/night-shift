@@ -100,6 +100,7 @@ def test_the_score_and_a_real_goal_pass(idx, text):
 
 
 JAZZ, KOBE, INDIA = "0049700088", "0020500591", "1298150"
+NEPAL = "1515217"  # Netherlands win by 2 runs; the last ball, idx 62, is a four
 
 # (match, idx, a line heard on the live site, a near miss that must pass): the #190 audit's classes
 OTHER_SPORTS = [
@@ -137,6 +138,25 @@ OTHER_SPORTS = [
     (INDIA, 53, "Kohli comes to the crease and finds a six over long-on!", None),
     (INDIA, 53, "India needed a six and got one!", None),
     (INDIA, 53, "Kohli finds a six, can you believe it?", None),
+    (INDIA, 53, "India needed a six, and got one!", None),
+    (INDIA, 53, "Kohli needs to find a six, and he finds one!", None),
+    # any ball but a six: a six called on the last-ball four, and the losing side called the winner
+    (NEPAL, 62, "SIX! Nepal win it!", "Netherlands win by 2 runs!"),
+    (
+        NEPAL,
+        62,
+        "Nepal hit a six off the last ball!",
+        "FOUR! Nepal fall two short, Netherlands have won!",
+    ),
+    (NEPAL, 61, None, "Nepal need a six off the last ball to win!"),
+    (NEPAL, 62, None, "Nepal needed a six off the last ball to win, and got a four."),
+    # a wicket line recalls the bowler's earlier six: no six is called on this ball
+    (
+        INDIA,
+        27,
+        None,
+        "Haris Rauf has two key moments tonight, a six for 6 runs and a last ball for 2.",
+    ),
     # a run out called a stumping; "bowled" names the bowler and "run out of" is no dismissal
     (
         INDIA,

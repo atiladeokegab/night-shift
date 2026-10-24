@@ -934,10 +934,10 @@ SIX = re.compile(r"(?i:\b(?:a|the|another) six\b|\bmaximum\b)|(?<!\d [Ff][Oo][Rr
 # "need a six", "looking for a six"; "find a six" only asked or wished ("can he find a six?",
 # "unless he finds a six"): "Kohli finds a six!" is one hit
 WANTED_SIX = re.compile(
-    r"\b(?:needs?|needed|needing|look(?:ing)? for) (?:a|another) six\b"
-    r"(?! and (?:got|gets|found|finds) (?:one|it))"
+    r"(?:\b(?:needs?|needed|needing|look(?:ing)? for) (?:a|another) six\b"
     r"|\b(?:unless|if|can|could|(?:needs?|has|have|had|try|trying) to)\b[^.!?]*?"
-    r"\bfind(?:s|ing)? (?:a|another) six\b"
+    r"\bfind(?:s|ing)? (?:a|another) six\b)"
+    r"(?!,? and (?:\w+ )?(?:got|gets|found|finds) (?:one|it))"  # "needed a six, and got one"
     r"|\bfind(?:s|ing)? (?:a|another) six\b[^.!?,;]*\?",
     re.I,
 )
@@ -959,9 +959,11 @@ def _wrong_cricket(text: str, m: dict) -> list[str]:
     wrong = []
     if " win " in f" {d.get('chase', '')} " and TIE.search(text):  # "India win by 4 wickets"
         wrong.append(f"a tie is called, but {d['chase']}")
-    six = SIX.search(WANTED_SIX.sub("", text))
-    if kind in ("Chase", "Last ball") and m.get("outcome") != "6 runs" and six:
+    # a wicket line may recall the bowler's earlier moments: "has a six and a last-ball two"
+    if kind != "Wicket" and m.get("outcome") != "6 runs" and SIX.search(WANTED_SIX.sub("", text)):
         wrong.append(f"a six is called, but the ball was {m.get('outcome')}")
+    if won := re.match(r"(.+?) win\b", d.get("chase", "")):
+        wrong += _wrong_winner(text, m, won[1])
     if kind == "Wicket":
         out = m.get("outcome")
         wrong += [
@@ -970,6 +972,23 @@ def _wrong_cricket(text: str, m: dict) -> list[str]:
             if how != out and said.search(text)
         ]
     return wrong
+
+
+def _wrong_winner(text: str, m: dict, winner: str) -> list[str]:
+    """ "Nepal win it!" on the ball Netherlands won on; "Nepal need a six" names no winner."""
+    from data.matches import match_header
+
+    try:
+        side, names = _sides(match_header(m["match_id"]))
+    except KeyError:  # not a bundled match: no team names to look for
+        return []
+    if (won := side.get(winner.lower())) is None:
+        return []
+    said = rf"\b({names})\s+(?:(?:have|has)\s+)?(?:wins?|won)\b(?! the toss)"
+    called = re.finditer(said, text, re.I)
+    if any(side.get(c[1].lower()) != won for c in called):
+        return [f"the wrong side is called the winner: {winner} win"]
+    return []
 
 
 def _team_scores(text: str, m: dict) -> bool:
