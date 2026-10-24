@@ -386,8 +386,8 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .shotmap .shots-body { display: grid; gap: 16px; }
 .shotmap .shots-body > div { display: grid; gap: 14px; align-content: start; }
 @media (min-width: 761px) { .shotmap .shots-body { grid-template-columns: 1.15fr 1fr; align-items: start; } }
-/* A cue that the sheet scrolls on a short phone: the zone table fades out under the sheet's bottom edge. */
-.shotmap::after { content: ''; position: sticky; bottom: calc(-1 * var(--pad)); height: 28px; margin: -44px calc(-1 * var(--pad)) calc(-1 * var(--pad)); pointer-events: none;
+/* A cue that the sheet scrolls on a short phone: the zone table fades out under its bottom edge; scrolled to the end, the fade covers only its own space. */
+.shotmap::after { content: ''; position: sticky; bottom: calc(-1 * var(--pad)); height: 28px; margin: -16px calc(-1 * var(--pad)) calc(-1 * var(--pad)); pointer-events: none;
   background: linear-gradient(rgba(12, 16, 28, 0), rgba(12, 16, 28, .95)); }
 .shotmap .court { width: 100%; max-height: 62svh; display: block; }
 .shotmap .marks { fill: none; stroke: var(--line-hi); stroke-width: 2; }
