@@ -54,7 +54,7 @@ Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026. Track: Own
 | [Follow a player: shot map](#follow-a-player) | Live | [`GET /replays/{id}/players/{name}/shots`](core/app.py), [`web/src/components/ShotMap.tsx`](web/src/components/ShotMap.tsx) |
 | [Follow a player: picker and profile card](#follow-a-player) | In progress (#140) | |
 | [Producer fixes](#producer-fixes) | Live | [`POST /lines/{id}/fix`](core/app.py), [`tests/test_core_fix.py`](tests/test_core_fix.py) |
-| [Big model vs ours](#big-model-vs-ours) | Recorded and merged (#144, #147); the panel isn't on any page until its hook-up lands after #146 | [`data/side_by_side.json`](data/side_by_side.json), [`eval/side_by_side.py`](eval/side_by_side.py) |
+| [Big model vs ours](#big-model-vs-ours) | Live under the Proof card (#144, #147, #150) | [`data/side_by_side.json`](data/side_by_side.json), [`eval/side_by_side.py`](eval/side_by_side.py) |
 | [The Proof panel](#the-proof-panel) | Live | [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats), [`core/stats.py`](core/stats.py) |
 | Live screen layout: the video in a card, Lines and Proof beside it, playback controls | Live (#132) | [`web/src/components/Live.tsx`](web/src/components/Live.tsx) |
 
@@ -135,9 +135,11 @@ training), recorded through Mubit with recording off, with each line's latency a
 [`tests/test_side_by_side.py`](tests/test_side_by_side.py)). Until an adapter version passes Mubit's test,
 those lines stand as the baseline ours must match, and the panel says why there is no line of ours:
 Mubit serves an adapter only once a version passes, and only in its console's Try models, never to
-the app by API. The panel that shows it
-([`web/src/components/SideBySide.tsx`](web/src/components/SideBySide.tsx)) is merged but isn't shown on
-any page until its hook-up lands after #146.
+the app by API. The panel
+([`web/src/components/SideBySide.tsx`](web/src/components/SideBySide.tsx)) sits under the Proof card on
+every live page.
+
+<img src="docs/img/side-by-side.png" alt="The Big model vs ours panel, marked RECORDED: Our model isn't ready yet. Here's the big model it has to match. Our commentator: training on Mubit. 6 adapter versions so far, best 55.8% on Mubit's test; not yet passing it, so it isn't served. A cost bar: Big model $0.0017 per line; Ours, training, not yet measured. Then claude-haiku-4-5, recorded 24 Oct 2026, held-out moments, and three of the big model's lines from England v United States, 2022, each with its first-word time, total time and cost, such as Harry Kane with a chance in the opening moments, but it's blocked away! at 944 ms first word, 1165 ms total, $0.0016." width="384">
 
 #### The Proof panel
 
