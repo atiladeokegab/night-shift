@@ -277,7 +277,8 @@ def spoken(text: str, limit: int = MAX_WORDS, ask: bool = False) -> str:
         para = _STRAY.sub("", para)
         if para and not _META.search(para):
             kept.append(para)
-    return _fit(" ".join(kept), limit)
+    said = " ".join(kept)
+    return _fit(said, limit) or (_clause(said, limit) if ask else "")
 
 
 def _fit(text: str, limit: int = MAX_WORDS) -> str:
@@ -289,6 +290,16 @@ def _fit(text: str, limit: int = MAX_WORDS) -> str:
         if len(" ".join(out).split()) <= limit:
             return " ".join(out)
     return ""
+
+
+def _clause(text: str, limit: int) -> str:
+    """An answer's first sentence cut at its last comma, semicolon or dash that fits, so a long
+    "They have had eighteen shots so far, absolutely dominating ..." still answers (#340)."""
+    first = re.split(r"(?<=[.!?…])\s+", text.strip())[0]
+    end = first[-1:] if first[-1:] in ("!", "?") else "."
+    cuts = [first[: m.start()].rstrip() for m in re.finditer(r"[,;:](?=\s)|\s[—–-](?=\s)", first)]
+    fits = [c for c in cuts if 3 <= len(c.split()) <= limit]
+    return fits[-1] + end if fits else ""
 
 
 def commentate(
@@ -686,7 +697,7 @@ def answer(
         "mubit_request_ids": [r["request_id"] for r in replies],
         "tool_calls": tool_calls,
         "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
-        **({"fallback": True} if fell else {}),
+        **({"fallback": True, "tried": said} if fell else {}),
     }
 
 

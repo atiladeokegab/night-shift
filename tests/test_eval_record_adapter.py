@@ -103,6 +103,7 @@ def test_a_task_with_no_record_is_absent_not_guessed(tmp_path):
         ["--status", "ready", "--score", "101"],
         ["--status", "ready", "--score", "-1"],
         ["--status", "ready", "--passed", "--failed"],
+        ["--status", "ready", "--passed"],  # a pass names its version
         ["--status", "ready", "--target", "101"],
     ],
 )
