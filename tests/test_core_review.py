@@ -4,6 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from agent import commentator
+from core import review
 from core.app import Deps, create_app
 from core.store import Store
 from data.matches import list_matches, load_moments
@@ -15,6 +16,8 @@ RIGHT = f"{SAID} sixty-five to seventy-five, Bryant with forty-one."
 UNSAID = f"{SAID} sixty-five to seventy-five."  # flagged only for leaving out his 41
 CRICKET = "1298150"  # idx 11: Iftikhar's six, his third in four balls only by the moments before it
 SIXES = "Another six! Iftikhar Ahmed, three sixes in four balls! Pakistan 88 for 2."
+HEARD = "Bryant has only a 16% chance from there."  # the analyst, after idx 4
+REPLY = {"match_id": KOBE, "after_idx": 4, "heard": HEARD}  # what the lead answered
 
 
 def line(line_id, text, **more):
@@ -34,6 +37,7 @@ def client(tmp_path, monkeypatch):
     store = Store(tmp_path)
     for ln in (
         line("six", SIXES, speaker="lead", match_id=CRICKET, moment_idx=11),
+        line("reply", "Sixteen percent, and he hits it anyway!", speaker="lead", reply=REPLY),
         line("w-old", WRONG, speaker="lead"),
         line("r", RIGHT, speaker="lead"),
         line("u", UNSAID),  # no speaker: stored before #130, the lead's
@@ -64,3 +68,17 @@ def test_a_fix_from_review_empties_the_queue_and_counts_like_a_replays_fix(clien
     assert client.get("/review").json() == []  # its older copy, same text, goes with it
     stats = client.get("/stats").json()
     assert stats["fixes"] == 1 and stats["fixes_recorded"] == 1
+
+
+def test_a_reply_to_the_analyst_is_checked_against_what_the_analyst_said(tmp_path):
+    store = Store(tmp_path)
+    for ln in (
+        line("said", "Sixteen percent, and he hits it anyway!", speaker="lead", reply=REPLY),
+        line("unsaid", "Thirty-three percent, and he hits it anyway!", speaker="lead", reply=REPLY),
+    ):
+        store.append("lines", ln)
+    deps = Deps(list_matches, load_moments, lambda m, h: None)
+    queued = review.queue(store, deps)
+    assert [q["line_id"] for q in queued] == ["unsaid"]
+    assert queued[0]["wrong"] == ["33 is not in the moment"]
+    assert queued[0]["play"] == f"The lead answers the analyst, who just said: {HEARD}"

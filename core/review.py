@@ -40,18 +40,29 @@ def queue(store, deps) -> list[dict]:
         if matches[mid] is None:
             continue
         header, moments = matches[mid]
-        at = next((i for i, x in enumerate(moments) if x["idx"] == line.get("moment_idx")), None)
-        if at is None:
+        try:  # a reply is checked over the Stat moment it was said over, as its fix goes
+            over = insight.said_over(line, lambda _, ms=moments: ms)
+        except StopIteration:  # said after a moment no longer in the match
             continue
-        m, past = moments[at], moments[:at]  # past: as the replay's history, for recent-play counts
-        if m.get("type") == "Stat":  # the analyst's moment
-            continue
+        if over:
+            m, past = over[-1], over[:-1]
+        else:
+            at = next(
+                (i for i, x in enumerate(moments) if x["idx"] == line.get("moment_idx")), None
+            )
+            if at is None:
+                continue
+            m, past = moments[at], moments[:at]  # the replay's history: recent-play counts
+            if m.get("type") == "Stat":  # the analyst's moment
+                continue
         wrong = [w for w in insight.wrong_numbers(line["text"], m, header, past) if UNSAID not in w]
         if not wrong:
             continue
         d = m.get("detail") or {}
-        play = d.get("play") or ", ".join(
-            filter(None, (m["type"], m.get("outcome"), insight._who(m)))
+        play = d.get("play") or (
+            m["outcome"][0].upper() + m["outcome"][1:]  # a reply: what the analyst just said
+            if over
+            else ", ".join(filter(None, (m["type"], m.get("outcome"), insight._who(m))))
         )
         out.append(
             {
