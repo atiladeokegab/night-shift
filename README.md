@@ -52,9 +52,8 @@ broadcast highlights, each line called at its moment, in four sports.
 ## Who pays
 
 Built for the streaming platforms that carry the WSL and NWSL. Nobody has agreed to pay yet and we
-have not set a price. What we know is our cost: **about 35 cents a replay, voice included** ($0.12
-model, $0.23 voice, $0.35 over 78 replays on the live
-[`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats), 24 October 2026 at 21:34 UTC).
+have not set a price. What we know is our cost: **about $0.45 a replay, voice included**, over 84
+replays (live [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats), 24 October 2026).
 That is a highlights replay, not a whole 90 minutes. Why it matters: [the problem](docs/evidence.md#the-problem).
 
 ## For judges
