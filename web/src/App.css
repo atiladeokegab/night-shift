@@ -99,10 +99,10 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .live { position: relative; z-index: 1; }
 .stage { position: relative; height: var(--stage-h); }
 /* The bottom scrim is pinned in px to the subtitle lane (bottom 150px, two lines and the tag), so it sits
-   at about 70% under the text at any stage height, however bright the frame. */
+   at 85% or more under the text at any stage height, however bright the frame. */
 .shade { position: absolute; inset: 0; pointer-events: none;
   background: linear-gradient(180deg, rgba(6, 8, 15, .78) 0%, rgba(6, 8, 15, 0) 24%),
-              linear-gradient(0deg, rgba(6, 8, 15, .9) 0, rgba(6, 8, 15, .72) 320px, rgba(6, 8, 15, 0) 480px),
+              linear-gradient(0deg, rgba(6, 8, 15, .92) 0, rgba(6, 8, 15, .85) 340px, rgba(6, 8, 15, 0) 520px),
               radial-gradient(120% 90% at 40% 50%, transparent 55%, rgba(0, 0, 0, .5)); }
 .live .nav { position: absolute; top: 0; left: 0; right: 0; z-index: 3; }
 .lane { position: absolute; left: var(--gut); right: calc(var(--side-w) + var(--gut) + 16px); z-index: 2; }
@@ -270,13 +270,14 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   .onair { flex: none; padding: 9px 12px; }
   .score { font-size: 1.25rem; }
   .onair .who, .onair .bars, .dock .back { display: none; }
-  .subtitle { bottom: 136px; gap: 12px; }
+  .subtitle { bottom: 170px; gap: 12px; }
   .subtitle p { font-size: 1.45rem; }
   .dock { bottom: 56px; }
   .dock .btn { padding: 0 10px; }
-  /* Four sports: the dock stays one row and the sport tabs scroll, so the subtitle stays above it. */
-  .dock .glass { flex-wrap: nowrap; max-width: 100%; }
-  .seg { min-width: 0; overflow-x: auto; scrollbar-width: none; }
+  /* Four sports: the sport tabs take the dock's first row whole, the voice and next match the second;
+     the subtitle sits above both. The tabs still scroll if a fifth sport ever doesn't fit. */
+  .dock .glass { max-width: 100%; }
+  .seg { flex: 1 1 100%; justify-content: center; min-width: 0; overflow-x: auto; scrollbar-width: none; }
   .seg button { padding: 0 12px; flex: none; }
   .timeline { bottom: 18px; grid-template-columns: 1fr auto; }
   .timeline .yt { display: none; }
