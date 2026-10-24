@@ -101,9 +101,23 @@ async def run_replay(
         # the texts said so far: a stat line that nearly repeats one of the last few is dropped;
         # a moment's own line is news, so it is always said
         recent: list[str] = []
+        # a jump (#163): earlier play is on screen from the start, its score and clock and the lines
+        # already said for it, untimed so nothing waits for the picture; it is never called again
+        if start_idx:
+            said = {
+                ln["moment_idx"]: ln
+                for ln in await asyncio.to_thread(store.all, "lines")
+                if ln.get("match_id") == replay.match_id and ln.get("speaker", "lead") == "lead"
+            }
+            for moment in moments:
+                if moment["idx"] < start_idx:
+                    await replay.publish("moment", moment)
+                    if moment["idx"] in said:
+                        old = {k: v for k, v in said[moment["idx"]].items() if k != "video_t"}
+                        await replay.publish("line", {**old, "history": True})
         for moment in moments:
             tag = {}
-            if moment["idx"] < start_idx:  # a jump (#163): earlier play is history, never called
+            if moment["idx"] < start_idx:  # a jump (#163): published above, never called
                 history.append(moment)
                 continue
             if video_t is None:

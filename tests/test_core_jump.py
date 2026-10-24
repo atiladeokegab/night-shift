@@ -56,12 +56,41 @@ def test_a_replay_started_at_a_moment_streams_its_first_line_within_3_s(tmp_path
     assert history == list(range(first))  # but the commentator knows what came before
 
 
-def test_a_jump_publishes_nothing_before_its_moment_and_refuses_an_unknown_one(tmp_path):
+def test_a_jump_lands_with_the_score_clock_and_lines_already_at_its_moment(tmp_path):
+    called = []
+    store = Store(tmp_path)
+    said = {"line_id": "old-21", "match_id": KOBE, "moment_idx": 21, "text": "Kobe steals it."}
+    store.append("lines", {**said, "video_t": 1420.0, "speaker": "lead"})
+    store.append("lines", {**said, "line_id": "x", "match_id": "other", "speaker": "lead"})
+    deps = Deps(list_matches, load_moments, recording(called), video_map)
+    with TestClient(create_app(store, deps)) as client:
+        rid = client.post("/replays", json={"match_id": KOBE, "speed": 1e6, "start_idx": 22})
+        events = read_stream(client, rid.json()["replay_id"])
+    first = next(i for i, (n, d) in enumerate(events) if n == "line" and not d.get("history"))
+    before = [d for n, d in events[:first] if n == "moment"]
+    assert [m["idx"] for m in before] == list(range(23))  # the history, then the jump's own moment
+    # when the video starts, the stage already shows the play just before the jump: Q4 1:11, 120-102
+    at_jump = before[-2]
+    assert (at_jump["period"], at_jump["clock"], at_jump["score"]) == (
+        4,
+        "01:11",
+        {"home": 120, "away": 102},
+    )
+    assert all(
+        "video_t" not in m for m in before[:-1]
+    )  # untimed: on screen before the picture moves
+    old = [d for n, d in events[:first] if n == "line"]
+    assert [(ln["line_id"], ln["history"], "video_t" in ln) for ln in old] == [
+        ("old-21", True, False)
+    ]
+    assert (
+        called[0][0] == 22 and events[first][1]["moment_idx"] == 22
+    )  # nothing before it is called
+
+
+def test_a_jump_to_an_unknown_moment_is_refused(tmp_path):
     deps = Deps(lambda: [], lambda mid: LONG[:5], recording([]))
     with TestClient(create_app(Store(tmp_path), deps)) as client:
-        rid = client.post("/replays", json={"match_id": "long", "speed": 1e6, "start_idx": 3})
-        events = read_stream(client, rid.json()["replay_id"])
-        assert [d["idx"] for n, d in events if n == "moment"] == [3, 4]
         assert client.post("/replays", json={"match_id": "long", "start_idx": 9}).status_code == 422
         assert (
             client.post("/replays", json={"match_id": "long", "start_idx": -1}).status_code == 422

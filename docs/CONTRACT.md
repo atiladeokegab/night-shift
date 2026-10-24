@@ -81,7 +81,9 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
 - `GET /health` → `{status: "ok"}` (core)
 - `GET /matches` → `[Match]` (core over data/)
 - `POST /replays {match_id, speed>0, start_idx?}` → `{replay_id}` (core); `start_idx` (#163) starts the stream at
-  that moment: earlier moments are the commentator's history, never called or sent. 422 if no such moment.
+  that moment: earlier moments are never called. They are sent first, untimed (no `video_t`), so the score
+  and clock are already there, each followed by the last line stored for it with `history: true`
+  (shown, never spoken). 422 if no such moment.
 - `GET /replays/{id}/stream` → SSE: per moment `moment`, `line`, `stats` in that order; `error`
   `{code: "commentator_off_air", detail}` if the commentator fails, where `detail` is a fixed
   viewer-safe string ("Commentator is off air for a moment"), never the provider's error text (that
