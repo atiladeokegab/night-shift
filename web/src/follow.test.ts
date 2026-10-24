@@ -67,3 +67,16 @@ test('before the first moment the picker asks with moment_idx=-1, never the late
   assert.equal(playersUrl('r 1', cutAt(null)), '/replays/r%201/players?moment_idx=-1')
   assert.equal(playersUrl('r1', cutAt(7)), '/replays/r1/players?moment_idx=7')
 })
+
+test('a shared surname needs the full name or an unshared initial', () => {
+  const roster = ['Emiliano Martínez', 'Lautaro Martínez', 'Lisandro Martínez', 'Lionel Messi']
+  assert.equal(names('Lautaro Martínez fires wide', 'Emiliano Martínez', roster), false)
+  assert.equal(names('Martínez fires wide', 'Emiliano Martínez', roster), false)
+  assert.equal(names('A save from Emiliano MARTINEZ!', 'Emiliano Martínez', roster), true)
+  assert.equal(names('E. Martínez with the save', 'Emiliano Martínez', roster), true)
+  assert.equal(names('L Martínez heads it clear', 'Lautaro Martínez', roster), false) // Lisandro is an L too
+  assert.equal(names('Messi again', 'Lionel Messi', roster), true) // no namesake: the surname is enough
+  const ali = ['Haider Ali', 'Asif Ali', 'V Kohli']
+  assert.equal(names('Asif Ali goes big', 'Haider Ali', ali), false)
+  assert.equal(names('Haider Ali goes big', 'Haider Ali', ali), true)
+})

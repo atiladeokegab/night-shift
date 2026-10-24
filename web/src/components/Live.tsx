@@ -70,8 +70,9 @@ export function Live(props: Props) {
   const shooter = mapped ? latestShooter(shown.moments) : null
   const openMap = (name: string) => setPicked({ name, replay: replayKey })
   // The followed player (#140) belongs to its replay, like the map: their lines stand out, the map pins to them.
-  const [follow, setFollow] = useState<Picked>(null)
+  const [follow, setFollow] = useState<(Picked & { roster: string[] }) | null>(null)
   const followed = pickedFor(follow, replayKey)
+  const roster = followed ? follow!.roster : []
   const mapFor = followed ?? shooter
 
   // Play, pause and seek reach the player once it is ready; a new player starts playing.
@@ -219,12 +220,12 @@ export function Live(props: Props) {
                 onShots={mapped ? openMap : null} onUnfollow={() => setFollow(null)} />
                 : <section className="panel glass"><p className="hint">Following {followed}: the card shows with the first moment.</p></section>
             ) : (
-              <FollowPicker replayKey={replayKey} momentIdx={moment?.idx ?? null} load={onPlayers} onFollow={(name) => setFollow({ name, replay: replayKey })} />
+              <FollowPicker replayKey={replayKey} momentIdx={moment?.idx ?? null} load={onPlayers} onFollow={(name, roster) => setFollow({ name, replay: replayKey, roster })} />
             )}
           </div>
           <div className="pane lines-pane" role="tabpanel" id="pane-lines" aria-labelledby="tab-lines" data-on={tab === 'lines'}>
             <LineLog lines={shown.lines} late={replay.late} fixes={replay.fixes} moments={shown.moments} onFix={onFix}
-              answers={replay.answers} onAsk={moment ? (q) => onAsk(q, moment.idx) : null} shooter={null} onShots={openMap} followed={followed} onUnfollow={() => setFollow(null)} />
+              answers={replay.answers} onAsk={moment ? (q) => onAsk(q, moment.idx) : null} shooter={null} onShots={openMap} followed={followed} roster={roster} onUnfollow={() => setFollow(null)} />
           </div>
           <div className="pane" role="tabpanel" id="pane-proof" aria-labelledby="tab-proof" data-on={tab === 'proof'}>
             <ProofPanel live={replay.stats} />

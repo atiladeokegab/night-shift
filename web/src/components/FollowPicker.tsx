@@ -5,7 +5,7 @@ interface Props {
   replayKey: number // the list belongs to its replay
   momentIdx: number | null // the moment on screen: who has been named so far
   load: (at: number) => Promise<Player[]>
-  onFollow: (name: string) => void
+  onFollow: (name: string, roster: string[]) => void // the roster tells two Martínez apart
 }
 
 // "Follow a player" (#140): a search box over everyone in the match, those named so far first.
@@ -28,7 +28,7 @@ export function FollowPicker({ replayKey, momentIdx, load, onFollow }: Props) {
   const pick = (name: string) => {
     setQuery('')
     setOpen(false)
-    onFollow(name)
+    onFollow(name, Array.isArray(players) ? players.map((p) => p.name) : [])
   }
   return (
     <section className="panel glass follow" aria-label="Follow a player">

@@ -16,6 +16,7 @@ interface Props {
   shooter: string | null // the latest shooter on screen, in a sport with a shot map (#120)
   onShots: (name: string) => void
   followed?: string | null // the followed player's lines stand out (#140)
+  roster?: string[] // everyone in the match, so a shared surname needs the full name
   onUnfollow?: () => void
 }
 
@@ -23,9 +24,9 @@ interface Props {
 // first-text-word time ("first word" in the mockup: the #37 review asked for the measured thing's name)
 // and "Fix". A fixed line shows the correction over the struck-through original. Viewers' questions and
 // the commentator's answers (#117) sit among the lines at the moment they were asked.
-export function LineLog({ lines, late, fixes, moments, onFix, answers, onAsk, shooter, onShots, followed, onUnfollow }: Props) {
+export function LineLog({ lines, late, fixes, moments, onFix, answers, onAsk, shooter, onShots, followed, roster, onUnfollow }: Props) {
   const said = (l: Line) => fixes[l.line_id]?.corrected_text ?? l.text
-  const theirs = followed ? lines.filter((l) => names(said(l), followed)).length : 0
+  const theirs = followed ? lines.filter((l) => names(said(l), followed, roster)).length : 0
   return (
     <section className="panel lines glass" aria-label="Lines">
       <div className="panel-h">
@@ -60,7 +61,7 @@ export function LineLog({ lines, late, fixes, moments, onFix, answers, onAsk, sh
             const m = moments.find((x) => x.idx === l.moment_idx)
             const fix = fixes[l.line_id]
             const isLate = late.includes(l.line_id)
-            const mine = names(said(l), followed)
+            const mine = names(said(l), followed, roster)
             const firstWord = l.first_word_ms != null // undefined or null: only the whole reply was timed
             const ms = l.first_word_ms ?? l.latency_ms
             return (

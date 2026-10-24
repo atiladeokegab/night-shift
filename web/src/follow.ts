@@ -49,12 +49,22 @@ export function search(players: Player[], query: string, limit = 8): Player[] {
 }
 
 // A line is the followed player's when its words name them: their surname ("Messi", "Kohli", "Di María"
-// by "maría"), accents ignored. A line about their team that never names them is not theirs.
+// by "maría"), accents ignored. A line about their team that never names them is not theirs. When the
+// roster has another player with that surname (three Martínez, two Alis), only the full name or the
+// first initial plus surname counts, and the initial only when no namesake shares it.
 export const shortName = (name: string) => name.trim().split(/\s+/).at(-1) ?? name
 
-export function names(text: string | undefined, followed: string | null | undefined): boolean {
-  const surname = followed ? fold(followed).split(/\s+/).at(-1) : ''
-  return !!text && !!surname && fold(text).split(/[^\p{L}\p{N}]+/u).includes(surname)
+const words = (s: string) => fold(s).split(/[^\p{L}\p{N}]+/u).filter(Boolean)
+const says = (said: string[], name: string[]) => said.some((_, i) => name.every((w, j) => said[i + j] === w))
+
+export function names(text: string | undefined, followed: string | null | undefined, roster: string[] = []): boolean {
+  if (!text || !followed) return false
+  const said = words(text), name = words(followed), surname = name.at(-1)
+  if (!surname) return false
+  const twins = roster.map(words).filter((n) => n.at(-1) === surname && n.join(' ') !== name.join(' '))
+  if (!twins.length) return said.includes(surname)
+  const initial = name[0][0]
+  return says(said, name) || (!twins.some((n) => n[0][0] === initial) && says(said, [initial, surname]))
 }
 
 const many = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`
