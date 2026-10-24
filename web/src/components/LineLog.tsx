@@ -135,20 +135,22 @@ function AskBox({ onAsk }: { onAsk: Props['onAsk'] }) {
     return () => window.removeEventListener('keydown', down)
   }, [])
   return (
-    <form className="ask" onSubmit={send}>
-      <label className="sr-only" htmlFor="ask-q">Ask the commentator</label>
-      {/* size 1: the input fills the row by flex, so its default 20-character width never widens the card (#139) */}
-      <input id="ask-q" size={1} value={question} maxLength={200} readOnly={asking} disabled={!onAsk} autoComplete="off" enterKeyHint="send"
-        placeholder={!onAsk ? 'Ask once play starts' : hint || 'Ask the commentator…'} onChange={(e) => setQuestion(e.target.value)} />
-      <MicButton disabled={!onAsk || asking} onHeard={(t) => (setHint(''), setQuestion(t))} onSend={(t) => (setQuestion(t), void ask(t))}
-        onHint={(h) => (setQuestion(''), setHint(h))} />
-      <button type="button" className="btn sm" aria-keyshortcuts="W" title="Where are we? (W)" disabled={!onAsk || asking}
+    <>
+      <button type="button" className="btn where" aria-keyshortcuts="W" title="Where are we? (W)" disabled={!onAsk || asking}
         onClick={() => void ask(WHERE)}>
         {WHERE}
       </button>
-      <button className="btn sm primary" disabled={!onAsk || asking || !question.trim()}>
-        {asking ? <><span className="spin sm" />Asking…</> : 'Ask'}
-      </button>
-    </form>
+      <form className="ask" onSubmit={send}>
+        <label className="sr-only" htmlFor="ask-q">Ask the commentator</label>
+        {/* size 1: the input fills the row by flex, so its default 20-character width never widens the card (#139) */}
+        <input id="ask-q" size={1} value={question} maxLength={200} readOnly={asking} disabled={!onAsk} autoComplete="off" enterKeyHint="send"
+          placeholder={!onAsk ? 'Ask once play starts' : hint || 'Ask the commentator…'} onChange={(e) => setQuestion(e.target.value)} />
+        <MicButton disabled={!onAsk || asking} onHeard={(t) => (setHint(''), setQuestion(t))} onSend={(t) => (setQuestion(t), void ask(t))}
+          onHint={(h) => (setQuestion(''), setHint(h))} />
+        <button className="btn sm primary" disabled={!onAsk || asking || !question.trim()}>
+          {asking ? <><span className="spin sm" />Asking…</> : 'Ask'}
+        </button>
+      </form>
+    </>
   )
 }
