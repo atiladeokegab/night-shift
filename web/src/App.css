@@ -271,6 +271,8 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .stats dt { letter-spacing: .1em; line-height: 1.3; }
 .stats dd { margin: 0; font: 600 1.45rem/1 var(--display); letter-spacing: -.02em; }
 .stats .wide { grid-column: 1 / -1; padding-top: 14px; border-top: 1px solid var(--line); }
+.stats .cap { grid-column: 1 / 3; margin-bottom: -8px; } /* over Median and P95, which start a new row */
+.stats .cap + div { grid-column: 1; }
 .stats .wide dd { font: 500 .95rem/1.4 var(--body); letter-spacing: 0; }
 .stats .wide dd.good::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--live); margin-right: 8px; vertical-align: 1px; }
 /* Small text takes --muted, not --faint: --faint is under 4:1 on the panels. */

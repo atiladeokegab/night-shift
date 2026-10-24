@@ -65,3 +65,52 @@ def test_adapter_reads_the_latest_recorded_result(tmp_path):
         "total": 25,
         "cost_measurable": False,
     }
+
+
+def test_lead_and_analyst_lines_are_reported_apart(tmp_path):
+    # #161: one line count, p95 and cost mixed Haiku's calls with Sonnet's stat lines
+    store = Store(tmp_path)
+    store.append("lines", {**line(1), "first_word_ms": 500, "speaker": "lead"})
+    store.append("lines", {**line(2), "first_word_ms": 700})  # older lines carry no speaker
+    store.append(
+        "lines", {**line(3, model="claude-sonnet-5-5"), "first_word_ms": 2000, "speaker": "analyst"}
+    )
+    lead, analyst = stats(store)["by_speaker"]["lead"], stats(store)["by_speaker"]["analyst"]
+    assert lead["model"] == "claude-haiku-4-5" and lead["lines"] == 2
+    assert lead["first_word_ms_p95"] == 700 and lead["cost_per_line_usd"] == pytest.approx(0.0011)
+    assert analyst == {
+        "model": "claude-sonnet-5-5",
+        "lines": 1,
+        "first_word_ms_p50": 2000,
+        "first_word_ms_p95": 2000,
+        "cost_per_line_usd": pytest.approx(0.0022),  # 0.002 + 0.0002
+    }
+
+
+def fix(line_id, at, recorded=True):
+    return {"line_id": line_id, "created_at": f"2026-10-24T{at}:00:00+00:00", "recorded": recorded}
+
+
+def test_fixes_toward_the_next_adapter_count_since_its_latest_record(tmp_path):
+    store = Store(tmp_path)
+    store.append("fixes", fix("a", "12"))
+    assert stats(store)["fixes_toward_next"] == 1  # no adapter yet: every recorded fix counts
+    store.append("adapter", {"status": "training", "created_at": "2026-10-24T13:00:00+00:00"})
+    store.append("fixes", fix("b", "14"))
+    assert stats(store)["fixes_recorded"] == 2 and stats(store)["fixes_toward_next"] == 1
+
+
+def test_only_recorded_fixes_count_as_recorded(tmp_path):
+    # a fix to an analyst line goes out unrecorded; one stored before #161 carries no flag
+    store = Store(tmp_path)
+    store.append("fixes", fix("lead", "12"))
+    store.append("fixes", fix("analyst", "12", recorded=False))
+    store.append("fixes", {"line_id": "old", "created_at": "2026-10-24T11:00:00+00:00"})
+    s = stats(store)
+    assert s["fixes"] == 3 and s["fixes_recorded"] == 1 and s["fixes_toward_next"] == 1
+
+
+def test_with_no_owners_key_no_fix_counts_as_recorded(tmp_path):
+    store = Store(tmp_path)
+    store.append("fixes", fix("lead", "12", recorded=False))
+    assert stats(store)["fixes_recorded"] == 0 and stats(store)["fixes_toward_next"] == 0

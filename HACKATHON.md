@@ -1,6 +1,6 @@
 # Night Shift: Mubit Hackathon, London
 
-A live AI commentator for matches nobody calls. An agent with tools turns a real match event feed into one spoken line per key moment in under a second; producers fix wrong lines, every call and fix goes through Mubit, and Mubit trains a small commentator model that matches the big one at lower cost. Track: Own your intelligence layer.
+A live AI commentator for matches nobody calls. An agent with tools turns a real match event feed into one spoken line per key moment, with the first word of text in about 0.5 s (median); producers fix wrong lines, every call and fix goes through Mubit, and Mubit trains a small commentator model on the recorded calls: 6 versions trained, none has passed Mubit's test yet (best 55.8%), and the app does not call an adapter. Track: Own your intelligence layer.
 
 Official rules: https://luma.com/nightshift-london
 

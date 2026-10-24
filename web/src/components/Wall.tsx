@@ -11,12 +11,13 @@ interface Props {
   error: boolean
   onRetry: () => void
   onOpen: (match: Match) => void
+  onJump: (match: Match) => void // starts at the match's peak_idx (#163)
   onGo: (screen: Screen) => void
 }
 
 // The match wall (A-6.5): the home page, one tile per match, each playing its highlights muted with no
 // commentary. Tapping a tile opens it on the full live stage, where the commentator calls it.
-export function Wall({ matches, error, onRetry, onOpen, onGo }: Props) {
+export function Wall({ matches, error, onRetry, onOpen, onJump, onGo }: Props) {
   let body
   if (error) {
     body = (
@@ -35,7 +36,7 @@ export function Wall({ matches, error, onRetry, onOpen, onGo }: Props) {
   } else if (matches.length === 0) {
     body = <div className="notice glass">No matches yet.</div>
   } else {
-    body = <div className="wall">{matches.map((m) => <Tile key={m.match_id} match={m} onOpen={onOpen} />)}</div>
+    body = <div className="wall">{matches.map((m) => <Tile key={m.match_id} match={m} onOpen={onOpen} onJump={onJump} />)}</div>
   }
   return (
     <div className="page">
@@ -58,7 +59,7 @@ export function Wall({ matches, error, onRetry, onOpen, onGo }: Props) {
 const phrases = (text: string) =>
   text.split(' · ').map((part, i) => <span key={i}>{i > 0 && ' · '}<span className="nw">{part}</span></span>)
 
-function Tile({ match, onOpen }: { match: Match; onOpen: (m: Match) => void }) {
+function Tile({ match, onOpen, onJump }: { match: Match; onOpen: (m: Match) => void; onJump: (m: Match) => void }) {
   const host = useRef<HTMLDivElement>(null)
   const [playing, setPlaying] = useState(false)
   const plays = embeds(match)
@@ -111,6 +112,11 @@ function Tile({ match, onOpen }: { match: Match; onOpen: (m: Match) => void }) {
     </button>
     {/* A sibling, not inside the button: a link can't sit inside another control. */}
     {blocked && <a className="tile-yt" href={watchUrl(match)} target="_blank" rel="noopener noreferrer">Watch highlights on YouTube ↗</a>}
+    {/* #163: top right, clear of the sport label on the left (below the YouTube link when both show); inline as App.css is #153's */}
+    {match.peak_idx !== undefined && (
+      <button className="tile-yt" style={{ top: blocked ? 50 : 12, cursor: 'pointer', background: 'rgba(6, 8, 15, .94)', boxShadow: '0 1px 8px rgba(0, 0, 0, .6)' }} onClick={() => onJump(match)}
+        aria-label={`Jump to the big moment of ${title}`}>Jump to the big moment</button>
+    )}
     </div>
   )
 }
