@@ -97,15 +97,16 @@ def test_kobe_one_viewing_fills_every_quiet_stretch_at_the_spacing_without_repea
 def test_a_later_event_never_reaches_the_insights_before_it(tmp_path, monkeypatch):
     monkeypatch.setattr(insight, "MAX_CALLS", 1000)
     moments = load_moments(KOBE)
-    k = next(i for i, m in enumerate(moments) if m["idx"] == 10)  # unmapped, between 9 and 11
-    moments[k] = {
-        **moments[k],
-        "team": "Toronto Raptors",
-        "players": {"shooter": "Planted Shooter"},
-        "outcome": "3 points",
-        "score": {"home": 990, "away": 991},
-        "detail": {"player_points": 977},
-    }
+    for i, m in enumerate(moments):
+        if m["idx"] in (10, 21):  # unmapped, 10 between 9 and 11; two make a tally
+            moments[i] = {
+                **m,
+                "team": "Toronto Raptors",
+                "players": {"shooter": "Planted Shooter"},
+                "outcome": "3 points",
+                "score": {"home": 990, "away": 991},
+                "detail": {"player_points": 977},
+            }
     lines, fake = replay(KOBE, Store(tmp_path), moments)
     planted = ("Planted", "990", "991", "977")
     before = [ln for ln in lines if gap(ln).get("after_idx", 99) <= 9]
@@ -116,9 +117,9 @@ def test_a_later_event_never_reaches_the_insights_before_it(tmp_path, monkeypatc
     assert not any(p in q for q in early for p in planted)
     # the probe can go red: once the planted event is past, the insights do use it
     later = [
-        ln["insight"]["detail"] for ln in lines if ln.get("insight", {}).get("after_idx") == 11
+        ln["insight"]["detail"] for ln in lines if ln.get("insight", {}).get("after_idx", 0) > 9
     ]
-    assert any("Planted Shooter" in d for d in later)
+    assert any(p in d for d in later for p in planted)
 
 
 def test_an_insight_request_has_the_analysts_prompt_and_a_lines_message(tmp_path):
@@ -170,6 +171,14 @@ def test_a_pack_match_cites_the_pack_and_one_without_uses_tonight_only(tmp_path,
     said = [ln["insight"] for ln in chelsea if "insight" in ln]
     assert said and {i["kind"] for i in said} <= {"tally", "score story", "momentum"}
     assert not any("before tonight" in i["detail"] for i in said)
+
+
+def test_a_pack_stretch_opens_on_the_pack_and_one_moment_is_no_tally(tmp_path):
+    lines, _ = replay(KOBE, Store(tmp_path))
+    first = [ln["insight"]["kind"] for ln in lines if ln.get("insight", {}).get("n") == 0]
+    assert first and set(first) <= {"player profile", "next to score"}
+    one = load_moments(CHELSEA)[:1]
+    assert insight._tallies(None, one) == [] and insight._tallies(None, one * 2)
 
 
 def test_a_second_replay_makes_no_new_insight_calls(tmp_path):

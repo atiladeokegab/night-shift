@@ -59,6 +59,8 @@ def _tallies(pack, past):
             if not name:
                 continue
             mine = [m for m in past if key(m) == name]
+            if len(mine) < 2:  # one moment is no tally: it would only re-call that play
+                continue
             counts = Counter(
                 f"{m['type']} ({m['outcome']})" if m.get("outcome") else m["type"] for m in mine
             )
@@ -171,13 +173,17 @@ class Gaps:
             self._pack = predict.load_pack(m.get("sport", ""), self.match_id) or {}
         return self._pack
 
-    def next_stat(self, past: list[dict]) -> tuple[str, str] | None:
-        """The next kind in turn with a detail not said yet in this replay."""
-        for i in range(len(KINDS)):
-            kind, make = KINDS[(self.turn + i) % len(KINDS)]
+    def next_stat(self, past: list[dict], first: bool = False) -> tuple[str, str] | None:
+        """The next kind in turn with a detail not said yet in this replay; a stretch's first
+        insight takes the pre-match pack's profile or odds when there is a pack."""
+        order = [(self.turn + i) % len(KINDS) for i in range(len(KINDS))]
+        if first and self.pack(past[-1]):
+            order.sort(key=lambda k: KINDS[k][0] not in ("player profile", "next to score"))
+        for k in order:
+            kind, make = KINDS[k]
             for detail in make(self.pack(past[-1]), past):
                 if detail not in self.used:
-                    self.turn += i + 1
+                    self.turn = k + 1
                     return kind, detail
         return None
 
@@ -201,7 +207,7 @@ class Gaps:
         else:
             ln = None
             heard = " ".join(str(before or "").split())  # one line: it must not forge a field
-            picked = ("reply", heard) if reply else self.next_stat(past)
+            picked = ("reply", heard) if reply else self.next_stat(past, first=n == 0)
             if not picked:
                 return None
             said_as = {"kind": picked[0], "detail": picked[1], "heard": heard, "v": VERSION}
