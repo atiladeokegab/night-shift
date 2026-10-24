@@ -22,6 +22,11 @@ APIS="run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.c
 DEPLOYER="deployer@$PROJECT.iam.gserviceaccount.com"  # deploy.sh impersonates this account
 P=(--project "$PROJECT")
 
+case "$DEPLOY_AS" in
+  *.gserviceaccount.com) member="serviceAccount:$DEPLOY_AS" ;;
+  *) member="user:$DEPLOY_AS" ;;
+esac
+
 found() { "$@" >/dev/null 2>&1; }  # a describe that succeeds: the resource is already there
 grant() { "$@" --quiet >/dev/null; }  # an add-iam-policy-binding, without its policy dump
 
@@ -74,6 +79,8 @@ for secret in $SECRETS $OPTIONAL_SECRETS; do
     printf '%s' "$value" | gcloud secrets create "$secret" --data-file=- "${P[@]}"
   fi
   grant gcloud secrets add-iam-policy-binding "$secret" "${P[@]}" \
+    --member "$member" --role roles/secretmanager.viewer
+  grant gcloud secrets add-iam-policy-binding "$secret" "${P[@]}" \
     --member "serviceAccount:$RUNTIME" --role roles/secretmanager.secretAccessor
 done
 
@@ -91,10 +98,6 @@ grant gcloud iam service-accounts add-iam-policy-binding "$RUNTIME" "${P[@]}" \
   --member "serviceAccount:$DEPLOYER" --role roles/iam.serviceAccountUser
 
 # Whoever runs deploy.sh (a person, or a service account) may impersonate the deployer.
-case "$DEPLOY_AS" in
-  *.gserviceaccount.com) member="serviceAccount:$DEPLOY_AS" ;;
-  *) member="user:$DEPLOY_AS" ;;
-esac
 echo "bootstrap: $member may deploy as $DEPLOYER (roles/iam.serviceAccountTokenCreator)"
 grant gcloud iam service-accounts add-iam-policy-binding "$DEPLOYER" "${P[@]}" \
   --member "$member" --role roles/iam.serviceAccountTokenCreator

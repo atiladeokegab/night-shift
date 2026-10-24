@@ -1,6 +1,8 @@
 // Talk to the commentator (#380): the match pauses while the fan talks and resumes when the talk
 // ends, but only a pause the talk made: a match the fan had already paused stays paused.
 
+import { replayGone } from './ended.ts'
+
 export interface Door {
   signed_url: string
   ctx: string
@@ -32,7 +34,10 @@ export async function converseDoor(
   try {
     const q = new URLSearchParams({ replay_id: replayId, moment_idx: String(momentIdx) })
     const res = await get(`/converse/${encodeURIComponent(sport)}/${encodeURIComponent(matchId)}/token?${q}`)
-    if (!res.ok) return null
+    if (!res.ok) {
+      await replayGone(res, replayId) // a dropped replay ends on the page (#454)
+      return null
+    }
     const door = (await res.json()) as Door
     return door.signed_url && door.ctx ? door : null
   } catch {

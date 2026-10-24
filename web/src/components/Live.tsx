@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { Component, lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { answeredAt, isStale } from '../ask'
 import { clockText, momentTag } from '../moment'
 import { eyesKey } from '../eyes'
@@ -23,12 +23,27 @@ import { ScoreBar } from './ScoreBar'
 import { ShotMap } from './ShotMap'
 import { VideoStage, type VideoState } from './VideoStage'
 import { Watch } from './Watch'
+import { ENDED } from '../ended'
 
 // #429: Talk's SDK (@elevenlabs/client) is most of the first-load script, and Talk only shows once a replay
 // runs. Its own chunk, fetched once the page is idle, takes it off the first paint without Talk showing late.
 const loadConverse = () => import('./Converse').then((m) => ({ default: m.Converse }))
 const Converse = lazy(loadConverse)
-if (typeof window !== 'undefined') (window.requestIdleCallback ?? setTimeout)(() => void loadConverse())
+if (typeof window !== 'undefined') (window.requestIdleCallback ?? setTimeout)(() => void loadConverse().catch(() => {}))
+
+class TalkBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false }
+
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+
+  render() {
+    return this.state.failed
+      ? <p className="hint" role="status">Talk is unavailable. Ask still works.</p>
+      : this.props.children
+  }
+}
 
 export type VoiceStatus = 'on' | 'off' | 'unavailable'
 
@@ -143,7 +158,7 @@ export function Live(props: Props) {
       <div className="overlay" role="alert">
         <span>{replay.refused ?? "Couldn't start the replay."}</span>
         <span className="actions">
-          <button className="btn primary" onClick={onRetry}>Try again</button>
+          <button className="btn primary" onClick={onRetry}>{replay.refused === ENDED ? 'Start again' : 'Try again'}</button>
           <button className="btn" onClick={() => onGo('wall')}>Back to matches</button>
         </span>
       </div>
@@ -317,11 +332,13 @@ export function Live(props: Props) {
           <div className="pane lines-pane" role="tabpanel" id="pane-lines" aria-labelledby="tab-lines" data-on={tab === 'lines'}>
             {props.replayId && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <Suspense fallback={null}>
-                  <Converse sport={match.sport} matchId={match.match_id} momentIdx={moment?.idx ?? null} paused={!!props.paused}
-                    getReplayId={props.replayId} onPause={() => props.onPause?.()} onPlay={() => props.onPlay?.()}
-                    onHint={setTalkHint} />
-                </Suspense>
+                <TalkBoundary>
+                  <Suspense fallback={null}>
+                    <Converse sport={match.sport} matchId={match.match_id} momentIdx={moment?.idx ?? null} paused={!!props.paused}
+                      getReplayId={props.replayId} onPause={() => props.onPause?.()} onPlay={() => props.onPlay?.()}
+                      onHint={setTalkHint} />
+                  </Suspense>
+                </TalkBoundary>
                 {talkHint && <p className="hint" role="status">{talkHint}</p>}
               </div>
             )}

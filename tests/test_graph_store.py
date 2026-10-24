@@ -311,3 +311,19 @@ def test_shipped_store_pakistan_squad_before_1298150_has_no_women(monkeypatch):
     names = {s["name"] for s in graph.squad("cricket", "Pakistan", "2022-10-23")}
     assert {"Babar Azam", "Mohammad Rizwan"} <= names
     assert not names & {"Muneeba Ali", "Nida Dar"}  # Pakistan's women's side
+
+
+def test_a_reader_waits_for_a_load_in_progress(store):
+    import threading
+    import time
+
+    kv, hits = graph._kv, []
+    graph._kv = None
+    with graph._lock:  # start() holds the lock while it loads
+        t = threading.Thread(target=lambda: hits.append(graph.teams("football")))
+        t.start()
+        time.sleep(0.2)
+        assert not hits  # waiting, not already answered from the packs
+        graph._kv = kv
+    t.join(5)
+    assert hits and hits[0]  # can go red: with the check before the lock it returns [] at once

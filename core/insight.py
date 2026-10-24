@@ -15,7 +15,7 @@ from collections import Counter
 from agent.packs import phase
 from core import predict
 from core.fallback import fallback_text  # noqa: F401  checked() says it; tests import it here
-from core.voice import NAMES, intensity
+from core.voice import NAMES
 from data.matches import CLUB_SUFFIX
 
 log = logging.getLogger(__name__)
@@ -1228,6 +1228,59 @@ def _flipped_lead(text: str, m: dict, header: dict) -> list[str]:
     return wrong
 
 
+def _swapped_teams(text: str, m: dict, header: dict) -> list[str]:
+    """The two scores said against the wrong teams: "Lakers 88, Raptors 95" or "88-95 to the Lakers"
+    at 95-88. Only an exact swap fails, and a number counts as a score only when a team's name
+    comes right before it and nothing but the end or the other team follows ("Lakers 12 rebounds"
+    is a tally)."""
+    s = m["score"]
+    if s["home"] == s["away"]:
+        return []
+    side, _ = _sides(header)
+    one = {n: v for n, v in side.items() if " " not in n}  # said() gives a team name in words
+    wrong = []
+    for sentence in re.split(r"(?<=[.!?])\s+", text):
+        toks = said(sentence)
+        toks = [
+            1.0 if t == "one" and isinstance(prev, float) else t
+            for prev, t in zip(["", *toks], toks, strict=False)
+        ]
+        claims: dict[str, float] = {}
+        for i, (t, n) in enumerate(zip(toks, toks[1:], strict=False)):
+            after = toks[i + 2] if i + 2 < len(toks) else None
+            if (
+                t in one
+                and isinstance(n, float)
+                and (after is None or after in one or after == "and")
+            ):
+                claims[one[t]] = n
+        if len(claims) == 2 and claims == {"home": s["away"], "away": s["home"]}:
+            wrong.append(
+                f"{claims['home']:g}, {claims['away']:g} puts the scores on the wrong teams"
+            )
+        for i, t in enumerate(toks):  # "a-b to the X"
+            if t not in one:
+                continue
+            j = i - 1
+            if j >= 0 and toks[j] == "the":
+                j -= 1
+            if j < 0 or toks[j] != "to":  # "113-96, Toronto ..." is no "to Toronto"
+                continue
+            j -= 1
+            b = toks[j] if j >= 0 else None
+            a = toks[j - 1] if j >= 1 and isinstance(toks[j - 1], float) else None
+            if a is None and j >= 2 and toks[j - 1] == "to":
+                a = toks[j - 2] if isinstance(toks[j - 2], float) else None
+            other = "away" if one[t] == "home" else "home"
+            if any(one.get(w) == other for w in toks[:j]):  # "Orlando trails 2-3 to the Courage"
+                continue
+            if isinstance(b, float) and a is not None and a != b:
+                mine = s[one[t]]
+                if (a, b) == (s["away" if one[t] == "home" else "home"], mine) and a != mine:
+                    wrong.append(f"{a:g}-{b:g} to {header[one[t]]} puts their score last")
+    return wrong
+
+
 MARGIN = (  # "Bulls down three", "Utah up by five", "the Jazz lead by two"; not "lead 86-85"
     r"\s+(?:(?:are|is|now|still)\s+)*(?:down|up|leads?|trails?|ahead|behind)\s+(?:by\s+)?"
     r"(\d+|[a-z]+(?:-[a-z]+)?)\b(?!\s*[-–]\s*\w|\s+(?:to|seconds?|minutes?|left)\b)"
@@ -1312,6 +1365,7 @@ def wrong_numbers(
             _false_lead(text, m, header)
             + _wrong_margin(text, m, header)
             + _flipped_lead(text, m, header)
+            + _swapped_teams(text, m, header)
         )
         if m.get("sport") == "football":
             wrong += _wrong_score(text, m)
@@ -1930,8 +1984,8 @@ def stat_moment(m: dict, said_as: dict, reply: bool) -> dict:
             if "next" in said_as
             else {}
         ),
-        # how big the moment is: the pair matches its delivery to it (#378); the voice reads it too
-        "intensity": "calm" if said_as.get("kind") == OPEN else intensity(m),
+        # a stat line reads calm whatever moment it follows: only the call is lifted
+        "intensity": "calm",
         f"{NAMES[by]} just said": said_as["heard"],
         **({"never open with": said_as["never open with"]} if "never open with" in said_as else {}),
         **({"never say": said_as["never say"]} if "never say" in said_as else {}),
