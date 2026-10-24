@@ -50,6 +50,8 @@ def main(argv=None, env=os.environ) -> dict:
         p.error("need 0 <= --agree <= --total")
     if a.version is not None and a.version < 1:
         p.error("--version starts at 1")
+    if a.passed and a.version is None:
+        p.error("--passed needs the --version the console shows as passed")
     if a.score is not None and not 0 <= a.score <= 100:
         p.error("need 0 <= --score <= 100")
     if a.target is not None and not 0 <= a.target <= 100:
