@@ -66,16 +66,16 @@ def _bundle(sport: str, match_id: str, meta: dict | None = None) -> None:
 
     header, moments = feed.load(sport, match_id, meta)
     path = SAMPLE / f"{sport}-{match_id}.json"
-    path.write_text(
-        json.dumps({"header": header, "moments": moments}, ensure_ascii=False, indent=1)
-    )
+    rows = ",\n".join(json.dumps(m, ensure_ascii=False) for m in moments)  # one moment per line
+    head = json.dumps(header, ensure_ascii=False)
+    path.write_text(f'{{"header": {head},\n "moments": [\n{rows}\n]}}\n', encoding="utf-8")
 
 
 if __name__ == "__main__":
     from agent import feed
 
-    final = next(m for m in feed.statsbomb_matches(72, 107) if m["match_id"] == 3906390)
-    _bundle("football", "3906390", final)  # 2023 Women's World Cup final
+    bridge = next(m for m in feed.statsbomb_matches(2, 27) if m["match_id"] == 3754092)
+    _bundle("football", "3754092", bridge)  # Chelsea 2-2 Tottenham, 2016: Leicester win the league
     final = next(m for m in feed.statsbomb_matches(43, 106) if m["match_id"] == 3869685)
     _bundle("football", "3869685", final)  # 2022 World Cup final, Messi v Mbappé
     _bundle("cricket", "1298150")  # India v Pakistan, T20 World Cup 2022
@@ -83,5 +83,5 @@ if __name__ == "__main__":
     _bundle("basketball", "0049700088", finals)  # Jordan's last shot as a Bull
     season = {"competition": "NBA", "stage": "Regular season", "date": "2006-01-22"}
     _bundle("basketball", "0020500591", season)  # Kobe's 81 v Toronto
-    race = {"stage": "British Grand Prix, Silverstone", "date": "2024-07-07", "laps": 52}
-    _bundle("f1", "9558", race)  # Hamilton's 2024 British Grand Prix win
+    race = {"stage": "São Paulo Grand Prix, Interlagos", "date": "2024-11-03", "laps": 69}
+    _bundle("f1", "9636", race)  # Verstappen from 17th to win in the rain, 2024

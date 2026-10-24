@@ -312,7 +312,7 @@ def test_a_ready_adapter_is_compared_on_held_out_matches_with_recording_off(
 
     monkeypatch.setattr(agreement, "MubitProvider", Provider)
     monkeypatch.setattr(
-        agreement, "held_out_matches", lambda f, c: [match("football-3906390.json")]
+        agreement, "held_out_matches", lambda f, c: [match("football-3754092.json")]
     )
     env = {"STORE_DIR": str(tmp_path), "MUBIT_API_KEY": "k", "MUBIT_ADAPTER_MODEL": "adapter-v1"}
     report = main(["--per-match", "3"], env)

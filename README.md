@@ -14,11 +14,12 @@
 
 [**Try it live**](https://night-shift-5zvig7nbvq-ew.a.run.app) · [**Backup page**](https://night-shift-5zvig7nbvq-ew.a.run.app/stage) · [**The six screens**](#the-six-screens) · [**How it uses Mubit**](#how-it-uses-mubit) · [**For judges**](#for-judges) · [**Run it**](#run-it) · [**Demo script**](docs/demo.md)
 
-<img src="docs/img/wall.png" alt="The deployed home page, the match wall: the heading Tap a match to hear it called over six tiles, each a match with its sport, title, date and Tap to hear it called: Messi v Mbappé, Spain v England, India v Pakistan, Kobe's 81 v Toronto, Jordan's last shot and Hamilton at Silverstone." width="100%">
+<img src="docs/img/wall.png" alt="Historical screenshot, before #114: the deployed home page, the match wall: the heading Tap a match to hear it called over six tiles, each a match with its sport, title, date and Tap to hear it called: Messi v Mbappé, Spain v England, India v Pakistan, Kobe's 81 v Toronto, Jordan's last shot and Hamilton at Silverstone." width="100%">
 
-<img src="docs/img/live-goal.png" alt="The deployed live page during the Women's World Cup final replay. Top left, the score bar reads ESP 1-0 ENG, 28:29, 1st half, REPLAY. A red ON AIR pill names the British Football Announcer. In the lower third, the moment tag 28:29 GOAL sits above the large subtitle: Olga Carmona! Spain go ahead, one-nil! Under it, a dock with Wall, the four sports, Voice and Next match, and the replay clock at 5:16. On the right, the Lines card shows the goal line and an earlier save, each with a Fix button and its model first-text-word time, and the Proof card shows first text word p50 0.52 s and p95 0.88 s, $0.0017 a line, 594 lines, 0 fixes, and the adapter as not trained yet." width="100%">
+<img src="docs/img/live-goal.png" alt="Historical screenshot, before #114: the deployed live page during the Women's World Cup final replay. Top left, the score bar reads ESP 1-0 ENG, 28:29, 1st half, REPLAY. A red ON AIR pill names the British Football Announcer. In the lower third, the moment tag 28:29 GOAL sits above the large subtitle: Olga Carmona! Spain go ahead, one-nil! Under it, a dock with Wall, the four sports, Voice and Next match, and the replay clock at 5:16. On the right, the Lines card shows the goal line and an earlier save, each with a Fix button and its model first-text-word time, and the Proof card shows first text word p50 0.52 s and p95 0.88 s, $0.0017 a line, 594 lines, 0 fixes, and the adapter as not trained yet." width="100%">
 
-<sub>The deployed page on 24 October 2026, captured in headless Chrome: the match wall, then a tap into
+<sub>Historical screenshots, before Spain v England and Hamilton were replaced (#114). The deployed
+page on 24 October 2026, captured in headless Chrome: the match wall, then a tap into
 Spain v England with Olga Carmona's goal being called. YouTube wouldn't play in the headless browser,
 so each video's own thumbnail stands in for its highlights. The lines, panels and numbers are live.</sub>
 
@@ -82,12 +83,12 @@ the same commentator with the same prompt.
 
 | Screen | Sport and data | Voice | What it calls |
 |---|---|---|---|
-| Spain v England, 2023 Women's World Cup final | Football, StatsBomb | British Football Announcer | Carmona's winner, Earps's penalty save, the chances at both ends |
+| The Battle of the Bridge: Chelsea 2-2 Tottenham, 2016 | Football, StatsBomb | British Football Announcer | The four goals, Hazard's equaliser that made Leicester champions |
 | Argentina v France, 2022 World Cup final | Football, StatsBomb | British Football Announcer | Messi's two goals, Di María, Mbappé's three, the shoot-out |
 | India v Pakistan, 2022 T20 World Cup | Cricket, Cricsheet | Raju | The wickets, the sixes, Kohli's two sixes off Rauf, the last ball |
 | Michael Jordan's last shot, 1998 NBA Finals Game 6 | Basketball, NBA play-by-play | Sam | The fourth quarter's baskets, Jordan's steal from Malone, the winning shot, the buzzer |
 | Kobe Bryant's 81 against Toronto, 2006 | Basketball, NBA play-by-play | Sam | His baskets through the second half, the record-breaking points, the buzzer |
-| Lewis Hamilton's 2024 British Grand Prix win | F1, OpenF1 timing | British Football Announcer | Overtakes and lead changes, pit stops, the rain, the last lap, the flag |
+| Max Verstappen from 17th to win the 2024 São Paulo Grand Prix | F1, OpenF1 timing | British Football Announcer | The rain, the safety car, the red flag, Verstappen taking the lead, the flag |
 
 Lines are voiced by ElevenLabs `eleven_v3`, its most expressive model, with an audio tag per moment:
 shouting for a goal or a wicket, hushed for the build-up. The voices are ElevenLabs library voices:
@@ -172,10 +173,10 @@ say "stickman replay", the page now plays the broadcast highlights.
 - Basketball: stats.nba.com play-by-play, via the [shufinskiy/nba_data](https://github.com/shufinskiy/nba_data) mirror (Apache-2.0).
 - F1: timing data from the [OpenF1](https://openf1.org) API.
 - Video: broadcast highlights on YouTube, embedded and muted, never downloaded or rehosted; the
-  commentator reads the event feed, not the video. Argentina v France is from FIFA's own channel, the
-  two basketball games from the NBA's and Silverstone from Formula 1's. The Women's World Cup final
-  (ITV's coverage) and India v Pakistan (the TV feed) are re-uploads by others: no FIFA, ICC or
-  broadcaster upload of those highlights exists.
+  commentator reads the event feed, not the video. The two basketball games are from the NBA's own
+  channel. Argentina v France, Chelsea v Tottenham, India v Pakistan and the São Paulo Grand Prix are
+  re-uploads or fan edits of the TV coverage by others, because the official uploads block embedding
+  or don't exist.
 
 ## Pre-existing work
 

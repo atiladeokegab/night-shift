@@ -46,8 +46,8 @@ export function Picker({ matches, error, voices, onRetry, onStart, onGo }: Props
         {body}
         <p className="foot">
           Match data: StatsBomb open data, Cricsheet, NBA play-by-play (stats.nba.com) and OpenF1. Highlights on
-          YouTube, embedded and muted: the FIFA, NBA and Formula 1 channels, and fan uploads of the TV coverage of
-          the Women's World Cup final (ITV) and India v Pakistan. Commentary is AI-generated.
+          YouTube, embedded and muted: the NBA channel, and fan uploads of the TV coverage of the 2022 World Cup final,
+          Chelsea v Tottenham, India v Pakistan and the 2024 São Paulo Grand Prix. Commentary is AI-generated.
         </p>
       </main>
     </div>

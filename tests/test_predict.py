@@ -150,10 +150,10 @@ def test_names_resolve_loosely():
 
 
 def test_no_pack_no_numbers():
-    assert predict.load_pack("f1", "9558") is None
+    assert predict.load_pack("f1", "9636") is None
     assert predict.load_pack("football", "../../etc") is None
-    header = match_header("9558")
-    past = load_moments("9558")[:3]
+    header = match_header("9636")
+    past = load_moments("9636")[:3]
     for tool in ("get_player_profile", "get_next_score_odds"):
         assert run_tool(tool, {"name": "x"}, header, past) == "No pre-match record for this event."
     cricket, balls = load("cricket", "1298150")
