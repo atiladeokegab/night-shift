@@ -55,9 +55,9 @@ export function Wall({ matches, error, onRetry, onOpen, onJump, onGo }: Props) {
         </p>
         {/* #206's pitch, word for word */}
         <p className="status-line" style={{ maxWidth: '65ch' }}>
-          Touchline describes the matches a platform streams with nobody describing them. It checks every number before
-          it speaks, fixes what it can itself, sends the rest to a producer, and every fix trains that platform's own
-          describer in Mubit. The matches below are replays, as if live.
+          Touchline describes the matches a platform streams with nobody describing them. It checks the score, the
+          leader and the key numbers before it speaks, fixes what it can itself, sends the rest to a producer, and every
+          fix is recorded in Mubit as training data for that platform's own describer. The matches below are replays, as if live.
         </p>
         {/* #246: what a match costs to describe, measured live (GET /stats, #174) */}
         {typeof perMatch === 'number' && (

@@ -16,7 +16,7 @@
 
 ### The match nobody described
 
-Touchline describes the matches a platform streams with nobody describing them. It checks the score, the leader and the key numbers against the match data before it speaks, fixes what it can itself, sends the rest to a producer, and every fix trains that platform's own describer in Mubit.
+Touchline describes the matches a platform streams with nobody describing them. It checks the score, the leader and the key numbers against the match data before it speaks, fixes what it can itself, sends the rest to a producer, and every fix is recorded in Mubit as training data for that platform's own describer.
 
 What you hear are **replays, as if live**: real matches' event data played back over their broadcast highlights, each line called at its moment as if the match were on now. Sky Sports now describes [about 109 Premier League games a season](#the-problem) aloud, and none below the top flight.
 
@@ -253,8 +253,8 @@ every live page.
 
 <img src="docs/img/proof.png" alt="The Proof card on the Brighton v Bristol City replay, with the live /stats of 24 Oct, 16:04 UTC. Calls checked: this match 21 (20 first time, 1 auto-fixed, 0 to a human); all matches 342 (324, 14, 4). Per full replay, over 23 measured: $0.37, model $0.09 and voice $0.28. Lead: 5,850 lines, first word median 0.54 s and p95 0.92 s, $0.0018 a line. Analyst: 924 lines, 0.90 s and 3.62 s, $0.0025 a line. Training: 66 fixes recorded, 25 needed, enough for the next adapter; Fixes 66; To review: 25 flagged lines; Next adapter: Ready to train; Adapter: Training, Mubit is building the adapter. Under it, a note on what first time, auto-fixed and to a human mean, what first word measures, and that the adapter's cost is not measurable because Mubit doesn't report it to the app." width="50%">
 
-Live latency, cost per line and lines called, split by lead and analyst (#166); the fixes Mubit trains
-on and how many count toward the next adapter; and the adapter's state. All computed from the store,
+Live latency, cost per line and lines called, split by lead and analyst (#166); the fixes recorded in Mubit
+as training data and how many count toward the next adapter; and the adapter's state. All computed from the store,
 the same numbers as `GET /stats` (its `by_speaker`) ([`web/src/components/ProofPanel.tsx`](web/src/components/ProofPanel.tsx),
 [`core/stats.py`](core/stats.py)).
 
@@ -275,8 +275,8 @@ Each criterion weighs the same; one line each, with where to check it.
   switch it on for the long tail of matches they stream with no describer, in any language or voice:
   lower-league and grassroots football, the women's game, club and county cricket.
 - **A describer per broadcaster, owned by them.** Each broadcaster gets its own cheap commentator as
-  a Mubit adapter, trained on its own matches, and every producer correction is a training signal
-  that makes it better.
+  a Mubit adapter, trained on its own matches, and every producer correction is recorded as
+  training data for it.
 - **Built for fans who can't see the screen.** Audio first, with keyboard and screen reader working
   throughout (#170, built). Football shots already say where on the pitch they came from, from the
   event data's own locations (#172).
