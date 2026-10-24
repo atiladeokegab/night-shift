@@ -205,13 +205,9 @@ def football_moments(
         if kind == "Full time":
             break  # both sides log the whistle
     for m, (period, t), nxt in zip(moments, ats, [*ats[1:], None], strict=False):
-        if period == 5 or m["type"] == "Full time":
-            continue
         last = nxt[1] - BALL_BEFORE_S if nxt and nxt[0] == period else math.inf
-        ball = next(
-            (b for p, s, b in _plays(events) if p == period and t + BALL_AFTER_S <= s <= last), None
-        )
-        if ball:
+        gap = (b for p, s, b in _plays(events) if p == period and t + BALL_AFTER_S <= s <= last)
+        if ball := next(gap, None):
             m["ball"] = ball
     return moments
 
@@ -221,9 +217,9 @@ BALL_AFTER_S, BALL_BEFORE_S = 20, 30
 
 
 def _at(ev: dict) -> tuple[int, int]:
-    return _num(ev.get("period")) or 0, (_num(ev.get("minute")) or 0) * 60 + (
-        _num(ev.get("second")) or 0
-    )
+    """(period, seconds on the match clock) of an event."""
+    minute, second = _num(ev.get("minute")) or 0, _num(ev.get("second")) or 0
+    return _num(ev.get("period")) or 0, minute * 60 + second
 
 
 def _plays(events: list[dict]):
@@ -232,18 +228,15 @@ def _plays(events: list[dict]):
     for ev in events:
         loc = ev.get("location") if isinstance(ev.get("location"), list) else []
         team = _name(ev.get("team"))
-        if _name(ev.get("type")) not in ("Pass", "Carry") or team != _name(
-            ev.get("possession_team")
-        ):
+        if _name(ev.get("type")) not in ("Pass", "Carry"):
+            continue
+        if team != _name(ev.get("possession_team")):
             continue
         if len(loc) < 2 or _num(loc[0]) is None or _num(loc[1]) is None:
             continue
         p, s = _at(ev)
-        yield (
-            p,
-            s,
-            {"clock": f"{s // 60:02d}:{s % 60:02d}", "team": _side(team), "x": loc[0], "y": loc[1]},
-        )
+        clock = f"{s // 60:02d}:{s % 60:02d}"
+        yield p, s, {"clock": clock, "team": _side(team), "x": loc[0], "y": loc[1]}
 
 
 # --- cricket ------------------------------------------------------------------------------

@@ -513,7 +513,7 @@ def test_a_football_moment_carries_the_ball_a_beat_after_it_never_near_the_next(
     events = [
         play("Shot", "Reds", 10, 0, **shot),
         play("Pass", "Blues", 10, 10),  # too soon after the shot
-        play("Pressure", "Reds", 10, 30, holder="Blues"),  # not a pass or carry
+        play("Dispossessed", "Blues", 10, 30),  # losing the ball, not having it
         play("Pass", "Reds", 10, 40, holder="Blues"),  # the side without the ball
         play("Carry", "Blues", 10, 45),
         play("Shot", "Blues", 12, 0, **shot),

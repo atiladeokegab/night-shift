@@ -539,3 +539,12 @@ def test_an_orientation_line_that_gets_it_wrong_says_the_ball_instead(tmp_path, 
     ]
     assert after, "the gap after Messi's penalty opens on the ball"
     assert after[0]["text"] == after[0]["insight"]["detail"] and after[0]["fallback"] is True
+
+
+def test_a_stretch_stored_before_the_ball_now_opens_on_it(tmp_path):
+    store = Store(tmp_path)
+    before = [{k: v for k, v in m.items() if k != "ball"} for m in load_moments(FINAL)]
+    replay(FINAL, store, moments=before)  # stored before #205: every stretch opens on a stat
+    lines, _ = replay(FINAL, store)
+    first = [ln["insight"]["kind"] for ln in lines if ln.get("insight", {}).get("n") == 0]
+    assert "orientation" in first
