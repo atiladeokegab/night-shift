@@ -386,8 +386,8 @@ def _words(text: str) -> list[tuple[str, bool]]:
 
 def repeats(text: str, recent: list[str]) -> bool:
     """True when the line nearly repeats one of the recent lines: most of its words, or the same
-    name and event with no new number (the analyst's "Palmer scores" after the lead's "GOAL!
-    Palmer"). A stat that adds a number is a new fact, so it stays."""
+    name and event (the analyst's "Palmer scores" after the lead's "GOAL! Palmer"). A line with a
+    number the other lacks is a new fact, so it stays ("3 shots" after "2 shots", P5 after P8)."""
     words = _words(text)
     toks = {w for w, _ in words}
     names = {w for w, cap in words if cap and not w.isdigit()}
@@ -395,12 +395,11 @@ def repeats(text: str, recent: list[str]) -> bool:
     for prev in recent[-RECENT_LINES:]:
         before = _words(prev)
         ptoks = {w for w, _ in before}
+        if {w for w in toks if w.isdigit()} - ptoks:  # a new number is a new fact
+            continue
         if toks and len(toks & ptoks) / len(toks | ptoks) >= SAME:
             return True
-        same_event = events & ptoks
-        same_name = names & {w for w, cap in before if cap}
-        new_number = {w for w in toks if w.isdigit()} - ptoks
-        if same_event and same_name and not new_number:
+        if events & ptoks and names & {w for w, cap in before if cap}:
             return True
     return False
 

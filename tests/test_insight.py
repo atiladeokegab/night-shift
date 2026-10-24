@@ -345,6 +345,17 @@ def test_the_analyst_never_restates_the_leads_call(tmp_path):
 )
 def test_a_line_repeats_the_call_unless_it_adds_a_fact(line, repeat):
     assert insight.repeats(line, [GOAL]) is repeat
+
+
+@pytest.mark.parametrize(
+    ("line", "before"),
+    [
+        ("Palmer tonight: 3 shots, 1 goal.", "Palmer tonight: 2 shots, 1 goal."),
+        ("Ocon up to P5 now, three places gained.", "Ocon up to P8 now, three places gained."),
+    ],
+)
+def test_an_updated_stat_is_a_new_fact(line, before):
+    assert insight.repeats(before, [before]) and not insight.repeats(line, [before])
     assert not insight.repeats(line, [GOAL, "a", "b", "c"])  # only the last 3 lines count
 
 
