@@ -43,17 +43,18 @@ broadcast highlights, each line called at its moment, in four sports.
    said "level it at one-all, but Tottenham still lead two to one". A producer fixes it on the review
    page, and the line as said goes to Mubit as a recorded Score check example, labelled by code, never
    a model ([`agent/scorecheck.py`](agent/scorecheck.py) `teach`, [`eval/linecheck.py`](eval/linecheck.py)
-   `gold`). The **Sent to training** panel shows each example's Mubit request id and the count going
-   up. This is **training, not serving**: no trained version answers anything on the site.
+   `gold`). This is **training, not serving**: no trained version answers anything on the site.
 3. **Ask.** Type a question mid-match, such as "Where are we?" in the World Cup final. The answer
    uses only what has happened up to the moment on screen, is checked the same way, and is spoken.
-   On a keyed run of 33 questions, 32 answers were right, 1 wrong and 0 refused.
+   On a keyed run of 33 questions (24 Oct, [`eval/ask_eval.py`](eval/ask_eval.py)), 32 answers were
+   right, 1 wrong and 0 refused.
 
 ## Who pays
 
 Built for the streaming platforms that carry the WSL and NWSL. Nobody has agreed to pay yet and we
 have not set a price. What we know is our cost: **about $0.45 a replay, voice included**, over 84
-replays (live [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats), 24 October 2026).
+replays (live [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats), 24 Oct; saved at 23:08 UTC
+as [`eval/live_stats_2026-10-24.json`](eval/live_stats_2026-10-24.json): `cost_per_match_usd`, `matches_measured`).
 That is a highlights replay, not a whole 90 minutes. Why it matters: [the problem](docs/evidence.md#the-problem).
 
 ## For judges
@@ -77,7 +78,6 @@ Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026. Track: Own
 - **One speaking queue:** no line cuts another off mid-word; a big moment goes first, and routine lines that have gone stale are dropped.
 - **Teams tab:** press **T** for each side's form, their last meetings and the squad, as they stood before the match.
 - **One broadcast pair:** both voices share one tone per moment, lit up for a big moment and calm for a routine one, and in quiet stretches they take turns on one player.
-- **A fix's path to training, on the review page:** after a producer saves a fix, a **Sent to training** panel shows the fix, each Score check example it sent with its Mubit request id, and the examples-sent count going up. 2,161 Score check examples have been sent to training, 60 of them from producer fixes.
 
 Everything else, with its code and tests: [every feature](docs/features.md).
 
@@ -88,8 +88,9 @@ read by hand on 24 October 2026 at about 19:15 UTC ([`data/mubit_console.json`](
 shows 8 tasks, 7 adapters and 0 serving: the best commentary task scores 58.3% against a 95% target.
 No adapter has passed, the app cannot call one, and we make no claim that any matches the big model.
 Score check, the narrower task above, has 2,161 examples sent to training, 60 of them from producer
-fixes (46 the model already matched, 5 corrected, 9 not corrected), backfilled at 21:35 UTC; the big
-model agreed with the code's answer key on 74 of 74 held-out lines (`/stats` `scorecheck`).
+fixes (46 the model already matched, 5 corrected, 9 not corrected); the big model agreed with the
+code's answer key on 74 of 74 held-out lines (live `/stats` `scorecheck`, saved on 24 October 2026 at
+23:08 UTC as [`eval/live_stats_2026-10-24.json`](eval/live_stats_2026-10-24.json)).
 
 The Ask run (`eval.ask_eval --provider mubit`, recording off): the one wrong answer, "What just
 happened?" at Lakers 120-102, had an invented lead change; the check caught it and the safe answer
