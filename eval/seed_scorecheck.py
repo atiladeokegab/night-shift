@@ -126,9 +126,10 @@ def go(exs: list[dict], provider, store, source: str = "seed", workers: int = WO
     return tally
 
 
-def send_fix(store, line: dict, corrected: str, teach) -> list[dict]:
+def send_fix(store, line: dict, corrected: str, teach, fix_uid: str | None = None) -> list[dict]:
     """A producer's fix as Score check examples: the line as said and the fixed text, each labelled
-    from the data by `teach` (agent/scorecheck.py), each sent once ever; the rows written."""
+    from the data by `teach` (agent/scorecheck.py), each sent once ever; the rows written, each
+    naming the fix it came from when `fix_uid` is given (#400)."""
     with _SEND_FIX_LOCKS_LOCK:
         lock = _SEND_FIX_LOCKS.setdefault(store, Lock())
     with lock:
@@ -138,6 +139,7 @@ def send_fix(store, line: dict, corrected: str, teach) -> list[dict]:
             if sent and sent["kind"] != "error":
                 at = datetime.now(UTC).isoformat(timespec="seconds")
                 row = {**sent, "line_id": line["line_id"], "source": "fix", "created_at": at}
+                row |= {"fix_uid": fix_uid} if fix_uid else {}
                 store.append("scorecheck_examples", row)
                 rows.append(row)
         return rows

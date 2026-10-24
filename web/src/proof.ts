@@ -1,4 +1,4 @@
-import type { Autonomy, ConsoleReading, EarlierTasks, HeldOut, LineCheck, LineCheckExample, LineCheckStats, ScoreCheckStats, Stats, TaskAdapter, TaskVersion, VoiceHealth } from './types'
+import type { Autonomy, ConsoleReading, EarlierTasks, Fix, HeldOut, LineCheck, LineCheckExample, LineCheckStats, ScoreCheckExample, ScoreCheckStats, Stats, TaskAdapter, TaskVersion, TrainingState, VoiceHealth } from './types'
 
 const NONE: Autonomy = { called: 0, first_time: 0, auto_fixed: 0, to_human: 0 }
 
@@ -69,6 +69,29 @@ export function exampleText(ex: LineCheckExample | null | undefined): string | n
   if (ex.kind === 'error') return 'Line check example not sent'
   const request = ex.mubit_request_id ? ` (request ${ex.mubit_request_id.slice(0, 8)})` : ''
   return `Sent to Mubit as a Line check example${request} · kind ${ex.kind.replace('_', ' ')}`
+}
+
+// The review page's training panel (#400): which of a fix's two Score check examples this is and its
+// label from the data ("Line as said: wrong", "Fixed text: ok"), and the adapter it waits for. "Sent to
+// training" only: never that a model was updated.
+export function scoreExampleLabel(ex: ScoreCheckExample, fix: Pick<Fix, 'corrected_text'>): string {
+  return `${ex.text === fix.corrected_text ? 'Fixed text' : 'Line as said'}: ${ex.gold.replace('_', ' ')}`
+}
+
+// The panel's heading: neutral until the fix's own receipt says what was sent (#400).
+export function trainingHeading(state: TrainingState): string {
+  return {
+    pending: 'Score check: waiting for the receipt',
+    sent: 'Sent to training',
+    none: 'Not sent to training',
+    failed: 'Not sent to training: a Mubit call failed',
+    unknown: 'Training send not confirmed',
+  }[state]
+}
+
+export function adapterText(sc: ScoreCheckStats | null | undefined): string {
+  const v = sc?.recorded?.version
+  return v == null ? 'Training run pending' : `Latest Score check adapter: v${v}`
 }
 
 // Score check, the one task trained on Mubit (#321, #363): its version as read off the console, in the

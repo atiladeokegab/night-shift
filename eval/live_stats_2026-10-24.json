@@ -1,0 +1,229 @@
+{
+ "lines": 9507,
+ "fixes": 67,
+ "mubit_requests": 9621,
+ "first_word_ms_p50": 556,
+ "first_word_ms_p95": 1391,
+ "latency_ms_p50": 923,
+ "latency_ms_p95": 1773,
+ "tokens_in": 16169474,
+ "tokens_out": 291514,
+ "cost_per_line_usd": 0.0022718179236352162,
+ "by_speaker": {
+  "lead": {
+   "model": "claude-haiku-4-5, claude-sonnet-5-5",
+   "served_by": "claude-haiku-4-5-20251001, claude-sonnet-5-5",
+   "served_lines": 1893,
+   "lines": 7946,
+   "first_word_ms_p50": 547,
+   "first_word_ms_p95": 1115,
+   "cost_per_line_usd": 0.0020223425622954948,
+   "audio_first_ms_p50": 1775,
+   "audio_first_ms_p95": 5070,
+   "audio_lines": 2399
+  },
+  "analyst": {
+   "model": "claude-haiku-4-5, claude-sonnet-5-5",
+   "served_by": "claude-sonnet-5-5",
+   "served_lines": 594,
+   "lines": 1561,
+   "first_word_ms_p50": 883,
+   "first_word_ms_p95": 2577,
+   "cost_per_line_usd": 0.003541729019859065
+  }
+ },
+ "fixes_recorded": 67,
+ "fixes_toward_next": 67,
+ "fixes_auto_sent": 56,
+ "spoken_from_fix": 71,
+ "voice_chars": 486446,
+ "autonomy": {
+  "called": 1841,
+  "first_time": 1742,
+  "auto_fixed": 50,
+  "to_human": 49
+ },
+ "autonomy_by_match": {
+  "3754092": {
+   "called": 339,
+   "first_time": 338,
+   "auto_fixed": 1,
+   "to_human": 0
+  },
+  "3869685": {
+   "called": 458,
+   "first_time": 431,
+   "auto_fixed": 18,
+   "to_human": 9
+  },
+  "3913122": {
+   "called": 148,
+   "first_time": 147,
+   "auto_fixed": 1,
+   "to_human": 0
+  },
+  "0020500591": {
+   "called": 86,
+   "first_time": 78,
+   "auto_fixed": 4,
+   "to_human": 4
+  },
+  "0049700088": {
+   "called": 49,
+   "first_time": 46,
+   "auto_fixed": 2,
+   "to_human": 1
+  },
+  "1298150": {
+   "called": 81,
+   "first_time": 80,
+   "auto_fixed": 1,
+   "to_human": 0
+  },
+  "9636": {
+   "called": 13,
+   "first_time": 13,
+   "auto_fixed": 0,
+   "to_human": 0
+  },
+  "7457": {
+   "called": 539,
+   "first_time": 485,
+   "auto_fixed": 20,
+   "to_human": 34
+  },
+  "1515217": {
+   "called": 128,
+   "first_time": 124,
+   "auto_fixed": 3,
+   "to_human": 1
+  }
+ },
+ "linecheck": {
+  "checked": 758,
+  "flags": 42,
+  "rules_missed": 42,
+  "fixes_sent": 0,
+  "examples_today": 0,
+  "examples_today_by_kind": {},
+  "heldout": {
+   "labels": "heldout_labels.jsonl",
+   "lines": 288,
+   "wrong": 5,
+   "rules": {
+    "caught": 1,
+    "false_alarms": 0
+   },
+   "line_check": {
+    "caught": 3,
+    "false_alarms": 3
+   },
+   "errors": 0
+  }
+ },
+ "scorecheck": {
+  "examples_sent": 2161,
+  "by_source": {
+   "answer_key": 2101,
+   "auto_fixed": 0,
+   "human": 60
+  },
+  "from_fixes_by_kind": {
+   "matched": 46,
+   "uncorrected": 9,
+   "corrected": 5
+  },
+  "held_out": {
+   "Claude Sonnet 5.5 via Mubit, unrecorded": {
+    "agree": 74,
+    "scored": 74,
+    "unparsed": 0,
+    "recorded_at": "2026-10-24T20:09:20+00:00"
+   }
+  },
+  "next_training": "after 01:00 UK",
+  "recorded": null
+ },
+ "earlier_tasks": {
+  "adapter": {
+   "state": "collecting",
+   "summary": "Collecting: no adapter version recorded yet, as of 24 Oct 2026 13:04 UTC.",
+   "kept": null,
+   "agree": null,
+   "total": null,
+   "cost_measurable": false,
+   "console": {
+    "source": "Mubit console",
+    "read_at": "2026-10-24T19:15:00Z",
+    "how": "read by hand off the console overview, as README.md's table; not live data",
+    "tasks": 8,
+    "adapters": 7,
+    "serving": 0,
+    "target": 95,
+    "listed": {
+     "Live television commentator 5": {
+      "status": "Collecting examples",
+      "examples": 269,
+      "quality": 14.3
+     },
+     "Live sports commentator": {
+      "status": "Testing",
+      "examples": 155,
+      "quality": 5.9
+     },
+     "Live sports commentator 2": {
+      "status": "Testing",
+      "examples": 141,
+      "quality": 58.3
+     },
+     "Live television commentator 3": {
+      "status": "Testing",
+      "examples": 132,
+      "quality": 55.8
+     },
+     "Live television commentator": {
+      "status": "Collecting examples",
+      "examples": 118,
+      "quality": 0.0
+     },
+     "Live television commentator 2": {
+      "status": "Testing",
+      "examples": 111,
+      "quality": 25.0
+     }
+    }
+   }
+  },
+  "adapters": {
+   "commentary": {
+    "state": "collecting",
+    "version": null,
+    "version_id": null,
+    "score": null,
+    "target": null,
+    "passed": null,
+    "kept": null,
+    "recorded_at": "2026-10-24T13:04:32.564923+00:00",
+    "source": null,
+    "versions": []
+   }
+  }
+ },
+ "matches_measured": 84,
+ "cost_per_match_usd": 0.4469950476190476,
+ "model_cost_per_match_usd": 0.16769980952380953,
+ "voice_cost_per_match_usd": 0.2792952380952381,
+ "budget": {
+  "daily_budget_usd": 80.0,
+  "spent_today_usd": 61.1633,
+  "off_air": false
+ },
+ "voice": {
+  "provider": "elevenlabs",
+  "last_error": null,
+  "since": null,
+  "characters_left": 222420
+ },
+ "mubit": "ok",
+ "mubit_reason": null
+}
