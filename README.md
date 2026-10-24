@@ -14,10 +14,11 @@
 
 [**Try it live**](https://night-shift-5zvig7nbvq-ew.a.run.app) · [**Backup page**](https://night-shift-5zvig7nbvq-ew.a.run.app/stage) · [**The six screens**](#the-six-screens) · [**How it uses Mubit**](#how-it-uses-mubit) · [**For judges**](#for-judges) · [**Run it**](#run-it) · [**Demo script**](docs/demo.md)
 
-<img src="docs/img/live.png" alt="The live page, from the design mockup. A drawn night stadium stands in for the highlights video. Top left, the score bar reads ESP 1-0 ENG, 28:29, 1st half, REPLAY. Top right, a red ON AIR pill names the British commentator. In the lower third, the moment tag 28:29 GOAL sits above the large subtitle: Olga Carmona! Low across Earps and in! Spain lead the World Cup final! Under it, a dock with Fixtures, a Football and Cricket switch and Voice: British, and a video timeline with a small Synced to video label. On the right, a Lines card lists each line with its clock, its first-word time and a Fix button, and a Proof card shows first word p50 and p95, cost per line, lines, fixes and the adapter's result." width="100%">
+<img src="docs/img/live-goal.png" alt="The deployed live page during the Women's World Cup final replay. Top left, the score bar reads ESP 1-0 ENG, 28:29, 1st half, REPLAY. A red ON AIR pill names the football commentator. In the lower third, the moment tag 28:29 GOAL sits above the large subtitle: OLGA CARMONA! Spain Women's lead one-nil in the World Cup Final! Under it, a dock with Wall, the four sports, Voice and Next match, and the replay clock at 5:16. On the right, the Lines card shows the goal line and an earlier save, each with a Fix button and its model first-text-word time, and the Proof card shows first text word p50 0.52 s and p95 0.98 s, $0.0017 a line, 422 lines, 0 fixes, and the adapter as not trained yet." width="100%">
 
-<sub>The live page as designed (<code>docs/mockup/index.html</code>). In the product the broadcast
-highlights play where the drawn stadium is; the numbers in this picture are samples, not measurements.</sub>
+<sub>The deployed page calling Olga Carmona's goal, captured on 24 October 2026 in headless Chrome.
+YouTube wouldn't play in the headless browser, so the video's own thumbnail stands in for the
+highlights; the line, the panels and their numbers are live.</sub>
 
 </div>
 
@@ -118,7 +119,7 @@ not yet measured says so.
 
 ### Status
 
-As of 23 October 2026, 23:40 UTC.
+As of 24 October 2026, 00:10 UTC.
 
 | Capability | Status |
 |---|---|
@@ -127,7 +128,7 @@ As of 23 October 2026, 23:40 UTC.
 | Expressive voice per sport, with a voice setting (A-6.3, A-6.6) | Live |
 | Proof panel: latency, cost per line, lines, fixes and the adapter's result (A-7.1) | Live |
 | Producer fix: the server stores it and sends it through Mubit (A-4.1) | Live, with the Fix button on the page |
-| The home page as a wall of all six matches playing at once (A-6.5) | In progress |
+| The home page as a wall of all six matches; tap one to watch it called full screen (A-6.5) | Live |
 | Mubit's trained commentator against the big model on held-out moments (R-8) | Not trained or tried yet; about 336 requests are in Mubit's console |
 
 ## Run it
