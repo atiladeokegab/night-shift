@@ -247,3 +247,170 @@ def test_a_stream_that_reconnects_in_time_keeps_its_replay(tmp_path, monkeypatch
 
     body = asyncio.run(run())
     assert body.count(b"event: line") == len(short) and b"event: end" in body
+
+
+class SlowStore(Store):
+    """A store whose every read and write takes 0.2 s, like a slow bucket."""
+
+    def all(self, kind):
+        import time
+
+        time.sleep(0.2)
+        return super().all(kind)
+
+    def append(self, kind, record):
+        import time
+
+        time.sleep(0.2)
+        return super().append(kind, record)
+
+
+def test_health_answers_fast_while_a_slow_store_appends_lines(tmp_path):
+    import asyncio
+    import time
+
+    import httpx
+
+    deps = Deps(lambda: [], lambda mid: LONG[:6], fake_commentate)
+    app = create_app(SlowStore(tmp_path), deps)
+
+    async def run():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://t") as c:
+            await c.post("/replays", json={"match_id": "long", "speed": 1e6})
+            took = []
+            for _ in range(10):
+                started = time.perf_counter()
+                assert (await c.get("/health")).status_code == 200
+                took.append(time.perf_counter() - started)
+                await asyncio.sleep(0.1)
+            return took
+
+    took = asyncio.run(run())
+    assert max(took) < 0.1, took
+
+
+def test_a_finished_replay_is_forgotten_after_rejoin_s_and_its_margin(tmp_path, monkeypatch):
+    import asyncio
+
+    import httpx
+
+    from core import app as core_app
+
+    monkeypatch.setattr(core_app, "REJOIN_S", 0.05)
+    monkeypatch.setattr(core_app, "FORGET_S", 0.05)
+    deps = Deps(lambda: [], lambda mid: LONG[:3], fake_commentate)
+    app = create_app(Store(tmp_path), deps)
+
+    async def run():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://t") as c:
+            rid = (await c.post("/replays", json={"match_id": "long", "speed": 1e6})).json()
+            body = await sse(app, rid["replay_id"])
+            await asyncio.sleep(0.3)
+            return body, (await c.get(f"/replays/{rid['replay_id']}/stream")).status_code
+
+    body, status = asyncio.run(run())
+    assert body.count(b"event: line") == 3 and status == 404
+
+
+def test_a_replay_started_while_a_fix_counts_stats_does_not_break_the_fix(tmp_path, monkeypatch):
+    import asyncio
+    import threading
+
+    import httpx
+
+    from core import app as core_app
+
+    entered, release = threading.Event(), threading.Event()
+    real = core_app.stats
+
+    def slow_stats(store):
+        entered.set()
+        release.wait(5)
+        return real(store)
+
+    sent = {"mubit_request_id": "r-fix", "reply_matched": True}
+    deps = Deps(lambda: [], lambda mid: LONG[:1], fake_commentate, correct=lambda *a, **k: sent)
+    app = create_app(Store(tmp_path), deps)
+
+    async def run():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://t") as c:
+            rid = (await c.post("/replays", json={"match_id": "long", "speed": 1e6})).json()
+            await sse(app, rid["replay_id"])  # its line is on the stream
+            monkeypatch.setattr(core_app, "stats", slow_stats)
+            body = {"corrected_text": "Goal!", "reason": "wrong"}
+            fix = asyncio.create_task(c.post("/lines/long-0/fix", json=body))
+            await asyncio.to_thread(entered.wait, 5)
+            await c.post("/replays", json={"match_id": "long", "speed": 1e6})
+            release.set()
+            return (await fix).status_code
+
+    assert asyncio.run(run()) == 200
+
+
+def test_a_video_replay_is_kept_until_its_video_has_played_out(tmp_path, monkeypatch):
+    # every mapped line is sent ahead, so the task ends long before the viewer reaches the end
+    import asyncio
+
+    import httpx
+
+    from core import app as core_app
+
+    monkeypatch.setattr(core_app, "REJOIN_S", 0.05)
+    monkeypatch.setattr(core_app, "FORGET_S", 0.05)
+    video = {"start": 0, "moments": [{"idx": 0, "video_t": 0.0}, {"idx": 1, "video_t": 0.6}]}
+    deps = Deps(lambda: [], lambda mid: LONG[:2], fake_commentate, video_map=lambda mid: video)
+    app = create_app(Store(tmp_path), deps)
+
+    async def run():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://t") as c:
+            rid = (await c.post("/replays", json={"match_id": "long"})).json()["replay_id"]
+            await sse(app, rid)  # every line sent: the replay's task is done
+            await asyncio.sleep(0.3)  # the video is still playing
+            mid_video = (await c.get(f"/replays/{rid}/stream")).status_code
+            await asyncio.sleep(0.6)  # past the last moment, REJOIN_S and FORGET_S
+            return mid_video, (await c.get(f"/replays/{rid}/stream")).status_code
+
+    assert asyncio.run(run()) == (200, 404)
+
+
+def test_a_paused_viewer_asks_after_the_video_should_have_ended_and_an_idle_one_is_forgotten(
+    tmp_path, monkeypatch
+):
+    # the stream ended once every line was sent: only the page's heartbeat says it is still watching
+    import asyncio
+
+    import httpx
+
+    from core import app as core_app
+
+    monkeypatch.setattr(core_app, "REJOIN_S", 0.05)
+    monkeypatch.setattr(core_app, "FORGET_S", 0.2)
+    video = {"start": 0, "moments": [{"idx": 0, "video_t": 0.0}, {"idx": 1, "video_t": 0.1}]}
+
+    def ask(question, past, lines):
+        return {"line_id": "q", "moment_idx": past[-1]["idx"], "question": question, "text": "1-0"}
+
+    def line(m, history):  # with its moment, as the real commentator's line has
+        return {**fake_commentate(m, history), "moment_idx": m["idx"]}
+
+    deps = Deps(lambda: [], lambda mid: LONG[:2], line, video_map=lambda m: video, ask=ask)
+    app = create_app(Store(tmp_path), deps)
+
+    async def run():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://t") as c:
+            rid = (await c.post("/replays", json={"match_id": "long"})).json()["replay_id"]
+            await sse(app, rid)  # every line sent and the stream closed
+            for _ in range(8):  # paused on moment 0 well past ends_at + REJOIN_S + FORGET_S
+                await asyncio.sleep(0.1)
+                assert (await c.post(f"/replays/{rid}/seen")).status_code == 204
+            q = {"question": "What's the score?", "moment_idx": 0}
+            asked = (await c.post(f"/replays/{rid}/ask", json=q)).status_code
+            await asyncio.sleep(0.5)  # the page is gone: no heartbeat for FORGET_S
+            return asked, (await c.post(f"/replays/{rid}/seen")).status_code
+
+    assert asyncio.run(run()) == (200, 404)

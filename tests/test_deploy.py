@@ -120,3 +120,9 @@ def test_the_fallback_version_can_be_overridden(tmp_path):
 def test_a_bad_fallback_version_stops_the_deploy(tmp_path):
     done, deployed = deploy(tmp_path, MUBIT_FALLBACK_VERSION="3,X=y:latest")
     assert done.returncode == 1 and "MUBIT_FALLBACK_VERSION" in done.stderr and not deployed
+
+
+def test_one_instance_with_a_gibibyte(tmp_path):
+    done, deployed = deploy(tmp_path)
+    assert done.returncode == 0, done.stderr
+    assert "--max-instances 1 " in deployed and "--memory 1Gi " in deployed

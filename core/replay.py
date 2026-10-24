@@ -46,6 +46,10 @@ class Replay:
         self.done = False
         self.listeners = 0  # open streams; none for REJOIN_S stops the replay (core/app.py)
         self.stopping: asyncio.TimerHandle | None = None  # that stop, until a stream opens
+        # a video replay's lines are all sent ahead: when (time.monotonic) the viewer reaches the
+        # last one, so it is not forgotten while the video still plays (core/app.py)
+        self.ends_at: float | None = None
+        self.seen = self.started  # a viewer's last request (time.monotonic), for FORGET_S
         self._changed = asyncio.Condition()
 
     async def publish(self, event: str, data: dict) -> None:
@@ -84,7 +88,12 @@ async def run_replay(
     # A video map: only mapped moments are called, each tagged with its video time and sent as
     # soon as it is ready; the page holds each line until the player reaches that time.
     video_t = {m["idx"]: m["video_t"] for m in video["moments"]} if video else None
-    gaps = insight.Gaps(replay.match_id, store, replay.id) if video else None
+    if video_t:
+        replay.ends_at = replay.started + max(video_t.values()) - video.get("start", 0)
+    # every store call runs in a thread: a slow bucket must never stall the event loop (#156)
+    gaps = (
+        await asyncio.to_thread(insight.Gaps, replay.match_id, store, replay.id) if video else None
+    )
 
     async def say(line: dict, moment: dict) -> None:
         # shortcut: due as if the video starts with the replay at its `start` second;
@@ -94,7 +103,7 @@ async def run_replay(
             # this replay's id, so a cached line spoken again is charged to the replay that spoke it
             speak({**line, "replay_id": replay.id}, moment, due)
         await replay.publish("line", line)
-        await replay.publish("stats", stats(store))
+        await replay.publish("stats", await asyncio.to_thread(stats, store))
 
     try:
         last = None
@@ -145,7 +154,7 @@ async def run_replay(
             history.append(moment)
             if line is not None:  # None: the commentator had nothing usable to say
                 said_line = {**line, **tag, "speaker": "lead", "replay_id": replay.id}
-                await say(store.append("lines", said_line), moment)
+                await say(await asyncio.to_thread(store.append, "lines", said_line), moment)
                 recent.append(line.get("text") or "")
             if not tag:
                 continue
@@ -168,7 +177,8 @@ async def run_replay(
                 said = said_line["text"]
                 recent.append(said)
         if not start_idx:  # played from kick-off to its last moment: a match for cost per match
-            store.append("replays", {"replay_id": replay.id, "match_id": replay.match_id})
+            done = {"replay_id": replay.id, "match_id": replay.match_id}
+            await asyncio.to_thread(store.append, "replays", done)
     except Exception as exc:  # the stream says why it stopped instead of hanging open
         # the provider's status and error type, e.g. Mubit's 402 when its credit runs out
         name = type(exc).__name__
