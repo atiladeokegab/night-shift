@@ -139,7 +139,13 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   with no stream open and no request naming it (stream, seen, ask, players, shots, profile, fix).
 - `GET /lines/{line_id}` → the stored Line, 404 if none (core): the live smoke checks each line it
   streamed was stored. A fixed line also carries `fix`: its latest Fix, with the correction call's
-  `mubit_request_id` (#239); an unfixed line has no `fix` key.
+  `mubit_request_id` (#239); an unfixed line has no `fix` key. A line whose fix was sent to Line
+  check as an example also carries `linecheck_example`: its latest `linecheck_fixes` row
+  `{line_id, kind, gold, mubit_request_id, created_at}` (#305). `kind` is matched (Line check's
+  reply already agreed with code), corrected (it disagreed and the correction turn followed),
+  uncorrected or leader_only (a disagreement sent without a correction turn) or error (the call
+  failed: no example). `mubit_request_id` is the last call's: the correction turn's when there is
+  one. It says only that a training example was sent, never that a model was updated.
 - `POST /lines/{line_id}/fix {corrected_text, reason?}` → Fix (core). With env `PRODUCER_TOKEN` set,
   it needs header `X-Producer-Token` equal to it (constant-time compare), else 401 and nothing is
   stored or sent to Mubit; unset (local, tests) the check is off (#232). `scripts/deploy.sh` sets it
@@ -221,11 +227,14 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
     `network`, or the status, and `since` when the failing began (ISO, UTC). No key:
     `not_configured`. Kept per process. The page then shows "Voice: browser fallback (ElevenLabs
     unavailable)" on air and on the Proof card.
-  - `linecheck: {checked, flags, rules_missed, fixes_sent}` (#298): live lead lines Line check
+  - `linecheck: {checked, flags, rules_missed, fixes_sent, examples_today,
+    examples_today_by_kind}` (#298, #305): live lead lines Line check
     checked (`linechecks` rows), those it flagged a field `wrong` on, the flags on lines the rules
     check passed (every live check is on such a line, so today it equals `flags`), and producer
     fixes sent to Line check as examples (`linecheck_fixes` rows: a fix with reason Wrong score,
-    Wrong player or Wrong fact whose line code can label, sent on the owner's key).
+    Wrong player or Wrong fact whose line code can label, sent on the owner's key; kind error
+    left out). `examples_today` counts those created today (UTC) and `examples_today_by_kind`
+    splits them by kind, e.g. `{"corrected": 2, "matched": 1}`.
   - `by_speaker: {lead, analyst}`, each `{model, served_by, lines, first_word_ms_p50,
     first_word_ms_p95, cost_per_line_usd}`: the lead's calls and the analyst's stat lines apart (a
     line with no `speaker` is the lead's). `served_by` (#250): the lines' `served_by` values,
