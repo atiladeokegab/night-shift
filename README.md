@@ -84,7 +84,7 @@ Mubit's versions of our commentator, copied from Mubit's console into
 | Mubit version | Trained on | Score on Mubit's test | Passed |
 |---|---|---|---|
 | Versions 1 to 6 | Our recorded commentary lines | Best 55.8% | No, none of the 6 |
-| Next version | 67 corrections recorded for training, the team's, from the number-check fix list (`fixes_toward_next`: 67, `adapter.needed`: 25), plus 27 corrections the number check sent itself (`fixes_auto`) | Training (`adapter.status`) | Not yet |
+| Next version | 67 corrections recorded for training, the team's, from the number-check fix list; only a fix whose recorded reply passes the number check counts toward the next version (`fixes_toward_next`: 67), plus 27 automatic correction attempts by the number check (`fixes_auto_sent`) | Collecting: no adapter version recorded yet, as of 24 Oct 2026 13:04 UTC (`adapter.summary`) | Not yet |
 
 How the check left the lead's calls, from the same read (`autonomy`, `autonomy_by_match`). These
 count only calls made since the check started marking lines; older stored lines aren't in them.

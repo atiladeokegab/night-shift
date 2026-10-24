@@ -68,6 +68,7 @@ def test_each_task_keeps_its_own_latest_record_and_adapter_stays_commentary(tmp_
     assert line_check["recorded_at"] == store.all("adapter")[-2]["created_at"]
     assert {k: v for k, v in line_check.items() if k != "recorded_at"} == {
         "status": "ready",
+        "state": "passed",  # Mubit's gate was recorded as passed
         "version": 1,
         "score": 82.0,
         "target": None,

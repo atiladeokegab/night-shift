@@ -199,7 +199,7 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
 - `GET /stats` → `{lines, fixes, mubit_requests, first_word_ms_p50, first_word_ms_p95,
   latency_ms_p50, latency_ms_p95, tokens_in, tokens_out, cost_per_line_usd, adapter, by_speaker,
   fixes_recorded, fixes_toward_next, voice_chars, matches_measured, cost_per_match_usd,
-  model_cost_per_match_usd, voice_cost_per_match_usd, fixes_auto, spoken_from_fix, autonomy,
+  model_cost_per_match_usd, voice_cost_per_match_usd, fixes_auto_sent, spoken_from_fix, autonomy,
   autonomy_by_match, budget}` (core). The `stats` SSE event carries the same object, without `budget`.
   - `budget: {daily_budget_usd, spent_today_usd, off_air}` (#244): the cap (null when off), the
     model and voice spend of lines and answers created today (UTC), and whether it is past the cap.
@@ -214,9 +214,13 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
     `audio_lines` lead lines voiced when the replay stored them; both percentiles are null when
     `audio_lines` is 0.
   - `fixes_recorded: int`: fixes with `recorded: true`; `fixes` counts every stored fix.
-  - `fixes_auto: int`: the `auto_fixes` records, fixes the number check sent itself (reason
-    `auto: number check`): a lead line's rejected first try, corrected to its accepted retry (#162).
+  - `fixes_auto_sent: int`: the `auto_fixes` records, corrections the number check sent to Mubit
+    itself (reason `auto: number check`): a lead line's rejected first try, corrected to its accepted
+    retry (#162).
     Stored apart from `fixes`, so never in `fixes`, `fixes_recorded` or the review queue's fixed lines.
+    Not the Proof card's Auto-fixed, which is `autonomy.auto_fixed`: that counts calls, and only those
+    stored after #204 flagged a kept retry `retried`, so it leaves out the earlier auto fixes this
+    counts. A correction that failed to send has no record, so it is in `autonomy.auto_fixed` only.
   - `spoken_from_fix: int`: stored lead lines a replay said in a producer's fixed words (`fixed:
     true`, #232). Never a model call, so never in `autonomy`.
   - `autonomy: {called, first_time, auto_fixed, to_human}` (#204): the lead's moment calls the
@@ -241,14 +245,19 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
     with no full replay, a model with no known price, or (voice) no `voice` record; the total then too.
   - `cost_per_line_usd: number | null`: mean cost of the stored lines, tokens × the model's list
     price; null when no line's model has a known price.
-  - `adapter: {status: "not_trained"|"training"|"ready", kept: int|null, needed, agree: int|null,
-    total: int|null, cost_measurable: bool}`: `needed` is 25. `status`, `kept`, `agree` and `total`
+  - `adapter: {status: "not_trained"|"training"|"ready", state, summary, kept: int|null,
+    agree: int|null, total: int|null, cost_measurable: bool}`. `state` is what the record shows:
+    `passed` only when Mubit's gate was recorded as passed, `testing` once a version, score or failed
+    gate is recorded, else `collecting`; never inferred from `status` or a count of fixes. `summary`
+    says it in words, as of the record's time, e.g. "Testing: no version passed; best 55.8% of a 95%
+    target, as of 24 Oct 2026 13:04 UTC." Nothing enforces a number of fixes before a version, so
+    none is reported. `status`, `kept`, `agree` and `total`
     come from the latest `adapter` record in the store, which `python -m eval.record_adapter` appends
     from Mubit's console; before one exists, `not_trained` and nulls. `kept` is never inferred from
     stored lines, since a stored line doesn't prove Mubit kept it. `cost_measurable` is false while
     the app can't call the adapter. These are the commentary task's: a record with no `task` is
     commentary's, and another task's record leaves this key and `fixes_toward_next` alone.
-  - `adapters: {[task]: {status, version: int|null, score: number|null, target: number|null,
+  - `adapters: {[task]: {status, state, version: int|null, score: number|null, target: number|null,
     passed: bool|null, kept: int|null, recorded_at}}`: each Mubit task's latest `adapter` record
     (#209), keyed `commentary`, `where_are_we` or `line_check`; a task with no record is absent.
     `score` is the console's "matched N% of the provider model's answers", `target` its target (e.g.

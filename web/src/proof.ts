@@ -1,12 +1,5 @@
 import type { Autonomy, Stats, TaskAdapter } from './types'
 
-// The Proof card's "Next adapter" figure: fixes since the latest adapter against the number Mubit needs.
-// Past the target it says so, rather than "66 of 25".
-export function nextAdapter(toward: number, needed: number): { value: string; note: string | null } {
-  if (toward < needed) return { value: `${toward} of ${needed}`, note: null }
-  return { value: 'Ready to train', note: `${toward} fixes recorded · ${needed} needed: enough for the next adapter` }
-}
-
 const NONE: Autonomy = { called: 0, first_time: 0, auto_fixed: 0, to_human: 0 }
 
 // The Proof card's autonomy rows (#204): this match, then all matches, straight from /stats or the
@@ -42,6 +35,5 @@ function adapterRow(a: TaskAdapter | undefined): string {
   ].filter(Boolean).join(', ') || 'ready'
 }
 
-// The Adapter row's green dot: a ready commentary adapter, unless Mubit's gate failed it (#222).
-export const adapterGood = (stats: Pick<Stats, 'adapter' | 'adapters'>): boolean =>
-  stats.adapter?.status === 'ready' && stats.adapters?.commentary?.passed !== false
+// The Adapter row's green dot: only a recorded pass of Mubit's gate, never one inferred from a status.
+export const adapterGood = (stats: Pick<Stats, 'adapter'>): boolean => stats.adapter?.state === 'passed'

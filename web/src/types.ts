@@ -138,8 +138,9 @@ export interface SpeakerStats {
 
 export interface Adapter {
   status: 'not_trained' | 'training' | 'ready'
+  state?: 'collecting' | 'testing' | 'passed' // what the record shows; passed only if Mubit's gate said so
+  summary?: string // e.g. "Testing: no version passed; best 55.8% of a 95% target, as of 24 Oct 2026 13:04 UTC."
   kept: number | null // null until the lead records it from Mubit's console (#46); never guessed
-  needed: number
   agree: number | null
   total: number | null
   cost_measurable: boolean

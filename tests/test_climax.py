@@ -316,12 +316,12 @@ def test_a_line_right_first_time_sends_no_correction(tmp_path):
 def test_an_auto_fix_is_counted_apart_from_the_peoples(tmp_path):
     _, store = auto_fixed(tmp_path, [WRONG_80, RIGHT_80])
     s = stats(store)
-    assert s["fixes_auto"] == 1 and s["fixes_recorded"] == 0 and s["fixes_toward_next"] == 0
+    assert s["fixes_auto_sent"] == 1 and s["fixes_recorded"] == 0 and s["fixes_toward_next"] == 0
     # the producer's fix-list corrections in prod stay "your fixes"
     fix = {"reason": "fix list: wrong number", "recorded": True, "created_at": "2026-10-24T12"}
     store.append("fixes", fix)
     s = stats(store)
-    assert s["fixes_auto"] == 1 and s["fixes_recorded"] == 1 and s["fixes_toward_next"] == 1
+    assert s["fixes_auto_sent"] == 1 and s["fixes_recorded"] == 1 and s["fixes_toward_next"] == 1
 
 
 # lines the model said aloud at India v Pakistan idx 52, reasoning about its input
