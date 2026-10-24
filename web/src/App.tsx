@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import './App.css'
 import { listMatches, listVoices, postFix } from './api'
 import { About } from './components/About'
@@ -13,8 +13,9 @@ import type { VideoState } from './components/VideoStage'
 import { VoiceSheet } from './components/VoiceSheet'
 import { Wall } from './components/Wall'
 import { chipName, defaultVoice } from './teams'
-import { SPORTS, type Line, type Match, type Sport, type Voice } from './types'
-import { useReplay } from './useReplay'
+import { SPORTS, type Line, type Match, type Moment, type Sport, type Voice } from './types'
+import { airAnswer, isBig, type Caption } from './turns'
+import { onScreen, useReplay } from './useReplay'
 import { useSpeech } from './useSpeech'
 import { viewOf } from './view'
 
@@ -32,6 +33,10 @@ export default function App() {
   const [fixing, setFixing] = useState<{ line: Line; phase: FixPhase } | null>(null)
   const [voiceSheet, setVoiceSheet] = useState(false)
   const [toast, setToast] = useState('')
+  // #131: a viewer's question, then its answer, takes the caption from the lines while it is on
+  const [asking, setAsking] = useState<Caption | null>(null)
+  const asked = useRef(0) // only the newest question may change the caption
+  const [paused, setPaused] = useState(false)
   const speech = useSpeech()
 
   const chosen = useCallback(
@@ -47,8 +52,17 @@ export default function App() {
   useEffect(() => {
     voiceNow.current = voice
   }, [voice])
-  const sayLine = useCallback((line: Line) => speech.say(line, voiceNow.current), [speech])
+  // A big moment may cut in on the other commentator (#131). Its moment is presented in the same render
+  // as the line; a layout effect runs before useReplay's speaking effect, so `presented` already has it.
+  const presented = useRef<Moment[]>([])
+  const sayLine = useCallback(
+    (line: Line) => speech.say(line, voiceNow.current, isBig(presented.current.find((m) => m.idx === line.moment_idx))),
+    [speech],
+  )
   const replay = useReplay(sayLine, speech.hush)
+  useLayoutEffect(() => {
+    presented.current = replay.state.moments
+  }, [replay.state.moments])
   const { unGate } = replay
   // A video that can't play here for good says so, and the commentary goes on on the replay's clock.
   const onVideo = useCallback(
@@ -96,6 +110,8 @@ export default function App() {
     }
     session.current++
     speech.hush()
+    setAsking(null)
+    setPaused(false)
     setFixing(null)
     setVoiceSheet(false)
     setVideo(embeds(match) ? 'loading' : 'unavailable')
@@ -130,6 +146,8 @@ export default function App() {
     session.current++
     replay.leave()
     speech.hush()
+    setAsking(null)
+    setPaused(false)
     setCurrent(null)
     setFixing(null)
     setVoiceSheet(false)
@@ -171,9 +189,38 @@ export default function App() {
   }
 
   // #117: the answer is spoken in the voice the viewer picked; an off-air answer is shown, never spoken.
+  // #131: the stage shows the question, then the answer while it is spoken.
   const askCommentator = async (question: string, momentIdx: number) => {
-    const answer = await replay.ask(question, momentIdx)
-    if (answer && !answer.off_air) speech.say(answer, voiceNow.current)
+    const sent = session.current
+    const mine = ++asked.current
+    await airAnswer(
+      question,
+      () => replay.ask(question, momentIdx),
+      (answer) => (answer.off_air ? null : speech.sayAnswer(answer, voiceNow.current)),
+      setAsking,
+      () => session.current === sent && asked.current === mine,
+    )
+  }
+
+  // The stage's caption (#132's contract): the question or answer while one is on, else the line on
+  // screen (its fix once fixed), with its speaker for the name chip.
+  const shown = onScreen(replay.state)
+  const latest = shown.lines.find((l) => !replay.state.late.includes(l.line_id))
+  const fixed = latest && replay.state.fixes[latest.line_id]
+  const caption: Caption | null =
+    asking ?? (latest ? { kind: 'line', text: fixed ? fixed.corrected_text : latest.text, speaker: latest.speaker ?? 'lead' } : null)
+  // Pausing stops the voice at once; the paused player's clock holds the commentary (A-6.4@2).
+  const stage = {
+    caption,
+    paused,
+    onPause: () => {
+      speech.hush()
+      setPaused(true)
+    },
+    onPlay: () => setPaused(false),
+    volume: speech.volume,
+    muted: speech.muted,
+    onVolume: speech.setVolume,
   }
 
   const sports = SPORTS.filter((s) => matches?.some((m) => m.sport === s))
@@ -184,6 +231,7 @@ export default function App() {
     <>
       {screen === 'live' && current ? (
         <Live
+          {...stage}
           match={current.match}
           replay={replay.state}
           replayKey={current.key}
