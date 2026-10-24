@@ -170,7 +170,7 @@ Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026. Track: Own
 - **Talk:** press **Talk** and the match pauses while you speak with the commentator; each answer goes through Claude via Mubit and the same check as Ask. Escape, or 12 s of silence, resumes.
 - **One speaking queue:** no line cuts another off mid-word; a big moment goes first, and routine lines that have gone stale are dropped.
 - **Teams tab:** press **T** for each side's form, their last meetings and the squad, as they stood before the match.
-- **One broadcast pair:** both voices share one tone per moment, lit up for a goal and plain for a pass, and in quiet stretches they take turns on one player.
+- **One broadcast pair:** both voices share one tone per moment, lit up for a big moment and calm for a routine one, and in quiet stretches they take turns on one player.
 
 ### The 60-second path
 
