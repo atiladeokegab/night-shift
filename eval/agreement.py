@@ -49,13 +49,27 @@ _DIGITS = {
 }
 
 
+_TOKEN = re.compile(
+    r"(?:(?<!\d)[+-])?(?:\d{1,3}(?:,\d{3})+(?!\d)|\d+)(?:\.\d+)*"  # a number: sign, 1,000s, decimal
+    r"|(?:(?<!\d)[+-])?(?<![\w.])\.\d+"  # a number with a leading decimal point: ".5"
+    r"|[^\W\d_]+"  # a run of letters
+    r"|(?<=\d)\s*[/:](?=\s*\d)|[%$£€]"  # marks that change a number: "3/4", "1:30", "50%", "$5"
+)
+
+
+def _word(token: str) -> str:
+    token = re.sub(r"^([+-]?)\.", r"\g<1>0.", token.replace(",", "").strip())
+    return {"%": "percent"}.get(token) or _DIGITS.get(token, token)
+
+
 def normalise(text: str) -> str:
-    """Lowercased, punctuation stripped, number words as digits, whitespace collapsed; no more. A
-    number keeps its sign and decimal point ("+2", "1.5"), so "+2" and "-2", "1.5" and "1-5" differ;
-    a dash between numbers ("1-0") is punctuation. Letters and numbers are separate words even when
-    they touch ("delta+2s" is "delta +2 s")."""
-    words = re.findall(r"(?:(?<!\d)[+-])?\d+(?:\.\d+)*|[^\W\d_]+", text.lower())
-    return " ".join(_DIGITS.get(w, w) for w in words)
+    """Lowercased, punctuation stripped, number words as digits, whitespace collapsed; no more.
+
+    A number keeps its sign (a Unicode minus is "-") and decimal point; ".5" is "0.5" and "1,000" is
+    "1000". So "+2" and "-2", "1.5" and "1-5", ".5" and "5" differ. A dash between numbers ("1-0")
+    and brackets are punctuation; "/", ":", "%" and currency signs are kept. Letters and numbers are
+    separate words even when they touch ("delta+2s" is "delta +2 s", "1st" is "1 st")."""
+    return " ".join(_word(t) for t in _TOKEN.findall(text.lower().replace("\u2212", "-")))
 
 
 def _unusable(big: dict | None, adapter: dict | None) -> str | None:

@@ -111,6 +111,24 @@ def test_normalising_is_case_punctuation_number_words_and_spaces_only():
     assert normalise("  Two-nil!  Mbappé's   NINETEEN… ") == "2 nil mbappé s 19"
     assert normalise("1-0, +2 seconds, -0.5, 1.5 laps") == "1 0 +2 seconds -0.5 1.5 laps"
     assert normalise("delta+2s, Over1.5, Over1-5, v.2") == "delta +2 s over 1.5 over 1 5 v 2"
+    assert (
+        normalise(".5, -.5, \u22122, 1,000, 1,000.5, 3/4, 1:30")
+        == "0.5 -0.5 -2 1000 1000.5 3 / 4 1 : 30"
+    )
+    assert normalise("50%, 1st, (-2)") == "50 percent 1 st -2"
+
+
+@pytest.mark.parametrize(
+    "big, adapter",
+    [
+        ("Kohli brings up 1,000 runs!", "Kohli brings up 1000 runs!"),
+        ("Leads by .5 seconds", "Leads by 0.5 seconds"),
+        ("Spain have 50% of the ball", "Spain have 50 percent of the ball"),
+        ("Kohli 82 (53)", "Kohli 82, 53"),
+    ],
+)
+def test_the_same_number_written_differently_strictly_agrees(big, adapter):
+    assert strict(line(big), line(adapter)) is None
 
 
 # Prometheus's confirm of 201abf6: normalising must not make these the same.
@@ -123,6 +141,18 @@ def test_normalising_is_case_punctuation_number_words_and_spaces_only():
         # Prometheus, at 48c4559: a number touching a letter keeps its sign and decimal point.
         ("Hamilton delta+2s", "Hamilton delta-2s", "different words"),
         ("Over1.5", "Over1-5", "different words"),
+        # Prometheus, at 1876768, and the sweep after it: every number shape keeps what it means.
+        (".5 seconds", "5 seconds", "different words"),
+        ("Bottas -.5 seconds", "Bottas .5 seconds", "different words"),
+        ("India 3/4", "India 3-4", "different words"),
+        ("Ratio 10 / 2", "Ratio 10 2", "different words"),
+        ("Hamilton leads by \u22122 seconds!", "Hamilton leads by 2 seconds!", "different words"),
+        ("Hamilton leads by \u2212.5 seconds!", "Hamilton leads by .5 seconds!", "different words"),
+        ("Hamilton leads by 1/2 seconds!", "Hamilton leads by 1-2 seconds!", "different words"),
+        ("Hamilton leads by 1:30 seconds!", "Hamilton leads by 1-30 seconds!", "different words"),
+        ("Possession 50%", "Possession 50", "different words"),
+        ("Kohli 1st innings", "Kohli 1 innings", "different words"),
+        ("Delta (-2)", "Delta (2)", "different words"),
     ],
 )
 def test_signs_decimals_and_empty_lines_never_strictly_agree(big, adapter, why):
