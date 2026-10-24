@@ -50,12 +50,12 @@ commentary still plays on the match's own clock.
 | 4 | 0:35–1:10 | **Review**: Cahill's card and its two reasons (hold 3 s). **Fix this line**, type exactly `Gary Cahill scores! Chelsea pull one back, but Tottenham still lead two to one.`, **Send fix**. The **Sent to training** panel: the fix's request id, "Line as said: wrong", "Fixed text: ok", **Score check examples: N → N+2**, "Training run pending" (hold 5 s). Then `/?match=3754092&at=26`: about 25 s later Cahill's goal is said with the fixed line, tagged **Fixed by producer** (the edit cuts the wait) | "When a retry still fails, it doesn't guess. A producer gets the line and the reason, and fixes it in one go. The fix goes to Mubit as training data: this is its request, these are the two examples it made, and the count went up by two. The next replay says the fixed line." |
 | 5 | 1:10–1:30 | Mubit's console, the **Score check** task: its examples, then its version and test score | "This is Mubit's console, outside our app: the fix is a Score check example." Then say the console as it is: **training, not serving**. Call a version better only if the console marks it Passed, and never say the app uses it. |
 | 6 | 1:30–1:40 | The **World Cup final** (`/?match=3869685&at=45`); type "Where are we?" in **Ask** | "A fan can ask anything, any time, in the same voice." |
-| 7 | 1:40–1:52 | The **Proof** card: lines called, fixed by itself, sent to a person; the cost per full replay | "[called] called, [auto-fixed] fixed by itself, [to a person] sent to a person. Built for the streaming platforms that carry the WSL and NWSL. It costs about [cost] a replay to run, voice included." Read each figure off the card. |
+| 7 | 1:40–1:52 | The **Proof** card: lines called, fixed by itself, sent to a person; the cost per full replay | "[called] called, [auto-fixed] fixed by itself, [to a person] sent to a person. Built for the streaming platforms that carry the WSL and NWSL. It costs about [the card's cost] a replay to run, voice included." Read each figure off the card at the take; say the cost as the card shows it, rounded to the cent. |
 | 8 | 1:52–1:58 | Logo, tagline, the live URL | "Touchline. The describer that checks itself." |
 
 The cost per match is the mean over full replays of these highlights, not the price of a whole
-90 minutes: never say it as one. On 2026-10-24 `/stats` read `cost_per_match_usd` 0.35 over 79
-replays, so "about 35 cents a replay"; say the card's figure on the day if it has moved.
+90 minutes: never say it as one. It moves with every long replay, so no figure is written here:
+say the one the card shows, rounded to the cent.
 
 Type the fix exactly: another wording can fail the label ("two goals to one" can't be labelled, so
 no example is sent) or the number check (then the replay calls a fresh line).
