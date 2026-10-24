@@ -236,3 +236,11 @@ def test_a_team_name_shared_by_men_and_women_keeps_to_one_side(tmp_path, monkeyp
     ]
     assert [s["name"] for s in graph.squad("cricket", "Pakistan", "2022-10-15")] == ["Babar"]
     assert [s["name"] for s in graph.squad("cricket", "Pakistan", "2022-10-04")] == ["Nida"]
+
+
+def test_shipped_store_pakistan_squad_before_1298150_has_no_women(monkeypatch):
+    monkeypatch.setattr(graph, "_kv", None)
+    graph._open_store()
+    names = {s["name"] for s in graph.squad("cricket", "Pakistan", "2022-10-23")}
+    assert {"Babar Azam", "Mohammad Rizwan"} <= names
+    assert not names & {"Muneeba Ali", "Nida Dar"}  # Pakistan's women's side

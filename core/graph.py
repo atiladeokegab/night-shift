@@ -282,6 +282,8 @@ GENDERED = " AND gender = $g"  # Cricsheet files men's and women's sides under o
 def _gender(sport: str, team: str, cut: str) -> str | None:
     """The gender of the team's latest match before the cut (None where a sport has none): a team
     name alone cannot say which side is meant, and the match on screen is its next one."""
+    # shortcut: the latest match stands for the side on screen; wrong if a team's men's and women's
+    # games alternate within days. Upgrade by passing the match's gender in from the caller.
     last = _rows(FIXTURES.format(more=""), {"s": sport, "t": team, "b": cut, "n": 1})
     return last[0].get("gender") if last else None
 
