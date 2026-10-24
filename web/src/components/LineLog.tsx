@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { withAnswers } from '../ask'
+import { MicButton } from './MicButton'
 import { clockText } from '../moment'
 import type { Answer, Fix, Line, Moment } from '../types'
 
@@ -74,13 +75,18 @@ export function LineLog({ lines, late, fixes, moments, onFix, answers, onAsk, sh
   )
 }
 
-// "Ask the commentator" (#117): text in, one question at a time; the answer lands in the log and is spoken.
+// "Ask the commentator" (#117): text in, or by voice (#139), one question at a time; the answer lands in
+// the log and is spoken.
 function AskBox({ onAsk }: { onAsk: Props['onAsk'] }) {
   const [question, setQuestion] = useState('')
   const [asking, setAsking] = useState(false)
+  const [hint, setHint] = useState('') // the mic's one-line hint: denied, or nothing heard
   const send = async (e: FormEvent) => {
     e.preventDefault()
-    const q = question.trim()
+    await ask(question)
+  }
+  const ask = async (text: string) => {
+    const q = text.trim()
     if (!q || asking || !onAsk) return
     setAsking(true)
     try {
@@ -94,7 +100,9 @@ function AskBox({ onAsk }: { onAsk: Props['onAsk'] }) {
     <form className="ask" onSubmit={send}>
       <label className="sr-only" htmlFor="ask-q">Ask the commentator</label>
       <input id="ask-q" value={question} maxLength={200} readOnly={asking} disabled={!onAsk} autoComplete="off" enterKeyHint="send"
-        placeholder={onAsk ? 'Ask the commentator…' : 'Ask once play starts'} onChange={(e) => setQuestion(e.target.value)} />
+        placeholder={!onAsk ? 'Ask once play starts' : hint || 'Ask the commentator…'} onChange={(e) => setQuestion(e.target.value)} />
+      <MicButton disabled={!onAsk || asking} onHeard={(t) => (setHint(''), setQuestion(t))} onSend={(t) => (setQuestion(t), void ask(t))}
+        onHint={(h) => (setQuestion(''), setHint(h))} />
       <button className="btn sm primary" disabled={!onAsk || asking || !question.trim()}>
         {asking ? <><span className="spin sm" />Asking…</> : 'Ask'}
       </button>
