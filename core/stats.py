@@ -1,5 +1,7 @@
 """Proof-panel numbers, computed from the store only."""
 
+from datetime import UTC, datetime
+
 # USD per 1M tokens (input, output), list price
 PRICES = {"claude-haiku-4-5": (1.00, 5.00), "claude-sonnet-5-5": (2.00, 10.00)}
 # USD per 1k characters: ElevenLabs API Starter ($6 for 75k v3); flash half (checked 2026-10-24)
@@ -9,7 +11,7 @@ VOICE_PRICES = {
     "eleven_flash_v2_5": 0.04,
     "eleven_turbo_v2_5": 0.04,
 }
-# Mubit's minimum kept examples before it trains the adapter
+# eval/agreement.py's floor of kept examples; nothing here enforces it, so /stats doesn't report it
 ADAPTER_NEEDED = 25
 
 
@@ -35,12 +37,35 @@ def _by_task(store) -> dict[str, dict]:
     return {r.get("task", "commentary"): r for r in store.all("adapter")}
 
 
+def _state(r: dict) -> tuple[str, str]:
+    """What the latest record says, and only that: "passed" only when Mubit's gate was recorded as
+    passed, "testing" once a version, score or failed gate is recorded, else "collecting"."""
+    try:
+        when = datetime.fromisoformat(r["created_at"]).astimezone(UTC)
+        as_of = f", as of {when:%-d %b %Y %H:%M} UTC"
+    except (KeyError, TypeError, ValueError):  # no record, or one from before created_at
+        as_of = ""
+    score, target = r.get("score"), r.get("target")
+    of = f" of a {target:g}% target" if target is not None else ""
+    best = f"{score:g}%{of}" if score is not None else ""
+    if r.get("passed") is True:
+        version = f" (v{r['version']})" if r.get("version") is not None else ""
+        scored = f", {best}" if best else ""
+        return "passed", f"Passed Mubit's test{version}{scored}{as_of}."
+    if r.get("version") is not None or score is not None or r.get("passed") is False:
+        scored = f"; best {best}" if best else ""
+        return "testing", f"Testing: no version passed{scored}{as_of}."
+    return "collecting", f"Collecting: no adapter version recorded yet{as_of}."
+
+
 def _adapter(latest: dict) -> dict:
+    state, summary = _state(latest)
     return {
         "status": latest.get("status", "not_trained"),
+        "state": state,
+        "summary": summary,
         # a stored line doesn't prove Mubit kept it: unknown until a console count is recorded
         "kept": latest.get("kept"),
-        "needed": ADAPTER_NEEDED,
         "agree": latest.get("agree"),
         "total": latest.get("total"),
         # the app can't call the adapter, so its cost per line isn't measurable
@@ -53,6 +78,7 @@ def _adapters(by_task: dict[str, dict]) -> dict:
     return {
         task: {
             "status": r.get("status", "not_trained"),
+            "state": _state(r)[0],
             "version": r.get("version"),
             "score": r.get("score"),
             "target": r.get("target"),

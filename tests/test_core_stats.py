@@ -13,8 +13,9 @@ def test_empty_store_has_no_cost_and_an_untrained_adapter(tmp_path):
     assert s["cost_per_line_usd"] is None
     assert s["adapter"] == {
         "status": "not_trained",
+        "state": "collecting",
+        "summary": "Collecting: no adapter version recorded yet.",
         "kept": None,
-        "needed": 25,
         "agree": None,
         "total": None,
         "cost_measurable": False,
@@ -59,12 +60,50 @@ def test_adapter_reads_the_latest_recorded_result(tmp_path):
     store.append("adapter", {"status": "ready", "kept": 31, "agree": 23, "total": 25})
     assert stats(store)["adapter"] == {
         "status": "ready",
+        "state": "collecting",  # ready, but no version or verdict recorded: never a pass
+        "summary": "Collecting: no adapter version recorded yet.",
         "kept": 31,
-        "needed": 25,
         "agree": 23,
         "total": 25,
         "cost_measurable": False,
     }
+
+
+AT = "2026-10-24T13:04:32.564923+00:00"
+
+
+@pytest.mark.parametrize(
+    ("record", "state", "summary"),
+    [
+        # live on 24 Oct: "training" with no version is not a version in training
+        (
+            {"status": "training", "created_at": AT},
+            "collecting",
+            "Collecting: no adapter version recorded yet, as of 24 Oct 2026 13:04 UTC.",
+        ),
+        (
+            {"status": "training", "version": 6, "score": 55.8, "target": 95, "passed": False},
+            "testing",
+            "Testing: no version passed; best 55.8% of a 95% target.",
+        ),
+        (
+            {"status": "ready", "version": 6, "score": 55.8, "target": 95, "created_at": AT},
+            "testing",  # a ready version with no verdict is never read as passed
+            "Testing: no version passed; best 55.8% of a 95% target, as of 24 Oct 2026 13:04 UTC.",
+        ),
+        (
+            {"status": "ready", "version": 7, "score": 96, "target": 95, "passed": True},
+            "passed",
+            "Passed Mubit's test (v7), 96% of a 95% target.",
+        ),
+    ],
+)
+def test_the_adapter_says_only_what_its_record_says(tmp_path, record, state, summary):
+    store = Store(tmp_path)
+    store.append("adapter", record)
+    out = stats(store)
+    assert (out["adapter"]["state"], out["adapter"]["summary"]) == (state, summary)
+    assert out["adapters"]["commentary"]["state"] == state and "needed" not in out["adapter"]
 
 
 def test_lead_and_analyst_lines_are_reported_apart(tmp_path):
