@@ -41,7 +41,7 @@ def deploy(tmp_path, dotenv="", **env):
 
 
 def env_vars(deployed):
-    return deployed.split("--set-env-vars ")[1].split(" ")[0].split(",")
+    return deployed.split("--set-env-vars ^@^")[1].split(" --labels ")[0].split("@")
 
 
 def test_unset_voice_vars_keep_the_code_defaults(tmp_path):
@@ -64,6 +64,18 @@ def test_voice_vars_come_from_env_or_dotenv_and_no_key_rides_along(tmp_path):
         "VOICE_MODEL_BASKETBALL=eleven_v3",
     }
     assert "sk-LEAK42" not in deployed
+
+
+def test_a_label_keeps_its_spaces_and_commas(tmp_path):
+    done, deployed = deploy(tmp_path, VOICE_LABEL_CRICKET="Raju, Cricket Commentator")
+    assert done.returncode == 0, done.stderr
+    assert "VOICE_LABEL_CRICKET=Raju, Cricket Commentator" in env_vars(deployed)
+
+
+@pytest.mark.parametrize("value", ["a@MUBIT_API_KEY=x", "$(id)", "a=b"])
+def test_a_label_that_could_inject_another_var_stops_the_deploy(tmp_path, value):
+    done, deployed = deploy(tmp_path, VOICE_LABEL_FOOTBALL=value)
+    assert done.returncode == 1 and "VOICE_LABEL_FOOTBALL" in done.stderr and not deployed
 
 
 @pytest.mark.parametrize("value", ["george,MUBIT_API_KEY=x", "a b", "$(id)"])
