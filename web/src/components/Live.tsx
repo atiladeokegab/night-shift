@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { answeredAt, isStale } from '../ask'
 import { clockText, momentTag } from '../moment'
 import { embeds, posterUrl, setPlaying, showNoVideoCaption, shownCaption, watchUrl, type Transport } from '../player'
 import type { Caption as CaptionData } from '../turns'
@@ -229,7 +230,8 @@ export function Live(props: Props) {
               <Caption caption={null}><p className="cap-text">{fullTimeText}</p></Caption>
             ) : caption ? (
               <Caption caption={{ ...caption, speaker }} fixed={!!line && !!replay.fixes[line.line_id]} offAir={answer?.off_air}
-                tag={tagged ? momentTag(tagged) : undefined} asked={answer?.question} pending={pending} title={title} announce={!voiced} />
+                tag={answer ? answeredAt(answer, shown.moments) ?? undefined : tagged ? momentTag(tagged) : undefined}
+                stale={!!answer && isStale(answer, shown.moments)} asked={answer?.question} pending={pending} title={title} announce={!voiced} />
             ) : (
               <Caption caption={null}>
                 <p className="cap-state">
