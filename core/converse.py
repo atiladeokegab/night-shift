@@ -7,6 +7,7 @@ conversation started."""
 import asyncio
 import hmac
 import json
+import logging
 import os
 import re
 import secrets
@@ -22,6 +23,7 @@ from core import insight
 from core.guard import OFF_TODAY, client_ip
 from core.replay import OFF_AIR
 
+log = logging.getLogger("touchline.converse")
 SIGNED_URL = "https://api.elevenlabs.io/v1/convai/conversation/get-signed-url"
 CTX_TTL_S = 30 * 60  # a conversation's context lives this long after it is minted
 MAX_TURNS = 40  # model calls one conversation may make
@@ -103,6 +105,23 @@ def checked(text: str, question: str, past: list[dict], lines: list[dict]) -> bo
     )
 
 
+def fail(reason: str, exc: BaseException) -> None:
+    """One line per error: what failed and its type, never the key, the prompt or the message."""
+    log.warning("converse: %s: %s", reason, type(exc).__name__)
+
+
+def safe_line(past: list[dict]) -> str:
+    """The status line from the data alone, as Ask falls back to; the off-air line without it."""
+    from agent.status import fallback_text
+    from data.matches import match_header
+
+    try:
+        return fallback_text(match_header(past[-1]["match_id"]), past[-1])
+    except Exception as exc:
+        fail("status line", exc)
+        return OFF_AIR
+
+
 async def speak(ask, inner, question: str, past: list[dict], lines: list[dict]):
     """The answer's sentences, each as soon as the model has written it and Ask's checks pass it.
     A sentence that fails stops the answer there; if nothing was said yet (or a tool was used, so
@@ -122,7 +141,9 @@ async def speak(ask, inner, question: str, past: list[dict], lines: list[dict]):
             put("end")
 
     task = asyncio.create_task(asyncio.to_thread(work))
-    task.add_done_callback(lambda t: t.cancelled() or t.exception())  # read: never unretrieved
+    task.add_done_callback(
+        lambda t: t.cancelled() or t.exception() and fail("model call", t.exception())
+    )
     buf, said, words_left, tooled, failed = "", [], commentator.ANSWER_WORDS, False, False
     while not failed:
         kind, value = await pieces.get()
@@ -140,6 +161,7 @@ async def speak(ask, inner, question: str, past: list[dict], lines: list[dict]):
             if not heard or ABOUT_VIEWER.match(heard):
                 continue
             if not checked(heard, question, past, lines):
+                log.warning("converse: a sentence failed the number check")
                 failed = True
                 break
             words_left -= len(heard.split())
@@ -156,9 +178,11 @@ async def speak(ask, inner, question: str, past: list[dict], lines: list[dict]):
     # path answers, so the fan is never left in silence
     try:
         safe = await asyncio.to_thread(insight.checked_answer, ask, question, past, lines)
-    except Exception:  # the calm off-air line, never the provider's error
-        safe = None
-    yield safe["text"] if safe else OFF_AIR
+    except Exception as exc:  # the status line, never the provider's error
+        fail("answer", exc)
+        yield safe_line(past)
+        return
+    yield safe["text"] if safe else safe_line(past)
 
 
 def chunk(cid: str, delta: dict, finish: str | None = None) -> str:
@@ -224,6 +248,7 @@ def converse_router(*, need_deps, viewed, asked_so_far, guard, store, env=os.env
         try:
             url = await signed_url(agent, key)
         except (httpx.HTTPError, KeyError) as exc:
+            fail("signed url", exc)
             raise HTTPException(502, "conversation could not start") from exc
         now = time.monotonic()
         for ctx in [c for c, v in contexts.items() if v["expires"] < now]:
@@ -275,8 +300,9 @@ def converse_router(*, need_deps, viewed, asked_so_far, guard, store, env=os.env
                     )
                 ):
                     text = said["text"]
-            except Exception:  # the calm off-air line, never the provider's error
-                pass
+            except Exception as exc:  # the status line, never the provider's error
+                fail("answer", exc)
+                text = safe_line(past)
         if body.get("stream", True):
             return StreamingResponse(sse(text), media_type="text/event-stream")
         return JSONResponse(
