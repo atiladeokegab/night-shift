@@ -542,6 +542,19 @@ def _streaks(m: dict, past: list[dict]) -> set[float]:
     return out
 
 
+# The model reasoning aloud instead of calling the moment ("Wait—I need to reconsider ..."): only at
+# the start of a clause, so "they'll have to wait for the review" is still commentary.
+SELF_TALK = re.compile(
+    r"(?:^|[.!?,;:—–]\s*)(?:wait\s*[—–-]|wait,\s*i\b|i need to\b|let me\b|reconsider|actually\b)"
+    r"|\bthe recent play (?:and|shows|lists)\b",
+    re.I,
+)
+
+
+def talks_to_itself(text: str) -> bool:
+    return bool(SELF_TALK.search(text))
+
+
 def wrong_numbers(
     text: str, m: dict, header: dict | None = None, past: list[dict] = ()
 ) -> list[str]:
@@ -556,6 +569,8 @@ def wrong_numbers(
         if isinstance(n, float) and prev != "number"
     ]
     wrong = [f"{n:g} is not in the moment" for n in heard if n not in given]
+    if talks_to_itself(text):
+        wrong.append("the line talks to itself")
     if "milestone" in d and not set(numbers(d["milestone"])) & set(numbers(text)):
         wrong.append(f"the milestone is unsaid: {d['milestone']}")
     if m.get("sport") == "cricket":
