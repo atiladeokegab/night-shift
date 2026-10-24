@@ -129,6 +129,7 @@ export interface ReviewItem {
 export interface SpeakerStats {
   model: string // the models seen, comma-separated
   served_by?: string // #250: the models Mubit said answered, comma-separated; '' before #250
+  served_lines?: number // #250: the lines that carry a served_by; older and data-built lines don't
   lines: number
   first_word_ms_p50: number | null
   first_word_ms_p95: number | null

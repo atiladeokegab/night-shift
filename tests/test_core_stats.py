@@ -81,6 +81,7 @@ def test_lead_and_analyst_lines_are_reported_apart(tmp_path):
     assert analyst == {
         "model": "claude-sonnet-5-5",
         "served_by": "",  # a line from before #250 says nothing about what answered
+        "served_lines": 0,
         "lines": 1,
         "first_word_ms_p50": 2000,
         "first_word_ms_p95": 2000,
@@ -97,6 +98,7 @@ def test_served_by_lists_what_mubit_said_answered_the_lead_lines(tmp_path):
     store.append("lines", line(4))  # stored before #250
     lead = stats(store)["by_speaker"]["lead"]
     assert lead["served_by"] == "claude-haiku-4-5-20251001, some-adapter-v3"
+    assert lead["served_lines"] == 3 and lead["lines"] == 4
     assert lead["model"] == "claude-haiku-4-5"  # what was asked stays apart
 
 
@@ -134,6 +136,17 @@ def test_moment_to_audio_counts_only_lines_with_audio(tmp_path, monkeypatch):
     lead = stats(store)["by_speaker"]["lead"]
     assert lead["lines"] == 2 and lead["audio_lines"] == 1
     assert lead["audio_first_ms_p50"] >= 50 and lead["audio_first_ms_p95"] >= 50
+
+
+def test_served_by_counts_its_own_lines_on_a_store_mostly_from_before_it(tmp_path):
+    # #250 review: one new line after deploy must not stamp its model on 500 lines it never saw
+    store = Store(tmp_path)
+    for i in range(500):
+        store.append("lines", line(i))
+    store.append("lines", {**line(500), "served_by": "claude-haiku-4-5-20251001"})
+    lead = stats(store)["by_speaker"]["lead"]
+    assert lead["lines"] == 501 and lead["served_lines"] == 1
+    assert lead["served_by"] == "claude-haiku-4-5-20251001"
 
 
 def fix(line_id, at, recorded=True):
