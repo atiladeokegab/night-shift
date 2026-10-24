@@ -115,7 +115,7 @@ export interface ScoreCheckStats {
   seeded: number
   from_fixes: number
   from_fixes_by_kind: Record<string, number>
-  held_out: { what: string; agree: number; scored: number; unparsed: number; recorded_at: string | null }[]
+  held_out: Record<string, { agree: number; scored: number; unparsed: number; recorded_at: string | null }> // by model
 }
 
 // #298: Line check's second opinion on live lead lines; every flag is on a line the rules check passed

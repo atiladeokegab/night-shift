@@ -163,4 +163,4 @@ def test_stats_show_examples_by_source_and_each_held_out_score(tmp_path):
         store.append("scorecheck_evals", {"what": "Claude", "agree": agree, "scored": 74})
     sc = stats(store)["scorecheck"]
     assert (sc["seeded"], sc["from_fixes"], sc["from_fixes_by_kind"]) == (2, 1, {"corrected": 1})
-    assert [(e["what"], e["agree"], e["scored"]) for e in sc["held_out"]] == [("Claude", 70, 74)]
+    assert [(w, e["agree"], e["scored"]) for w, e in sc["held_out"].items()] == [("Claude", 70, 74)]

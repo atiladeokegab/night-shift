@@ -114,11 +114,12 @@ def _scorecheck(store) -> dict:
         "seeded": sum(r.get("source") == "seed" for r in sent),
         "from_fixes": len(fixes),
         "from_fixes_by_kind": dict(Counter(r["kind"] for r in fixes)),
-        "held_out": [
-            {k: e.get(k) for k in ("what", "agree", "scored", "unparsed")}
+        # keyed by model: an SSE event's JSON carries no "[" (tests/test_core_voice.py)
+        "held_out": {
+            what: {k: e.get(k) for k in ("agree", "scored", "unparsed")}
             | {"recorded_at": e.get("created_at")}
-            for e in held.values()
-        ],
+            for what, e in held.items()
+        },
     }
 
 

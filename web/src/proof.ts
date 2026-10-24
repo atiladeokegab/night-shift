@@ -69,7 +69,7 @@ export function adapterRows(adapters: Record<string, TaskAdapter> | undefined, s
   if (!sc) return rows
   const kinds = Object.entries(sc.from_fixes_by_kind).map(([kind, n]) => `${n} ${kind}`)
   rows.push(`Score check examples sent: ${sc.seeded} seeded, ${sc.from_fixes} from fixes${kinds.length ? ` (${kinds.join(', ')})` : ''}`)
-  for (const e of sc.held_out) rows.push(`Score check held-out (lines never sent): ${e.what}, ${e.agree} of ${e.scored} match the data`)
+  for (const [what, e] of Object.entries(sc.held_out)) rows.push(`Score check held-out (lines never sent): ${what}, ${e.agree} of ${e.scored} match the data`)
   return rows
 }
 

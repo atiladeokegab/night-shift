@@ -97,7 +97,7 @@ test("Score check's row keeps its earlier version, where it was read, and its ex
     seeded: 150,
     from_fixes: 2,
     from_fixes_by_kind: { corrected: 2 },
-    held_out: [{ what: 'Claude Sonnet 5.5 via API', agree: 70, scored: 74, unparsed: 0, recorded_at: null }],
+    held_out: { 'Claude Sonnet 5.5 via API': { agree: 70, scored: 74, unparsed: 0, recorded_at: null } },
   })
   assert.deepEqual(rows.slice(3), [
     'Score check: v2 (ad_2), 96%, Passed · before: v1, 88.5%, below 95% target · Mubit console, 2026-10-24 16:00 UTC',

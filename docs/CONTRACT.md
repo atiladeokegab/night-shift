@@ -243,8 +243,8 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
     Wrong player or Wrong fact whose line code can label, sent on the owner's key; kind error
     left out). `examples_today` counts those created today (UTC) and `examples_today_by_kind`
     splits them by kind, e.g. `{"corrected": 2, "matched": 1}`.
-  - `scorecheck: {seeded, from_fixes, from_fixes_by_kind, held_out: [{what, agree, scored,
-    unparsed, recorded_at}]}` (#321): Score check (agent/scorecheck.py) examples sent to Mubit
+  - `scorecheck: {seeded, from_fixes, from_fixes_by_kind, held_out: {[what]: {agree, scored,
+    unparsed, recorded_at}}}` (#321): Score check (agent/scorecheck.py) examples sent to Mubit
     (`scorecheck_examples` rows), by `eval/seed_scorecheck.py --go` or by a producer's fix (the
     same reasons as Line check, once per line), and each model's latest score on the frozen
     held-out lines (`scorecheck_evals`, written by `--score FILE --record WHAT`).
