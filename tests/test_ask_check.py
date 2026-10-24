@@ -45,6 +45,34 @@ def test_messi_has_not_scored_is_caught_and_the_half_too():
     assert wrong_claims("Mbappé has his brace; Messi his second!", past) == [
         "Lionel Messi has scored 1 so far, not 2"
     ]
+    assert wrong_claims("Mbappé completes a hat-trick!", past) == [
+        "Kylian Mbappé has scored 2 so far, not 3"
+    ]
+    assert wrong_claims("Messi scored, but Di María hasn't scored.", past) == [
+        "Ángel Di María has scored 1 so far"
+    ]
+
+
+# true answers review-b found flagged (#247): each must pass
+TRUE_AT_105_41 = [
+    "Mbappé is one away from a hat-trick.",
+    "Mbappé has not scored since the 81st minute.",
+    "Messi hasn't scored in extra time yet.",
+    "Messi's penalty was not the only goal.",
+    "Messi scored, but Di María has not scored since the first half.",
+]
+
+
+def test_true_claims_about_goals_and_halves_are_not_flagged():
+    past, _ = past_at_105_41()
+    for text in TRUE_AT_105_41:
+        assert wrong_claims(text, past) == [], text
+    at_31_35 = [m for m in load_moments(FINAL) if m["idx"] <= 8]
+    assert at_31_35[-1]["clock"] == "31:35"
+    assert wrong_claims("France need to come out stronger in the second half.", at_31_35) == []
+    assert wrong_claims("We're now in the second half.", at_31_35) == [
+        "the match has not reached the second half"
+    ]
 
 
 def model(*texts):

@@ -960,23 +960,38 @@ def wrong_answer(answer: dict, question: str, past: list[dict], lines: list[dict
     return [f"{n:g} is not in the match so far" for n in numbers(answer["text"]) if n not in given]
 
 
-# "Messi hasn't scored yet" with his penalty in (#236); "his second", a brace, a hat-trick
+# "Messi hasn't scored yet" with his penalty in (#236). Not a qualified one: "hasn't scored since
+# the 81st minute", "in extra time", "again", "was not the only goal"
 NOT_SCORED = re.compile(
-    r"\b(?:hasn't|has not|hadn't|yet to|still to|not|never|no)\s+(?:\w+\s+){0,2}?"
-    r"(?:scor\w*|goals?\b|netted|found the net)",
+    r"\b(?:hasn't|has not|hadn't|had not|yet to|still to|not|never|no)\s+"
+    r"(?:(?!only\b)\w+\s+){0,2}?(?:scor\w*|goals?|netted|found the net)\b"
+    r"(?!\s+(?:since|in|again|this|for|from|yet in)\b)",
     re.I,
 )
+# a goal said to have happened: "his second", "Mbappé's brace", "completes a hat-trick"; never
+# "one away from a hat-trick"
 NTH = re.compile(
-    r"\bhis (first|second|third|fourth)\b(?=\s*(?:goal|of\b|[.!?,]|$))|\b(brace|hat[- ]trick)\b",
+    r"\bhis (first|second|third|fourth)\b(?=\s*(?:goal|of\b|[.!?,]|$))"
+    r"|(?:\bhis|['’]s)\s+(brace|hat[- ]trick)\b"
+    r"|\b(?:scor\w*|got|gets|complet\w*|grabs?|grabbed|nets?|netted)\s+(?:a|his)\s+"
+    r"(brace|hat[- ]trick)\b",
     re.I,
 )
 NTH_GOAL = {"first": 1, "second": 2, "third": 3, "fourth": 4, "brace": 2}
 HALVES_SAID = {"second half": 2, "first half of extra time": 3, "second half of extra time": 4}
+NOW_IN = r"\b(?:we're|we are|it's|it is|deep|now|already)\s+(?:\w+\s+)?(?:in|into)\s+the\s+"
+
+
+def _named_before(named: list[tuple[int, str]], at: int) -> str | None:
+    """The player named last before `at`, whose claim it is: "Messi scored, but Di María hasn't"."""
+    return next((name for start, name in reversed(named) if start < at), None)
 
 
 def wrong_claims(text: str, past: list[dict]) -> list[str]:
-    """What a football answer says that the numbers check can't see: a player's goals so far, and
-    a half of the match it hasn't reached ("the second half of extra time" at 105:41)."""
+    """What a football answer says that the numbers check can't see: a player's goals so far, each
+    claim tied to the player named last before it, and that the match is now in a half it hasn't
+    reached ("we're deep in the second half of extra time" at 105:41; never "in the second half
+    they need to come out stronger")."""
     from agent.commentator import goals_so_far
 
     m = past[-1]
@@ -985,24 +1000,26 @@ def wrong_claims(text: str, past: list[dict]) -> list[str]:
     wrong = [
         f"the match has not reached the {part}"
         for part, period in HALVES_SAID.items()
-        if period > m.get("period", period) and re.search(rf"\b{part}\b", text, re.I)
+        if period > m.get("period", period) and re.search(rf"{NOW_IN}{part}\b", text, re.I)
     ]
     goals = Counter(p["players"].get("shooter") for p in goals_so_far(past) if p.get("players"))
     names = {n for p in past for n in (p.get("players") or {}).values() if isinstance(n, str)}
     surnames = Counter(n.split()[-1] for n in names)
-    for sentence in re.split(r"(?<=[.!?;])\s+", text):  # a clause each: "Messi; Mbappé's brace"
-        for name in names:
-            last = name.split()[-1]
-            said = name if surnames[last] > 1 else last  # two Martínez: only the full name counts
-            if not re.search(rf"\b{re.escape(said)}\b", sentence):
-                continue
-            g = goals[name]
-            if g and NOT_SCORED.search(sentence):
-                wrong.append(f"{name} has scored {g} so far")
-            for nth, many in NTH.findall(sentence):
-                n = NTH_GOAL.get((nth or many).lower(), 3)
-                if n > g:
-                    wrong.append(f"{name} has scored {g} so far, not {n}")
+    said = {n: n if surnames[n.split()[-1]] > 1 else n.split()[-1] for n in names}  # two Martínez
+    for clause in re.split(r"(?<=[.!?;])\s+", text):  # a clause each: "Messi; Mbappé's brace"
+        named = sorted(
+            (hit.start(), name)
+            for name in names
+            for hit in re.finditer(rf"\b{re.escape(said[name])}\b", clause)
+        )
+
+        for hit in NOT_SCORED.finditer(clause):
+            if (name := _named_before(named, hit.start())) and goals[name]:
+                wrong.append(f"{name} has scored {goals[name]} so far")
+        for hit in NTH.finditer(clause):
+            n = NTH_GOAL.get(next(g for g in hit.groups() if g).lower(), 3)
+            if (name := _named_before(named, hit.start())) and n > goals[name]:
+                wrong.append(f"{name} has scored {goals[name]} so far, not {n}")
     return wrong
 
 
