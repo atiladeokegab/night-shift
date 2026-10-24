@@ -34,14 +34,8 @@ def test_a_fallback_reads_like_a_commentator(key):
 
 
 def test_every_fallback_is_short_right_and_free_of_raw_labels():
-    assert {mid for mid, _ in ALL} == {
-        "3869685",
-        "3754092",
-        "0020500591",
-        "0049700088",
-        "1298150",
-        "9636",
-    }
+    six = {"3869685", "3754092", "0020500591", "0049700088", "1298150", "9636"}
+    assert {mid for mid, _ in ALL} >= six  # and any match added since
     for match_id, m in ALL:
         header = match_header(match_id)
         text = insight.fallback_text(header, m)
