@@ -21,9 +21,8 @@ interface Props {
   onUnfollow?: () => void
 }
 
-// The Lines card (docs/design.md): every line so far, newest first, with its clock, the model's
-// first-text-word time ("first word" in the mockup: the #37 review asked for the measured thing's name)
-// and "Fix". A fixed line shows the correction over the struck-through original. Viewers' questions and
+// The Lines card (docs/design.md): every line so far, newest first, with its clock, its speaker, the model's
+// first-text-word time (the number; its name in the title, #153) and "Fix". A fixed line shows the correction over the struck-through original. Viewers' questions and
 // the commentator's answers (#117) sit among the lines at the moment they were asked.
 // "3 called · 15 earlier": lines a jump (#163) brought from an earlier replay were not called this time.
 function count(lines: Line[]): string {
@@ -72,6 +71,7 @@ export function LineLog({ lines, late, fixes, moments, onFix, answers, onAsk, sh
             const mine = names(said(l), followed, roster)
             const firstWord = l.first_word_ms != null // undefined or null: only the whole reply was timed
             const ms = l.first_word_ms ?? l.latency_ms
+            const took = `${(ms / 1000).toFixed(2)} s`
             return (
               <li key={l.line_id} className={fix ? 'fixed' : isLate ? 'late' : undefined} data-follow={mine || undefined}>
                 <span className="when num">{m ? clockText(m, true) : ''}</span>
@@ -83,9 +83,10 @@ export function LineLog({ lines, late, fixes, moments, onFix, answers, onAsk, sh
                   Fix
                 </button>
                 <div className="meta-l">
+                  <span className={`chip ${l.speaker ?? 'lead'}`}>{l.speaker === 'analyst' ? 'Analyst' : 'Lead'}</span>
                   {l.history
                     ? <span className="num">From an earlier replay</span> // a jump (#163) never called it, so no timing
-                    : <span className="num">{firstWord ? 'model first text word' : 'model reply'} {(ms / 1000).toFixed(2)} s</span>}
+                    : <span className="num" title={`${firstWord ? 'model first text word' : 'model reply'} ${took}`}>{took}</span>}
                   {mine && <span className="pill follow">{shortName(followed!)}</span>}
                   {fix && <span className="pill fixed">Fixed</span>}
                   {isLate && !fix && <span className="pill late" title="The video had moved past it, so it was not shown or spoken">Late</span>}
@@ -142,9 +143,10 @@ function AskBox({ onAsk }: { onAsk: Props['onAsk'] }) {
       </button>
       <form className="ask" onSubmit={send}>
         <label className="sr-only" htmlFor="ask-q">Ask the commentator</label>
-        {/* size 1: the input fills the row by flex, so its default 20-character width never widens the card (#139) */}
-        <input id="ask-q" size={1} value={question} maxLength={200} readOnly={asking} disabled={!onAsk} autoComplete="off" enterKeyHint="send"
-          placeholder={!onAsk ? 'Ask once play starts' : hint || 'Ask the commentator…'} onChange={(e) => setQuestion(e.target.value)} />
+        {/* A one-row box that grows, so a long question reads from its start (#153); Enter sends, as the input did. */}
+        <textarea id="ask-q" rows={1} value={question} maxLength={200} readOnly={asking} disabled={!onAsk} autoComplete="off" enterKeyHint="send"
+          placeholder={!onAsk ? 'Ask once play starts' : hint || 'Ask the commentator…'} onChange={(e) => setQuestion(e.target.value.replace(/\n/g, ' '))}
+          onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && (e.preventDefault(), e.currentTarget.form?.requestSubmit())} />
         <MicButton disabled={!onAsk || asking} onHeard={(t) => (setHint(''), setQuestion(t))} onSend={(t) => (setQuestion(t), void ask(t))}
           onHint={(h) => (setQuestion(''), setHint(h))} />
         <button className="btn sm primary" disabled={!onAsk || asking || !question.trim()}>
