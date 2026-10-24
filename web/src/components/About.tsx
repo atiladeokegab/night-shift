@@ -7,23 +7,28 @@ export function About({ onGo }: { onGo: (screen: Screen) => void }) {
       <Nav current="about" onGo={onGo} />
       <main className="wrap">
         <p className="eyebrow">About Touchline</p>
-        <h1>Every match deserves a commentator.</h1>
+        <h1>The describer that checks itself.</h1>
         <div className="about">
           <p>
-            <strong>Most matches are played with nobody calling them.</strong> Touchline plays a match's broadcast
-            highlights, and as each key moment plays it calls it in one short, emotional line, read aloud in a
-            commentator's voice and shown as a large subtitle. A line is never shown or spoken before its moment
-            reaches the picture.
+            <strong>Most matches are streamed with nobody describing them.</strong> Touchline describes them. As each
+            key moment plays, it calls it in one short line, read aloud and shown as a large caption, never before the
+            moment reaches the picture. The matches here are replays of real matches, as if live.
           </p>
           <p>
-            <strong>One commentator, four sports.</strong> The same agent, with the same prompt, calls football, cricket,
-            basketball and F1. It reads the match's real event feed and never sees anything from later in the match
-            than the moment it is calling.
+            <strong>It checks every number in the lead's calls.</strong> Before a call is spoken, its score, who leads,
+            the margin and the players' counts are checked against the match data. A call that fails is tried once
+            more; if that fails too, a line built from the data is spoken instead and a producer sees the call. The
+            analyst's stat lines are not checked yet.
           </p>
           <p>
-            <strong>It learns from its producer.</strong> A producer corrects any line that's wrong. Every call and
-            every fix goes through Mubit, which will train a smaller commentator of our own on them. That commentator
-            isn't trained yet, so we make no claim for it.
+            <strong>One describer, four sports.</strong> The same agent, with the same prompt, describes football,
+            cricket, basketball and F1. It reads the match's real event data and never sees anything from later in the
+            match than the moment it is calling.
+          </p>
+          <p>
+            <strong>Every fix trains the platform's own describer.</strong> A producer can fix any line, and every fix,
+            the producer's or the check's own, is recorded in Mubit to train a smaller describer. No version has passed
+            Mubit's test yet, so we make no claim for it.
           </p>
         </div>
         <p className="foot">
