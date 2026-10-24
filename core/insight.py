@@ -11,7 +11,7 @@ from core import predict
 WORDS_PER_S = 2.7  # a line has likely finished speaking after its words at this rate
 PAUSE_S = 2.0  # then this breath before the next insight
 CLEAR_S = 6.0  # no insight starts closer than this to the next mapped moment
-MAX_CALLS = 60  # new insight calls per replay; cached ones are free
+MAX_CALLS = 120  # new insight calls per replay; cached ones are free
 RECENT = 6  # the key moments that count as recent play for momentum
 
 
@@ -28,12 +28,18 @@ def _who(m: dict) -> str | None:
 def _profiles(pack, past):
     if not pack:
         return []
-    out = []
-    for name in dict.fromkeys(n for m in reversed(past) for n in (m.get("players") or {}).values()):
+    out, zones = [], []
+    seen = [n for m in reversed(past) for n in (m.get("players") or {}).values()]
+    # then the rest of the roster: a pre-match record is known before the match starts
+    rest = sorted(pack["players"], key=lambda n: -pack["players"][n].get("games", 0))
+    for name in dict.fromkeys(seen + rest):
         text = predict.profile_text(pack, past, len(past) - 1, name).splitlines()
-        if not text[0].startswith("No pre-match"):  # the record and tonight, without the zones
-            out.append(" ".join(dict.fromkeys([text[0], text[-1]])))
-    return out
+        if text[0].startswith("No pre-match"):
+            continue
+        out.append(" ".join(dict.fromkeys([text[0], text[-1]])))  # the record and tonight
+        who = text[0].split(" (")[0]
+        zones += [f"{who}, {row.lstrip('- ')}" for row in text[1:] if row.startswith("- ")]
+    return out + zones  # then each zone (or cricket phase) on its own, for the long stretches
 
 
 def _odds(pack, past):
@@ -172,10 +178,11 @@ class Gaps:
         return None
 
     def line(
-        self, past: list[dict], n: int, video_t: float, commentate
+        self, past: list[dict], n: int, video_t: float, commentate, before: str | None = None
     ) -> tuple[dict, dict] | None:
         """The n-th insight after past[-1], the moment it follows, and its stored Line: the
-        cached one, else one new commentate call. None ends the quiet stretch."""
+        cached one, else one new commentate call. None ends the quiet stretch. The analyst and
+        the lead take turns, and each hears the line before it (`before`), so the lead may reply."""
         m = past[-1]
         ln = self.cached.get((m["idx"], n))
         if ln is not None:
@@ -190,7 +197,10 @@ class Gaps:
             self.calls += 1
         # its own detail stays out (it would be called again); the score line needs these
         keep = {k: v for k, v in (m.get("detail") or {}).items() if k in ("balls_left", "shootout")}
-        stat = {**m, "type": "Stat", "outcome": kind, "detail": {**keep, "stat": detail}}
+        speaker = "analyst" if n % 2 == 0 else "lead"
+        heard = " ".join(str(before or "").split())  # one line: it must not forge a field
+        detail_in = {**keep, "speaker": speaker, "after": heard, "stat": detail}
+        stat = {**m, "type": "Stat", "outcome": kind, "detail": detail_in}
         if ln is None:
             # the same seam as every line: only moments up to the one followed reach the model
             said = commentate(stat, list(past))
@@ -199,7 +209,12 @@ class Gaps:
             key = {"match_id": self.match_id, "after_idx": m["idx"], "n": n}
             ln = self.store.append(
                 "lines",
-                {**said, "video_t": video_t, "insight": {**key, "kind": kind, "detail": detail}},
+                {
+                    **said,
+                    "video_t": video_t,
+                    "speaker": speaker,
+                    "insight": {**key, "kind": kind, "detail": detail},
+                },
             )
         self.used.add(detail)
         return stat, ln

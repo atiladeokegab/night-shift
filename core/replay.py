@@ -1,5 +1,6 @@
 """The replayer: walks a match's Moments at `speed` (or, for a match with a video map, its mapped
-moments ahead of time), asks the commentator for a Line per moment, stores each Line and publishes
+moments ahead of time), asks the commentator for a Line per moment, and with a video map for stat
+lines in the quiet stretches between them (core/insight.py), stores each Line and publishes
 moment, line and stats events for the SSE stream."""
 
 import asyncio
@@ -113,7 +114,7 @@ async def run_replay(
             line = await asyncio.to_thread(commentate, moment, list(history))
             history.append(moment)
             if line is not None:  # None: the commentator had nothing usable to say
-                await say(store.append("lines", {**line, **tag}), moment)
+                await say(store.append("lines", {**line, **tag, "speaker": "lead"}), moment)
             if not tag:
                 continue
             # the quiet stretch until the next mapped moment: stat lines, each due once the
@@ -124,7 +125,7 @@ async def run_replay(
                 t = insight.due_after(t, said)
                 if end is None or t > end - insight.CLEAR_S:
                     break
-                got = await asyncio.to_thread(gaps.line, list(history), n, t, commentate)
+                got = await asyncio.to_thread(gaps.line, list(history), n, t, commentate, said)
                 if got is None:
                     break
                 stat, said_line = got
