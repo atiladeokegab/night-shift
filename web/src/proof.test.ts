@@ -1,18 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { adapterGood, adapterRows, autonomyRows, nextAdapter } from './proof.ts'
-
-test('under the target, the figure counts toward it', () => {
-  assert.deepEqual(nextAdapter(12, 25), { value: '12 of 25', note: null })
-})
-
-test('at or over the target, it never reads "66 of 25" and says there are enough', () => {
-  const { value, note } = nextAdapter(66, 25)
-  assert.doesNotMatch(value, / of /)
-  assert.equal(value, 'Ready to train')
-  assert.equal(note, '66 fixes recorded · 25 needed: enough for the next adapter')
-  assert.equal(nextAdapter(25, 25).note, '25 fixes recorded · 25 needed: enough for the next adapter')
-})
+import { adapterGood, adapterRows, autonomyRows } from './proof.ts'
 
 const all = { called: 10, first_time: 6, auto_fixed: 2, to_human: 2 }
 const kobe = { called: 6, first_time: 3, auto_fixed: 1, to_human: 2 }
@@ -60,7 +48,7 @@ test('before core reports adapters, no rows', () => {
 })
 
 test('the Adapter row is green only for a ready commentary adapter the gate did not fail', () => {
-  const ready = { status: 'ready' as const, kept: 31, needed: 25, agree: 23, total: 25, cost_measurable: false }
+  const ready = { status: 'ready' as const, kept: 31, agree: 23, total: 25, cost_measurable: false }
   assert.equal(adapterGood({ adapter: ready }), true) // before per-task records: as before
   assert.equal(adapterGood({ adapter: ready, adapters: { commentary: { ...record, passed: true } } }), true)
   assert.equal(adapterGood({ adapter: ready, adapters: { commentary: { ...record, passed: null } } }), true)

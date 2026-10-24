@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { getReview, getStats } from '../api'
 import type { Adapter, Autonomy, SpeakerStats, Stats } from '../types'
 import { SideBySide } from './SideBySide'
-import { adapterGood, adapterRows, autonomyRows, nextAdapter } from '../proof'
+import { adapterGood, adapterRows, autonomyRows } from '../proof'
 
 interface Props {
   live: Stats | null // the latest `stats` event from the replay, newer than the first GET /stats
@@ -30,7 +30,6 @@ export function ProofPanel({ live, matchId }: Props) {
     const empty = stats.lines === 0
     const adapter = stats.adapter
     const tasks = adapterRows(stats.adapters)
-    const next = nextAdapter(stats.fixes_toward_next ?? 0, adapter?.needed ?? 25)
     // the lead's calls (Haiku) and the analyst's stat lines (Sonnet) apart, so neither skews the other
     const groups: [string, SpeakerStats][] = stats.by_speaker
       ? [['Lead', stats.by_speaker.lead], ['Analyst', stats.by_speaker.analyst]]
@@ -45,7 +44,7 @@ export function ProofPanel({ live, matchId }: Props) {
           {/* own heading so the fix counts don't read as the analyst's */}
           <div className="wide">
             <dt className="label">Training</dt>
-            <dd>{next.note ?? 'Your fixes Mubit trains on'}</dd>
+            <dd>Your fixes Mubit trains on</dd>
           </div>
           <Figure label="Fixes" value={String(stats.fixes_recorded ?? 0)} />
           {/* a moment with a producer's fix is said in the fixed words on every later replay (#232) */}
@@ -57,7 +56,7 @@ export function ProofPanel({ live, matchId }: Props) {
             </div>
           )}
           {stats.fixes_toward_next !== undefined && (
-            <Figure className="two" label="Next adapter" value={next.value} />
+            <Figure className="two" label="Since adapter record" value={String(stats.fixes_toward_next)} />
           )}
           <div className="wide">
             <dt className="label">Adapter</dt>
@@ -161,8 +160,9 @@ function Figure({ label, value, className }: { label: ReactNode; value: string; 
   )
 }
 
-// The design's adapter states; "–" until core reports the adapter.
+// The adapter as its latest record says it, in core's words; "–" until core reports the adapter.
 function adapterText(adapter?: Adapter | null): string {
+  if (adapter?.summary) return adapter.summary
   if (adapter?.status === 'not_trained') return 'Not trained yet. Mubit trains it on our calls and producer fixes.'
   if (adapter?.status === 'training') return 'Training: Mubit is building the adapter.'
   if (adapter?.status === 'ready' && adapter.agree !== null && adapter.total !== null) {
