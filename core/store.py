@@ -33,7 +33,8 @@ class Store:
             return path.read_text() if path.exists() else ""
 
     def _write(self, kind: str, text: str) -> None:
-        with (self.root / f"{kind}.jsonl").open("a") as f:
+        # newline="": the bytes written are the row's on every OS, as append's size check expects
+        with (self.root / f"{kind}.jsonl").open("a", newline="") as f:
             f.write(text)
 
     def all(self, kind: str) -> list[dict]:
@@ -51,9 +52,13 @@ class Store:
             before = self._stamp(kind)
             self._write(kind, row)
             cached, after = self._cache.get(kind), self._stamp(kind)
-            # nobody else wrote since we read it, and this write landed
-            if cached and cached[0] == before != after:
+            grew = (after[0] if after else 0) - (before[0] if before else 0)
+            # only our row landed since we read it; another process's append in between (our lock
+            # is this process's only) or a lost write: fetch it all again on the next read
+            if cached and cached[0] == before and grew == len(row.encode()):
                 self._cache[kind] = (after, cached[1] + row)
+            else:
+                self._cache.pop(kind, None)
         return record
 
 

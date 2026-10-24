@@ -146,3 +146,22 @@ def test_a_write_from_another_process_is_seen(tmp_path, monkeypatch):
     assert len(g.all("lines")) == 1
     h.append("lines", {"line_id": "b"})
     assert [r["line_id"] for r in g.all("lines")] == ["a", "b"]
+
+
+def test_another_process_appending_inside_our_append_is_not_lost(tmp_path):
+    from core.store import Store
+
+    other, race = Store(tmp_path), []
+
+    class Racing(Store):  # another process appends between our stamp and our write
+        def _write(self, kind, text):
+            if race:
+                other.append(kind, {"line_id": "theirs"})
+            super()._write(kind, text)
+
+    ours = Racing(tmp_path)
+    ours.append("lines", {"line_id": "first"})
+    assert len(ours.all("lines")) == 1  # cached
+    race.append(True)
+    ours.append("lines", {"line_id": "ours"})
+    assert [r["line_id"] for r in ours.all("lines")] == ["first", "theirs", "ours"]
