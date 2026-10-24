@@ -2,6 +2,8 @@
 an hour, and the daily spend cap, each with the clock injected."""
 
 import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 
 import httpx
@@ -149,11 +151,14 @@ def test_beyond_max_live_a_replay_plays_stored_lines_or_429(tmp_path, monkeypatc
 
     client, _ = app(store, {"MAX_LIVE_REPLAYS": "1"}, commentate=slow, tts=tts)
     with client:
+        assert client.get("/lines/old0/audio").status_code == 200 and len(voiced) == 1
         first = start(client).json()["replay_id"]
         second = start(client).json()["replay_id"]
         cached = texts(client, second)
-        audio = [client.get(f"/lines/old{i}/audio").status_code for i in range(3)]
-        assert voiced == [] and audio == [503] * 3  # browser speech: no ElevenLabs call
+        audio = [client.get(f"/lines/old{i}/audio") for i in range(3)]
+        # old0's saved audio plays again; the others get browser speech: no new ElevenLabs call
+        assert [a.status_code for a in audio] == [200, 503, 503] and audio[0].content == b"mp3"
+        assert len(voiced) == 1
         unknown = start(client, match_id="8")  # nothing stored for it
         gate.set()
         read_stream(client, first)
@@ -196,3 +201,54 @@ def test_spend_counts_only_today_with_its_voice(tmp_path):
     assert spent(store, "2026-10-24") == pytest.approx(0.08)
     assert spent(store, "2026-10-23") == pytest.approx(3.08)
     assert not Guard({"DAILY_BUDGET_USD": "0"}).off_air(store)  # 0: off
+
+
+def test_a_store_read_error_keeps_the_site_on_air_and_retries(tmp_path):
+    class Broken(Store):
+        down = True
+
+        def all(self, kind):
+            if self.down and kind == "voice":
+                raise OSError("bucket unreachable")
+            return super().all(kind)
+
+    store = Broken(tmp_path)
+    stored(store, model="claude-haiku-4-5", tokens_in=1_000_000)  # $3 today
+    assert not Guard({"DAILY_BUDGET_USD": "2"}).off_air(store)  # unread: 0 spent, on air
+    client, _ = app(store, {"DAILY_BUDGET_USD": "2"})
+    with client:
+        assert start(client).status_code == 200
+        store.down = False
+        assert client.get("/stats").json()["budget"]["off_air"]  # read again at once: not stamped
+
+
+def test_two_asks_at_once_get_one_answer_and_one_409(tmp_path, monkeypatch):
+    both, racing = threading.Barrier(2, timeout=5), []
+
+    def off_air(self, store):
+        if racing:  # both asks read the cap before either claims the slot
+            both.wait()
+        return False
+
+    def ask(question, past, lines):
+        time.sleep(0.2)
+        return {
+            "line_id": question,
+            "moment_idx": past[-1]["idx"],
+            "question": question,
+            "text": "Yes",
+        }
+
+    monkeypatch.setattr(Guard, "off_air", off_air)
+    client, _ = app(Store(tmp_path), {}, ask=ask)
+    with client:
+        rid = start(client).json()["replay_id"]
+        read_stream(client, rid)
+        racing.append(True)
+
+        def post(q):
+            return client.post(f"/replays/{rid}/ask", json={"question": q}).status_code
+
+        with ThreadPoolExecutor(2) as pool:
+            codes = sorted(pool.map(post, ["Who?", "Why?"]))
+    assert codes == [200, 409]

@@ -25,7 +25,7 @@ from core.predict import load_pack, shot_points
 from core.replay import OFF_AIR, Replay, run_replay
 from core.stats import stats
 from core.store import open_store
-from core.voice import Speaker, voice_router
+from core.voice import Speaker, voice_of, voice_router
 
 log = logging.getLogger("touchline.app")
 REJOIN_S = 10.0  # a replay with no open stream this long is stopped: its lines cost model calls
@@ -149,6 +149,8 @@ def create_app(
         if jump is not None and not any(m["idx"] == jump for m in moments):
             raise HTTPException(422, f"no moment {jump} in {req.match_id!r}")
         commentate, speak, correct = d.commentate, speaker.prepare, d.correct
+        # shortcut: the cap is checked only as a replay starts, so a running replay can overshoot
+        # it by about one replay's cost; check per line in run_replay if that ever matters
         off_air = await asyncio.to_thread(guard.off_air, store)
         cached = off_air or guard.busy(len(live))
         if cached:  # the lines already stored, said again: no model or voice call, nothing stored
@@ -310,6 +312,8 @@ def create_app(
     async def ask(replay_id: str, req: AskRequest, request: Request):
         d = need_deps()
         replay = viewed(replay_id)
+        # read before the in-flight check: no await between that check and asking.add
+        off_today = await asyncio.to_thread(guard.off_air, store)
         if replay_id in asking:
             raise HTTPException(409, "a question is already in flight")
         past, lines = asked_so_far(replay, d.load_moments(replay.match_id), req.moment_idx)
@@ -317,7 +321,6 @@ def create_app(
             raise HTTPException(409, "nothing has happened yet")
         if wait := guard.asks.hit(client_ip(request)):
             raise too_many(wait, "That's a lot of questions. Try again in a few minutes.")
-        off_today = await asyncio.to_thread(guard.off_air, store)
         asking.add(replay_id)
         try:
             if off_today:
@@ -416,11 +419,21 @@ def create_app(
         if not request.url.path.endswith("/audio"):
             return
         line_id = request.path_params.get("line_id")
-        if any(
-            e["event"] == "line" and e["data"].get("line_id") == line_id
-            for rid in list(said_again)
-            for e in (replays[rid].events if rid in replays else [])
-        ):
+        line = next(
+            (
+                e["data"]
+                for rid in list(said_again)
+                for e in (replays[rid].events if rid in replays else [])
+                if e["event"] == "line" and e["data"].get("line_id") == line_id
+            ),
+            None,
+        )
+        if line is not None:  # its saved audio is played again; none saved: browser speech
+            pick = request.query_params.get("voice")
+            voice = voice_of(line)["id"] if not pick or line.get("speaker") == "analyst" else pick
+            job = speaker.jobs.get((line_id, voice))
+            if job and job.done() and not job.cancelled() and not job.exception() and job.result():
+                return
             raise HTTPException(503, "voice off for a replay of stored lines")
         if await asyncio.to_thread(guard.off_air, store):
             raise HTTPException(503, "voice off air for today")

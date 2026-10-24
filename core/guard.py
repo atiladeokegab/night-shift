@@ -2,6 +2,7 @@
 per client an hour, and a daily cap on model + voice spend. Over a limit a replay plays the lines
 already stored for its match, with no model call, or the route answers 429. 0 turns a limit off."""
 
+import logging
 import math
 import os
 import time
@@ -10,6 +11,7 @@ from datetime import UTC, datetime, timedelta
 
 from core.stats import VOICE_PRICES, _cost
 
+log = logging.getLogger(__name__)
 HOUR_S = 3600.0
 SPEND_TTL_S = 30.0  # today's spend is read from the whole store: at most once this often
 OFF_TODAY = "Commentator is off air for today"
@@ -114,7 +116,11 @@ class Guard:
     def spent_today(self, store) -> float:
         day, now = self.now().date().isoformat(), self.clock()
         if self._spent is None or self._spent[0] != day or now - self._spent[1] >= SPEND_TTL_S:
-            self._spent = (day, now, spent(store, day))
+            try:
+                self._spent = (day, now, spent(store, day))
+            except Exception as exc:  # a store read error never takes the site off air
+                log.warning("spend unread: %s: %s", type(exc).__name__, str(exc)[:300])
+                return self._spent[2] if self._spent else 0.0  # unstamped: the next call retries
         return self._spent[2]
 
     def off_air(self, store) -> bool:
