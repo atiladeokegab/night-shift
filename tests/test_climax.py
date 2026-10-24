@@ -351,3 +351,82 @@ def test_a_line_that_talks_to_itself_is_said_again_once():
 
     line = insight.checked(commentate, moment(CRICKET, 52), before(CRICKET, 52))
     assert line["text"] == "A wide from Nawaz on the free hit! India 155 for 5."
+
+
+KOBE_14 = "Kobe Bryant from deep! Lakers lead by twelve, 108 to 96, under six minutes left."
+
+# real lines the check flagged although true, each with the insight or reply it was said as
+TRUE_LINES = [
+    (  # "lead" the noun: a lead that was, not a claim that the Jazz lead now
+        "Chicago have taken four of the last six key moments, Utah two, and a 66-62 Jazz lead "
+        "has become 77-77.",
+        {
+            "match_id": JORDAN,
+            "after_idx": 23,
+            "n": 5,
+            "kind": "momentum",
+            "detail": "Momentum, the last 6 key moments from period 4, 11:44: Chicago Bulls 4, "
+            "Utah Jazz 2; the score went from 66-62 to 77-77 (home-away)",
+            "heard": "It's 77-77 and the last thing to change it was that Bulls free throw at "
+            "04:46.",
+        },
+    ),
+    (  # Kobe had scored the last six key moments
+        "Kobe's on fire in the fourth quarter! Three straight buckets, and the Lakers pull away, "
+        "108 to 96.",
+        {
+            "match_id": KOBE,
+            "after_idx": 14,
+            "n": 7,
+            "kind": "reply",
+            "detail": KOBE_14,
+            "heard": KOBE_14,
+        },
+    ),
+    (  # said just after Malone's Free Throw 2 of 2
+        "Karl Malone puts Utah ahead with two free throws, seventy-five to seventy-four!",
+        {
+            "match_id": JORDAN,
+            "after_idx": 22,
+            "n": 15,
+            "kind": "reply",
+            "detail": "Karl Malone from the line, both shots good! Utah takes the lead, "
+            "seventy-five to seventy-four!",
+            "heard": "Karl Malone from the line, both shots good! Utah takes the lead, "
+            "seventy-five to seventy-four!",
+        },
+    ),
+]
+
+
+def over(said_as, text):
+    key = "reply" if said_as["kind"] == "reply" else "insight"
+    *past, m = insight.said_over({"text": text, key: said_as}, load_moments)
+    return m, past
+
+
+@pytest.mark.parametrize(("text", "said_as"), TRUE_LINES)
+def test_a_true_line_the_check_flagged_passes(text, said_as):
+    m, past = over(said_as, text)
+    assert insight.wrong_numbers(text, m, match_header(said_as["match_id"]), past) == []
+
+
+@pytest.mark.parametrize(
+    ("i", "text"),
+    [
+        (0, "And the Jazz lead, 77-77."),  # a claim, at a level score
+        (0, "The Jazz in front, 77-77."),
+        (1, "Kobe's on fire! Seven straight buckets, 108 to 96."),  # he scored the last six
+        (2, "Karl Malone puts Utah ahead with three free throws!"),
+    ],
+)
+def test_the_same_shapes_stay_wrong_when_false(i, text):
+    said_as = TRUE_LINES[i][1]
+    m, past = over(said_as, text)
+    assert insight.wrong_numbers(text, m, match_header(said_as["match_id"]), past)
+
+
+def test_in_front_of_a_crowd_is_no_lead():
+    m = moment(JORDAN, 23)
+    line = "Rodman ties it at 77, the Jazz in front of a stunned home crowd."
+    assert insight.wrong_numbers(line, m, match_header(JORDAN), before(JORDAN, 23)) == []
