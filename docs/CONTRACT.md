@@ -107,6 +107,10 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
 - `GET /matches` → `[Match]` (core over data/)
 - `GET /matches/{id}/start?at=<idx>` → `{video_start}` (core, #188): the second the video starts at for
   a replay with `start_idx: idx`, as `peak_video_start` is for the peak; null without a video.
+- `GET /teams/{sport}/{match_id}` → `{teams: [{team, form, squad}], head_to_head}` (core, #375): both
+  sides' recent games (`{date, opponent, home, score, result}`), the squad's headline numbers
+  (`{name, matches, headline}`) and the head-to-head, all before the match's date, from the graph.
+  A section the graph can't give is `[]`; cached 60 s; 404 for an unknown match.
 - `POST /replays {match_id, speed>0, start_idx?, smoke?}` → `{replay_id}` (core); `smoke: true` (the
   deploy's live smoke) is never counted as a full replay; `start_idx` (#163) starts the stream at
   that moment: earlier moments are never called. They are sent first, untimed (no `video_t`), so the score

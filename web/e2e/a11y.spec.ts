@@ -69,6 +69,12 @@ const smallTargets = (page: Page) => page.evaluate(() => {
 for (const width of WIDTHS) {
   test(`axe and 44 px targets on the wall and the live screen at ${width}`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
+    const game = { date: '2006-01-10', opponent: 'Miami Heat', home: true, score: '104-99', result: 'W' }
+    await page.route('**/teams/**', (r) => r.fulfill({ json: {
+      teams: [{ team: 'Los Angeles Lakers', form: [game], squad: [{ name: 'Kobe Bryant', matches: 30, headline: '35 points a game' }] },
+        { team: 'Toronto Raptors', form: [], squad: [] }],
+      head_to_head: [game],
+    } }))
     await page.goto('/')
     await expect(page.getByRole('button', { name: KOBE })).toBeVisible()
     expect(await serious(page), 'wall').toEqual([])
@@ -76,6 +82,12 @@ for (const width of WIDTHS) {
     await openLive(page)
     expect(await serious(page), 'live').toEqual([])
     expect(await smallTargets(page), 'live').toEqual([])
+    // #375: T opens the Teams panel and puts the focus on its heading
+    await page.keyboard.press('t')
+    await expect(page.getByRole('heading', { name: 'Teams', level: 3 })).toBeFocused()
+    await expect(page.getByText('Los Angeles Lakers: won 1 of their last 1')).toBeVisible()
+    expect(await serious(page), 'teams').toEqual([])
+    expect(await smallTargets(page), 'teams').toEqual([])
   })
 }
 
