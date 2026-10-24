@@ -174,6 +174,8 @@ def create_app(
     looks: Looks | None = None,
 ) -> FastAPI:
     app = FastAPI(title="Touchline")
+    if not os.environ.get("MUBIT_API_KEY"):
+        log.warning("MUBIT_API_KEY unset: Mubit is off, lines use the fallback")
     graph.start()  # once per process; when it fails, Follow a player reads the packs
     store = store or open_store()
     deps = deps or default_deps()
@@ -194,7 +196,9 @@ def create_app(
 
     @app.get("/health")
     def health():
-        return {"status": "ok"}
+        from agent.commentator import mubit_status
+
+        return {"status": "ok", **mubit_status()}
 
     @app.get("/matches")
     def matches():
@@ -620,7 +624,14 @@ def create_app(
 
     @app.get("/stats")
     def get_stats():
-        return {**stats(store), "budget": guard.stats(store), "voice": speaker.health()}
+        from agent.commentator import mubit_status
+
+        return {
+            **stats(store),
+            "budget": guard.stats(store),
+            "voice": speaker.health(),
+            **mubit_status(),
+        }
 
     @app.get("/stage")
     def stage():

@@ -749,6 +749,29 @@ def _block(b) -> dict:
     return {"type": "text", "text": getattr(b, "text", "")}
 
 
+# the last Mubit call's failure, per process (#401): None after a success. /health and /stats read
+# it; nothing probes Mubit for them
+_last_error: str | None = None
+
+
+def mubit_status() -> dict:
+    """degraded with a short reason when MUBIT_API_KEY is unset or the last Mubit call failed."""
+    reason = _last_error if os.environ.get("MUBIT_API_KEY") else "MUBIT_API_KEY unset"
+    return {"mubit": "degraded" if reason else "ok", "mubit_reason": reason}
+
+
+def _reason(exc: Exception) -> str:
+    """Mubit's status and error type, e.g. "503 engine_unavailable"; the exception's type when it
+    never answered. Never the message, which could echo a request."""
+    status = getattr(exc, "status_code", None)
+    if status is None:
+        return type(exc).__name__
+    body = getattr(exc, "body", None)
+    err = body.get("error", body) if isinstance(body, dict) else None
+    kind = (err.get("type") or err.get("code")) if isinstance(err, dict) else err
+    return f"{status} {kind}"[:80] if isinstance(kind, str) else str(status)
+
+
 class MubitProvider:
     """Anthropic SDK pointed at Mubit; streams so the first word can be timed. A key that runs out
     of credit (402) hands every later call to `fallback`'s key."""
@@ -769,6 +792,16 @@ class MubitProvider:
         )
 
     def call(self, request: dict) -> dict:
+        global _last_error
+        try:
+            reply = self._call(request)
+        except Exception as exc:
+            _last_error = _reason(exc)
+            raise
+        _last_error = None
+        return reply
+
+    def _call(self, request: dict) -> dict:
         import anthropic
 
         client, start = self.client, time.monotonic()

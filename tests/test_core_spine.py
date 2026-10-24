@@ -41,7 +41,7 @@ def app_store(tmp_path):
 
 
 def test_health(app_store):
-    assert app_store[0].get("/health").json() == {"status": "ok"}
+    assert app_store[0].get("/health").json()["status"] == "ok"
 
 
 def test_replay_streams_in_order_and_stores_every_line(app_store):
