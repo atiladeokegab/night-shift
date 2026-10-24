@@ -19,6 +19,9 @@ log = logging.getLogger("touchline.replay")
 OFF_AIR = "Commentator is off air for a moment"
 # provider errors in a row before the replay goes off air; fewer skip only their own lines (#243)
 MAX_FAILED = 3
+# A match with no video waits out its match-time gaps, but never longer than this: Orlando went
+# silent for 62 s after its second line at speed 4 (#353). Video matches are paced by the video.
+MAX_GAP_S = 8.0
 
 
 def moment_seconds(moment: dict) -> float:
@@ -307,7 +310,7 @@ async def run_replay(
             if video_t is None:
                 at = moment_seconds(moment)
                 if last is not None and at > last:
-                    await asyncio.sleep((at - last) / replay.speed)
+                    await asyncio.sleep(min((at - last) / replay.speed, MAX_GAP_S))
                 last = at
             elif moment["idx"] in video_t:
                 tag = {"video_t": video_t[moment["idx"]]}
