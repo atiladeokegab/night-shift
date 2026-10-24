@@ -127,7 +127,7 @@ def test_one_tool_round_then_a_line():
 
 
 def test_runner_skips_demo_held_out_and_replayed_matches(monkeypatch, tmp_path):
-    ids = [3906390, 105, 106, 107, 108]  # demo, held out, then eligible
+    ids = [3754092, 105, 106, 107, 108]  # demo, held out, then eligible
     monkeypatch.setattr(replay_matches, "FOOTBALL", [(1, 1)])
     monkeypatch.setattr(feed, "statsbomb_matches", lambda c, s: [{"match_id": i} for i in ids])
     monkeypatch.setattr(
@@ -289,15 +289,15 @@ def test_line_is_trimmed_to_whole_sentences_within_20_words(said, line):
 
 def test_26_word_f1_line_keeps_its_call_and_the_gap():
     said = (
-        "Hamilton sweeps past Norris into Stowe! What a move from the champion in front of his"
-        " home crowd! Lap 40, Hamilton leads Norris by 1.5 seconds."
+        "Verstappen takes the flag at Interlagos! From seventeenth on the grid to win in the rain,"
+        " what a drive! Verstappen wins by 19.5 seconds from Ocon."
     )
     assert len(said.split()) == 26
-    moments = load_moments("9558")
-    line = line_for(match_header("9558"), moments, len(moments) - 1, Scripted(text(said)))
+    moments = load_moments("9636")
+    line = line_for(match_header("9636"), moments, len(moments) - 1, Scripted(text(said)))
     assert (
         line["text"]
-        == "Hamilton sweeps past Norris into Stowe! Lap 40, Hamilton leads Norris by 1.5 seconds."
+        == "Verstappen takes the flag at Interlagos! Verstappen wins by 19.5 seconds from Ocon."
     )
 
 
@@ -334,23 +334,25 @@ def test_kobes_81st_point_reaches_the_model():
     assert moments[-1]["score"] == {"home": 122, "away": 104}
 
 
-def test_hamiltons_win_reaches_the_model_with_places_and_gaps():
-    moments, header = load_moments("9558"), match_header("9558")
+def test_verstappens_win_reaches_the_model_with_places_and_gaps():
+    moments, header = load_moments("9636"), match_header("9636")
     message = commentator.render_message(header, moments)
-    assert "Sport: f1" in message and "Moment: lap 52, 82:46" in message
-    assert "Match: Formula 1 British Grand Prix, Silverstone, 2024-07-07" in message
-    assert "winner: Lewis Hamilton" in message
+    assert "Sport: f1" in message and "Moment: lap 69, 127:14" in message
+    assert "Match: Formula 1 São Paulo Grand Prix, Interlagos, 2024-11-03" in message
+    assert "winner: Max Verstappen" in message
     assert (
-        "Score after this moment: Lap 52 of 52: P1 Lewis Hamilton leader, "
-        "P2 Max Verstappen 1.5 seconds, P3 Lando Norris 7.5 seconds" in message
+        "Score after this moment: Lap 69 of 69: P1 Max Verstappen leader, "
+        "P2 Esteban Ocon 19.5 seconds, P3 Pierre Gasly 22.6 seconds" in message
     )
-    lead = next(m for m in moments if m["type"] == "Lead change" and m["period"] == 40)
-    assert lead["players"] == {"driver": "Lewis Hamilton", "passed": "Lando Norris"}
+    lead = next(m for m in moments if m["type"] == "Lead change" and m["period"] == 43)
+    assert lead["players"] == {"driver": "Max Verstappen", "passed": "Esteban Ocon"}
+    lead = next(m for m in moments if m["type"] == "Lead change" and m["period"] == 29)
+    assert lead["players"] == {"driver": "Esteban Ocon", "passed": "George Russell"}
     stop = moments[lead["idx"] + 1]  # called as he leaves the pit lane, after the lead change
     assert (stop["type"], stop["players"]) == ("Pit stop", {"driver": "Lando Norris"})
     message = commentator.render_message(header, moments[: stop["idx"] + 1])
-    assert "pit_lane_time: 30.3 seconds in the pit lane" in message
-    assert "P1 Lewis Hamilton leader" in message and "P1 Lando Norris" not in message
+    assert "pit_lane_time: 24.7 seconds in the pit lane" in message
+    assert "P1 Esteban Ocon leader" in message and "P1 Lando Norris" not in message
     race = build_request(header, moments)  # A-10.3: the same frozen model, prompt and tools
     assert (race["model"], race["system"]) == (commentator.MODEL, commentator.SYSTEM)
     assert (race["tools"], race["tool_choice"]) == (commentator.TOOLS, commentator.TOOL_CHOICE)

@@ -7,7 +7,9 @@ const KNOWN: [string, string, string, string][] = [
   ['England', 'ENG', '#F4F4F4', '#1B2A5A'],
   ['India', 'IND', '#2F7DE1', '#FFFFFF'],
   ['Pakistan', 'PAK', '#0F8A4C', '#FFFFFF'],
-  ['Hamilton', 'HAM', '#00A19C', '#FFFFFF'], // Mercedes teal, 2024
+  ['Chelsea', 'CHE', '#034694', '#FFFFFF'],
+  ['Tottenham', 'TOT', '#F4F4F4', '#132257'],
+  ['Verstappen', 'VER', '#3671C6', '#FFFFFF'], // Red Bull blue, 2024
 ]
 const OTHER: [string, string][] = [['#C9D2E3', '#0E1524'], ['#8FA3C7', '#0E1524']]
 
@@ -59,7 +61,7 @@ export function cricketScore(match: Match, moment: Moment | null, moments: Momen
   }
 }
 
-// Card copy: the two demo matches from docs/design.md ("Copy"), and the iconic ones by what they are
+// Card copy: the demo match from docs/design.md ("Copy"), and the iconic ones by what they are
 // remembered for, with names, dates and results from data/sample/. The design's "Highlights 4:56 · 4 key
 // moments" is a mockup placeholder (data/video/ maps 15 and 32 moments), so it is left out: no unmeasured figures.
 export const CARD_COPY: Record<string, { title: string; detail: string; result: string; crest?: string }> = {
@@ -68,10 +70,10 @@ export const CARD_COPY: Record<string, { title: string; detail: string; result: 
     detail: '2022 World Cup final · Argentina v France · 18 Dec 2022',
     result: 'Argentina 3–3 France, Argentina win 4–2 on penalties',
   },
-  '3906390': {
-    title: 'Spain v England',
-    detail: "2023 Women's World Cup final · Sydney · 20 Aug 2023",
-    result: 'Spain 1–0 England',
+  '3754092': {
+    title: 'Battle of the Bridge',
+    detail: 'Premier League · Chelsea v Tottenham · 2 May 2016',
+    result: 'Chelsea 2–2 Tottenham: Leicester are champions',
   },
   '1298150': {
     title: 'India v Pakistan',
@@ -88,11 +90,11 @@ export const CARD_COPY: Record<string, { title: string; detail: string; result: 
     detail: '1998 NBA Finals, Game 6 · Jazz v Bulls · 14 Jun 1998',
     result: 'Bulls 87–86 Jazz',
   },
-  '9558': {
-    title: 'Hamilton at Silverstone',
-    detail: '2024 British Grand Prix · 7 Jul 2024',
-    result: 'Hamilton wins by 1.5\u00a0s from Verstappen, Norris third',
-    crest: 'Hamilton', // a race has no sides: the card shows the driver it is remembered for
+  '9636': {
+    title: 'Verstappen, P17 to P1',
+    detail: '2024 São Paulo Grand Prix · Interlagos · 3 Nov 2024',
+    result: 'Verstappen wins by 19.5\u00a0s from Ocon, Gasly third',
+    crest: 'Verstappen', // a race has no sides: the card shows the driver it is remembered for
   },
 }
 

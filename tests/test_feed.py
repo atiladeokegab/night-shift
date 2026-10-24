@@ -147,9 +147,9 @@ def test_close_chase_in_the_last_two_overs_calls_every_ball():
 
 def test_held_out_and_demo_matches():
     assert feed.held_out("football", "105") and not feed.held_out("football", "106")
-    assert ("cricket", "1298150") in feed.DEMO and ("football", "3906390") in feed.DEMO
+    assert ("cricket", "1298150") in feed.DEMO and ("football", "3754092") in feed.DEMO
     assert {("basketball", "0049700088"), ("basketball", "0020500591")} <= feed.DEMO
-    assert ("f1", "9558") in feed.DEMO
+    assert ("f1", "9636") in feed.DEMO
 
 
 def test_cricket_clock_counts_legal_balls_within_each_over():

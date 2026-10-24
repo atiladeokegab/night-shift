@@ -45,7 +45,7 @@ def test_stage_starts_each_video_at_its_video_start(tmp_path):
 
 
 def test_stage_shows_a_poster_and_a_link_for_an_embed_blocked_video(tmp_path):
-    # Hamilton, Messi v Mbappe and Spain v England are blocked by their owners (#18).
+    # Messi v Mbappe is blocked by its owner (#18).
     page = TestClient(create_app(store=Store(tmp_path))).get("/stage").text
     assert "const plays = (m) => !!m.youtube_id && m.embed !== false;" in page
     assert "if (!plays(match) || ytFailed) return paced.push(line);" in page  # its own clock
