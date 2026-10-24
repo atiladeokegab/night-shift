@@ -181,6 +181,32 @@ def test_a_pack_stretch_opens_on_the_pack_and_one_moment_is_no_tally(tmp_path):
     assert insight._tallies(None, one) == [] and insight._tallies(None, one * 2)
 
 
+def test_a_cricket_profile_is_the_part_for_the_players_role():
+    moments = load_moments("1298150")
+    k = next(i for i, m in enumerate(moments) if m["idx"] == 10)  # Iftikhar Ahmed bats, over 11
+    pack = load_pack("cricket", "1298150")
+    said = {d.split(" (")[0]: d for d in insight._profiles(pack, moments[: k + 1])}
+    batter, bowler = (moments[k]["players"][r] for r in ("batter", "bowler"))
+    assert "- Batting, middle:" in said[batter] and "Bowling" not in said[batter]
+    assert "- Bowling:" in said[bowler] and "Batting" not in said[bowler]
+
+
+def test_analyst_and_reply_lines_never_go_through_the_recorded_provider(tmp_path, monkeypatch):
+    recorded, unrecorded = Fake(), Fake()
+    monkeypatch.setattr(commentator, "default_provider", lambda: recorded)
+    monkeypatch.setattr(commentator, "unrecorded_provider", lambda: unrecorded)
+    lines, _ = replay(CHELSEA, Store(tmp_path), calls=commentator.commentate)
+    said = next(ln for ln in lines if "insight" in ln)
+    commentator.correct(said, "Fixed.", moments=insight.said_over(said, load_moments))
+
+    def stats(fake):
+        return {"\nEvent: Stat, " in q["messages"][0]["content"] for q in fake.requests}
+
+    assert any("reply" in ln for ln in lines)
+    assert stats(recorded) == {False} and stats(unrecorded) == {True}
+    assert unrecorded.requests[-1]["messages"][-1]["content"].startswith("Producer correction")
+
+
 def test_a_second_replay_makes_no_new_insight_calls(tmp_path):
     store = Store(tmp_path)
     first, fake = replay(CHELSEA, store)
