@@ -23,7 +23,13 @@ QUESTIONS = {"plain": "Where are we?", "tool": "How many shots has each side had
 
 def once(client: httpx.Client, secret: str, question: str) -> tuple[float, float]:
     replay = client.post("/replays", json={"match_id": MATCH, "speed": 4}).json()["replay_id"]
-    ctx = client.get(f"/converse/{SPORT}/{MATCH}/token", params={"replay_id": replay}).json()["ctx"]
+    for _ in range(20):  # 409 until the first moment has happened
+        tok = client.get(f"/converse/{SPORT}/{MATCH}/token", params={"replay_id": replay})
+        if tok.status_code != 409:
+            break
+        time.sleep(0.5)
+    tok.raise_for_status()
+    ctx = tok.json()["ctx"]
     body = {
         "stream": True,
         "messages": [
