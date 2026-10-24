@@ -13,6 +13,32 @@ export interface Transport {
   seek: (t: number) => void
 }
 
+// Play or pause from the controls or a tap on the picture: the player holds (and with it the replay clock),
+// and App hears it, so the voice stops with the picture (#131's onPause / onPlay).
+export function setPlaying(play: boolean, transport: Transport | null, on: { onPause?: () => void; onPlay?: () => void }) {
+  if (play) {
+    transport?.play()
+    on.onPlay?.()
+  } else {
+    transport?.pause()
+    on.onPause?.()
+  }
+}
+
+// The caption card's text (#132, from #131's App): a question or an answer as given; a line only while it is
+// one the picture has reached (`reached`: those lines' texts, newest first), else the newest of them, so a
+// backward seek never leaves a later line on screen (A-6.4).
+export interface Caption {
+  kind: 'line' | 'question' | 'answer'
+  text: string
+  speaker?: 'lead' | 'analyst'
+}
+
+export function shownCaption(caption: Caption | null | undefined, reached: string[]): Caption | null {
+  if (caption && (caption.kind !== 'line' || reached.includes(caption.text))) return caption
+  return reached.length ? { kind: 'line', text: reached[0] } : null
+}
+
 // The slice of the IFrame API the controls add to youtube.d.ts's.
 declare global {
   namespace YT {
