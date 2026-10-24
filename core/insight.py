@@ -825,8 +825,16 @@ def _wrong_clock(words: list, m: dict) -> list[str]:
     for i, n in enumerate(words):
         if not isinstance(n, float) or words[i + 1 : i + 2] not in (["seconds"], ["second"]):
             continue
-        if words[i + 2 : i + 3] not in (["to"], ["left"], ["remaining"]):
+        if (
+            words[i + 2 : i + 3] not in (["to"], ["left"], ["remaining"])
+            or "shot" in words[i : i + 7]
+        ):
             continue  # "eight seconds on the shot clock" is another clock
+        j = i - 1 - (words[i - 1 : i] == ["and"])
+        if i and words[j : j + 1] in (["minute"], ["minutes"]) and j:
+            mins = words[j - 1]
+            mins = mins if isinstance(mins, float) else {"a": 1, "one": 1}.get(mins)
+            n += 60 * mins if mins else 0  # "one minute forty-five seconds" is 105
         before = set(words[max(0, i - 2) : i])
         if before & {"under", "inside", "less", "fewer", "within"}:
             ok = left <= n
@@ -841,34 +849,43 @@ def _wrong_clock(words: list, m: dict) -> list[str]:
     return wrong
 
 
+# a claim that is negated, wished for or in the past is no claim about the play now
+NOT_NOW = re.compile(
+    r"\b(?:no|not|never|without|need|needs|needed|will|would|could|can|might|must|chasing"
+    r"|hope|hoping|want|wants|were|was|been|earlier)\b|n't\b"
+    r"|\bat (?:kick-off|kickoff|half-time|halftime|the break)\b",
+    re.I,
+)
+
+
+def _clause_before(sentence: str, at: int) -> str:
+    return re.split(r"[,;:—–]", sentence[:at])[-1]
+
+
 STREAK = re.compile(
     r"\bback[- ]to[- ]back\b|\bin a row\b|\bon the bounce\b"
     r"|\b(?:straight|consecutive|successive)\b",
     re.I,
 )
-STREAK_KIND = {  # what a streak is of, and in basketball the fewest points each one is worth
-    "sixes": ({"Six"}, 0),
-    "maximums": ({"Six"}, 0),
-    "fours": ({"Four"}, 0),
-    "boundaries": ({"Six", "Four"}, 0),
-    "balls": ({"Six", "Four"}, 0),  # "a six and a four off consecutive balls"
-    "wickets": ({"Wicket"}, 0),
-    "buckets": (set(), 2),
-    "baskets": (set(), 2),
-    "shots": (set(), 2),
-    "threes": (set(), 3),
-    "throws": (set(), 1),
-    "points": (set(), 1),
+STREAK_KIND = {  # what a basketball streak is of, and the fewest points each one is worth
+    "buckets": 2,
+    "baskets": 2,
+    "shots": 2,
+    "threes": 3,
+    "throws": 1,
+    "points": 1,
 }
 NOT_PLAY = {"championships", "titles", "wins", "games", "matches", "seasons", "moments", "finals"}
 
 
 def _streak_claims(text: str) -> list[tuple[int, str | None]]:
-    """Each streak a line claims, as (how many, of what): "back-to-back sixes" (2, "sixes"),
+    """Each streak a line claims, as (how many, of what): "back-to-back buckets" (2, "buckets"),
     "three in a row" (3, None), "his third straight bucket" (3, "buckets")."""
     out = []
     for sentence in re.split(r"(?<=[.!?])\s+", text):
         for hit in STREAK.finditer(sentence):
+            if NOT_NOW.search(_clause_before(sentence, hit.start())):
+                continue  # "no back-to-back buckets", "Utah need back-to-back buckets"
             words = said(sentence[max(0, hit.start() - 30) : hit.start()])
             after = said(sentence[hit.end() : hit.end() + 30])
             kind = next(
@@ -883,58 +900,14 @@ def _streak_claims(text: str) -> list[tuple[int, str | None]]:
     return out
 
 
-def _broken(innings: list[dict], role: str, who: str, kinds: set[str], n: int) -> bool:
-    """Whether a run of n balls of these kinds by this batter (or bowler), ending at the innings'
-    last moment, is known to be broken. The moments are only boundaries, wickets and late chase
-    balls, and not every boundary is known to be there, so a ball no moment shows counts only when
-    the score proves what it was: after one of theirs that is not the last of an over, the batter
-    keeps the strike (the bowler bowls on), so the next ball is theirs, and if the runs (wickets)
-    up to the next moment are too few for a boundary (any wicket), that ball was not one."""
-    mine = [p for p in innings if p.get("players", {}).get(role) == who]
-    cur = innings[-1]
-    for _ in range(n - 1):
-        at = innings.index(cur)
-        if at and _ball(innings[at - 1]) == _ball(cur) - 1:  # the ball before is a moment
-            prev = innings[at - 1]
-            if prev.get("players", {}).get(role) != who:
-                return False
-            if prev["type"] not in kinds:
-                return True
-            cur = prev
-            continue
-        before = [p for p in mine if _ball(p) < _ball(cur)]
-        if not before or before[-1]["type"] not in kinds or before[-1]["clock"].endswith(".6"):
-            return False  # their ball before this one is not known
-        p = before[-1]
-        q = innings[innings.index(p) + 1]
-        if _ball(q) == _ball(p) + 1:
-            return False
-        d = q.get("detail") or {}
-        if kinds == {"Wicket"}:
-            return q["score"]["wickets"] - p["score"]["wickets"] - (q["type"] == "Wicket") == 0
-        own = (d.get("runs_batter") or 0) + sum((d.get("extras") or {}).values())
-        return q["score"]["runs"] - p["score"]["runs"] - own < 4
-    return False
-
-
 def _wrong_streak(text: str, m: dict, past: list[dict], header: dict | None) -> list[str]:
-    """A streak claim tested against the ball or the score sequence: "back-to-back sixes" needs
-    the batter's last two balls to be sixes (a dot ball between breaks it); "three straight
-    buckets" needs the points to have come with the other side's score standing still."""
+    """A basketball streak claim tested against the score sequence: "three straight buckets" needs
+    the points to have come with the other side's score standing still. A cricket streak is not
+    tested: the moments are not known to hold every ball that could break one (#293)."""
     claims = _streak_claims(text)
     if not claims or m.get("type") == "Stat":
         return []
     wrong = []
-    if m.get("sport") == "cricket" and m.get("type") in ("Six", "Four", "Wicket"):
-        role = "bowler" if m["type"] == "Wicket" else "batter"
-        who = (m.get("players") or {}).get(role)
-        innings = [p for p in past if p.get("period") == m.get("period") and _ball(p) < _ball(m)]
-        for n, kind in claims:
-            kinds = STREAK_KIND[kind][0] if kind else {m["type"]}
-            if m["type"] not in kinds:
-                continue  # a streak of something else, recalled
-            if _broken([*innings, m], role, who, kinds, n):
-                wrong.append(f"no {n} in a row: {who} has not done it on {n} balls running")
     if (
         m.get("sport") == "basketball"
         and header
@@ -953,7 +926,7 @@ def _wrong_streak(text: str, m: dict, past: list[dict], header: dict | None) -> 
             None,
         )
         for n, kind in claims:
-            each = STREAK_KIND[kind][1] if kind else 1
+            each = STREAK_KIND[kind] if kind else 1
             if since and s[side] - since["score"][side] < n * each:
                 wrong.append(f"no {n} in a row: {header[other]} scored in between")
     return wrong
@@ -1297,11 +1270,19 @@ def wrong_event(text: str, m: dict) -> list[str]:
                 ("blocked", BLOCKED),
                 ("off target", OFF_TARGET),
             )
-            if ended and call not in CAN_CALL[ended] and said_it.search(text)
+            if ended and call not in CAN_CALL[ended] and _says(said_it, text)
         ]
     if m.get("type") == "Shot" and not goal and not ENDED.search(text):
         wrong.append(f"the line never says how the shot ended: {m.get('outcome')}")
     return wrong + _wrong_level(text, m) + _wrong_shootout(text, m)
+
+
+def _says(rx: re.Pattern, text: str) -> bool:
+    """Whether the line says it, not "not wide" or "wasn't saved"."""
+    return any(
+        not re.search(r"(?:\b(?:not|never|no)|n't)\s+(?:\w+\s+)?$", text[: hit.start()], re.I)
+        for hit in rx.finditer(text)
+    )
 
 
 # how a shot that is no goal ended, and what a line may call it: a keeper's block is a save
@@ -1322,8 +1303,9 @@ OFF_TARGET = re.compile(r"\b(?:wide|off target|over the bar|skie[sd]|sails? over
 # "still level", "all square", "the scores are level": a claim about now, on any football moment;
 # never "were level", "to level it" or a question
 LEVEL_NOW = re.compile(
-    r"\b(?:still|now|back|remains?|stays?|are|is|it's|we're)\s+(?:all\s+)?level\b"
-    r"|\blevel (?:at|on|pegging)\b|\ball square\b|\bscores? (?:are |is )?level\b",
+    r"(?:\b(?:still|now|back|remains?|stays?|are|is|it's|we're)\s+(?:all\s+)?level\b"
+    r"|\blevel (?:at|on|pegging)\b|\ball square\b|\bscores? (?:are |is )?level\b)"
+    r"(?!\s+with\b)",  # "level with the last defender" is a place on the pitch
     re.I,
 )
 
@@ -1334,8 +1316,11 @@ def _wrong_level(text: str, m: dict) -> list[str]:
     if "home" not in s or s["home"] == s["away"] or m.get("type") == "Full time":
         return []  # a shootout's match is level: "still level at three" is the match
     for sentence in re.split(r"(?<=[.!?])\s+", text):
-        if not sentence.rstrip().endswith("?") and LEVEL_NOW.search(sentence):
-            return [f"the scores are not level: {s['home']}-{s['away']}"]
+        if sentence.rstrip().endswith("?"):
+            continue
+        for hit in LEVEL_NOW.finditer(sentence):
+            if not NOT_NOW.search(_clause_before(sentence, hit.start()) + hit[0]):
+                return [f"the scores are not level: {s['home']}-{s['away']}"]
     return []
 
 

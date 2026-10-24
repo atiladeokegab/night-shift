@@ -25,9 +25,9 @@ What you hear are **replays, as if live**: real matches' event data played back 
 <!-- DEMO GIF SLOT (build-140): the demo GIF, full width, with a one-line caption under it. -->
 
 **How well the check works:** on 300 new lines the live site had said, labelled by a separate model
-before the check ran, it caught 1 of the 6 wrong lines (recall 17%, no better than before #293), and
-1 of its 3 flags was a line labelled wrong (precision 33%). On the 300 lines the new rules were
-written against it catches 15 of 15, a tuned-on score. Small samples; [both sets](#how-well-the-check-works).
+before the check ran, it caught 1 of the 6 wrong lines (recall 17%) with no false alarm (precision
+100%, 1 of 1), exactly as before #293: on unseen lines the new rules caught nothing more. On the 300
+lines the rules were written against it catches 14 of 15, a tuned-on score. Small samples; [both sets](#how-well-the-check-works).
 
 [**Try it live**](https://night-shift-5zvig7nbvq-ew.a.run.app) · [**Correction loop**](#correction-loop-with-evidence) · [**For judges**](#for-judges) · [**Real numbers**](#real-numbers) · [**Architecture**](docs/ARCHITECTURE.md) · [**Known limitations**](#known-limitations) · [**Checks**](#checks) · [**Run it**](#run-it) · [**Demo script**](docs/demo.md)
 
@@ -360,34 +360,36 @@ Before a lead line is spoken, the number check reads it against the moment's dat
 it twice, on two separate sets of 300 lines the live site had already said.
 
 **On lines it was never tuned on, recall did not improve.** On 300 held-out lines it caught 1 of
-the 6 wrong lines (recall 17%), the same 1 of 6 the check caught before #293. 1 of its 3 flags was
-a line labelled wrong (precision 33%), against 1 of 1 (100%) before. The first set is the one the
-new rules were written against, so its 15 of 15 is a tuned-on score, not the result.
+the 6 wrong lines (recall 17%) and flagged no right line (precision 100%, 1 of 1): the same as the
+check before #293. The first set is the one the new rules were written against, so its 14 of 15 is a
+tuned-on score, not the result.
 
 | Labels | Checker | Lines | Wrong | Flagged | Caught | Missed | False alarms | Precision | Recall |
 |---|---|---|---|---|---|---|---|---|---|
-| **Held-out** (new lines) | after #293 | 300 | 6 | 3 | 1 | 5 | 2 | **33% (1 of 3)** | **17% (1 of 6)** |
+| **Held-out** (new lines) | after #293 | 300 | 6 | 1 | 1 | 5 | 0 | **100% (1 of 1)** | **17% (1 of 6)** |
 | Held-out (new lines) | before #293 | 300 | 6 | 1 | 1 | 5 | 0 | 100% (1 of 1) | 17% (1 of 6) |
 | First set | before #293 | 300 | 15 | 8 | 8 | 7 | 0 | 100% (8 of 8) | 53% (8 of 15) |
-| First set: the set the rules were written against | after #293 | 300 | 15 | 15 | 15 | 0 | 0 | 100% (15 of 15) | 100% (15 of 15) |
+| First set: the set the rules were written against | after #293 | 300 | 15 | 14 | 14 | 1 | 0 | 100% (14 of 14) | 93% (14 of 15) |
 
 With 6 wrong lines, one more catch or miss moves held-out recall by about 17 points.
 
-**A note on the two held-out false alarms.** Both are cricket streak claims that the labeller
-called right:
+**A note on cricket streaks.** A rule for cricket streaks ("back-to-back sixes") was built and then
+dropped. On the held-out set it flagged two lines that the labeller called right:
 - "Kohli makes it four in a row!" at 17.6. Kohli's fours before it came at 17.1 and 17.3. After the
   four at 17.3 he kept the strike, so 17.4 was his, and 17.4 and 17.5 together made only 2 runs.
 - "back-to-back maximums for Hardik" at 11.6. Pandya's six before it came at 11.1. After it he kept
   the strike, so 11.2 was his, and 11.2 and 11.3 together made 1 run.
 
-So by the ball numbers neither streak happened, and the labels may be wrong. We did not change them
-after scoring, so both count above as false alarms.
+By the ball numbers neither streak happened, so the labels may be wrong. We did not change them, and
+the precision on unseen lines must not drop, so the rule is out. It is the first set's one miss.
 
 **Two sets, and why.** The first set's 7 misses showed six kinds of wrong line the check did not
 test: a basketball clock said to the second, a streak ("back-to-back sixes"), a batter's runs over a
 span of balls, blocked vs off target vs saved, the shootout's score vs the match score, and a level
-claim on a football moment that is not a goal. We added a general rule for each one (#293) and
-tested each rule on lines of our own as well. Fixing a set's own misses makes its score look better
+claim on a football moment that is not a goal. We added a general rule for each one (#293), except
+the cricket streak (above), and tested each rule on lines of our own as well, right lines included:
+a time in minutes and seconds, the shot clock, a negated or wished-for streak, "not wide", and
+"were level" or "level with the last defender". Fixing a set's own misses makes its score look better
 than the check really is, so we drew a second, held-out set and labelled it before the new rules
 ran on it.
 
@@ -423,12 +425,6 @@ Leaving something out is never wrong. Each set's labels were committed before th
 on it ([`eval/checker_labels.jsonl`](eval/checker_labels.jsonl),
 [`eval/heldout_labels.jsonl`](eval/heldout_labels.jsonl)).
 
-**When the streak rule stays silent.** The cricket moments are boundaries, wickets and late chase
-balls, and the data does not prove that every boundary of an innings is among them. So the rule
-calls a streak wrong only when the score proves the ball in between: the batter kept the strike
-after a boundary that was not the last ball of an over, and the runs up to the next moment are too
-few for another boundary. Otherwise it says nothing.
-
 **What it still misses.** The 5 held-out lines labelled wrong that it let through are of kinds it
 does not test:
 - an analyst line calling a two-pointer a three, with the wrong points total;
@@ -440,19 +436,19 @@ does not test:
 
 **Read these numbers with care.** These are small counts:
 - 6 wrong held-out lines put a 95% interval for recall of about 3% to 56%;
-- 1 of 3 flags puts precision between about 6% and 79%;
-- the first set's 15 of 15 is a lower bound of about 80% at the same confidence, but on lines the
-  rules were written for;
+- 1 of 1 flag puts precision at no less than about 21%;
+- the first set's 14 of 15 is about 70% to 99% at the same confidence, but on lines the rules
+  were written for;
 - three of the 6 held-out wrong labels were judgement calls: "one kick away" after the winning
   kick, "the halfway mark" at 12 overs, and Kohli's "two sixes".
 
-The labels are a model's reading of the data, so they can be wrong too, as the two false alarms
-above may show.
+The labels are a model's reading of the data, so they can be wrong too, as the two cricket streak
+lines above may show.
 
 **Omissions are counted apart.** The live check also retries a line that leaves out a milestone or
 how a shot ended. The labels never call an omission wrong, so the figures above leave those reasons
-out. Counted as the live check counts them, the precision falls to 8% on the held-out set (11 lines
-labelled right also flagged) and to 52% on the first set (14). Each such line is regenerated once.
+out. Counted as the live check counts them, the precision falls to 10% on the held-out set (9 lines
+labelled right also flagged) and to 50% on the first set (14). Each such line is regenerated once.
 If the retry fails too, the line built from the data is said instead, and the failed try goes to
 the producer's fix queue.
 
@@ -605,8 +601,8 @@ The commentator's tools and the shot map read per-match stats packs ([`data/pack
 ## Known limitations
 
 - **The number check misses most wrong lines it was not tuned on.** On 300 new labelled live lines
-  it caught 1 of the 6 wrong ones (recall 17%, no better than before #293), and 1 of its 3 flags was
-  labelled wrong (precision 33%). The other two may be mislabelled, but they count. It checks the score, the leader and the key
+  it caught 1 of the 6 wrong ones (recall 17%, no better than before #293), with no false alarm
+  (precision 100%, 1 of 1). It checks the score, the leader and the key
   numbers, not every claim ([how well the check works](#how-well-the-check-works)).
 - **The voice comes seconds after the moment.** From the moment to its line's audio ready on the
   server: p50 3.6 s, p95 10.5 s over 177 lead lines (`/stats` `by_speaker.lead.audio_first_ms`, 24

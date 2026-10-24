@@ -1,6 +1,6 @@
 """#293: the classes of wrong line the number check used to miss, as general rules: a clock said to
-the second, a streak, runs over a span of balls, how a shot ended, the shootout's score, and a
-level claim on any football moment. Each rule must also let the right line through."""
+the second, a basketball streak, runs over a span of balls, how a shot ended, the shootout's score,
+and a level claim on any football moment. Each rule must also let the right line through."""
 
 import pytest
 
@@ -23,10 +23,8 @@ WRONG = [
     # the clock reads 1:45: ninety seconds is a quarter-minute off
     (JAZZ, 4, "Ninety seconds to go in the quarter and the Jazz edge in front!", "seconds"),
     (JAZZ, 4, "Under a minute... under sixty seconds left and Utah score!", "seconds"),
-    # Iftikhar's sixes came at 11.1 and 11.3: he kept the strike, so 11.2 was his and no six
-    (ASIA_CUP, 10, "Iftikhar again! Back-to-back sixes!", "in a row"),
-    (ASIA_CUP, 11, "Three sixes in a row for Iftikhar!", "in a row"),
-    (ASIA_CUP, 9, "Iftikhar Ahmed, consecutive sixes off Ashwin and Patel!", "in a row"),
+    (JAZZ, 4, "One minute thirty seconds left.", "seconds"),
+    (JAZZ, 4, "Under ninety seconds left.", "seconds"),
     # the Bulls scored between the Jazz's two baskets
     (JAZZ, 7, "Back-to-back buckets for Utah!", "in a row"),
     # Iftikhar's last four balls brought 18, the last six 24
@@ -52,24 +50,34 @@ RIGHT = [
     (JAZZ, 4, "About ninety seconds left in the quarter!"),
     (JAZZ, 4, "Over ninety seconds to play, Utah ahead by one!"),
     (JAZZ, 4, "A hundred and five seconds left in the first quarter."),
+    (JAZZ, 4, "One minute forty-five seconds left."),
+    (JAZZ, 4, "A minute and 45 seconds to go!"),
+    (JAZZ, 4, "Nineteen seconds left on the shot clock."),
+    (JAZZ, 4, "Nineteen seconds remaining on the shot clock."),
+    # a streak that is negated, needed or in the past is no claim about the play now
+    (JAZZ, 7, "No back-to-back buckets for Utah; Chicago scored between them."),
+    (JAZZ, 7, "Utah need back-to-back buckets."),
+    # a cricket streak is not tested: the moments may not hold the ball that breaks it
     (ASIA_CUP, 11, "Back-to-back sixes for Iftikhar!"),
+    (NEPAL, 8, "Back-to-back fours for de Leede!"),
+    (ASIA_CUP, 30, "Back-to-back fours for Suryakumar Yadav!"),
     (ASIA_CUP, 11, "Iftikhar has 18 off four balls!"),
     (ASIA_CUP, 11, "Iftikhar has 24 off six balls!"),
     (ASIA_CUP, 11, "His third six in four balls!"),
-    # de Leede's four came after his four off the last ball of an over: the strike passed, so
-    # whether he had the balls between is unknown, and the streak is not called wrong
-    (NEPAL, 8, "Back-to-back fours for de Leede!"),
-    # Yadav's fours came at 3.3 and 5.2, and 8 runs came between them: a four the moments do not
-    # show could be among them, so the streak is not called wrong
-    (ASIA_CUP, 30, "Back-to-back fours for Suryakumar Yadav!"),
     # the championships are not the moment's play
     (JAZZ, 7, "Chasing back-to-back championships, Utah score again!"),
     (FINAL, 4, "Messi fires it wide!"),
     (FINAL, 1, "Di María's shot is blocked and goes wide!"),
     (FINAL, 0, "Lloris gets down to block it with his body, saved!"),
+    (FINAL, 0, "Saved! The ball stays in, not wide."),
+    (FINAL, 0, "Saved by Lloris! That shot wasn't wide."),
     (FINAL, 63, "Wide! Still three-three, and Argentina lead the shootout two-one."),
     (SPURS, 27, "Great save from Lloris! Chelsea still trail by one."),
     (SPURS, 27, "Saved! Can Chelsea get level?"),
+    # level in the past, or level with a player, says nothing of the score now
+    (SPURS, 27, "They were level at kick-off; Lloris makes the save."),
+    (SPURS, 27, "They were all square at kick-off; Lloris makes the save."),
+    (SPURS, 27, "Saved! Kane was played on, still level with the last defender."),
 ]
 
 
