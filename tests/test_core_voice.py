@@ -502,6 +502,56 @@ def test_the_route_streams_a_line_still_arriving(tmp_path, monkeypatch):
     assert again.headers["content-length"] == str(len(AUDIO[:4] * 20))
 
 
+IPHONE = (
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15"
+    " (KHTML, like Gecko) CriOS/126.0 Mobile/15E148 Safari/604.1"
+)
+MAC_SAFARI = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)"
+    " Version/17.5 Safari/605.1.15"
+)
+CHROME = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko)"
+    " Chrome/126.0.0.0 Safari/537.36"
+)
+ANDROID = (
+    "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko)"
+    " Version/4.0 Mobile Safari/537.36"
+)
+
+
+@pytest.mark.parametrize(
+    "agent,whole", [(IPHONE, True), (MAC_SAFARI, True), (CHROME, False), (ANDROID, False)]
+)
+def test_safari_gets_the_whole_file_and_everyone_else_the_stream(
+    tmp_path, monkeypatch, agent, whole
+):
+    # Safari may not play a chunked mp3 with no length: it waits for the finished clip
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    trickle = httpx.MockTransport(lambda r: httpx.Response(200, stream=Trickle()))
+    with client_for(tmp_path, trickle) as client:
+        resp = client.get("/lines/l1/audio", headers={"user-agent": agent})
+    assert resp.status_code == 200 and resp.content == AUDIO[:4] * 20
+    assert ("content-length" in resp.headers) == whole
+
+
+def test_safari_is_safari_or_any_iphone_or_ipad_browser():
+    from core.voice import safari
+
+    assert safari(MAC_SAFARI) and safari(IPHONE)  # IPHONE is Chrome on iOS: still Safari's engine
+    assert safari("Mozilla/5.0 (iPad; CPU OS 17_5) FxiOS/127.0 Mobile/15E148 Safari/605.1.15")
+    assert not safari(CHROME) and not safari(ANDROID) and not safari(None)
+    assert not safari("Mozilla/5.0 (Macintosh) FxiOS/127.0 Safari/605.1.15")
+    assert not safari("Mozilla/5.0 (X11; Linux) Chromium/126.0 Safari/537.36")
+
+
+def test_safari_gets_a_503_not_half_a_line_when_the_stream_breaks(tmp_path, monkeypatch):
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    breaks = httpx.MockTransport(lambda r: httpx.Response(200, stream=Breaks()))
+    with client_for(tmp_path, breaks) as client:
+        assert client.get("/lines/l1/audio", headers={"user-agent": MAC_SAFARI}).status_code == 503
+
+
 class Breaks(httpx.AsyncByteStream):
     """One chunk, then the connection drops."""
 
