@@ -13,7 +13,7 @@ from collections import Counter
 from agent.packs import phase
 from core import predict
 from core.fallback import fallback_text  # noqa: F401  checked() says it; tests import it here
-from core.voice import NAMES
+from core.voice import NAMES, intensity
 from data.matches import CLUB_SUFFIX
 
 WORDS_PER_S = 2.7  # a line has likely finished speaking after its words at this rate
@@ -73,7 +73,9 @@ def _before(pack) -> str:
     """The span a pack covers, said with every pre-match fact so it never reads as a career."""
     if pack["sport"] == "cricket":  # Cricsheet T20Is from 1 January to the day before
         return "in T20 internationals this year before tonight"
-    if "competition 43 " in pack["source"]:  # StatsBomb's FIFA World Cup
+    if "competition 43 " in pack.get(
+        "source", ""
+    ):  # StatsBomb World Cup; a graph-only pack has none
         return "at this World Cup before tonight"
     return "this season before tonight"
 
@@ -296,6 +298,19 @@ def _look_back(pack, past):
     return out
 
 
+def _form(pack, past):
+    """Each team's form and their head-to-head before tonight, from the graph."""
+    from data.matches import match_header
+
+    try:
+        h = match_header(past[-1]["match_id"])
+    except KeyError:
+        return []
+    if not (h.get("home") and h.get("away")):  # a race has no two sides
+        return []
+    return predict.form_texts(h["sport"], h["home"], h["away"], h.get("date", ""))
+
+
 KINDS = (
     ("player profile", _profiles),
     ("next to score", _odds),
@@ -304,6 +319,7 @@ KINDS = (
     ("look back", _look_back),
     ("momentum", _momentum),
     ("positions", _positions),
+    ("form", _form),
 )
 # what each kind is about, told to the analyst in the user message, so the lines never loop (#297)
 ANGLES = {
@@ -314,6 +330,7 @@ ANGLES = {
     "look back": "look back at an earlier moment",
     "momentum": "the game state",
     "positions": "the game state",
+    "form": "the teams' form before tonight",
 }
 
 
@@ -336,6 +353,8 @@ class Gaps:
         self.openers: set[tuple[str, ...]] = set()  # the analyst's first words so far (#221)
         self.turn = 0
         self.opens = 0
+        self.focus: str | None = None  # the player a quiet stretch's conversation is about (#378)
+        self.focused: set[str] = set()  # players already talked about this replay
         self.asked = None  # what the lead's last comeback asked the analyst about
         self.calls = 0
         self.overran = False  # the last line was dropped for running into the next moment (#297)
@@ -366,7 +385,7 @@ class Gaps:
 
     def pack(self, m: dict):
         if self._pack is None:
-            self._pack = predict.load_pack(m.get("sport", ""), self.match_id) or {}
+            self._pack = predict.pack(m.get("sport", ""), self.match_id) or {}
         return self._pack
 
     def wrong(self, text: str, stat: dict, past: list[dict]) -> list[str]:
@@ -383,6 +402,8 @@ class Gaps:
         """The next kind in turn with a detail not said yet in this replay; a stretch's first
         insight takes the pre-match pack's profile or odds when there is a pack, in a turn of its
         own, and the rest of the stretch the other kinds, so two lines a stretch reach them all."""
+        if hit := self.about_one_player(past, first):
+            return hit
         opens = first and bool(self.pack(past[-1]))
         start = self.opens if opens else self.turn
         order = [(start + i) % len(KINDS) for i in range(len(KINDS))]
@@ -400,13 +421,34 @@ class Gaps:
                     return kind, detail
         return None
 
+    def about_one_player(self, past: list[dict], first: bool) -> tuple[str, str] | None:
+        """A quiet stretch's conversation (#378): the stretch's first stat picks a player who has
+        not had one yet and who has at least two facts, and the turns that follow stay on that
+        player, one fact each, until the facts run out. None leaves it to the rotating kinds."""
+        pack = self.pack(past[-1])
+        if not pack:
+            return None
+        if first:
+            self.focus = None
+        facts = [d for d in _profiles(pack, past) if d not in self.used]
+        by = {n: [d for d in facts if d.startswith(n + " ")] for n in pack["players"]}
+        if self.focus is None:
+            self.focus = next(
+                (n for n, ds in by.items() if len(ds) >= 2 and n not in self.focused), None
+            )
+            self.focused.add(self.focus or "")
+        if self.focus and by.get(self.focus):
+            return "player profile", by[self.focus][0]
+        self.focus = None
+        return None
+
     def peek(self, past: list[dict], first: bool = False) -> tuple[str, str] | None:
         """The stat next_stat would pick now, without taking its turn."""
-        turn, opens = self.turn, self.opens
+        turn, opens, focus, done = self.turn, self.opens, self.focus, set(self.focused)
         try:
             return self.next_stat(past, first)
         finally:
-            self.turn, self.opens = turn, opens
+            self.turn, self.opens, self.focus, self.focused = turn, opens, focus, done
 
     def line(
         self,
@@ -1759,6 +1801,8 @@ def stat_moment(m: dict, said_as: dict, reply: bool) -> dict:
             if "next" in said_as
             else {}
         ),
+        # how big the moment is: the pair matches its delivery to it (#378); the voice reads it too
+        "intensity": "calm" if said_as.get("kind") == OPEN else intensity(m),
         f"{NAMES[by]} just said": said_as["heard"],
         **({"never open with": said_as["never open with"]} if "never open with" in said_as else {}),
         **({"never say": said_as["never say"]} if "never say" in said_as else {}),
