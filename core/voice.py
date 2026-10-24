@@ -32,6 +32,7 @@ FALLBACK_MIN_S = 1.5  # flash always gets this long once it has a slot: a little
 LIVE_BUDGET_S = 4.0  # a line with no video time is spoken as it arrives
 PREPARED_V3_S = 7.0  # v3's least time for a line made before its moment: late v3 beats flat flash
 CONCURRENCY = 3  # a whole match's lines arrive in seconds; ElevenLabs caps concurrent requests
+BREAKER_S = 20.0  # after a 429, no TTS call this long: queued lines go straight to subtitles
 KEEP_JOBS = 500  # finished audio kept, least recently asked first out: ~25 MB at ~50 KB a line
 
 # The page's voice setting. ids are ours; eleven_id never leaves the server. VOICE_<SPORT> takes an
@@ -253,6 +254,7 @@ class Speaker:
         self.clips: dict[tuple[str, str], Clip] = {}  # each job's audio as it streams in
         self.tags: dict[str, str | None] = {}
         self.slots = asyncio.Semaphore(CONCURRENCY)
+        self.closed_until = 0.0  # time.monotonic() the 429 breaker lets calls through again
         # shortcut: per process; one Cloud Run instance today, a shared store if it ever runs more
         self.failing: dict | None = (
             None  # {last_error, since} until ElevenLabs answers again (#306)
@@ -437,6 +439,8 @@ class Speaker:
                 break
         if resp.status_code != 200 or not clip.chunks:
             log.warning("voice %s answered %d", model, resp.status_code)
+            if resp.status_code == 429:  # every key tried: more calls now would only pile up
+                self.closed_until = time.monotonic() + BREAKER_S
             self._failed(failure(resp))
             return None
         self.failing = None
@@ -451,6 +455,9 @@ class Speaker:
             left = max(until - time.monotonic(), least)
             if left <= 0:  # it would land after the moment
                 log.warning("voice %s skipped: out of time", model)
+                return None
+            if time.monotonic() < self.closed_until:
+                log.warning("voice %s skipped: ElevenLabs rate limit", model)
                 return None
             try:
                 # httpx's timeout is per read: only this bounds the wait for the first chunk

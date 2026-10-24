@@ -1088,3 +1088,31 @@ def test_stats_show_the_characters_left_read_at_most_every_five_minutes(
         body = client.get("/stats").text
     assert '"characters_left":null' in body and len(reads) == 2  # unreadable: null, never an error
     assert KEY not in body and KEY not in caplog.text
+
+
+def test_a_429_opens_the_breaker_so_queued_lines_skip_to_subtitles(monkeypatch):
+    import asyncio
+
+    from core import voice
+    from core.voice import VOICES, Speaker
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    monkeypatch.setattr(voice, "BREAKER_S", 0.3)
+    seen = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(429 if len(seen) == 1 else 200, content=AUDIO)
+
+    speaker = Speaker(httpx.MockTransport(handle))
+
+    def line(i):
+        return {"line_id": f"l{i}", "sport": "football", "text": "Goal!"}
+
+    async def run():
+        first = await speaker.audio(line(0), VOICES[1])  # 429: no v3 retry, no flash
+        queued = await speaker.audio(line(1), VOICES[1])
+        await asyncio.sleep(0.35)
+        return first, queued, len(seen), await speaker.audio(line(2), VOICES[1])
+
+    assert asyncio.run(run()) == (None, None, 1, (AUDIO, "eleven_v3"))
