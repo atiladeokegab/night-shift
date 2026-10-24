@@ -1296,7 +1296,12 @@ SHOT_ENDED = {
     "Off T": "off target",
     "Wayward": "off target",
 }
-CAN_CALL = {"blocked": {"blocked"}, "saved": {"saved", "blocked"}, "off target": {"off target"}}
+# how a line may call each ending: a keeper's save can be a block, a blocked shot can deflect wide
+CAN_CALL = {
+    "blocked": {"blocked", "off target"},
+    "saved": {"saved", "blocked"},
+    "off target": {"off target"},
+}
 BLOCKED = re.compile(r"\bblock(?:s|ed|ing)?\b", re.I)
 OFF_TARGET = re.compile(r"\b(?:wide|off target|over the bar|skie[sd]|sails? over)\b", re.I)
 # "still level", "all square", "the scores are level": a claim about now, on any football moment;

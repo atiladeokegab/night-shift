@@ -62,6 +62,7 @@ RIGHT = [
     # the championships are not the moment's play
     (JAZZ, 7, "Chasing back-to-back championships, Utah score again!"),
     (FINAL, 4, "Messi fires it wide!"),
+    (FINAL, 1, "Di María's shot is blocked and goes wide!"),
     (FINAL, 0, "Lloris gets down to block it with his body, saved!"),
     (FINAL, 63, "Wide! Still three-three, and Argentina lead the shootout two-one."),
     (SPURS, 27, "Great save from Lloris! Chelsea still trail by one."),
