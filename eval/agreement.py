@@ -52,8 +52,9 @@ _DIGITS = {
 def normalise(text: str) -> str:
     """Lowercased, punctuation stripped, number words as digits, whitespace collapsed; no more. A
     number keeps its sign and decimal point ("+2", "1.5"), so "+2" and "-2", "1.5" and "1-5" differ;
-    a dash between numbers ("1-0") is punctuation."""
-    words = re.findall(r"(?<![\w.])[+-]?\d+(?:\.\d+)*|[^\W_]+", text.lower())
+    a dash between numbers ("1-0") is punctuation. Letters and numbers are separate words even when
+    they touch ("delta+2s" is "delta +2 s")."""
+    words = re.findall(r"(?:(?<!\d)[+-])?\d+(?:\.\d+)*|[^\W\d_]+", text.lower())
     return " ".join(_DIGITS.get(w, w) for w in words)
 
 

@@ -110,6 +110,7 @@ def test_the_same_words_after_normalising_strictly_agree(big, adapter):
 def test_normalising_is_case_punctuation_number_words_and_spaces_only():
     assert normalise("  Two-nil!  Mbappé's   NINETEEN… ") == "2 nil mbappé s 19"
     assert normalise("1-0, +2 seconds, -0.5, 1.5 laps") == "1 0 +2 seconds -0.5 1.5 laps"
+    assert normalise("delta+2s, Over1.5, Over1-5, v.2") == "delta +2 s over 1.5 over 1 5 v 2"
 
 
 # Prometheus's confirm of 201abf6: normalising must not make these the same.
@@ -119,6 +120,9 @@ def test_normalising_is_case_punctuation_number_words_and_spaces_only():
         ("Hamilton leads by +2 seconds!", "Hamilton leads by -2 seconds!", "different words"),
         ("!!!", "???", "no words to compare"),
         ("Verstappen wins by 1.5 seconds!", "Verstappen wins by 1-5 seconds!", "different words"),
+        # Prometheus, at 48c4559: a number touching a letter keeps its sign and decimal point.
+        ("Hamilton delta+2s", "Hamilton delta-2s", "different words"),
+        ("Over1.5", "Over1-5", "different words"),
     ],
 )
 def test_signs_decimals_and_empty_lines_never_strictly_agree(big, adapter, why):
