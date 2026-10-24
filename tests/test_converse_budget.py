@@ -20,7 +20,7 @@ ENV = {
 }
 
 
-def app_for(tmp_path, monkeypatch, *, daily_budget=50.0, usage=True):
+def app_for(tmp_path, monkeypatch, *, daily_budget=50.0):
     for key, value in ENV.items():
         monkeypatch.setenv(key, value)
 
@@ -32,7 +32,7 @@ def app_for(tmp_path, monkeypatch, *, daily_budget=50.0, usage=True):
     monkeypatch.setattr(commentator, "unrecorded_provider", lambda: provider)
 
     def ask(question, past, lines, provider=None, **kwargs):
-        result = answer(
+        return answer(
             question,
             past,
             lines,
@@ -40,9 +40,6 @@ def app_for(tmp_path, monkeypatch, *, daily_budget=50.0, usage=True):
             provider=provider or commentator.unrecorded_provider(),
             **kwargs,
         )
-        if not usage:
-            result.pop("tokens_in")
-        return result
 
     store = Store(tmp_path)
     guard = Guard(
@@ -93,9 +90,7 @@ def spoken(resp):
     )
 
 
-def test_actual_sdk_stream_usage_and_request_id_are_recorded(tmp_path, monkeypatch):
-    client, _, store, guard = app_for(tmp_path, monkeypatch, daily_budget=0.000001)
-
+def sdk_stream():
     class Stream:
         response = SimpleNamespace(headers={"X-Middleware-Request-Id": "streamed-123"})
 
@@ -123,26 +118,42 @@ def test_actual_sdk_stream_usage_and_request_id_are_recorded(tmp_path, monkeypat
 
     messages = Messages()
     sdk = SimpleNamespace(client=SimpleNamespace(messages=messages))
+    return sdk, messages
+
+
+def test_actual_sdk_stream_usage_and_request_id_are_recorded(tmp_path, monkeypatch):
+    client, _, store, _ = app_for(tmp_path, monkeypatch)
+    sdk, messages = sdk_stream()
     monkeypatch.setattr(commentator, "unrecorded_provider", lambda: sdk)
 
     with client:
         ctx = mint(client, start_replay(client))
         first = turn(client, ctx)
-        rows_after_first = store.all("answers")
-        second = turn(client, ctx)
-        spent_after_first = guard.spent_today(store)
+        row = store.all("answers")[0]
 
     assert first.status_code == 200 and "Player1 scored for the Reds." in spoken(first)
-    assert len(rows_after_first) == 1
-    row = rows_after_first[0]
     assert row["replay_id"]
     assert row["model"] == commentator.MODEL
     assert row["tokens_in"] == 11 and row["tokens_out"] == 7
     assert row["mubit_request_ids"] == ["streamed-123"]
-    assert spent_after_first >= guard.budget
+
+
+def test_talk_stream_refreshes_spend_cache_before_next_turn(tmp_path, monkeypatch):
+    client, _, store, guard = app_for(tmp_path, monkeypatch, daily_budget=0.000001)
+    sdk, messages = sdk_stream()
+    monkeypatch.setattr(commentator, "unrecorded_provider", lambda: sdk)
+
+    with client:
+        ctx = mint(client, start_replay(client))
+        first = turn(client, ctx)
+        second = turn(client, ctx)
+        spent_after_first = guard.spent_today(store)
+
+    assert first.status_code == 200 and "Player1 scored for the Reds." in spoken(first)
     assert second.status_code == 200 and "off air for today" in spoken(second).lower()
     assert messages.calls == 1
     assert len(store.all("answers")) == 1
+    assert spent_after_first >= guard.budget
 
 
 def test_streaming_tap_keeps_the_mubit_request_id():
@@ -176,14 +187,3 @@ def test_streaming_tap_keeps_the_mubit_request_id():
         "usage": {"input_tokens": 11, "output_tokens": 4},
         "request_id": "mubit-123",
     }
-
-
-def test_missing_provider_usage_is_not_fabricated(tmp_path, monkeypatch):
-    client, provider, store, _ = app_for(tmp_path, monkeypatch, usage=False)
-    with client:
-        ctx = mint(client, start_replay(client))
-        response = turn(client, ctx)
-
-    assert response.status_code == 200 and "So far," in spoken(response)
-    assert len(provider.requests) == 1
-    assert store.all("answers") == []

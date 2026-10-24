@@ -128,18 +128,11 @@ def safe_line(past: list[dict]) -> str:
 
 
 def counted(ask, record):
-    """`ask` that records actual token usage when a model call returned it."""
+    """`ask` that hands each answer it makes (a model call's cost) to `record`."""
 
     def call(*args, **kwargs):
         made = ask(*args, **kwargs)
-        if (
-            made
-            and made.get("model")
-            and all(
-                isinstance(made.get(key), int) and made[key] >= 0
-                for key in ("tokens_in", "tokens_out")
-            )
-        ):
+        if made:
             record(made)
         return made
 
@@ -332,23 +325,8 @@ def converse_router(*, need_deps, viewed, asked_so_far, guard, store, env=os.env
         if guard.asks.hit(held["ip"]):
             return respond("That's a lot of questions. Try again in a few minutes.")
 
-        def record(made: dict) -> None:  # actual Mubit usage counts toward spent_today
-            usage = {
-                key: made[key]
-                for key in (
-                    "line_id",
-                    "sport",
-                    "match_id",
-                    "moment_idx",
-                    "model",
-                    "tokens_in",
-                    "tokens_out",
-                    "mubit_request_ids",
-                    "created_at",
-                )
-                if key in made
-            }
-            store.append("answers", {**usage, "replay_id": held["replay_id"]})
+        def record(made: dict) -> None:  # as Ask stores its answer: its tokens count in spent_today
+            store.append("answers", {**made, "replay_id": held["replay_id"]})
             guard._spent = None
 
         ask = counted(d.ask, record)
