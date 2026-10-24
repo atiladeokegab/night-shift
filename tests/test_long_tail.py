@@ -55,5 +55,15 @@ def test_the_checks_hold_on_its_moments():
     assert insight.wrong_numbers("Terland! Brighton lead 4-2!", winner, header) == [
         "4 is not in the moment"
     ]
+    # Who leads (#185), by the names a line uses: "Brighton", not "Brighton & Hove Albion WFC".
+    equaliser = moments[33]
+    assert insight.wrong_numbers("Brighton take the lead!", equaliser, header) == [
+        "Brighton & Hove Albion WFC do not lead"
+    ]
+    assert insight.wrong_numbers("Bristol City lead three-two!", winner, header) == [
+        "Bristol City WFC do not lead"
+    ]
+    derby = {"home": "Manchester City", "away": "Manchester United"}
+    assert "manchester" not in insight._sides(derby)[0]  # names neither side
     facts = insight._profiles(load_pack("football", WSL), moments[:20])
     assert facts and all("this season before tonight" in d for d in facts if "before" in d)
