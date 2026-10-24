@@ -47,8 +47,11 @@ def stream(tmp_path, video):
 
 def test_mapped_match_calls_only_mapped_moments_with_their_video_time(tmp_path):
     events = stream(tmp_path, F1_VIDEO)
-    assert [n for n, _ in events] == ["moment", "line", "stats"] * 2 + ["end"]
-    lines = [d for n, d in events if n == "line"]
+    opening = sum(n == "line" and "open" in d for n, d in events)  # the cold open (#221) first
+    assert [n for n, _ in events] == ["line", "stats"] * opening + ["moment", "line", "stats"] * 2 + [
+        "end"
+    ]
+    lines = [d for n, d in events if n == "line" and "open" not in d]
     moments = [d for n, d in events if n == "moment"]
     assert [(ln["line_id"], ln["video_t"]) for ln in lines] == [("f1-0", 12.5), ("f1-2", 80.0)]
     assert [m["video_t"] for m in moments] == [12.5, 80.0]
@@ -68,7 +71,8 @@ async def replay_within(seconds, video, store):
 
 
 def test_mapped_lines_never_wait_for_wall_clock(tmp_path):
-    assert len(asyncio.run(replay_within(5, F1_VIDEO, Store(tmp_path)))) == 2
+    lines = asyncio.run(replay_within(5, F1_VIDEO, Store(tmp_path)))
+    assert len([e for e in lines if "open" not in e["data"]]) == 2
 
 
 def test_unmapped_replay_still_paces_by_the_match_clock(tmp_path):

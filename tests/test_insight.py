@@ -19,6 +19,7 @@ from core.predict import load_pack
 from core.replay import Replay, run_replay
 from core.smoke import read_stream
 from core.store import Store
+from core.voice import NAMES
 from data.matches import (
     balls,
     list_matches,
@@ -63,8 +64,9 @@ def stat_calls(fake):
 
 
 def gap(ln):
-    """The insight or reply key of a line in a quiet stretch, else {} for a moment's line."""
-    return ln.get("insight") or ln.get("reply") or {}
+    """The insight, reply or cold open key of a line between moments, else {} for a moment's
+    line."""
+    return ln.get("insight") or ln.get("reply") or ln.get("open") or {}
 
 
 class Sized:
@@ -160,11 +162,18 @@ def test_an_insight_request_has_the_analysts_prompt_and_a_lines_message(tmp_path
 def test_each_insight_hears_the_line_before_it_and_the_lead_replies(tmp_path):
     lines, fake = replay(KOBE, Store(tmp_path))
     asked = [q["messages"][0]["content"] for q in stat_calls(fake)]
-    pairs = [(prev, ln) for prev, ln in zip(lines, lines[1:], strict=False) if gap(ln)]
+    asked = [q for q in asked if f"\nEvent: Stat, {insight.OPEN}: " not in q]
+    pairs = [
+        (prev, ln)
+        for prev, ln in zip(lines, lines[1:], strict=False)
+        if gap(ln) and "open" not in ln
+    ]
     assert len(asked) == len(pairs) > 0
     for q, (prev, ln) in zip(asked, pairs, strict=True):
         details = next(row for row in q.splitlines() if row.startswith("Details: "))
-        assert f"speaker: {ln['speaker']}, Partner just said: {prev['text']}" in details
+        # the line just said, by whoever said it: the lead's call opens each stretch (#221)
+        assert details.startswith(f"Details: speaker: {ln['speaker']}, ")
+        assert details.endswith(f"{NAMES[prev['speaker']]} just said: {prev['text']}")
         event = next(row for row in q.splitlines() if row.startswith("Event: "))
         if "insight" in ln:  # the stat is the Event; a reply's Event is what it heard
             assert event == f"Event: Stat, {ln['insight']['kind']}: {ln['insight']['detail']}"
@@ -298,7 +307,8 @@ def test_a_dropped_analyst_line_hands_its_slot_to_the_next_kind_once(tmp_path):
     fake, asked = Fake(), []
 
     def calls(moment, history, drop="player profile"):
-        asked.append((moment["idx"], moment["outcome"])) if moment["type"] == "Stat" else None
+        if moment["type"] == "Stat" and not moment["outcome"].startswith(insight.OPEN):
+            asked.append((moment["idx"], moment["outcome"]))
         if moment["outcome"].startswith(drop):
             return None  # the line filter dropped it
         return commentator.commentate(moment, history, provider=fake)
@@ -324,7 +334,8 @@ def test_the_analyst_never_restates_the_leads_call(tmp_path):
     def calls(moment, history):
         if moment["type"] != "Stat":
             return {"line_id": uuid.uuid4().hex, "moment_idx": moment["idx"], "text": GOAL}
-        if moment["idx"] not in opened:  # each stretch opens on the real repeat shape
+        # each stretch opens on the real repeat shape (the cold open hears no call to repeat)
+        if moment["idx"] not in opened and not moment["outcome"].startswith(insight.OPEN):
             opened.add(moment["idx"])
             return {
                 "line_id": uuid.uuid4().hex,
@@ -451,7 +462,7 @@ def test_a_fix_on_an_insight_or_reply_goes_back_with_its_own_request(tmp_path):
             assert q[0] == fake.requests[first]["messages"][0]  # the message the line came from
             assert ("\nEvent: Stat, " in q[0]["content"]) == bool(gap(ln))
             if gap(ln):
-                assert f"Partner just said: {gap(ln)['heard']}" in q[0]["content"]
+                assert f" just said: {gap(ln)['heard']}" in q[0]["content"]
 
 
 def test_the_live_smoke_passes_on_a_replay_that_reuses_stored_insight_lines(tmp_path, monkeypatch):
