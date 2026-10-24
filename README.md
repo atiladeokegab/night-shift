@@ -165,7 +165,7 @@ Each criterion weighs the same; one line each, with where to check it.
 
 - **Use of Mubit (a correction becomes a model update):** every call goes through one Mubit task; its recorded lines have trained [6 adapter versions](#real-numbers) so far (none passed yet), and a producer's [fix](#producer-fixes) is stored beside the line as the correction for the next version.
 - **Usefulness (a real recurring task):** a major broadcaster now describes [only some Premier League games (about 109 of 380)](#the-problem), and elsewhere live audio description is voluntary and patchy; Touchline speaks the key moments of [six real matches in four sports](#the-six-matches) from their real event data.
-- **Technical execution:** a line in [0.53 s to its first word](#real-numbers) (p50), gated on the video's clock, an offline test suite (`make check`) and a live smoke test on every deploy; [architecture](docs/ARCHITECTURE.md) and [known limitations](#known-limitations).
+- **Technical execution:** a line in [0.54 s to its first word](#real-numbers) (median), gated on the video's clock, an offline test suite (`make check`) and a live smoke test on every deploy; [architecture](docs/ARCHITECTURE.md) and [known limitations](#known-limitations).
 - **Demo:** two minutes on the live URL, scripted in [docs/demo.md](docs/demo.md); the [60-second path](#the-60-second-path) above is the short version.
 
 ## The product: where this goes
@@ -188,19 +188,29 @@ Each criterion weighs the same; one line each, with where to check it.
 
 ## Real numbers
 
-Read from the live service's [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats) on
-24 October 2026 at 13:04 UTC, adapter status included. They move as people use the site. At 13:04
-every line was a `claude-haiku-4-5` call; since #142, analyst lines and replies run on
-`claude-sonnet-5-5`, and `/stats` counts them in the same figures, priced at Sonnet's rate.
+Read once from the live service's [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats)
+on 24 October 2026 at 14:11 UTC, adapter status included; every number below comes from that one
+read, and they move as people use the site. Moment lines are `claude-haiku-4-5` calls, recorded;
+since #142 the analyst's stat lines and the lead's replies to it are `claude-sonnet-5-5`, unrecorded.
+The totals count both, each priced at its own model's rate, and `by_speaker` splits them.
 
-| | Big model (`claude-haiku-4-5` moment lines via Mubit) | Our trained commentator (Mubit adapter) |
+| | Big model via Mubit (all lines) | Our trained commentator (Mubit adapter) |
 |---|---|---|
-| Lines called | 4,715 (4,836 Mubit calls, counted by their request ids) | none: not callable by the app |
-| First word of the model's text, p50 / p95 | 534 ms / 779 ms | not measured |
-| Full line, p50 / p95 | 881 ms / 1,131 ms | not measured |
-| Cost per line | $0.0018 | not reported by Mubit |
-| Tokens per line, in / out | about 1,648 / 29 (7,770,852 / 135,975 over 4,715 lines) | not measured |
-| Producer fixes | 0 so far; the first is made in the demo | |
+| Lines called | 5,760 (5,895 Mubit calls, counted by their request ids) | none: not callable by the app |
+| First word of the model's text, p50 / p95 | 541 ms / 1,335 ms | not measured |
+| Full line, p50 / p95 | 896 ms / 1,740 ms | not measured |
+| Cost per line | $0.0019 | not reported by Mubit |
+| Tokens per line, in / out | about 1,608 / 31 (9,264,736 / 179,234 over 5,760 lines) | not measured |
+| Producer fixes | 0 so far (0 recorded for training); the first is made in the demo | |
+
+Split by speaker (`by_speaker`, same read):
+
+| | Lines | First word, p50 / p95 | Cost per line |
+|---|---|---|---|
+| Lead (Haiku moment lines, Sonnet replies) | 4,981 | 536 ms / 864 ms | $0.0018 |
+| Analyst (stat lines; Haiku before #142, Sonnet since) | 779 | 788 ms / 2,939 ms | $0.0024 |
+
+The overall p95 (1,335 ms) is above the lead's (864 ms) because the analyst's lines are slower.
 
 "First word" is from the moment to the first word of the model's text reply, not the audio:
 speech synthesis and playback come after it.
@@ -208,7 +218,7 @@ speech synthesis and playback come after it.
 **The adapter, exactly as it stands.** Mubit has trained 6 adapter versions on our task's recorded lines. All 6 are "not
 ready": none has passed Mubit's test yet, and the best scored 55.8% on Mubit's test. That is the record in [`data/side_by_side.json`](data/side_by_side.json), copied by hand from
 Mubit's console on 24 October 2026. We make no claim that the adapter matches the big model until a
-result shows it. `/stats` reports the adapter's status as `training` (at 13:04 UTC), recorded from
+result shows it. `/stats` reports the adapter's status as `training` (at 14:11 UTC), recorded from
 the console with [`eval/record_adapter.py`](eval/record_adapter.py); it reports no agreement result,
 because no version has passed.
 
