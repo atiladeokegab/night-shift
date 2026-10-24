@@ -14,7 +14,7 @@
 
 [**Try it live**](https://night-shift-5zvig7nbvq-ew.a.run.app) · [**For judges**](#for-judges) · [**Real numbers**](#real-numbers) · [**Architecture**](docs/ARCHITECTURE.md) · [**Known limitations**](#known-limitations) · [**Run it**](#run-it) · [**Demo script**](docs/demo.md)
 
-<img src="docs/img/live.png" alt="The live page calling Kobe Bryant's 81-point game. Top left, the score bar reads LAK 65-75 RAP, 06:22, Q3, REPLAY, and an ON AIR pill names the voice, Sam. The large subtitle reads: Kobe Bryant from 26 feet, three! Lakers down ten, 65 to 75, but Bryant's got 41 already. Under it, a dock with Wall, the four sports, Voice and Next match. On the right, the Lines card with an Ask box, a Shot map chip for Kobe Bryant and each line with a Fix button and its model first-text-word time, and the Proof card with first text word p50 0.53 s and p95 0.74 s, $0.0018 a line, the lines count, 0 fixes, and the adapter as not trained yet." width="100%">
+<img src="docs/img/live.png" alt="The live page calling Kobe Bryant's 81-point game. Top left, the score bar reads LAK 65-75 RAP, 06:22, Q3, REPLAY, and an ON AIR pill names the voice, Sam. The large subtitle reads: Kobe Bryant from 26 feet, three! Lakers down ten, 65 to 75, but Bryant's got 41 already. Under it, a dock with Wall, the four sports, Voice and Next match. On the right, the Lines card with an Ask box, a Shot map chip for Kobe Bryant and each line with a Fix button and its model first-text-word time, and the Proof card with first text word p50 0.53 s and p95 0.74 s, $0.0018 a line, the lines count, 0 fixes, and the adapter as not trained yet (before its status was recorded as training)." width="100%">
 
 <sub>The live site on 24 October 2026, captured in headless Chrome: Kobe Bryant's 81 against Toronto
 being called. YouTube won't play in a headless browser, so the video area is empty and the page says
@@ -139,7 +139,7 @@ any page until its hook-up lands after #146.
 
 #### The Proof panel
 
-<img src="docs/img/proof.png" alt="The Proof card: model first text word p50 0.53 s and p95 0.74 s, cost per line $0.0018, the lines count and 0 fixes; the adapter as not trained yet; adapter cost not measurable, because Mubit doesn't report it to the app; and a note on what first text word measures." width="50%">
+<img src="docs/img/proof.png" alt="The Proof card: model first text word p50 0.53 s and p95 0.78 s, cost per line $0.0018, the lines count and 0 fixes; the adapter: Training, Mubit is building the adapter; adapter cost not measurable, because Mubit doesn't report it to the app; and a note on what first text word measures." width="50%">
 
 Live latency, cost per line, lines called, fixes and the adapter's state, computed from the store and
 the same numbers as `GET /stats` ([`web/src/components/ProofPanel.tsx`](web/src/components/ProofPanel.tsx),
@@ -172,15 +172,15 @@ Each criterion weighs the same; one line each, with where to check it.
 ## Real numbers
 
 Read from the live service's [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats) on
-24 October 2026 at 12:56 UTC. They move as people use the site.
+24 October 2026 at 13:04 UTC, adapter status included. They move as people use the site.
 
 | | Big model (`claude-haiku-4-5` via Mubit) | Our trained commentator (Mubit adapter) |
 |---|---|---|
-| Lines called | live count in `lines` at [`/stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats); each line's Mubit calls are counted by their request ids (`mubit_requests`) | none: not callable by the app |
-| First word of the model's text, p50 / p95 | 532 ms / 745 ms | not measured |
-| Full line, p50 / p95 | 876 ms / 1,109 ms | not measured |
+| Lines called | 4,715 (4,836 Mubit calls, counted by their request ids) | none: not callable by the app |
+| First word of the model's text, p50 / p95 | 534 ms / 779 ms | not measured |
+| Full line, p50 / p95 | 881 ms / 1,131 ms | not measured |
 | Cost per line | $0.0018 | not reported by Mubit |
-| Tokens per line, in / out | about 1,649 / 29 | not measured |
+| Tokens per line, in / out | about 1,648 / 29 (7,770,852 / 135,975 over 4,715 lines) | not measured |
 | Producer fixes | 0 so far; the first is made in the demo | |
 
 "First word" is from the moment to the first word of the model's text reply, not the audio:
@@ -189,9 +189,9 @@ speech synthesis and playback come after it.
 **The adapter, exactly as it stands.** Mubit has trained 6 adapters on our task. All 6 are "not
 ready": none has passed Mubit's test yet, and the best scored 55.8% on Mubit's test. That is the record in [`data/side_by_side.json`](data/side_by_side.json), copied by hand from
 Mubit's console on 24 October 2026. We make no claim that the adapter matches the big model until a
-result shows it. `/stats` still reports the adapter as `not_trained`, because it reads only what
-[`eval/record_adapter.py`](eval/record_adapter.py) has recorded, and no console result has been
-recorded there yet.
+result shows it. `/stats` reports the adapter's status as `training` (at 13:04 UTC), recorded from
+the console with [`eval/record_adapter.py`](eval/record_adapter.py); it reports no agreement result,
+because no version has passed.
 
 ## The problem
 
