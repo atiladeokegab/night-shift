@@ -16,7 +16,7 @@ what just happened, "we'll find out" for who wins, and "an own goal" alone for w
 After the keyed run on #343 (#349), three more were widened the same way ("just over a minute" at
 88:31, "the Lakers are winning" with no score, Kobe's "67th point"), and the Courage's shots gained
 a `never`: that run's "Merritt Mathias just finding the net" was graded right, and her shot went
-off target.
+off target. After the run on #350 (#354), Mbappé "scored again" counts as his second goal.
 
 An answer is correct when it says everything in `say` and nothing in `never`; refused when it says
 neither but declines (or is off air); wrong otherwise. `in message` is whether the request the
@@ -90,7 +90,7 @@ QUESTIONS = [
         "match": WC,
         "idx": 26,
         "q": "What just happened?",
-        "say": ["Mbapp", r"2-2|level|equali[sz]|two[- ]all|two each|second"],
+        "say": ["Mbapp", r"2-2|level|equali[sz]|two[- ]all|two each|second|again"],
         "gold": "What just happened? Kylian Mbappé scores again, and France are level at 2-2!",
     },
     {
