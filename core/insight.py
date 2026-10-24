@@ -883,22 +883,37 @@ def _streak_claims(text: str) -> list[tuple[int, str | None]]:
     return out
 
 
-def _broken(m: dict, theirs: list[dict], kinds: set[str], n: int) -> bool:
-    """Whether a run of n balls of these kinds ending at m is broken, walking back through the
-    batter's (or bowler's) earlier plays. Only boundaries and wickets are moments, so an unseen ball
-    is neither; a batter keeps the strike after a boundary and a bowler bowls on, so the ball after
-    one in the same over is theirs. After the last ball of an over the next one is not, so the run
-    is not known to be broken."""
-    cur = m
+def _broken(innings: list[dict], role: str, who: str, kinds: set[str], n: int) -> bool:
+    """Whether a run of n balls of these kinds by this batter (or bowler), ending at the innings'
+    last moment, is known to be broken. The moments are only boundaries, wickets and late chase
+    balls, and not every boundary is known to be there, so a ball no moment shows counts only when
+    the score proves what it was: after one of theirs that is not the last of an over, the batter
+    keeps the strike (the bowler bowls on), so the next ball is theirs, and if the runs (wickets)
+    up to the next moment are too few for a boundary (any wicket), that ball was not one."""
+    mine = [p for p in innings if p.get("players", {}).get(role) == who]
+    cur = innings[-1]
     for _ in range(n - 1):
-        before = [p for p in theirs if _ball(p) < _ball(cur)]
-        if not before or before[-1]["type"] not in kinds:
-            return True
-        if before[-1]["clock"].endswith(".6"):
+        at = innings.index(cur)
+        if at and _ball(innings[at - 1]) == _ball(cur) - 1:  # the ball before is a moment
+            prev = innings[at - 1]
+            if prev.get("players", {}).get(role) != who:
+                return False
+            if prev["type"] not in kinds:
+                return True
+            cur = prev
+            continue
+        before = [p for p in mine if _ball(p) < _ball(cur)]
+        if not before or before[-1]["type"] not in kinds or before[-1]["clock"].endswith(".6"):
+            return False  # their ball before this one is not known
+        p = before[-1]
+        q = innings[innings.index(p) + 1]
+        if _ball(q) == _ball(p) + 1:
             return False
-        if _ball(before[-1]) + 1 != _ball(cur):
-            return True  # they had the ball after it, and it was not one of these
-        cur = before[-1]
+        d = q.get("detail") or {}
+        if kinds == {"Wicket"}:
+            return q["score"]["wickets"] - p["score"]["wickets"] - (q["type"] == "Wicket") == 0
+        own = (d.get("runs_batter") or 0) + sum((d.get("extras") or {}).values())
+        return q["score"]["runs"] - p["score"]["runs"] - own < 4
     return False
 
 
@@ -913,12 +928,12 @@ def _wrong_streak(text: str, m: dict, past: list[dict], header: dict | None) -> 
     if m.get("sport") == "cricket" and m.get("type") in ("Six", "Four", "Wicket"):
         role = "bowler" if m["type"] == "Wicket" else "batter"
         who = (m.get("players") or {}).get(role)
-        theirs = [p for p in past if p.get("players", {}).get(role) == who and _ball(p) < _ball(m)]
+        innings = [p for p in past if p.get("period") == m.get("period") and _ball(p) < _ball(m)]
         for n, kind in claims:
             kinds = STREAK_KIND[kind][0] if kind else {m["type"]}
             if m["type"] not in kinds:
                 continue  # a streak of something else, recalled
-            if _broken(m, theirs, kinds, n):
+            if _broken([*innings, m], role, who, kinds, n):
                 wrong.append(f"no {n} in a row: {who} has not done it on {n} balls running")
     if (
         m.get("sport") == "basketball"

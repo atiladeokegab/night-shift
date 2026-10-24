@@ -59,6 +59,9 @@ RIGHT = [
     # de Leede's four came after his four off the last ball of an over: the strike passed, so
     # whether he had the balls between is unknown, and the streak is not called wrong
     (NEPAL, 8, "Back-to-back fours for de Leede!"),
+    # Yadav's fours came at 3.3 and 5.2, and 8 runs came between them: a four the moments do not
+    # show could be among them, so the streak is not called wrong
+    (ASIA_CUP, 30, "Back-to-back fours for Suryakumar Yadav!"),
     # the championships are not the moment's play
     (JAZZ, 7, "Chasing back-to-back championships, Utah score again!"),
     (FINAL, 4, "Messi fires it wide!"),
