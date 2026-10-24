@@ -235,13 +235,14 @@ export default function App() {
   // A new ask (no `again`) is sent once: the quiet-spell ask and a press at the same moment are one row.
   const askCommentator = async (question: string, momentIdx: number, viewer = true, again?: () => Promise<Answer>) => {
     if (!again && isRepeat(replay.state.answers, inFlight.current, question, momentIdx)) return
+    const askedMoment = onScreen(replay.state).moments.filter((m) => m.idx === momentIdx).at(-1)
     const key = again ? null : (inFlight.current = askKey(question, momentIdx))
     const sent = session.current
     const mine = ++asked.current
     try {
       await airAnswer(
         question,
-        again ?? (() => replay.ask(question, momentIdx)),
+        again ?? (() => replay.ask(question, momentIdx, askedMoment)),
         (answer, started) =>
           answer.off_air
             ? null

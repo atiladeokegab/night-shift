@@ -267,6 +267,7 @@ export interface Answer {
   moment_idx: number
   question: string
   text: string
+  asked_moment?: Moment // local snapshot of the visible event when this Ask began; absent from the API response
   off_air?: boolean
   notice?: string // off air on purpose (#244): the page shows this, not its calm try-again copy
 }

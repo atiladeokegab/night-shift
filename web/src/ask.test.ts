@@ -41,6 +41,12 @@ test('an answer at a repeated idx uses the latest visible moment, never a queued
   assert.equal(answeredAt(answer('a', 0), [cold, wicket]), 'at Over 1.1')
 })
 
+test('a delayed answer keeps the moment visible when its Ask began', () => {
+  const cold = at(0, '0.0', 'cricket')
+  const wicket = at(0, '1.1', 'cricket')
+  assert.equal(answeredAt({ ...answer('a', 0), asked_moment: cold }, [cold, wicket]), 'at Over 0.0')
+})
+
 test('an answer goes stale once a later key moment is on screen, never before', () => {
   assert.equal(isStale(answer('a', 66), [at(65, '103:00'), at(66, '104:30')]), false)
   assert.equal(isStale(answer('a', 66), [at(66, '104:30'), at(67, '105:41')]), true)
