@@ -47,13 +47,13 @@ A correction is the next turn of the line's own call, so only the messages chang
 prompt, tools or model. It says what was wrong and gives the facts, and the commentator writes
 the fixed line itself. A correction is recorded only after an unrecorded try passes the number
 check. If the recorded reply still fails, it is marked and does not count toward the next version.
-The turn for a fix to Jordan's layup at 86-85 (Jazz v Bulls, 1998 NBA Finals Game 6), after
-the wrong line:
+The turn the code builds for the Jordan fix in the table below, had it been made after #245
+(Jazz v Bulls, 1998 NBA Finals Game 6, moment 30), sent after the wrong line:
 
 ```text
-Producer correction: Wrong leader
+Producer correction: Wrong score
 The facts at this moment. Score: Utah Jazz 86, Chicago Bulls 85. Leader: Utah Jazz lead 86-85. Player total: Michael Jordan, 43 points tonight.
-The producer's line: Jordan drives and lays it in, his 43rd! Utah still lead 86-85.
+The producer's line: Michael Jordan with the driving layup, forty-three for him! Utah still lead, eighty-six to eighty-five.
 Say your line again, corrected: the line alone, at most 20 words.
 ```
 
