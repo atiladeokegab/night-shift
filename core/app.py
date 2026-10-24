@@ -24,6 +24,39 @@ log = logging.getLogger("night_shift.app")
 REJOIN_S = 10.0  # a replay with no open stream this long is stopped: its lines cost model calls
 
 WEB = Path(__file__).resolve().parent.parent / "web" / "dist"
+PACKS = Path(__file__).resolve().parent.parent / "data" / "packs"
+
+try:
+    from core.predict import shot_points
+except ImportError:  # shortcut: stand-in until #119's core/predict.py lands, then delete it
+
+    def shot_points(pack: dict, moments: list, idx: int, name: str) -> dict:
+        p = pack["players"][name]
+        zones = [
+            {"zone": z, "attempts": v["att"], "made": v["made"], "rate": v["made"] / v["att"]}
+            for z, v in p["zones"].items()
+        ]
+        tonight = [
+            {k: t[k] for k in ("x", "y", "made", "idx")}
+            for t in pack["tonight"]
+            if t.get("player") == name and t["idx"] <= idx
+        ]
+        season = [{k: s[k] for k in ("x", "y", "made", "zone")} for s in p["shots"]]
+        return {
+            "player": name,
+            "sport": pack["sport"],
+            "season": season,
+            "tonight": tonight,
+            "zones": zones,
+        }
+
+
+def load_pack(match_id: str) -> dict:
+    """data/packs/<sport>-<match_id>.json (#118); KeyError when the match has none."""
+    found = sorted(PACKS.glob(f"*-{match_id}.json")) if match_id.isalnum() else []
+    if not found:  # an id from a request is untrusted: only plain ids reach the glob
+        raise KeyError(match_id)
+    return json.loads(found[0].read_text(encoding="utf-8"))
 
 
 @dataclass
@@ -218,6 +251,25 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
             reply = store.append("answers", {**said, "replay_id": replay_id})
         await replay.publish("answer", reply)
         return reply
+
+    @app.get("/replays/{replay_id}/players/{name}/shots")
+    def shots(replay_id: str, name: str, moment_idx: int | None = None):
+        """A player's shot map: pre-match shots plus tonight's up to the moment on screen, never
+        past the last moment sent, so a later shot never shows. No LLM: it works off air."""
+        d = need_deps()
+        replay = replays.get(replay_id)
+        if replay is None:
+            raise HTTPException(404, f"no replay {replay_id!r}")
+        past, _ = asked_so_far(replay, d.load_moments(replay.match_id), moment_idx)
+        if not past:
+            raise HTTPException(409, "nothing has happened yet")
+        try:
+            pack = load_pack(replay.match_id)
+            if pack.get("coords") is None:  # cricket has no shot locations
+                raise KeyError(replay.match_id)
+            return shot_points(pack, past, past[-1]["idx"], name)
+        except KeyError as exc:
+            raise HTTPException(404, f"no shot map for {name!r} in this match") from exc
 
     @app.get("/stats")
     def get_stats():

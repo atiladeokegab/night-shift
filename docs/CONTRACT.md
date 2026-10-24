@@ -81,6 +81,12 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   replay stream. Off air (the commentator call failed) it answers 200 with `{off_air: true, text:
   "Commentator is off air for a moment"}`, stores nothing and is still published. 404 unknown
   replay, 409 a question already in flight on this replay or no moment sent yet, 422 bad question.
+- `GET /replays/{id}/players/{name}/shots?moment_idx=` → `{player, sport, season: [{x, y, made,
+  zone}], tonight: [{x, y, made, idx}], zones: [{zone, attempts, made, rate}]}` (core, #120): the
+  player's pre-match shots from `data/packs/` plus tonight's up to `moment_idx` (default: the latest
+  sent), never past the last moment the replay has sent. Basketball x, y are NBA LOC_X/LOC_Y (tenths
+  of a foot, hoop at the origin), football StatsBomb 120x80. No LLM. 404 unknown replay, no pack for
+  the match (cricket, F1) or unknown player; 409 no moment sent yet.
 - `GET /stage` → the backup live page (`core/stage.html`, static HTML over the routes here) (core)
 - `GET /voices` → `[{id, label, default_for: "cricket"|"football"|"basketball"|"f1"|null, lang: "en-IN"|"en-GB"|"en-US"}]`, the page's voice
   setting: an Indian English commentator for cricket, a British one for football, an American
