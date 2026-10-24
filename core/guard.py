@@ -120,7 +120,8 @@ class Guard:
                 self._spent = (day, now, spent(store, day))
             except Exception as exc:  # a store read error never takes the site off air
                 log.warning("spend unread: %s: %s", type(exc).__name__, str(exc)[:300])
-                return self._spent[2] if self._spent else 0.0  # unstamped: the next call retries
+                # unstamped: the next call retries; yesterday's spend never counts today
+                return self._spent[2] if self._spent and self._spent[0] == day else 0.0
         return self._spent[2]
 
     def off_air(self, store) -> bool:
