@@ -87,7 +87,9 @@ async def auto_fix(store, correct, rejected: dict, kept: dict) -> None:
     """The number check's rejected first try, corrected to the kept retry as a Fix that is visibly
     not a human's: the try was recorded before the check could see it."""
     try:
-        sent = await asyncio.to_thread(correct, rejected, kept["text"])
+        # the checker's own reasons, as a producer's fix gives theirs (#245)
+        reason = "number check: " + "; ".join(rejected.get("wrong") or ["a wrong number"])
+        sent = await asyncio.to_thread(correct, rejected, kept["text"], reason=reason)
     except Exception as exc:  # the kept line is already said; only the correction is lost
         log.warning("auto fix for %s not sent: %s", rejected.get("line_id"), str(exc)[:300])
         return
@@ -101,7 +103,8 @@ async def auto_fix(store, correct, rejected: dict, kept: dict) -> None:
             "auto": True,
             "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
             "mubit_request_id": sent["mubit_request_id"],
-            "reply_matched": sent["reply_matched"],
+            "correction": sent.get("correction"),
+            "reply_passed": sent.get("reply_passed"),
             "recorded": sent.get("recorded", False),
         },
     )

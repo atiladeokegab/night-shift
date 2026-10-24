@@ -159,7 +159,8 @@ export interface Fix {
   corrected_text: string
   reason: string
   created_at?: number | string
-  reply_matched?: boolean
+  correction?: string // the exact turn Mubit was given after the wrong line (#245)
+  reply_passed?: boolean // the commentator's corrected reply passed the number check
   recorded?: boolean // Mubit recorded it for training (#161)
   mubit_request_id?: string | null // the correction call's request id (#239)
 }
