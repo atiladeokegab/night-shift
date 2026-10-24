@@ -68,7 +68,7 @@ def _speaker(lines: list[dict]) -> dict:
     return {
         # one string, not a list: a `stats` event carries no brackets (a TTS tag must never show)
         "model": ", ".join(sorted({ln["model"] for ln in lines if ln.get("model")})),
-        # what Mubit says answered (#250): the provider model, an adapter too once one serves
+        # the models Mubit's replies named (#250), as they named them
         "served_by": ", ".join(sorted({ln["served_by"] for ln in lines if ln.get("served_by")})),
         # the rest predate #250 or were built from the data: "Served by" alone would claim them
         "served_lines": sum(1 for ln in lines if ln.get("served_by")),

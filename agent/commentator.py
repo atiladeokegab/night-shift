@@ -283,7 +283,7 @@ def correct(
     """A producer's fix as the next turn of the line's own call: same task, same session. Only
     the messages differ from the line's request. It goes unrecorded first (`provider`, else
     `unrecorded_provider()`); only a reply that passes the number check is sent again, the same
-    request, on the recording provider, so Mubit never trains on a failing correction."""
+    request, on the recording provider. A reply that fails it is not resent."""
     from core.insight import wrong_numbers
     from core.review import UNSAID
 
@@ -578,7 +578,7 @@ class MubitProvider:
             },
             "request_id": middleware.get("x-middleware-request-id"),
             "first_word_ms": first,
-            # what answered, per Mubit's reply: the provider model, or an adapter once one serves
+            # whatever model Mubit's reply names, as it names it (#250)
             "served_by": msg.model,
             "middleware": middleware,
         }

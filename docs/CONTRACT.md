@@ -45,8 +45,8 @@ and refuses to start without `STORE_URL=gs://bucket/prefix`.
   first_word_ms, tokens_in, tokens_out, mubit_request_ids: [], tool_calls: [], created_at}`; tokens
   and latency summed over the whole tool loop; each id from `x-middleware-request-id`. A Line a
   replay stores carries its `replay_id` (#174; none before). `served_by` (#250): the `model` of
-  Mubit's last reply, what answered rather than what was asked (`model`): the provider model, or an
-  adapter once Mubit routes the call to one; none before #250 or offline, and null on a line
+  Mubit's last reply, kept apart from what was asked (`model`): whatever model Mubit's reply
+  names, as it names it; none before #250 or offline, and null on a line
   built from the data (`fallback: true`), whose text no model served. The provider reply also
   keeps every `x-middleware-*` response header (`middleware`); the line stores only `served_by`.
 - **Cost records** (core/, #174): `voice` `{line_id, replay_id, model, chars}` for each ElevenLabs call
