@@ -46,7 +46,8 @@ def _by_task(store) -> dict[str, dict]:
 
 def _state(r: dict) -> tuple[str, str]:
     """What the latest record says, and only that: "passed" only when Mubit's gate was recorded as
-    passed for a recorded version, "testing" once a version, score or failed gate is recorded, else "collecting"."""
+    passed for a recorded version, "testing" once a version, score or failed gate is recorded,
+    else "collecting"."""
     try:
         when = datetime.fromisoformat(r["created_at"]).astimezone(UTC)
         as_of = f", as of {when:%-d %b %Y %H:%M} UTC"

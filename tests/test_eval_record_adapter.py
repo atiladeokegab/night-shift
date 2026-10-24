@@ -112,7 +112,8 @@ def test_a_task_with_no_record_is_absent_not_guessed(tmp_path):
         ["--task", "score_check", "--status", "ready", "--passed"],
         ["--task", "score_check", "--status", "ready", "--version", "1", "--passed"],
         ["--task", "score_check", "--status", "ready", "--version-id", "ad_1", "--failed"],
-        ["--task", "score_check", "--status", "ready", "--version", "1", "--version-id", "", "--passed"],
+        ["--task", "score_check", "--status", "ready", "--version", "1", "--version-id", ""]
+        + ["--passed"],
     ],
 )
 def test_bad_task_results_are_refused_and_nothing_is_written(tmp_path, args):

@@ -71,16 +71,12 @@ export function exampleText(ex: LineCheckExample | null | undefined): string | n
   return `Sent to Mubit as a Line check example${request} · kind ${ex.kind.replace('_', ' ')}`
 }
 
-const TASKS: [string, string][] = [
-  ['commentary', 'Commentary'],
-  ['where_are_we', 'Where are we?'],
-  ['line_check', 'Line check'],
-  ['score_check', 'Score check'],
-]
+// Score check is the one task trained on Mubit (#321): the commentary tasks are not on the card.
+const TASKS: [string, string][] = [['score_check', 'Score check']]
 
-// The Proof card's row per Mubit task (#209) in the console's words, e.g. "Line check: v1, 82%, Passed"
-// or "v1, 55.8%, below 95% target", from only what the task's latest record says. No record, or a
-// ready one without Mubit's verdict, reads "not recorded".
+// The Proof card's row per Mubit task (#209) in the console's words, e.g. "Score check: v1, 82%, Passed"
+// or "v1, 55.8%, below 95% target", from only what the task's latest record says. No record reads
+// "no version recorded yet"; a version without Mubit's verdict, "verdict not recorded".
 // None before core reports `adapters`.
 // Score check (#321) adds its earlier versions, where each was read, its examples by source and each
 // held-out score, e.g. "Score check held-out (lines never sent): Claude via API, 70 of 74 match the data".
@@ -101,7 +97,7 @@ function verdictOf(a: Pick<TaskAdapter, 'score' | 'target' | 'passed'>, testing:
 }
 
 function adapterRow(a: TaskAdapter | undefined): string {
-  if (!a) return 'not recorded'
+  if (!a) return 'no version recorded yet'
   return [
     a.state === 'collecting' ? 'collecting' : null,
     a.version === null ? null : `v${a.version}${a.version_id ? ` (${a.version_id})` : ''}`,
@@ -122,6 +118,3 @@ function history(a: TaskAdapter | undefined): string {
 
 // The fix counts' heading: "Training" alone read as training under way; these are recorded data.
 export const TRAINING_LABEL = 'Training data'
-
-// The Adapter row's green dot: only a recorded pass of Mubit's gate, never one inferred from a status.
-export const adapterGood = (stats: Pick<Stats, 'adapter'>): boolean => stats.adapter?.state === 'passed'
