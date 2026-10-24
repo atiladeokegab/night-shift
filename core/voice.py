@@ -448,7 +448,15 @@ class Speaker:
                         return None
             until = min(end, time.monotonic() + FALLBACK_TIMEOUT_S)
             audio = await self._tts(
-                client, key, voice, FALLBACK_MODEL, line["text"], until, FALLBACK_MIN_S, clip
+                client,
+                key,
+                voice,
+                FALLBACK_MODEL,
+                line["text"],
+                until,
+                FALLBACK_MIN_S,
+                clip,
+                hard_deadline=end if again else None,
             )
             if not audio:
                 return None
@@ -470,13 +478,32 @@ class Speaker:
             )
 
     async def _tts(
-        self, client, key, voice, model, text, until, least, clip, stability=None
+        self,
+        client,
+        key,
+        voice,
+        model,
+        text,
+        until,
+        least,
+        clip,
+        stability=None,
+        hard_deadline=None,
     ) -> bytes | None:
         # shortcut: every call tries the main key first, so a spent key costs one quick 401 a line
         # and credits added come back at once; remember the working key if that 401 ever matters
         for backup, k in enumerate([key, *backup_keys()]):
             resp = await self._post(
-                client, k, voice["eleven_id"], model, text, until, least, clip, stability
+                client,
+                k,
+                voice["eleven_id"],
+                model,
+                text,
+                until,
+                least,
+                clip,
+                stability,
+                hard_deadline,
             )
             if (
                 backup
@@ -486,7 +513,7 @@ class Speaker:
             ):
                 # a free-plan backup key can't speak library voices: once more as George
                 resp = await self._post(
-                    client, k, GEORGE, model, text, until, least, clip, stability
+                    client, k, GEORGE, model, text, until, least, clip, stability, hard_deadline
                 )
             if resp is None:
                 return None
@@ -503,52 +530,80 @@ class Speaker:
         return b"".join(clip.chunks)
 
     async def _post(
-        self, client, key, eleven_id, model, text, until, least, clip, stability=None
+        self,
+        client,
+        key,
+        eleven_id,
+        model,
+        text,
+        until,
+        least,
+        clip,
+        stability=None,
+        hard_deadline=None,
     ) -> httpx.Response | None:
         """One TTS call, streamed into `clip` chunk by chunk; the response, read only when it
         failed (failure() reads its body), or None when it timed out or the network failed."""
-        async with self.slots:
-            left = max(until - time.monotonic(), least)
-            if left <= 0:  # it would land after the moment
+        if hard_deadline is not None:
+            wait = hard_deadline - time.monotonic()
+            if wait <= 0:
+                log.warning("voice %s skipped: retry deadline passed", model)
+                return None
+            try:
+                async with asyncio.timeout(wait):
+                    await self.slots.acquire()
+            except TimeoutError:
+                log.warning("voice %s retry expired waiting for a slot", model)
+                return None
+        else:
+            await self.slots.acquire()
+        try:
+            left = (
+                max(until - time.monotonic(), least)
+                if hard_deadline is None
+                else hard_deadline - time.monotonic()
+            )
+            if left <= 0:  # it would land after the moment or retry deadline
                 log.warning("voice %s skipped: out of time", model)
                 return None
             if time.monotonic() < self.closed_until:
                 log.warning("voice %s skipped: ElevenLabs rate limit", model)
                 return None
-            try:
-                # httpx's timeout is per read: only this bounds the wait for the first chunk
-                async with (
-                    asyncio.timeout(left) as bound,
-                    client.stream(
-                        "POST",
-                        TTS_URL.format(voice=eleven_id) + "/stream",
-                        params={"output_format": "mp3_44100_128"},
-                        headers={"xi-api-key": key, "accept": "audio/mpeg"},
-                        json={
-                            "text": text,
-                            "model_id": model,
-                            **(
-                                {"voice_settings": {"stability": stability}}
-                                if stability is not None and "v3" in model
-                                else {}
-                            ),
-                        },
-                        timeout=V3_TIMEOUT_S,
-                    ) as resp,
-                ):
-                    if resp.status_code != 200:
-                        await resp.aread()
-                        return resp
-                    async for chunk in resp.aiter_bytes():
-                        if not clip.chunks:  # playing from here, so the rest may run past `until`
-                            bound.reschedule(asyncio.get_running_loop().time() + V3_TIMEOUT_S)
-                        clip.add(chunk, model)
-            except (httpx.HTTPError, TimeoutError) as exc:
-                log.warning("voice %s failed: %s", model, type(exc).__name__)
-                timeout = isinstance(exc, (TimeoutError, httpx.TimeoutException))
-                clip.failed = "timeout" if timeout else "network"
-                self._failed(clip.failed)
-                return None
+            # httpx's timeout is per read: only this bounds the wait for the first chunk
+            async with (
+                asyncio.timeout(left) as bound,
+                client.stream(
+                    "POST",
+                    TTS_URL.format(voice=eleven_id) + "/stream",
+                    params={"output_format": "mp3_44100_128"},
+                    headers={"xi-api-key": key, "accept": "audio/mpeg"},
+                    json={
+                        "text": text,
+                        "model_id": model,
+                        **(
+                            {"voice_settings": {"stability": stability}}
+                            if stability is not None and "v3" in model
+                            else {}
+                        ),
+                    },
+                    timeout=V3_TIMEOUT_S,
+                ) as resp,
+            ):
+                if resp.status_code != 200:
+                    await resp.aread()
+                    return resp
+                async for chunk in resp.aiter_bytes():
+                    if not clip.chunks:  # playing from here, so the rest may run past `until`
+                        bound.reschedule(asyncio.get_running_loop().time() + V3_TIMEOUT_S)
+                    clip.add(chunk, model)
+        except (httpx.HTTPError, TimeoutError) as exc:
+            log.warning("voice %s failed: %s", model, type(exc).__name__)
+            timeout = isinstance(exc, (TimeoutError, httpx.TimeoutException))
+            clip.failed = "timeout" if timeout else "network"
+            self._failed(clip.failed)
+            return None
+        finally:
+            self.slots.release()
         return resp
 
 
