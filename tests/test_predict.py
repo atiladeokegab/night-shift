@@ -150,14 +150,27 @@ def test_names_resolve_loosely():
 
 
 def test_no_pack_no_numbers():
-    assert predict.load_pack("f1", "9636") is None
+    assert predict.load_pack("f1", "1") is None
     assert predict.load_pack("football", "../../etc") is None
-    header = match_header("9636")
+    header = {**match_header("9636"), "match_id": "1"}
     past = load_moments("9636")[:3]
     for tool in ("get_player_profile", "get_next_score_odds"):
         assert run_tool(tool, {"name": "x"}, header, past) == "No pre-match record for this event."
     cricket, balls = load("cricket", "1298150")
     assert "basketball and football" in predict.odds_text(cricket, balls, 3)
+
+
+def test_f1_profile_reads_the_season_before_the_race():
+    pack, moments = load("f1", "9636")
+    header, past = match_header("9636"), moments[:3]
+    said = run_tool("get_player_profile", {"name": "Verstappen"}, header, past)
+    assert said == (
+        "Max Verstappen (Red Bull Racing), before tonight (2024-03-02 to 2024-11-02, 20 races): "
+        "7 wins, average finish 2.9 in 19 finishes, +0.1 places gained a race from the grid, "
+        "1 not classified."
+    )
+    assert "small sample" in predict.profile_text(pack, moments, 0, "Lawson")
+    assert "basketball and football" in run_tool("get_next_score_odds", {}, header, past)
 
 
 def test_odds_name_only_players_on_so_far():

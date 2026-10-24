@@ -14,7 +14,9 @@ from pathlib import Path
 PACKS = Path(__file__).resolve().parent.parent / "data" / "packs"
 SHOTS = ("basketball", "football")  # cricket has no shot locations: phase rates instead
 PRIOR = 10  # in every blend the prior is worth this many attempts (or balls)
-SMALL = 10  # fewer pre-match attempts (or balls) than this is a small sample, and the text says so
+SMALL = (
+    10  # fewer pre-match attempts (balls, races) than this is a small sample, and the text says so
+)
 TOP = 3  # players named per team in the odds
 
 
@@ -265,6 +267,19 @@ def _cricket_profile(pack: dict, so_far: list[dict], name: str) -> str:
     return "\n".join(lines)
 
 
+def _f1_profile(pack: dict, name: str) -> str:
+    p, w = pack["players"][name], pack["window"]
+    head = f"{name} ({p['team']}), before tonight ({w['from']} to {w['to']}, {p['games']} races): "
+    if not p["finishes"]:
+        return head + "no finishes yet."
+    small = ", small sample" if p["games"] < SMALL else ""
+    return head + (
+        f"{p['wins']} wins, average finish {p['avg_finish']} in {p['finishes']} finishes, "
+        f"{p['avg_gained']:+.1f} places gained a race from the grid, "
+        f"{p['games'] - p['finishes']} not classified{small}."
+    )
+
+
 def profile_text(pack: dict, moments: list, idx: int, name: str) -> str:
     """get_player_profile, as the commentator reads it."""
     so_far = _so_far(pack, moments, idx)
@@ -275,4 +290,6 @@ def profile_text(pack: dict, moments: list, idx: int, name: str) -> str:
         return "No pre-match record for that player in this match."
     if pack["sport"] == "cricket":
         return _cricket_profile(pack, so_far, name)
+    if pack["sport"] == "f1":
+        return _f1_profile(pack, name)
     return _shots_profile(pack, so_far, name)
