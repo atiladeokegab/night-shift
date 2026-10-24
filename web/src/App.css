@@ -122,7 +122,9 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .bug { position: absolute; top: 10px; left: 10px; right: 10px; z-index: 2; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; pointer-events: none; }
 /* A shade behind the bug, so the video's own title never shows through it (#153). */
 .bug::before { content: ""; position: absolute; z-index: -1; inset: -10px -10px auto; height: 88px; background: linear-gradient(180deg, rgba(3, 5, 10, .82), rgba(3, 5, 10, 0)); }
-.bug button.onair { pointer-events: auto; color: var(--fg); cursor: pointer; }
+.bug button.onair { position: relative; pointer-events: auto; color: var(--fg); cursor: pointer; }
+/* The pill is under 44px tall; an invisible hit area, growing down into the picture so the frame never clips it, makes the target 44px. */
+.bug button.onair::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: max(100%, 44px); }
 .onair .st { display: contents; }
 .bug .scorebar { padding: 7px 12px; gap: 6px 10px; font-size: .9rem; border-radius: 12px; min-width: 0; }
 .bug .score { font-size: 1.1rem; }
