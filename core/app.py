@@ -43,6 +43,22 @@ class Deps:
     correct: Callable[[dict, str], dict] | None = None
     ask: Callable[[str, list[dict], list[dict]], dict] | None = None
     status: Callable[[list[dict]], dict] | None = None
+    fixes: bool = False  # commentate takes `fixes=`: the match's producer fixes go in each request
+
+
+def with_fixes(commentate, store):
+    """`commentate` given the match's stored producer fixes on every call, read then."""
+    from agent.commentator import match_fixes
+
+    def call(moment: dict, history: list[dict]) -> dict:
+        try:
+            fixes = match_fixes(store, moment["match_id"])
+        except Exception as exc:  # an unreadable store never takes the commentator off air
+            log.warning("fixes not read for %s: %s", moment["match_id"], str(exc)[:300])
+            fixes = []
+        return commentate(moment, history, fixes=fixes)
+
+    return call
 
 
 def default_deps() -> Deps:
@@ -54,7 +70,7 @@ def default_deps() -> Deps:
         from data.matches import list_matches, load_moments, video_map
     except ImportError:
         return None
-    return Deps(list_matches, load_moments, commentate, video_map, correct, answer, status)
+    return Deps(list_matches, load_moments, commentate, video_map, correct, answer, status, True)
 
 
 class ReplayRequest(BaseModel):
@@ -149,6 +165,8 @@ def create_app(
         if jump is not None and not any(m["idx"] == jump for m in moments):
             raise HTTPException(422, f"no moment {jump} in {req.match_id!r}")
         commentate, speak, correct = d.commentate, speaker.prepare, d.correct
+        if d.fixes:  # a fix applies to the next lines straight away, this replay's too
+            commentate = with_fixes(d.commentate, store)
         # shortcut: the cap is checked only as a replay starts, so a running replay can overshoot
         # it by about one replay's cost; check per line in run_replay if that ever matters
         off_air = await asyncio.to_thread(guard.off_air, store)
