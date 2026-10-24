@@ -554,7 +554,7 @@ class Gaps:
             ):
                 said_as["next"] = topic[0]
         if ln is None:
-            failed = False  # a try had a wrong number or a used opener
+            failed = outage = False  # a try had a wrong number or a used opener; the model raised
             for retry in (False, True):
                 if self.calls >= MAX_CALLS:
                     return None
@@ -566,7 +566,7 @@ class Gaps:
                     log.warning(
                         "stat line after %s failed: %s: %s", m["idx"], type(exc).__name__, exc
                     )
-                    said = None
+                    said, outage = None, True
                 if said and said.get("text"):  # the checks below see what is said
                     said = {
                         **said,
@@ -606,7 +606,11 @@ class Gaps:
                     log.warning("stat line after %s: the model gave no line", m["idx"])
                     # the analyst's turn is the fact itself, so an outage leaves the booth talking;
                     # its numbers are the data's, so it passes the number check by construction
-                    text = None if reply else cut(said_as["detail"], int(room(video_t, end)))
+                    text = (
+                        None
+                        if reply or not outage or said_as["kind"] in (OPEN, "orientation")
+                        else cut(said_as["detail"], int(room(video_t, end)))
+                    )
                     if not text or self.wrong(text, stat_moment(m, said_as, reply), past):
                         return None
                     said = {
