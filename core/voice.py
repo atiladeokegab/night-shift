@@ -21,6 +21,7 @@ FALLBACK_MODEL = "eleven_flash_v2_5"  # no audio tags: it would read "[shouting]
 V3_TIMEOUT_S = 20.0  # v3 takes 2-3 s warm, 11-15 s on a cold first request
 FALLBACK_TIMEOUT_S = 10.0
 FALLBACK_RESERVE_S = 1.5  # v3 stops this long before the moment, so flash still lands in time
+FALLBACK_MIN_S = 1.5  # flash always gets this long once it has a slot: a little late beats silence
 LIVE_BUDGET_S = 4.0  # a line with no video time is spoken as it arrives
 CONCURRENCY = 3  # a whole match's lines arrive in seconds; ElevenLabs caps concurrent requests
 
@@ -163,12 +164,11 @@ class Speaker:
             self._job(line, default_voice(line.get("sport")), deadline)
 
     async def audio(self, line: dict, voice: dict) -> tuple[bytes, str] | None:
-        job = self._job(line, voice, None)
-        early = job.done()  # made as the line arrived, before anyone asked for it
-        made = await asyncio.shield(job)
+        early = (line["line_id"], voice["id"]) in self.jobs  # made as the line arrived (prepare)
+        made = await asyncio.shield(self._job(line, voice, None))
         if made is None:  # the next request tries again
             self.jobs.pop((line["line_id"], voice["id"]), None)
-            if early:  # it ran out of its budget long before the page asked (/stage paces lines)
+            if early:  # its budget began when the line arrived, not when the page asked (/stage)
                 return await self.audio(line, voice)
         return made
 
@@ -194,12 +194,14 @@ class Speaker:
                     if audio:
                         return audio, model
             until = min(end, time.monotonic() + FALLBACK_TIMEOUT_S)
-            audio = await self._tts(client, key, voice, FALLBACK_MODEL, line["text"], until)
+            audio = await self._tts(
+                client, key, voice, FALLBACK_MODEL, line["text"], until, FALLBACK_MIN_S
+            )
             return (audio, FALLBACK_MODEL) if audio else None
 
-    async def _tts(self, client, key, voice, model, text, until) -> bytes | None:
+    async def _tts(self, client, key, voice, model, text, until, least=0.0) -> bytes | None:
         async with self.slots:
-            left = until - time.monotonic()
+            left = max(until - time.monotonic(), least)
             if left <= 0:  # it would land after the moment
                 log.warning("voice %s skipped: out of time", model)
                 return None
