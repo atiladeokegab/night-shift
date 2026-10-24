@@ -3,11 +3,13 @@
 A pack holds only the players and teams in the match, and only their shots from earlier in the same
 season or tournament, up to the day before the match. `tonight` is the match's own shots, each
 linked to the sample moment that reveals it, so runtime filters to idx <= the current moment.
+Cricket has no shots: its players carry batting by phase and bowling, and `tonight` is every ball.
 Built offline from the feed's caches and committed, so runtime needs no network.
 """
 
 from __future__ import annotations
 
+import copy
 import csv
 import io
 import json
@@ -26,11 +28,12 @@ SAMPLE = ROOT / "data" / "sample"
 SHOT_CAP = 300  # each player's most recent pre-match shots on the map; totals and zones count all
 
 # match -> its source: shufinskiy/nba_data shot archives (the regular-season file has no playoffs),
-# or a StatsBomb (competition, season)
+# a StatsBomb (competition, season), or the year of Cricsheet T20Is
 MATCHES = {
     ("basketball", "0020500591"): ("shotdetail_2005",),
     ("basketball", "0049700088"): ("shotdetail_1997", "shotdetail_po_1997"),
     ("football", "3869685"): (43, 106),
+    ("cricket", "1298150"): ("2022",),
 }
 
 
@@ -235,9 +238,141 @@ def football_pack(match_id: str, sample: dict, comp_season: tuple) -> dict:
     return _pack(header, source, "statsbomb_120x80", start, players, teams, tonight)
 
 
+# --- cricket ------------------------------------------------------------------------------
+
+NOT_BOWLERS = {"run out", "retired hurt", "retired out", "obstructing the field"}
+
+
+def phase(over: int) -> str:
+    return "powerplay" if over < 6 else "middle" if over < 15 else "death"
+
+
+def _balls(match: dict):
+    """(innings no, over, delivery) in the feed's order: super overs are not moments."""
+    for n, inn in enumerate(match.get("innings") or [], start=1):
+        if not inn.get("super_over"):
+            for over in inn.get("overs") or []:
+                for d in over.get("deliveries") or []:
+                    yield n, inn.get("team"), feed._num(over.get("over")) or 0, d
+
+
+def _batting(p: dict, over: int) -> dict:
+    return p["batting"].setdefault(phase(over), {"balls": 0, "runs": 0, "outs": 0})
+
+
+def cricket_pack(match_id: str, sample: dict, season: tuple) -> dict:
+    header, moments = sample["header"], sample["moments"]
+    archive = feed.cricsheet_zip()
+    match = feed.cricsheet_match(match_id, archive)
+    if len(feed.cricket_moments(header, match)) != len(moments):
+        raise ValueError(f"{match_id}: the sample is stale against Cricsheet")
+    info = match["info"]
+    reg = info["registry"]["people"]
+    ids = {
+        reg[name]: (feed._s(name), feed._s(t))
+        for t, names in info["players"].items()
+        for name in names
+    }
+    players = {
+        name: {
+            "team": team,
+            "games": 0,
+            "batting": {},
+            "bowling": {"balls": 0, "runs": 0, "wickets": 0},
+        }
+        for name, team in ids.values()
+    }
+    teams = {feed._s(t): {"innings": 0, "balls": 0, "runs": 0, "wickets": 0} for t in info["teams"]}
+
+    earlier = []
+    for n in archive.namelist():
+        if not n.endswith(".json") or n == f"{match_id}.json":
+            continue
+        m = json.loads(archive.read(n))
+        i = m.get("info") or {}
+        day = feed._s((i.get("dates") or [""])[0], 10)
+        if (
+            i.get("gender") == info.get("gender")
+            and day.startswith(season[0])
+            and day < header["date"]
+        ):
+            if set(feed._s(t) for t in i.get("teams") or []) & set(teams):
+                earlier.append((day, m))
+    earlier.sort(key=lambda x: x[0])
+    for _, m in earlier:
+        people = (m["info"].get("registry") or {}).get("people") or {}
+        here = {ids[people[name]][0] for name in people if people[name] in ids}
+        for name in here:
+            players[name]["games"] += 1
+        innings = set()
+        for n, team, over, d in _balls(m):
+            team, extras, runs = feed._s(team), d.get("extras") or {}, d.get("runs") or {}
+            outs = [w for w in d.get("wickets") or [] if isinstance(w, dict)]
+            legal = not (extras.get("wides") or extras.get("noballs"))
+            if team in teams:
+                innings.add((team, n))
+                teams[team]["balls"] += legal
+                teams[team]["runs"] += feed._num(runs.get("total")) or 0
+                teams[team]["wickets"] += len(outs)
+            batter = ids.get(people.get(d.get("batter")), ("",))[0]
+            if batter and not extras.get("wides"):  # a wide is not a ball faced
+                _batting(players[batter], over)["balls"] += 1
+                _batting(players[batter], over)["runs"] += feed._num(runs.get("batter")) or 0
+            for w in outs:
+                out = ids.get(people.get(w.get("player_out")), ("",))[0]
+                if out:
+                    _batting(players[out], over)["outs"] += 1
+            bowler = ids.get(people.get(d.get("bowler")), ("",))[0]
+            if bowler:
+                b = players[bowler]["bowling"]
+                b["balls"] += legal
+                b["runs"] += (
+                    (feed._num(runs.get("total")) or 0)
+                    - (extras.get("byes") or 0)
+                    - (extras.get("legbyes") or 0)
+                )
+                b["wickets"] += sum(w.get("kind") not in NOT_BOWLERS for w in outs)
+        for team, _ in innings:
+            teams[team]["innings"] += 1
+    for p in players.values():
+        for ph in p["batting"].values():
+            ph["sr"] = round(100 * ph["runs"] / ph["balls"], 1) if ph["balls"] else None
+            ph["out_rate"] = round(ph["outs"] / ph["balls"], 3) if ph["balls"] else None
+        b = p["bowling"]
+        b["economy"] = round(6 * b["runs"] / b["balls"], 2) if b["balls"] else None
+
+    # the moment each ball is revealed by: tag every ball's clock on a copy, read the tags back
+    tagged = copy.deepcopy(match)
+    for k, (*_, d) in enumerate(_balls(tagged)):
+        d["actual_delivery"] = str(k)
+    shown = [int(m["clock"]) for m in feed.cricket_moments(header, tagged)]
+    tonight = []
+    for k, (n, _, over, d) in enumerate(_balls(match)):
+        out = next((w.get("player_out") for w in d.get("wickets") or [] if isinstance(w, dict)), "")
+        tonight.append(
+            {
+                "idx": next(i for i, b in enumerate(shown) if b >= k),
+                "innings": n,
+                "over": over,
+                "phase": phase(over),
+                "batter": feed._s(d.get("batter")),
+                "bowler": feed._s(d.get("bowler")),
+                "runs": feed._num((d.get("runs") or {}).get("total")) or 0,
+                "out": feed._s(out),
+            }
+        )
+    source = f"Cricsheet T20Is, {season[0]}"
+    pack = _pack(header, source, None, f"{season[0]}-01-01", players, teams, tonight)
+    # no shots to date, so the pre-match matches themselves, for the look-ahead check
+    pack["matches"] = [{"date": day, "teams": m["info"]["teams"]} for day, m in earlier]
+    return pack
+
+
 def build(sport: str, match_id: str) -> dict:
     sample = json.loads((SAMPLE / f"{sport}-{match_id}.json").read_text())
-    make = basketball_pack if sport == "basketball" else football_pack
+    make = {"basketball": basketball_pack, "football": football_pack, "cricket": cricket_pack}[
+        sport
+    ]
     return make(match_id, sample, MATCHES[(sport, match_id)])
 
 
