@@ -289,7 +289,9 @@ def answer(
     request = build_request(header, past)
     request["system"] = ASK
     heard = "\n".join(f"- {ln['text']}" for ln in lines[-5:]) or "- none yet"
-    request["messages"][0]["content"] += "\n" + QUESTION.format(lines=heard, question=question)
+    # one quoted line: a line break in the question must not forge a field the model reads
+    quoted = json.dumps(" ".join(question.split()), ensure_ascii=False)
+    request["messages"][0]["content"] += "\n" + QUESTION.format(lines=heard, question=quoted)
     start = time.monotonic()
     reply, replies, tool_calls, _ = _call(provider or unrecorded_provider(), request, header, past)
     said = " ".join(b["text"] for b in reply["content"] if b["type"] == "text")

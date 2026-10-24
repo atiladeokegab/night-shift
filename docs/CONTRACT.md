@@ -123,7 +123,8 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   the reply was exactly that line. Mubit has no feedback API, so this turn is the training signal.
 - The commentator sees only moments up to the current one; a later event never reaches the model.
 - Answer (`agent.commentator.answer`): the request for the moment on screen with the system prompt
-  `agent/ask.md`, the last five lines said and the viewer's question appended to the user message;
+  `agent/ask.md`, the last five lines said and the viewer's question (whitespace collapsed, quoted as a JSON
+  string, so it cannot forge a field) appended to the user message;
   same model, tools and session; at most 30 words. Sent with `x-middleware-record: off`: its own
   system prompt would otherwise split the one Mubit task the lines train.
 
