@@ -49,6 +49,7 @@ class Replay:
         # a video replay's lines are all sent ahead: when (time.monotonic) the viewer reaches the
         # last one, so it is not forgotten while the video still plays (core/app.py)
         self.ends_at: float | None = None
+        self.seen = self.started  # a viewer's last request (time.monotonic), for FORGET_S
         self._changed = asyncio.Condition()
 
     async def publish(self, event: str, data: dict) -> None:
