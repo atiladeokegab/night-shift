@@ -25,6 +25,7 @@ def recording(called: list):
         n = len(called)
         return {
             "line_id": f"{moment['match_id']}-{n}",
+            "match_id": moment["match_id"],
             "moment_idx": moment["idx"],
             "text": f"Call {n}.",
         }
@@ -102,6 +103,25 @@ def test_a_jump_shows_each_earlier_line_once_however_often_the_match_was_replaye
     assert old == ["r1-18", "r1-19", "r1-20", "r1-21"]  # the latest replay's line, once per moment
     assert len({ln["line_id"] for ln in lines}) == len(lines)
     assert len({ln["text"] for ln in lines}) == len(lines)
+
+
+def test_a_jump_shows_an_earlier_line_in_its_fixed_wording(tmp_path):
+    def correct(line, text, **kw):
+        return {"mubit_request_id": "m1", "reply_matched": True}
+
+    deps = Deps(list_matches, load_moments, recording([]), video_map, correct=correct)
+    with TestClient(create_app(Store(tmp_path), deps)) as client:
+        rid = client.post("/replays", json={"match_id": KOBE, "speed": 1e6}).json()["replay_id"]
+        first = [d for n, d in read_stream(client, rid) if n == "line" and d["moment_idx"] == 20][0]
+        fix = {"corrected_text": "Kobe makes it 120.", "reason": "wording"}
+        assert client.post(f"/lines/{first['line_id']}/fix", json=fix).status_code == 200
+        rid = client.post("/replays", json={"match_id": KOBE, "speed": 1e6, "start_idx": 22})
+        events = read_stream(client, rid.json()["replay_id"])
+    at = next(
+        i for i, (n, d) in enumerate(events) if n == "line" and d["line_id"] == first["line_id"]
+    )
+    assert events[at][1]["history"] and events[at + 1][0] == "fixed"
+    assert events[at + 1][1]["corrected_text"] == "Kobe makes it 120."
 
 
 def test_a_jump_to_an_unknown_moment_is_refused(tmp_path):

@@ -109,12 +109,17 @@ async def run_replay(
                 for ln in await asyncio.to_thread(store.all, "lines")
                 if ln.get("match_id") == replay.match_id and ln.get("speaker", "lead") == "lead"
             }
+            fixed = {f["line_id"]: f for f in await asyncio.to_thread(store.all, "fixes")}
             for moment in moments:
                 if moment["idx"] < start_idx:
                     await replay.publish("moment", moment)
                     if moment["idx"] in said:
                         old = {k: v for k, v in said[moment["idx"]].items() if k != "video_t"}
                         await replay.publish("line", {**old, "history": True})
+                        if (
+                            old["line_id"] in fixed
+                        ):  # shown in its fixed wording, as when it was fixed
+                            await replay.publish("fixed", fixed[old["line_id"]])
         for moment in moments:
             tag = {}
             if moment["idx"] < start_idx:  # a jump (#163): published above, never called
