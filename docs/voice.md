@@ -53,6 +53,8 @@ VOICE_FOOTBALL=gU0LNdkMOQCOrPrwtbee   # an id from GET /voices, or any ElevenLab
 VOICE_CRICKET=IX4AgWzTnD6q0cNvHqvK
 VOICE_MODEL_FOOTBALL=eleven_v3        # or eleven_flash_v2_5: no tags, fastest
 VOICE_MODEL_CRICKET=eleven_v3
+VOICE_LABEL_FOOTBALL="British Football Announcer"   # the name the page shows
+VOICE_LABEL_CRICKET="Raju, Cricket Commentator"
 ```
 
 Empty or unset means the default. A raw ElevenLabs voice id shows in `GET /voices` as `football-pick` (or `cricket-pick`), with the sport's default `lang`. The id itself stays on the server. Library voices work by id without being added to the account, but each one's first request is cold, so run `uv run python -m core.voice` after changing the pick. `GET /voices` reports the chosen default for each sport. The key stays in `ELEVENLABS_API_KEY` on the server, and the browser never calls ElevenLabs.
