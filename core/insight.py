@@ -1637,6 +1637,8 @@ def wrong_claims(text: str, past: list[dict], question: str = "") -> list[str]:
         if period > m.get("period", period) and re.search(rf"{NOW_IN}{part}\b", text, re.I)
     ]
     goals = Counter(p["players"].get("shooter") for p in goals_so_far(past) if p.get("players"))
+    # a claimed goal (SCORED) may be a shootout kick: "Argentina lead after Paulo Dybala scores"
+    netted = {p["players"].get("shooter") for p in past if p.get("outcome") == "Goal"}
     names = {n for p in past for n in (p.get("players") or {}).values() if isinstance(n, str)}
     surnames = Counter(n.split()[-1] for n in names)
     said = {n: n if surnames[n.split()[-1]] > 1 else n.split()[-1] for n in names}  # two Martínez
@@ -1695,7 +1697,7 @@ def wrong_claims(text: str, past: list[dict], question: str = "") -> list[str]:
                 or any(a <= hit.start() < b for a, b in denied)
             ):
                 continue
-            if (name := _named_before(named, hit.start())) and not goals[name]:
+            if (name := _named_before(named, hit.start())) and name not in netted:
                 wrong.append(f"{name} has not scored so far")
     return wrong
 
