@@ -105,6 +105,15 @@ def test_a_line_may_say_only_the_true_leader_leads(idx, text, wrong):
     assert insight.wrong_numbers(text, m, match_header(JORDAN), before(JORDAN, idx)) == wrong
 
 
+def test_a_score_said_in_hundreds_is_no_margin():  # build-143: the "one" of "one hundred"
+    line = "Sixty-one for Kobe, and the Lakers lead one hundred and two to ninety-three."
+    m = next(m for m in load_moments(KOBE) if m["score"] == {"home": 102, "away": 93})
+    assert insight.wrong_numbers(line, m, match_header(KOBE), before(KOBE, m["idx"])) == []
+    spurs = load_moments("3754092")[26]  # 1-2: "two-one" is the score too
+    line = "Gary Cahill! Chelsea pull one back, but Tottenham still lead two-one!"
+    assert insight.wrong_numbers(line, spurs, match_header("3754092"), []) == []
+
+
 @pytest.mark.parametrize(
     ("idx", "text", "wrong"),
     [
