@@ -4,6 +4,7 @@ commentator come from data/ and agent/ (#13) through `Deps`, so tests inject the
 import asyncio
 import json
 import logging
+import re
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -36,16 +37,18 @@ class Deps:
     video_map: Callable[..., dict | None] = lambda match_id, start_idx=None: None
     correct: Callable[[dict, str], dict] | None = None
     ask: Callable[[str, list[dict], list[dict]], dict] | None = None
+    status: Callable[[list[dict]], dict] | None = None
 
 
 def default_deps() -> Deps:
     """Wire #13's loaders and commentator; None until they land, and the replay routes say 503."""
     try:
         from agent.commentator import answer, commentate, correct
+        from agent.status import status
         from data.matches import list_matches, load_moments, video_map
     except ImportError:
         return None
-    return Deps(list_matches, load_moments, commentate, video_map, correct, answer)
+    return Deps(list_matches, load_moments, commentate, video_map, correct, answer, status)
 
 
 class ReplayRequest(BaseModel):
@@ -64,6 +67,15 @@ class AskRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
     question: str = Field(min_length=1, max_length=200)
     moment_idx: int | None = None  # the last moment on the viewer's screen; None: the latest sent
+
+
+# "Where are we?" asked in words, typed or by voice (#186): the status task answers it, not Ask
+STATUS_ASK = re.compile(r"(?:so )?(?:where are we|what(?:'s| is) the score)(?: now| at)?")
+
+
+def wants_status(question: str) -> bool:
+    said = re.sub(r"[^\w\s']", " ", question.lower().replace("’", "'"))  # a phone's apostrophe
+    return bool(STATUS_ASK.fullmatch(" ".join(said.split())))
 
 
 def asked_so_far(replay: Replay, moments: list[dict], on_screen: int | None):
@@ -217,7 +229,10 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
             raise HTTPException(409, "nothing has happened yet")
         asking.add(replay_id)
         try:
-            said = await asyncio.to_thread(d.ask, req.question, past, lines) if d.ask else None
+            if d.status and wants_status(req.question):
+                said = await asyncio.to_thread(d.status, past)
+            else:
+                said = await asyncio.to_thread(d.ask, req.question, past, lines) if d.ask else None
         except Exception as exc:  # the calm off-air state, never the provider's error
             name = type(exc).__name__
             log.warning("ask %s off air: %s: %s", replay.match_id, name, str(exc)[:300])
