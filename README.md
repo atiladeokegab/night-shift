@@ -69,11 +69,12 @@ Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026. Track: Own
 
 ### What's new tonight
 
-- **A graph of teams and players:** SurrealDB holds 612 football matches and everyone in them, and answers only from matches before this one, so nothing later leaks.
+- **A graph of teams and players:** SurrealDB holds the seasons around our matches in football (612 matches), basketball and cricket, and answers only from matches before this one, so nothing later leaks.
 - **Talk:** press **Talk** and the match pauses while you speak with the commentator; each answer goes through Claude via Mubit and the same check as Ask. Escape, or 12 s of silence, resumes.
 - **One speaking queue:** no line cuts another off mid-word; a big moment goes first, and routine lines that have gone stale are dropped.
 - **Teams tab:** press **T** for each side's form, their last meetings and the squad, as they stood before the match.
 - **One broadcast pair:** both voices share one tone per moment, lit up for a big moment and calm for a routine one, and in quiet stretches they take turns on one player.
+- **A fix's path to training, on the review page:** after a producer saves a fix, a **Sent to training** panel shows the fix, each Score check example it sent with its Mubit request id, and the examples-sent count going up. 2,161 Score check examples have been sent to training, 60 of them from producer fixes.
 
 Everything else, with its code and tests: [every feature](docs/features.md).
 

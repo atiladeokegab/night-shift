@@ -59,7 +59,7 @@ Mubit's 95% target and no adapter serves.
 
 What we did about it: [Line check](#how-it-uses-mubit), one frozen task whose answer key comes from
 code, with its recorded checks and the producers' fixes. Beside the rules (#298), it checks each new lead
-line; stored replays are checked once as they play (its count is `linecheck` on [`/stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats)). Its
+line; replays of stored lines make no new Line check call (its count is `linecheck` on [`/stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats)). Its
 flags go to the producer's fix queue ([how well it works](#line-check-beside-the-rules)).
 [`data/side_by_side.json`](../data/side_by_side.json) and `/stats`'s `earlier_tasks.adapter.console`
 carry this same read ([`data/mubit_console.json`](../data/mubit_console.json)); a test fails if they
@@ -142,7 +142,7 @@ Mubit's test, and none has yet ([as its console shows it](#correction-loop-with-
    one field changed so it is wrong, marked `planted: true`. They balance the labels; they are not
    real errors the commentator made. Every line of the WSL match (3913122) and the F1 race (9636)
    is held out and never sent to Mubit. Beside the rules (#298), it checks each new lead line; stored
-   replays are checked once as they play (`linecheck` on [`/stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats)). A flag sends the
+   replays make no new Line check call (`linecheck` on [`/stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats)). A flag sends the
    line to the producer's fix queue and never stops it being said
    ([how well it works](#line-check-beside-the-rules)).
 
