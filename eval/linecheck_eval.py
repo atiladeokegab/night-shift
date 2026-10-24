@@ -6,11 +6,13 @@ never trains the adapter. Tests never run it with a key.
 
     MUBIT_API_KEY=... uv run python -m eval.linecheck_eval [LABELS.jsonl ...]
     uv run python -m eval.linecheck_eval --dry     # FakeProvider: no network, nothing flagged
+    ... eval/heldout_labels.jsonl --json eval/linecheck_heldout.json   # the result /stats serves
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from concurrent.futures import ThreadPoolExecutor
@@ -55,6 +57,21 @@ def compare(labels: list[dict], provider) -> dict:
     }
 
 
+def summary(name: str, out: dict) -> dict:
+    """The counts the Proof card shows (#317): caught and false alarms for each check, in words."""
+    s = out["rules"]["overall"]
+    return {
+        "labels": name,
+        "lines": s["lines"],
+        "wrong": s["tp"] + s["fn"],
+        **{
+            k: {"caught": out[k]["overall"]["tp"], "false_alarms": out[k]["overall"]["fp"]}
+            for k in ("rules", "line_check")
+        },
+        "errors": out["errors"],
+    }
+
+
 def table(name: str, out: dict) -> str:
     rows = [
         f"## {name}",
@@ -80,6 +97,7 @@ def main(argv=None, env=os.environ) -> int:
     p.add_argument(
         "--detail", action="store_true", help="also Line check's misses and false alarms"
     )
+    p.add_argument("--json", type=Path, help="write the last labels file's counts here")
     a = p.parse_args(argv)
     from agent.commentator import FakeProvider, MubitProvider
 
@@ -95,6 +113,8 @@ def main(argv=None, env=os.environ) -> int:
         print(table(path.name, out))
         if a.detail:
             print(report(out["line_check"]))
+        if a.json:
+            a.json.write_text(json.dumps(summary(path.name, out), indent=1) + "\n")
     return 0
 
 
