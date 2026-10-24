@@ -125,13 +125,22 @@ function PerMatch({ stats }: { stats: Stats }) {
   )
 }
 
+// each model id on one line (.nw): never "claude-sonnet-5-" / "5"
+const ids = (list: string) => list.split(', ').filter(Boolean).map((id, i) => <span key={id}>{i > 0 && ', '}<span className="nw">{id}</span></span>)
+
 function Speaker({ name, s }: { name: string; s: SpeakerStats }) {
+  const all = !!s.served_lines && s.served_lines === s.lines
   const v = (x: string) => (s.lines === 0 ? '–' : x)
   return (
     <>
       <div className="wide">
         <dt className="label">{name}</dt>
-        <dd>{[s.model, `${s.lines.toLocaleString()} lines · all matches`].filter(Boolean).join(' · ')}</dd>
+        <dd>
+          {/* "Served by" alone only when every line says what served it (#250): older lines don't */}
+          {all ? <>Served by {ids(s.served_by!)}</> : ids(s.model)}
+          {!all && !!s.served_lines && <> · served by {ids(s.served_by!)} on {s.served_lines.toLocaleString()} lines</>}
+          {(all || s.model) && ' · '}{`${s.lines.toLocaleString()} lines · all matches`}
+        </dd>
       </div>
       {/* one "First word" caption over both, so each label fits one line at 1280 px; "Cost" over its own */}
       <div className="cap" aria-hidden="true"><dt className="label">First word</dt></div>
