@@ -146,7 +146,10 @@ class AskRequest(BaseModel):
 
 
 # "Where are we?" asked in words, typed or by voice (#186): the status task answers it, not Ask
-STATUS_ASK = re.compile(r"(?:so )?(?:where are we|what(?:'s| is) the score)(?: now| at)?")
+STATUS_ASK = re.compile(
+    r"(?:so )?(?:where are we|what(?:'s| is) the score|who(?:'s| is) (?:batting|at the crease))"
+    r"(?: now| at)?"
+)
 
 
 def wants_status(question: str) -> bool:
