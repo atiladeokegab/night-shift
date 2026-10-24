@@ -13,6 +13,8 @@ SAID = "Kobe Bryant from deep, three points! Lakers trail"
 WRONG = f"{SAID} fifty-eight to seventy-five, Bryant with forty-one."
 RIGHT = f"{SAID} sixty-five to seventy-five, Bryant with forty-one."
 UNSAID = f"{SAID} sixty-five to seventy-five."  # flagged only for leaving out his 41
+CRICKET = "1298150"  # idx 11: Iftikhar's six, his third in four balls only by the moments before it
+SIXES = "Another six! Iftikhar Ahmed, three sixes in four balls! Pakistan 88 for 2."
 
 
 def line(line_id, text, **more):
@@ -31,6 +33,7 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv("MUBIT_FALLBACK_KEY", "owner-key")
     store = Store(tmp_path)
     for ln in (
+        line("six", SIXES, speaker="lead", match_id=CRICKET, moment_idx=11),
         line("w-old", WRONG, speaker="lead"),
         line("r", RIGHT, speaker="lead"),
         line("u", UNSAID),  # no speaker: stored before #130, the lead's

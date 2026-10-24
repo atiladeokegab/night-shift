@@ -21,7 +21,7 @@ def queue(store, deps) -> list[dict]:
     fixed_ids = {f["line_id"] for f in store.all("fixes")}
     fixed = {_key(ln) for ln in lines if ln["line_id"] in fixed_ids}
     titles = {m["match_id"]: m["title"] for m in deps.list_matches()}
-    matches: dict[str, tuple[dict, dict[int, dict]] | None] = {}
+    matches: dict[str, tuple[dict, list[dict]] | None] = {}
     seen, out = set(), []
     for line in reversed(lines):  # appended in order: newest first
         if line.get("speaker") == "analyst" or not line.get("text"):
@@ -34,15 +34,19 @@ def queue(store, deps) -> list[dict]:
         if mid not in matches:
             try:
                 header = match_header(mid)
-                matches[mid] = header, {m["idx"]: m for m in deps.load_moments(mid)}
+                matches[mid] = header, deps.load_moments(mid)
             except (KeyError, FileNotFoundError):  # a match no longer bundled: nothing to check
                 matches[mid] = None
-        if matches[mid] is None or (m := matches[mid][1].get(line.get("moment_idx"))) is None:
+        if matches[mid] is None:
             continue
+        header, moments = matches[mid]
+        at = next((i for i, x in enumerate(moments) if x["idx"] == line.get("moment_idx")), None)
+        if at is None:
+            continue
+        m, past = moments[at], moments[:at]  # past: as the replay's history, for recent-play counts
         if m.get("type") == "Stat":  # the analyst's moment
             continue
-        header = matches[mid][0]
-        wrong = [w for w in insight.wrong_numbers(line["text"], m, header) if UNSAID not in w]
+        wrong = [w for w in insight.wrong_numbers(line["text"], m, header, past) if UNSAID not in w]
         if not wrong:
             continue
         d = m.get("detail") or {}
