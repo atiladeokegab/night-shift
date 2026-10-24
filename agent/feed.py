@@ -451,6 +451,7 @@ F1_FIELD = 5  # pit stops of the top five; the standing gives the top five with 
 F1_PIT_WINDOW = 40.0  # s: a place changing hands while either car is in the pits is a pit cycle
 F1_FLAP = 10.0  # s: a pass that undoes one this recent is a car taking its place back
 F1_HOLD = 20.0  # s: a pass is called once it has held this long (and any pit row behind it is in)
+F1_PIT_MAX = 120.0  # s in the pit lane: longer is a car parked under a red flag, not a stop
 
 
 def openf1(endpoint: str, session_key: str) -> list[dict]:
@@ -607,7 +608,10 @@ def f1_moments(header: dict, rows: dict[str, list[dict]]) -> list[dict]:
 
     for when, n, lap, lane in pits:
         lane = _num(lane)  # pit entry to exit, not the stationary stop
-        if order_at(when).get(n, 99) > F1_FIELD or not lane:
+        if order_at(when).get(n, 99) > F1_FIELD or not lane or lane > F1_PIT_MAX:
+            continue
+        stay = timedelta(seconds=lane)  # a red flag within its lane time: a tyre change, not a stop
+        if any(_s(f) == "RED" and when - stay <= w <= when + stay for w, _, f, _ in control):
             continue
         lap = _num(lap) or 0
         tyre = next(
