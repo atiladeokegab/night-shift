@@ -161,7 +161,8 @@ def test_a_client_gets_its_hourly_starts_then_429_with_retry_after(tmp_path):
     client, _ = app(Store(tmp_path), {"REPLAYS_PER_HOUR": "2"})
     with client:
         ok = [start(client, ip="1.1.1.1, 10.0.0.1").status_code for _ in range(2)]
-        over = start(client, ip="1.1.1.1, 10.0.0.2")  # the first hop is the client
+        # the first hop is the client; match 8 has no stored lines to play instead
+        over = start(client, match_id="8", ip="1.1.1.1, 10.0.0.2")
         other = start(client, ip="2.2.2.2")
     assert ok == [200, 200]
     assert over.status_code == 429 and 0 < int(over.headers["retry-after"]) <= 3600
@@ -329,3 +330,46 @@ def test_after_midnight_a_read_error_does_not_carry_yesterdays_spend(tmp_path):
     assert guard.off_air(store)  # yesterday, over the cap
     store.down, now[0] = True, NOON
     assert not guard.off_air(store)
+
+
+def test_over_its_hourly_starts_a_client_hears_the_stored_lines(tmp_path):
+    client, calls = app(Store(tmp_path), {"REPLAYS_PER_HOUR": "1"})
+    with client:
+        fresh = start(client).json()["replay_id"]
+        read_stream(client, fresh)
+        over = start(client)  # a judge clicking through: the stored lines, not a refusal
+        assert over.status_code == 200
+        said = texts(client, over.json()["replay_id"])
+        unknown = start(client, match_id="8")  # nothing stored for it: still refused
+    assert calls == [0, 1, 2] and said == ["New", "New", "New"]  # the first replay's lines
+    assert unknown.status_code == 429 and "started a lot" in unknown.json()["detail"]
+
+
+def test_a_replay_of_stored_lines_never_counts_against_the_hourly_starts(tmp_path):
+    store, gate, calls = Store(tmp_path), threading.Event(), []
+    stored(store)
+
+    def slow(m, history):  # the first replay holds the one live slot until the gate opens
+        calls.append(m["idx"])
+        gate.wait(5)
+        return {"line_id": f"new{m['idx']}", "match_id": "7", "moment_idx": m["idx"], "text": "New"}
+
+    client, _ = app(store, {"MAX_LIVE_REPLAYS": "1", "REPLAYS_PER_HOUR": "2"}, commentate=slow)
+    with client:
+        first = start(client).json()["replay_id"]
+        busy = [start(client) for _ in range(3)]  # the live slot is taken: stored lines, uncounted
+        for r in busy:
+            read_stream(client, r.json()["replay_id"])
+        gate.set()
+        read_stream(client, first)
+        second = start(client)  # the client's second fresh start of two
+        read_stream(client, second.json()["replay_id"])
+    assert [r.status_code for r in busy] == [200, 200, 200] and second.status_code == 200
+    assert calls == [
+        0,
+        1,
+        2,
+        0,
+        1,
+        2,
+    ]  # both fresh replays called the model; the stored ones didn't
