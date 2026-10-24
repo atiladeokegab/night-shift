@@ -4,6 +4,7 @@ the label code gives it (eval/linecheck.py). Lines of the held-out matches (3913
     uv run python -m eval.seed_linecheck --dry                    # FakeProvider, no network
     MODE=cloud STORE_URL=gs://hackathon-starter-ao-state/night-shift \\
         uv run python -m eval.seed_linecheck --go 200             # recorded calls; MUBIT_API_KEY
+    uv run python -m eval.seed_linecheck --pilot 50   # unkept: agrees with gold, and on a repeat?
     uv run python -m eval.seed_linecheck --held-out > held_out.jsonl   # the unseen test set
     uv run python -m eval.seed_linecheck --score outputs.jsonl    # {"id", "output"} per line
 
@@ -19,13 +20,15 @@ import os
 import random
 import sys
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from agent.commentator import CORRECTION, MODEL, FakeProvider, MubitProvider
+from agent.commentator import CORRECTION, FakeProvider, MubitProvider
 from core.store import open_store
 from data.matches import load_moments, match_header
 from eval.linecheck import FIELDS, HELD_OUT, build_request, dumps, example_id, gold, parse, plant
 
 SEED = 209
+WORKERS = 8  # calls in flight on --go and --pilot
 
 
 def examples(lines: list[dict]) -> list[dict]:
@@ -72,7 +75,7 @@ def examples(lines: list[dict]) -> list[dict]:
 def request(ex: dict) -> dict:
     header, moments = match_header(ex["match_id"]), load_moments(ex["match_id"])
     i = next(i for i, m in enumerate(moments) if m["idx"] == ex["idx"])
-    return build_request(header, moments[i], moments[:i], ex["text"], MODEL)
+    return build_request(header, moments[i], moments[:i], ex["text"])
 
 
 def batch(exs: list[dict], n: int) -> list[dict]:
@@ -86,28 +89,69 @@ def _text(reply: dict) -> str:
     return "".join(b.get("text", "") for b in reply["content"] if b["type"] == "text").strip()
 
 
-def go(exs: list[dict], provider) -> Counter:
-    """One recorded call per example; a reply that isn't the gold gets the correction as the next
-    turn of that call, with the exact gold JSON, as a producer's fix does (agent/commentator.py)."""
+def _go_one(ex: dict, provider) -> tuple[str, str]:
+    req, want = request(ex), dumps(ex["gold"])
+    try:
+        said = _text(provider.call(req))
+        matched = said == want
+        corrected = "-"
+        if not matched:
+            req["messages"] += [
+                {"role": "assistant", "content": said or "(no reply)"},
+                {"role": "user", "content": CORRECTION.format(text=want)},
+            ]
+            corrected = _text(provider.call(req)) == want
+    except Exception as exc:  # one failed call never stops the batch; the key is never printed
+        return "error", f"ERR {ex['id']} {type(exc).__name__}"
+    kind = "matched" if matched else "corrected" if corrected else "uncorrected"
+    return kind, f"REC {ex['id']} matched={matched} corrected={corrected}"
+
+
+def go(exs: list[dict], provider, workers: int = WORKERS) -> Counter:
+    """One recorded call per example, `workers` in flight; a reply that isn't the gold gets the
+    correction as the next turn of that call, with the exact gold JSON, as a producer's fix does
+    (agent/commentator.py)."""
     tally = Counter()
-    for ex in exs:
-        req, want = request(ex), dumps(ex["gold"])
-        try:
-            said = _text(provider.call(req))
-            matched = parse(said) == ex["gold"]
-            corrected = "-"
-            if not matched:
-                req["messages"] += [
-                    {"role": "assistant", "content": said or "(no reply)"},
-                    {"role": "user", "content": CORRECTION.format(text=want)},
-                ]
-                corrected = _text(provider.call(req)) == want
-        except Exception as exc:  # one failed call never stops the batch; the key is never printed
-            print(f"ERR {ex['id']} {type(exc).__name__}", flush=True)
-            tally["error"] += 1
-            continue
-        print(f"REC {ex['id']} matched={matched} corrected={corrected}", flush=True)
-        tally["matched" if matched else "corrected" if corrected else "uncorrected"] += 1
+    with ThreadPoolExecutor(workers) as pool:
+        for kind, line in pool.map(lambda ex: _go_one(ex, provider), exs):
+            print(line, flush=True)
+            tally[kind] += 1
+    return tally
+
+
+def _pilot_one(ex: dict, provider) -> tuple[bool, bool, str]:
+    first = _text(provider.call(request(ex)))
+    again = _text(provider.call(request(ex)))
+    return parse(first) == ex["gold"], first == again, first
+
+
+def pilot(exs: list[dict], provider, workers: int = WORKERS) -> Counter:
+    """Two unkept calls per example: does Claude give the gold, and the same answer again?"""
+    tally = Counter()
+    with ThreadPoolExecutor(workers) as pool:
+        futures = {pool.submit(_pilot_one, ex, provider): ex for ex in exs}
+        for fut in as_completed(futures):
+            ex = futures[fut]
+            try:
+                agree, same, said = fut.result()
+            except Exception as exc:  # the key is never printed
+                print(f"ERR {ex['id']} {type(exc).__name__}", flush=True)
+                tally["error"] += 1
+                continue
+            tally["n"] += 1
+            tally["agree"] += agree
+            tally["same"] += same
+            if not (agree and same):
+                print(
+                    f"PILOT {ex['id']} agree={agree} same={same} gold={dumps(ex['gold'])}"
+                    f" reply={said!r} line={ex['text']!r}",
+                    flush=True,
+                )
+    n = tally["n"] or 1
+    print(
+        f"pilot {tally['n']}: agrees with gold {tally['agree'] / n:.1%},"
+        f" same on repeat {tally['same'] / n:.1%}, errors {tally['error']}"
+    )
     return tally
 
 
@@ -155,6 +199,7 @@ def main(argv=None, env=os.environ) -> int:
     mode = p.add_mutually_exclusive_group()
     mode.add_argument("--dry", action="store_true", help="the default: FakeProvider, no network")
     mode.add_argument("--go", type=int, metavar="N", help="N recorded calls through Mubit")
+    mode.add_argument("--pilot", type=int, metavar="N", help="N unkept examples, each sent twice")
     mode.add_argument("--score", metavar="MODEL_OUTPUTS.jsonl")
     mode.add_argument("--held-out", action="store_true", help="print the held-out set as jsonl")
     p.add_argument("--lines", help="a lines.jsonl copy, instead of the store")
@@ -179,12 +224,19 @@ def main(argv=None, env=os.environ) -> int:
             print(json.dumps({**e, "request": request(e)}))
         return 0
     print(balance(exs))
-    if a.go:
+    if a.go or a.pilot:
         key = env.get("MUBIT_API_KEY")
         if not key:
-            print("--go needs MUBIT_API_KEY in the environment", file=sys.stderr)
+            print("--go and --pilot need MUBIT_API_KEY in the environment", file=sys.stderr)
             return 2
-        tally = go(batch(exs, a.go), MubitProvider(key, record=True))
+        provider = MubitProvider(key, record=True)
+        if a.pilot:  # Mubit keeps the call's metadata only: nothing trains on a pilot
+            provider.client = provider.client.with_options(
+                default_headers={"x-middleware-record": "metadata"}
+            )
+            pilot(batch(exs, a.pilot), provider)
+            return 0
+        tally = go(batch(exs, a.go), provider)
     else:
         sample = batch(exs, 3)
         for e in sample:

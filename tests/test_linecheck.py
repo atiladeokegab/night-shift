@@ -1,10 +1,12 @@
 """Line check (#209): the gold label comes from code, a reply is exactly one JSON object, and no
 line of a held-out match is ever sent to Mubit."""
 
+import hashlib
 import json
 
 import pytest
 
+from agent import linecheck
 from agent.commentator import CORRECTION, FakeProvider
 from data.matches import load_moments, match_header
 from eval import seed_linecheck
@@ -161,7 +163,11 @@ def test_a_planted_error_is_wrong_on_its_field_only(match_id, idx, text, field):
 def test_parse_takes_exactly_one_json_object():
     good = dumps(_labels("ok", "wrong", "not_said", "ok"))
     assert parse(good) == _labels("ok", "wrong", "not_said", "ok")
+    assert good == '{"score":"ok","leader":"wrong","player_total":"not_said","event":"ok"}'
     assert parse(f"  {good}\n") is not None
+    assert parse(json.dumps(json.loads(good))) is None  # spaced: not the canonical line
+    reordered = json.dumps(dict(reversed(json.loads(good).items())), separators=(",", ":"))
+    assert parse(reordered) is None
     assert parse(f"Here you go: {good}") is None
     assert parse(f"{good} The leader is wrong.") is None
     assert parse(f"```json\n{good}\n```") is None
@@ -228,3 +234,34 @@ def test_dry_runs_offline_and_scores_held_out(tmp_path, capsys):
     )
     r = seed_linecheck.score(seed_linecheck.examples(_lines()), str(outputs))
     assert r["scored"] == len(held) + 1 and r["unparsed"] == 1 and r["exact"] == len(held)
+
+
+def test_the_task_is_pinned():
+    """Mubit groups calls into one task only when prompt, tools, format and model are identical:
+    change this hash only with a deliberate edit to agent/linecheck.py."""
+    req = linecheck.request(linecheck.MESSAGE.template)
+    digest = hashlib.sha256(json.dumps(req, sort_keys=True).encode()).hexdigest()
+    assert digest == "2eb1f287d0c636cf25e8b94b3165442fa6997197620fd1036776ddc700869de5"
+    assert req["temperature"] == 0 and "tools" not in req
+
+
+def test_go_keeps_eight_in_flight_and_reports_every_example(capsys):
+    exs = seed_linecheck.batch(seed_linecheck.examples(_lines()), 10)
+    assert seed_linecheck.go(exs, FakeProvider(), workers=8) == {"corrected": len(exs)}
+    out = capsys.readouterr().out
+    assert all(f"REC {e['id']} matched=False corrected=True" in out for e in exs)
+
+
+def test_pilot_reports_gold_and_repeat_agreement(capsys):
+    exs = seed_linecheck.batch(seed_linecheck.examples(_lines()), 10)
+
+    class Echo:  # Claude, if it answered every case with the gold
+        def call(self, req):
+            ex = next(e for e in exs if e["text"] in req["messages"][0]["content"])
+            return {"content": [{"type": "text", "text": dumps(ex["gold"])}]}
+
+    tally = seed_linecheck.pilot(exs, Echo())
+    assert tally["n"] == tally["agree"] == tally["same"] == len(exs)
+    tally = seed_linecheck.pilot(exs, FakeProvider())  # no JSON: never the gold, same each time
+    assert tally["agree"] == 0 and tally["same"] == len(exs)
+    assert "agrees with gold 0.0%, same on repeat 100.0%" in capsys.readouterr().out
