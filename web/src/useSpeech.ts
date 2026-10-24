@@ -44,7 +44,7 @@ export function useSpeech() {
   )
 
   const say = useCallback(
-    (line: Line, voice: Voice | null) => {
+    (line: Pick<Line, 'line_id' | 'text'>, voice: Voice | null) => {
       if (!on) return
       hush()
       const mine = turn.current

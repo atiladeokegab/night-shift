@@ -1,10 +1,11 @@
 // The only module that talks to the match server (docs/CONTRACT.md, 'HTTP'):
 // GET /matches, POST /replays {match_id, speed} -> {replay_id},
 // GET /replays/{id}/stream (SSE: moment, line, stats per moment; error; end last),
-// GET /stats, GET /voices, POST /lines/{id}/fix and GET /lines/{id}/audio?voice=<id> (ElevenLabs; 503
-// when the voice isn't configured).
+// GET /stats, GET /voices, POST /lines/{id}/fix, POST /replays/{id}/ask and GET /lines/{id}/audio?voice=<id>
+// (ElevenLabs; 503 when the voice isn't configured).
 import { demoMatches, demoStats, streamDemo } from './demo'
-import type { Fix, Line, Match, Moment, Stats, StreamEvent, Voice } from './types'
+import { offAir } from './ask'
+import type { Answer, Fix, Line, Match, Moment, Stats, StreamEvent, Voice } from './types'
 
 export const isDemo = new URLSearchParams(window.location.search).has('demo')
 
@@ -57,6 +58,7 @@ export function followReplay(
   source.addEventListener('line', (e) => onEvent({ type: 'line', line: JSON.parse(e.data) as Line }))
   source.addEventListener('stats', (e) => onEvent({ type: 'stats', stats: JSON.parse(e.data) as Stats }))
   source.addEventListener('fixed', (e) => onEvent({ type: 'fixed', fix: JSON.parse(e.data) as Fix }))
+  source.addEventListener('answer', (e) => onEvent({ type: 'answer', answer: JSON.parse(e.data) as Answer }))
   source.addEventListener('error', (e) => {
     // A server `error` event carries {detail}; a dropped connection is a plain Event with no data.
     const data = (e as MessageEvent).data
@@ -98,6 +100,23 @@ export async function postFix(lineId: string, correctedText: string, reason: str
   })
   if (!res.ok) throw new FixError(res.status)
   return res.json()
+}
+
+// POST /replays/{id}/ask, about the match up to the moment on screen. Off air (the server's own off-air
+// answer, or any failure here) is the calm copy, never an error.
+export async function askCommentator(replayId: string, question: string, momentIdx: number): Promise<Answer> {
+  if (isDemo) return offAir(question, momentIdx) // the demo has no commentator to ask
+  try {
+    const res = await fetch(`/replays/${encodeURIComponent(replayId)}/ask`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, moment_idx: momentIdx }),
+    })
+    if (res.ok) return res.json()
+  } catch {
+    // the network failed: off air below
+  }
+  return offAir(question, momentIdx)
 }
 
 export function lineAudioUrl(lineId: string, voiceId?: string): string {
