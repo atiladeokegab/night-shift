@@ -507,7 +507,7 @@ The commentator's tools and the shot map read per-match stats packs ([`data/pack
 
 | What | Count | Runs |
 |---|---|---|
-| Python tests: the number check, replay timing, the store, Mubit and ElevenLabs calls against fakes, the deploy script | 648 | `make check`, offline; and in `make smoke` |
+| Python tests: the number check, replay timing, the store, Mubit and ElevenLabs calls against fakes, the deploy script | 671 | `make check`, offline; and in `make smoke` |
 | Web unit tests: the live page, the Proof card, Fix, Ask, captions | 82 | `npm test` in `web/` |
 | Offline smoke: every sample match replayed end to end through the real server with a fake model | 7 matches | `make smoke`; in CI on every PR into `integration` ([`.github/workflows/smoke.yml`](.github/workflows/smoke.yml)), which also builds the container and imports the app inside it |
 | Live smoke on the real URL: one replay streams moments and lines, and the service's store grows by the lines it streamed | 1 replay | after every deploy, in [`scripts/deploy.sh`](scripts/deploy.sh) (`BASE_URL=<url> python -m core.smoke`) |
