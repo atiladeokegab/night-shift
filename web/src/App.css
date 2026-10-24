@@ -272,6 +272,8 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   .onair { flex: none; padding: 9px 12px; }
   .score { font-size: 1.25rem; }
   .onair .who, .onair .bars, .dock .back { display: none; }
+  /* The score bar keeps two rows (teams and score; clock and period or chase): no REPLAY tag or rule. */
+  .scorebar .replay, .scorebar .sep { display: none; }
   .subtitle { bottom: 170px; gap: 12px; }
   .subtitle p { font-size: 1.45rem; }
   .dock { bottom: 56px; }
