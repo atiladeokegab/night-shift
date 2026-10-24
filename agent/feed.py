@@ -132,7 +132,7 @@ def football_moments(
             for rel in ev.get("related_events") or []:
                 keepers[rel] = who(ev.get("player"))
 
-    moments = []
+    moments, ats = [], []
     for ev in events:
         kind = _name(ev.get("type"))
         team = _side(_name(ev.get("team")))
@@ -201,9 +201,43 @@ def football_moments(
         if len(loc) >= 2 and _num(loc[0]) is not None and _num(loc[1]) is not None:
             moment["x"], moment["y"] = loc[0], loc[1]
         moments.append(moment)
+        ats.append(_at(ev))
         if kind == "Full time":
             break  # both sides log the whistle
+    for m, (period, t), nxt in zip(moments, ats, [*ats[1:], None], strict=False):
+        later = ((p, s, b) for p, s, b in _plays(events) if p == period and s >= t + BALL_AFTER_S)
+        p, s, ball = next(later, (0, 0, None))
+        # only what is known by the ball's own time: no key moment came before it (A-1.4)
+        if ball and (nxt is None or (p, s) < nxt):
+            m["ball"] = ball
     return moments
+
+
+# the ball between key moments (#205): who has it a beat after a moment
+BALL_AFTER_S = 20
+
+
+def _at(ev: dict) -> tuple[int, int]:
+    """(period, seconds on the match clock) of an event."""
+    minute, second = _num(ev.get("minute")) or 0, _num(ev.get("second")) or 0
+    return _num(ev.get("period")) or 0, minute * 60 + second
+
+
+def _plays(events: list[dict]):
+    """(period, second, snapshot) for each pass or carry by the side in possession: StatsBomb puts
+    its location in that side's frame, attacking towards x = 120."""
+    for ev in events:
+        loc = ev.get("location") if isinstance(ev.get("location"), list) else []
+        team = _name(ev.get("team"))
+        if _name(ev.get("type")) not in ("Pass", "Carry"):
+            continue
+        if team != _name(ev.get("possession_team")):
+            continue
+        if len(loc) < 2 or _num(loc[0]) is None or _num(loc[1]) is None:
+            continue
+        p, s = _at(ev)
+        clock = f"{s // 60:02d}:{s % 60:02d}"
+        yield p, s, {"clock": clock, "team": _side(team), "x": loc[0], "y": loc[1]}
 
 
 # --- cricket ------------------------------------------------------------------------------

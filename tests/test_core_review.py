@@ -4,8 +4,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from agent import commentator
-from core import review
+from core import insight, review
 from core.app import Deps, create_app
+from core.stats import stats
 from core.store import Store
 from data.matches import list_matches, load_moments
 
@@ -13,6 +14,7 @@ KOBE = "0020500591"  # idx 4: Bryant's three for 41 points, Lakers 65, Raptors 7
 SAID = "Kobe Bryant from deep, three points! Lakers trail"
 WRONG = f"{SAID} fifty-eight to seventy-five, Bryant with forty-one."
 RIGHT = f"{SAID} sixty-five to seventy-five, Bryant with forty-one."
+WORSE = f"{SAID} fifty-nine to seventy-five, Bryant with forty-one."
 UNSAID = f"{SAID} sixty-five to seventy-five."  # flagged only for leaving out his 41
 CRICKET = "1298150"  # idx 11: Iftikhar's six, his third in four balls only by the moments before it
 SIXES = "Another six! Iftikhar Ahmed, three sixes in four balls! Pakistan 88 for 2."
@@ -47,6 +49,7 @@ def client(tmp_path, monkeypatch):
         store.append("lines", ln)
     deps = Deps(list_matches, load_moments, lambda m, h: None, correct=commentator.correct)
     with TestClient(create_app(store=store, deps=deps)) as c:
+        c.store = store
         yield c
 
 
@@ -82,3 +85,77 @@ def test_a_reply_to_the_analyst_is_checked_against_what_the_analyst_said(tmp_pat
     assert [q["line_id"] for q in queued] == ["unsaid"]
     assert queued[0]["wrong"] == ["33 is not in the moment"]
     assert queued[0]["play"] == f"The lead answers the analyst, who just said: {HEARD}"
+
+
+def test_a_line_said_before_todays_check_is_marked_and_left_out_of_the_autonomy_count(tmp_path):
+    store = Store(tmp_path)
+    for ln in (
+        line("old", WRONG, speaker="lead"),  # said before the check: only today's check fails it
+        line("ok", RIGHT, speaker="lead", checked=True),
+        line(
+            "live",
+            RIGHT,
+            speaker="lead",
+            checked=True,
+            fallback=True,
+            tried=WORSE,
+            wrong=["59 is not in the moment"],
+        ),  # the retry failed as it was said
+    ):
+        store.append("lines", ln)
+    queued = review.queue(store, Deps(list_matches, load_moments, lambda m, h: None))
+    assert [(q["line_id"], q["text"], q["later_check"]) for q in queued] == [
+        ("live", WORSE, False),
+        ("old", WRONG, True),
+    ]
+    assert queued[1]["wrong"] == ["58 is not in the moment"]  # the checker's reason, today
+    auto = stats(store)["autonomy"]
+    assert (auto["called"], auto["first_time"], auto["to_human"]) == (2, 1, 1)
+
+
+def test_a_second_read_checks_only_the_lines_stored_since_and_a_fix_still_clears(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(review, "_checked", {})
+    checked, real = [], insight.wrong_numbers
+    monkeypatch.setattr(insight, "wrong_numbers", lambda t, *a: checked.append(t) or real(t, *a))
+    store, deps = Store(tmp_path), Deps(list_matches, load_moments, lambda m, h: None)
+    store.append("lines", line("old", WRONG, speaker="lead"))
+    assert [q["line_id"] for q in review.queue(store, deps)] == ["old"]
+    store.append("lines", line("new", WORSE, speaker="lead"))
+    assert [q["line_id"] for q in review.queue(store, deps)] == ["new", "old"]
+    assert checked == [WRONG, WORSE]  # each line checked once
+    store.append("fixes", {"line_id": "old", "corrected_text": RIGHT})
+    assert [q["line_id"] for q in review.queue(store, deps)] == ["new"]
+
+
+REWORDED = "Bryant from deep! Lakers fifty-eight, Raptors seventy-five, and Kobe has forty-one."
+
+
+def test_two_wordings_of_one_mistake_are_one_card_and_other_reasons_stay_apart(tmp_path):
+    store = Store(tmp_path)
+    for ln in (
+        line("first", WRONG, speaker="lead"),
+        line("other", WORSE, speaker="lead"),  # 59, not 58: a different mistake, same moment
+        line("newest", REWORDED, speaker="lead"),
+    ):
+        store.append("lines", ln)
+    queued = review.queue(store, Deps(list_matches, load_moments, lambda m, h: None))
+    assert [(q["line_id"], q["wrong"], q["lines"], q["others"]) for q in queued] == [
+        ("newest", ["58 is not in the moment"], 2, [WRONG]),
+        ("other", ["59 is not in the moment"], 1, []),
+    ]
+    assert queued[0]["text"] == REWORDED
+
+
+def test_one_fix_clears_the_whole_card_once_and_a_later_repeat_comes_back(client):
+    client.store.append("lines", line("re", REWORDED, speaker="lead"))
+    (card,) = client.get("/review").json()
+    assert (card["line_id"], card["lines"], card["others"]) == ("re", 2, [WRONG])
+    resp = client.post("/lines/re/fix", json={"corrected_text": RIGHT, "reason": "Wrong score"})
+    assert resp.status_code == 200
+    assert client.get("/review").json() == []  # both wordings, by one fix
+    assert client.get("/stats").json()["fixes"] == 1
+    later = line("again", WRONG, speaker="lead", created_at="2999-01-01T00:00:00+00:00")
+    client.store.append("lines", later)  # said again after the fix: a new card
+    assert [q["line_id"] for q in client.get("/review").json()] == ["again"]

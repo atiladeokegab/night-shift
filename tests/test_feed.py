@@ -494,3 +494,42 @@ def test_football_full_time_is_called_at_the_whistle_that_ends_the_match():
         called("Final", draw[:-2]) == []
     )  # A-1.4: the same match cut at 120 minutes calls nothing
     assert called("Group Stage", whistle(2, 93)) == [(2, "93:05")]  # a group draw ends at 90
+
+
+def test_a_football_moment_carries_the_ball_a_beat_after_it_from_play_up_to_then():
+    def play(kind, team, minute, second, holder=None, **extra):
+        return ev(
+            kind,
+            team=team,
+            id=f"{kind}{minute:02d}:{second:02d}",
+            minute=minute,
+            second=second,
+            possession_team={"name": holder or team},
+            location=[61.6, 7.7],
+            **extra,
+        )
+
+    shot = {"shot": {"outcome": {"name": "Off T"}}}
+    events = [
+        play("Shot", "Reds", 10, 0, **shot),
+        play("Carry", "Blues", 10, 10),  # too soon after the shot
+        play("Dispossessed", "Blues", 10, 30),  # losing the ball, not having it
+        play("Pass", "Reds", 10, 40, holder="Blues"),  # the side without the ball
+        play("Pass", "Blues", 10, 45),
+        play("Shot", "Blues", 13, 30, **shot),
+        play("Shot", "Reds", 13, 45, **shot),  # a key moment before any pass 20 s on: no ball
+        play("Pass", "Blues", 14, 10),
+        play("Shot", "Reds", 44, 50, **shot),
+        play("Pass", "Reds", 46, 0, period=2),  # the next period's play
+    ]
+    first, busy, third, last = feed.football_moments(HEADER, events)
+    assert first["ball"] == {"clock": "10:45", "team": "Blues", "x": 61.6, "y": 7.7}
+    assert third["ball"]["clock"] == "14:10"
+    assert "ball" not in busy and "ball" not in last
+    # A-1.4: a key moment planted 1 s after each ball, or the feed cut at it, changes nothing
+    for m in (first, third):
+        at = next(i for i, e in enumerate(events) if e["id"] == f"Pass{m['ball']['clock']}")
+        mm, ss = (int(x) for x in m["ball"]["clock"].split(":"))
+        planted = play("Shot", "Reds", mm, ss + 1, **shot)
+        for feed_now in (events[: at + 1], [*events[: at + 1], planted, *events[at + 1 :]]):
+            assert feed.football_moments(HEADER, feed_now)[m["idx"]]["ball"] == m["ball"]

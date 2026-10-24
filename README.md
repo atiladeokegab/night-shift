@@ -280,6 +280,68 @@ result shows it. `/stats` reports the adapter's status as `training` (at 15:23 U
 the console with [`eval/record_adapter.py`](eval/record_adapter.py); it reports no agreement result,
 because no version has passed.
 
+## How well the check works
+
+Before a lead line is spoken, the number check reads it against the moment's data
+([`core/insight.py`](core/insight.py) `wrong_numbers`, which includes the event check). We measured
+it on 300 lines the live site had already said.
+
+**Precision 100% (8 of 8 flags were wrong lines). Recall 53% (8 of 15 wrong lines caught).**
+
+| | Lines | Wrong | Flagged | Caught | Missed | False alarms | Precision | Recall |
+|---|---|---|---|---|---|---|---|---|
+| All | 300 | 15 | 8 | 8 | 7 | 0 | 100% | 53% |
+| Basketball | 93 | 4 | 2 | 2 | 2 | 0 | 100% | 50% |
+| Cricket | 56 | 6 | 4 | 4 | 2 | 0 | 100% | 67% |
+| F1 | 25 | 0 | 0 | 0 | 0 | 0 | n/a | n/a |
+| Football | 126 | 5 | 2 | 2 | 3 | 0 | 100% | 40% |
+
+**How the lines were picked.** From a read-only copy of the live store's lines (24 October 2026,
+about 15:40 UTC; 6,446 records), we kept each distinct lead line once, per match, moment and text,
+and left out the analyst's lines and the fallback lines, which are built from the data. We drew 300
+of them, stratified by match: 30 from each of the 7 matches (F1 had only 25 distinct lines, so all
+25), and the rest by each match's share, with a fixed seed (219). 13 are the lead's replies to the
+analyst. Only 6 of the 300 had been through the live check when they were said, because most were
+said before it marked lines; the rest are scored here for the first time.
+
+**Who labelled them.** The lines were labelled by a separate agent reading the match data, before
+running the check. That agent was a model, not a person. It read each line with the match header,
+the moment's data, the eight moments before it and, for a reply, what the analyst had just said. It
+had no access to the checker. It labelled each line right or wrong by the written rules in
+[`eval/checker_eval.py`](eval/checker_eval.py) (`RULES`): a number the data contradicts or does not
+give, a wrong player or team, a wrong lead or level claim, a wrong event, or leaked reasoning is
+wrong; leaving something out is never wrong. The labels were committed before the checker was run on
+them ([`eval/checker_labels.jsonl`](eval/checker_labels.jsonl)).
+
+**What it misses.** The 7 wrong lines it let through:
+
+- "Bulls down two with ninety seconds to play!" (two lines, Jordan's Bulls). The clock said 1:45.
+  The check lets a basketball clock round to the half minute, so it accepts ninety.
+- "Back-to-back sixes off Patel!" (Pakistan v India). A dot ball came between them. The check does
+  not test streak claims.
+- "Iftikhar Ahmed to 18 off six balls". The data gives 18 from three sixes in four balls, and 24 off
+  the last six. The check does not test a batter's count over a span.
+- "Lautaro Martínez with the half volley, it's blocked away!" (World Cup final). The shot went off
+  target. The event check does not tell blocked from off target.
+- "Argentina three, France three in the shootout". The shootout was 1-1; 3-3 was the match score.
+- "Argentina three, France two, still level". The numbers are right, but "still level" is not. In
+  football, the check tests a level claim only on a goal.
+
+**Read these numbers with care.** 15 wrong lines is a small count. One more catch moves recall by 7
+points, and a 95% interval for 8 of 15 runs from about 30% to 75%. Precision of 8 of 8 means at
+least about 68% at the same confidence. The labels are a model's reading of the data, so they can be
+wrong too.
+
+**Omissions are counted apart.** The live check also retries a line that leaves out a milestone or
+how a shot ended. The labels never call an omission wrong, so the figures above leave those reasons
+out. Counted as the live check counts them, it also flags 14 lines labelled right, for a precision of
+36%. Each such line is regenerated once; if the retry fails too, the line built from the data is
+said instead, and the failed try goes to the producer's fix queue.
+
+Rerun it with `uv run python -m eval.checker_eval`. The test
+[`tests/test_checker_eval.py`](tests/test_checker_eval.py) fails if the checker drops below 90%
+precision or 50% recall on these labels.
+
 ## The problem
 
 On 10 October 2026 Sky Sports launched live descriptive audio commentary for the Premier League:
