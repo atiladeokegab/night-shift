@@ -1,12 +1,14 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { momentTag } from '../moment'
 import { embeds, posterUrl, showNoVideoCaption, watchUrl } from '../player'
 import { SPORT_NAMES, type Line, type Match, type Sport } from '../types'
 import { onScreen, type Clock, type ReplayState } from '../useReplay'
+import { latestShooter, MAPPED, type Shots } from '../shots'
 import { LineLog } from './LineLog'
 import { Nav, type Screen } from './Nav'
 import { ProofPanel } from './ProofPanel'
 import { ScoreBar } from './ScoreBar'
+import { ShotMap } from './ShotMap'
 import { VideoStage, type VideoState } from './VideoStage'
 
 export type VoiceStatus = 'on' | 'off' | 'unavailable'
@@ -26,6 +28,7 @@ interface Props {
   onVoiceSheet: () => void
   onFix: (line: Line) => void
   onAsk: (question: string, momentIdx: number) => Promise<void>
+  onShots: (name: string, momentIdx: number) => Promise<Shots | null>
   onRetry: () => void
   onReconnect: () => void
   onGo: (screen: Screen) => void
@@ -35,7 +38,7 @@ interface Props {
 // the score bar and ON AIR pill, the moment tag and subtitle, the dock and the video timeline; the Lines
 // and Proof cards stand in a glass column on the right (under the stage below 1100px).
 export function Live(props: Props) {
-  const { match, replay, replayKey, switching, sports, voice, video, onVideo, onClock, onSport, onNext, onVoiceSheet, onFix, onAsk, onRetry, onReconnect, onGo } = props
+  const { match, replay, replayKey, switching, sports, voice, video, onVideo, onClock, onSport, onNext, onVoiceSheet, onFix, onAsk, onShots, onRetry, onReconnect, onGo } = props
   const shown = onScreen(replay)
   const moment = shown.moments.at(-1) ?? null
   const latest = shown.lines.find((l) => !replay.late.includes(l.line_id))
@@ -54,6 +57,9 @@ export function Live(props: Props) {
     return () => ro.disconnect()
   }, [])
   const voiceLabel = voice.chip // the dock chip's name, never a lone nationality
+  // The shot map follows the moment on screen while it is open (#120).
+  const [mapOf, setMapOf] = useState<string | null>(null)
+  const shooter = MAPPED.includes(match.sport) ? latestShooter(shown.moments) : null
 
   let overlay = null
   if (replay.phase === 'starting') {
@@ -148,9 +154,11 @@ export function Live(props: Props) {
       </section>
       <aside className="side">
         <LineLog lines={shown.lines} late={replay.late} fixes={replay.fixes} moments={shown.moments} onFix={onFix}
-          answers={replay.answers} onAsk={moment ? (q) => onAsk(q, moment.idx) : null} />
+          answers={replay.answers} onAsk={moment ? (q) => onAsk(q, moment.idx) : null}
+          shooter={shooter} onShots={setMapOf} />
         <ProofPanel live={replay.stats} />
       </aside>
+      {mapOf && moment && <ShotMap name={mapOf} momentIdx={moment.idx} load={onShots} onClose={() => setMapOf(null)} />}
     </div>
   )
 }

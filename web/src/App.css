@@ -378,3 +378,25 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .tile-detail { color: var(--muted); font-size: .85rem; }
 .tile-cta { color: var(--amber); font: 600 .85rem/1.35 var(--body); margin-top: 4px; }
 @media (max-width: 760px) { .wall { grid-template-columns: 1fr; gap: 14px; } .tile-title { font-size: 1.3rem; } }
+
+/* The shot map (#120): faint dots before tonight, bright ones tonight (made filled, missed a ring), hit rate per zone. */
+.panel.lines .shots-open { align-self: flex-start; margin-bottom: 12px; }
+.shotmap .court { width: 100%; max-height: 52svh; display: block; }
+.shotmap .marks { fill: none; stroke: var(--line-hi); stroke-width: 2; }
+.shotmap .marks.thin { stroke-width: .35; }
+.shotmap .season { fill: var(--fg); opacity: .16; }
+.shotmap .season.made { opacity: .3; }
+.shotmap .tonight.made { fill: var(--live); stroke: var(--bg); }
+.shotmap .tonight.miss { fill: rgba(255, 77, 79, .15); stroke: var(--air); }
+.shotmap .legend { margin: -6px 0 0; display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .8rem; color: var(--muted); }
+.shotmap .dot { display: inline-block; width: 9px; height: 9px; margin-right: 6px; border-radius: 50%; vertical-align: -1px; }
+.shotmap .dot.season { background: var(--fg); opacity: .35; }
+.shotmap .dot.made { background: var(--live); }
+.shotmap .dot.miss { border: 2px solid var(--air); }
+.shotmap .zones { width: 100%; border-collapse: collapse; font-size: .88rem; }
+.shotmap .zones caption { text-align: left; padding-bottom: 6px; }
+.shotmap .zones th { text-align: left; font-weight: 500; padding: 5px 8px 5px 0; }
+.shotmap .zones td { padding: 5px 0 5px 8px; color: var(--muted); white-space: nowrap; text-align: right; }
+.shotmap .zones tr + tr > * { border-top: 1px solid var(--line); }
+.shotmap .rate { position: relative; width: 30%; color: var(--fg); }
+.shotmap .rate span { position: absolute; left: 8px; top: 50%; height: 4px; margin-top: 8px; border-radius: 2px; background: var(--amber); opacity: .7; }
