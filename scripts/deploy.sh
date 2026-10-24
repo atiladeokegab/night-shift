@@ -47,6 +47,19 @@ if [[ "$ELEVENLABS_FALLBACK_VERSION" != none ]]; then
     exit 1
   fi
 fi
+# Every secret the deploy will mount must exist, or the revision can't start, found only after the
+# ten-minute build. Checked here, before the build and the impersonation, from the same lists as MOUNTS
+# below (metadata only, as you). converse-llm-secret is mounted only with CONVERSE_AGENT_ID.
+MUBIT_FALLBACK_VERSION="${MUBIT_FALLBACK_VERSION:-3}"
+NEEDED="$(for s in $SECRETS; do echo "$s latest"; done)"
+[[ "$MUBIT_FALLBACK_VERSION" =~ ^[0-9]+$ ]] && NEEDED+=$'\n'"mubit-api-key $MUBIT_FALLBACK_VERSION"
+[[ -n "${CONVERSE_AGENT_ID:-}" ]] && NEEDED+=$'\n'"converse-llm-secret latest"
+while read -r secret version; do
+  if ! gcloud secrets versions describe "$version" --secret "$secret" --project "$PROJECT" >/dev/null 2>&1; then
+    echo "deploy: secret $secret (version $version) does not exist in $PROJECT; create it (scripts/bootstrap.sh) before deploying" >&2
+    exit 1
+  fi
+done <<<"$NEEDED"
 if [[ "${DEPLOY_AS_SELF:-}" == 1 ]]; then
   echo "deploy: deploying as $(gcloud config get-value account), not the deployer"
 else
