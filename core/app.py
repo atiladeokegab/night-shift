@@ -12,12 +12,13 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 
 from core import insight, predict, review
+from core.guard import OFF_TODAY, Guard, cached_commentator, client_ip
 from core.predict import load_pack, shot_points
 from core.replay import OFF_AIR, Replay, run_replay
 from core.stats import stats
@@ -95,7 +96,9 @@ def asked_so_far(replay: Replay, moments: list[dict], on_screen: int | None):
     return past, lines
 
 
-def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> FastAPI:
+def create_app(
+    store=None, deps: Deps | None = None, tts_transport=None, guard: Guard | None = None
+) -> FastAPI:
     app = FastAPI(title="Night Shift")
     store = store or open_store()
     deps = deps or default_deps()
@@ -104,6 +107,8 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
     tasks: set[asyncio.Task] = set()
     running: dict[str, asyncio.Task] = {}  # replay id: its run_replay task, until it ends
     asking: set[str] = set()  # replay ids with a viewer's question in flight
+    guard = guard or Guard()
+    live: set[str] = set()  # replay ids generating new lines, at most guard.max_live (#244)
 
     def need_deps() -> Deps:
         if deps is None:
@@ -124,9 +129,14 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
         vmap = need_deps().video_map(match_id, at)
         return {"video_start": vmap and vmap["start"]}
 
+    def too_many(wait: int, detail: str) -> HTTPException:
+        return HTTPException(429, detail, headers={"Retry-After": str(wait)})
+
     @app.post("/replays")
-    async def start_replay(req: ReplayRequest):
+    async def start_replay(req: ReplayRequest, request: Request):
         d = need_deps()
+        if wait := guard.replays.hit(client_ip(request)):
+            raise too_many(wait, "You've started a lot of replays. Try again in a few minutes.")
         try:
             moments = d.load_moments(req.match_id)
         except (KeyError, FileNotFoundError) as exc:
@@ -134,15 +144,25 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
         jump = req.start_idx
         if jump is not None and not any(m["idx"] == jump for m in moments):
             raise HTTPException(422, f"no moment {jump} in {req.match_id!r}")
-        replay = Replay(req.match_id, req.speed, req.smoke)
+        commentate, speak, correct = d.commentate, speaker.prepare, d.correct
+        off_air = await asyncio.to_thread(guard.off_air, store)
+        if off_air or guard.busy(len(live)):  # the lines already stored, no model or voice call
+            commentate, speak, correct = cached_commentator(store, req.match_id), None, None
+            if commentate is None and off_air:
+                raise too_many(guard.until_tomorrow(), f"{OFF_TODAY}. Try again tomorrow.")
+            if commentate is None:
+                raise too_many(60, "Lots of people are watching. Try again in a minute.")
+        # a cached replay cost nothing: never a match for cost per full replay
+        replay = Replay(req.match_id, req.speed, req.smoke or speak is None)
         replays[replay.id] = replay
         # a jump starts the video just before its moment (#163), as GET /matches' peak_video_start
         video = d.video_map(req.match_id) if jump is None else d.video_map(req.match_id, jump)
         task = asyncio.create_task(
-            run_replay(
-                replay, moments, d.commentate, store, video, speaker.prepare, jump or 0, d.correct
-            )
+            run_replay(replay, moments, commentate, store, video, speak, jump or 0, correct)
         )
+        if speak is not None:
+            live.add(replay.id)
+            task.add_done_callback(lambda _: live.discard(replay.id))
         tasks.add(task)
         task.add_done_callback(tasks.discard)
         running[replay.id] = task
@@ -257,7 +277,7 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
         return fix
 
     @app.post("/replays/{replay_id}/ask")
-    async def ask(replay_id: str, req: AskRequest):
+    async def ask(replay_id: str, req: AskRequest, request: Request):
         d = need_deps()
         replay = viewed(replay_id)
         if replay_id in asking:
@@ -265,9 +285,14 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
         past, lines = asked_so_far(replay, d.load_moments(replay.match_id), req.moment_idx)
         if not past:
             raise HTTPException(409, "nothing has happened yet")
+        if wait := guard.asks.hit(client_ip(request)):
+            raise too_many(wait, "That's a lot of questions. Try again in a few minutes.")
+        off_today = await asyncio.to_thread(guard.off_air, store)
         asking.add(replay_id)
         try:
-            if d.status and wants_status(req.question):
+            if off_today:
+                said = None
+            elif d.status and wants_status(req.question):
                 said = await asyncio.to_thread(d.status, past)
             else:
                 ask = (d.ask, req.question, past, lines)
@@ -283,7 +308,7 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
                 "line_id": uuid.uuid4().hex,
                 "moment_idx": past[-1]["idx"],
                 "question": req.question,
-                "text": OFF_AIR,
+                "text": OFF_TODAY if off_today else OFF_AIR,
                 "off_air": True,
             }
         else:
@@ -347,14 +372,19 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
 
     @app.get("/stats")
     def get_stats():
-        return stats(store)
+        return {**stats(store), "budget": guard.stats(store)}
 
     @app.get("/stage")
     def stage():
         """The backup demo page: one static file, so the demo runs even without web/."""
         return FileResponse(Path(__file__).with_name("stage.html"), media_type="text/html")
 
-    app.include_router(voice_router(store, speaker))
+    async def voice_on(request: Request) -> None:
+        """Over the daily cap no new voice is made: 503, and the page uses browser speech."""
+        if request.url.path.endswith("/audio") and await asyncio.to_thread(guard.off_air, store):
+            raise HTTPException(503, "voice off air for today")
+
+    app.include_router(voice_router(store, speaker), dependencies=[Depends(voice_on)])
     # the built page (web/, #18) at /, mounted last so every API route above wins
     if WEB.is_dir():
         app.mount("/", StaticFiles(directory=WEB, html=True), name="web")
