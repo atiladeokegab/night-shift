@@ -103,6 +103,9 @@ export function Live(props: Props) {
   const [chosenTab, setTab] = useState<'follow' | 'lines' | 'proof' | 'shots'>('lines')
   const tab = chosenTab === 'shots' && !mapped ? 'lines' : chosenTab // a sport with no shot map shows Lines
 
+  const ended = fullTime(replay, video)
+  const score = finalScore(match, shown.moments.at(-1))
+  const fullTimeText = `Full time${score ? ` · ${score}` : ''}`
   let overlay = null
   if (replay.phase === 'starting') {
     overlay = switching ? (
@@ -123,10 +126,10 @@ export function Live(props: Props) {
     )
   } else if (gated && video === 'loading') {
     overlay = <div className="overlay" aria-busy="true"><span className="spin" />Loading highlights…</div>
-  } else if (fullTime(replay, video)) {
+  } else if (ended) {
     overlay = (
       <div className="overlay end" role="status">
-        <span>Full time{finalScore(match, shown.moments.at(-1)) && ` · ${finalScore(match, shown.moments.at(-1))}`}</span>
+        <span>{fullTimeText}</span>
         <span className="actions">
           <button className="btn primary" onClick={onRetry}>Watch again</button>
           {onNext && <button className="btn" onClick={onNext}>Next match →</button>}
@@ -195,7 +198,7 @@ export function Live(props: Props) {
               ))}
               {overlay}
             </div>
-            <Controls card={card} paused={paused} canPlay={canPlay} onToggle={toggle} now={replay.now} duration={replay.duration}
+            <Controls card={card} paused={paused || ended} canPlay={canPlay} onToggle={ended ? onRetry : toggle} now={replay.now} duration={replay.duration}
               marks={marks} onSeek={(t) => transport?.seek(t)} volume={volume} muted={muted} onVolume={onVolume} />
           </section>
           {replay.stream === 'reconnecting' && (
@@ -218,6 +221,9 @@ export function Live(props: Props) {
                   <button className="btn sm" onClick={onRetry}>Retry</button>
                 </div>
               </Caption>
+            ) : ended ? (
+              // Full time replaces the last play; the overlay above holds Watch again (#153).
+              <Caption caption={null}><p className="cap-text">{fullTimeText}</p></Caption>
             ) : caption ? (
               <Caption caption={{ ...caption, speaker }} fixed={!!line && !!replay.fixes[line.line_id]} offAir={answer?.off_air}
                 tag={tagged ? momentTag(tagged) : undefined} asked={answer?.question} pending={pending} title={title} />

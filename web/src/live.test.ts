@@ -137,7 +137,13 @@ test('at full time the picture offers Watch again and Next match; not before the
   const over = { ...replay, ended: true, now: 1670 }
   const html = render({ replay: over, onNext: noop })
   assert.match(html, /class="overlay end" role="status"><span>Full time · LAK 64–69 RAP<\/span>[\s\S]*Watch again[\s\S]*Next match →/)
+  assert.match(html, /<p class="cap-text">Full time · LAK 64–69 RAP<\/p>/, 'the caption says full time, not the last play')
+  assert.match(html, /aria-label="Play"/, 'the transport offers play again, never pause')
   assert.ok(!render({ replay: { ...replay, ended: true } }).includes('Full time'), 'the stream ended but the picture is still at 500 s')
+})
+
+test('the Ask box wraps a long question so it reads from its start (#153)', () => {
+  assert.match(render(), /<textarea id="ask-q" rows="1"/)
 })
 
 test('before the first call: a countdown to it, not "Waiting" (#153)', () => {
