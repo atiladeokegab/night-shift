@@ -390,18 +390,22 @@ class MubitProvider:
     def call(self, request: dict) -> dict:
         import anthropic
 
-        client = self.client
+        client, start = self.client, time.monotonic()
         try:
             return self._stream(client, request)
         except anthropic.APIStatusError as exc:
             if exc.status_code != 402 or not self.fallback or client is self.fallback.client:
                 raise
+            failed_ms = (time.monotonic() - start) * 1000
             if self.client is client:  # once, even when two replays hit the 402 together
                 log.warning(
                     "mubit: the key ran out of credit (402); switching to MUBIT_FALLBACK_KEY"
                 )
                 self.client = self.fallback.client  # sticky: no failed call before every line
-            return self.fallback.call(request)
+            reply = self.fallback.call(request)
+            if reply["first_word_ms"] is not None:  # the viewer waited through the 402 as well
+                reply["first_word_ms"] += failed_ms
+            return reply
 
     def _stream(self, client, request: dict) -> dict:
         start, first = time.monotonic(), None

@@ -1,6 +1,7 @@
 """The commentator request, the no-leak rule (S10) and the traffic runner, all offline."""
 
 import json
+import time
 
 import pytest
 
@@ -423,7 +424,7 @@ def _sse(text: str) -> bytes:
     return "".join(f"event: {e}\ndata: {json.dumps(d)}\n\n" for e, d in events).encode()
 
 
-def _mubit(monkeypatch, primary_status, fallback=True, record="off"):
+def _mubit(monkeypatch, primary_status, fallback=True, record="off", primary_s=0.0):
     """default_provider() on fake keys, its HTTP stubbed: the primary key answers
     `primary_status`, the fallback always speaks. Returns the provider and the requests seen."""
     import httpx2 as httpx  # the HTTP package the anthropic SDK uses
@@ -434,6 +435,7 @@ def _mubit(monkeypatch, primary_status, fallback=True, record="off"):
         key = request.headers["authorization"].removeprefix("Bearer ")
         seen.append((key, request.headers.get("x-middleware-record")))
         if key == "fake-lent" and primary_status != 200:
+            time.sleep(primary_s)
             body = {"type": "error", "error": {"type": "billing_error", "message": "no credit"}}
             return httpx.Response(primary_status, json=body)
         return httpx.Response(
@@ -493,3 +495,10 @@ def test_without_a_fallback_key_a_402_still_takes_the_commentator_off_air(monkey
     with pytest.raises(anthropic.APIStatusError) as err:
         _two_lines(provider)
     assert err.value.status_code == 402 and [key for key, _ in seen] == ["fake-lent"]
+
+
+def test_the_first_word_after_a_402_counts_the_failed_call(monkeypatch):
+    provider, _ = _mubit(monkeypatch, 402, primary_s=0.3)
+    line = line_for(FOOT, [moment(FOOT, 0)], 0, provider)
+    # the viewer waited through the lent key's 402 too
+    assert line["first_word_ms"] >= 300
