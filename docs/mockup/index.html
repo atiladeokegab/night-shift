@@ -14,7 +14,7 @@
   --glass: rgba(14, 18, 31, .55); --line: rgba(255, 255, 255, .10); --line-hi: rgba(255, 255, 255, .20);
   --amber: #FFB547; --amber-deep: #F5A524; --on-amber: #1B1203;
   --air: #FF4D4F; --live: #3DDC84; --fix: #7CD4FF; --err: #FF6B6B;
-  --esp: #C8102E; --eng: #F4F4F4; --ind: #2F7DE1; --pak: #0F8A4C;
+  --che: #034694; --tot: #F4F4F4; --ind: #2F7DE1; --pak: #0F8A4C;
   --display: "Outfit", ui-sans-serif, system-ui, sans-serif;
   --body: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --ease: cubic-bezier(.2, .7, .2, 1);
@@ -308,18 +308,18 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 // Fake data. Moments and scores follow the real matches; video times and lines are samples, not the agent's output.
 const MATCHES = {
   football: {
-    sport: "Football", title: "Spain v England", detail: "2023 Women's World Cup final · Sydney · 20 Aug 2023", result: "Spain 1–0 England",
-    teams: [["ESP", "var(--esp)"], ["ENG", "var(--eng)"]], length: 296,
+    sport: "Football", title: "Battle of the Bridge", detail: "Premier League · Chelsea v Tottenham · 2 May 2016", result: "Chelsea 2–2 Tottenham: Leicester are champions",
+    teams: [["CHE", "var(--che)"], ["TOT", "var(--tot)"]], length: 188,
     moments: [
-      { clock: "15:11", period: "1st half", score: "0–0", vt: 38, ms: 610, mark: "Off the woodwork",
-        text: "Hemp lets fly from the edge… and it cracks back off the woodwork!" },
-      { clock: "28:29", period: "1st half", score: "1–0", vt: 82, ms: 580, mark: "Goal",
-        text: "Olga Carmona! Low across Earps and in! Spain lead the World Cup final!" },
-      { clock: "64:18", period: "2nd half", score: "1–0", vt: 160, ms: 640, mark: "Stoppage",
-        text: "Play stops: Hermoso is down and holding her ankle." },
-      { clock: "69:01", period: "2nd half", score: "1–0", vt: 185, ms: 720, mark: "Penalty",
-        text: "Hermoso steps up… and doubles Spain's lead!",
-        better: "SAVED! Earps guesses right and keeps England alive!" },
+      { clock: "34:29", period: "1st half", score: "0–1", vt: 6, ms: 610, mark: "Goal",
+        text: "Harry Kane! Left foot, and Tottenham lead at the Bridge!" },
+      { clock: "43:40", period: "1st half", score: "0–2", vt: 43, ms: 580, mark: "Goal",
+        text: "Son Heung-Min! Two-nil Spurs, just before the break!" },
+      { clock: "57:41", period: "2nd half", score: "1–2", vt: 82, ms: 640, mark: "Goal",
+        text: "Gary Cahill, on the half volley! Chelsea are back in it!" },
+      { clock: "82:39", period: "2nd half", score: "2–2", vt: 124, ms: 720, mark: "Goal",
+        text: "Eden Hazard! And Chelsea lead!",
+        better: "Eden Hazard! Two-all! Chelsea have come back from two down!" },
     ],
   },
   cricket: {
@@ -454,7 +454,7 @@ function crest(x, y, fill, ink, code) {
 }
 const SHADE = `<defs><linearGradient id="shade" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".3"/></linearGradient></defs>`;
 const ART = {
-  football: stadium({ id: "cf", w: 800, h: 500, sport: "football", seed: 11, extra: SHADE + crest(478, 150, "#C8102E", "#F1BF00", "ESP") + crest(618, 150, "#F4F4F4", "#1B2A5A", "ENG") }),
+  football: stadium({ id: "cf", w: 800, h: 500, sport: "football", seed: 11, extra: SHADE + crest(478, 150, "#034694", "#FFFFFF", "CHE") + crest(618, 150, "#F4F4F4", "#132257", "TOT") }),
   cricket: stadium({ id: "cc", w: 800, h: 500, sport: "cricket", seed: 23, extra: SHADE + crest(478, 150, "#2F7DE1", "#FFFFFF", "IND") + crest(618, 150, "#0F8A4C", "#FFFFFF", "PAK") }),
 };
 const STAGE = {
@@ -491,7 +491,7 @@ function pickerView() {
       <button class="btn primary" data-act="start" data-sport="${sp}">Start replay <span class="arr" aria-hidden="true">→</span></button></div></article>`;
   }).join("")}</div>`;
   return `<div class="page">${nav("picker")}<main class="wrap"><p class="eyebrow">A live AI commentator for matches nobody calls.</p>
-    <h1>Pick a match</h1>${body}<p class="foot">Match data: StatsBomb open data and Cricsheet. Highlights: broadcast highlights on YouTube (ITV for the final, the TV feed for India v Pakistan), embedded, muted. Commentary is AI-generated.</p></main></div>`;
+    <h1>Pick a match</h1>${body}<p class="foot">Match data: StatsBomb open data and Cricsheet. Highlights: broadcast highlights on YouTube (the TV coverage for Chelsea v Tottenham, the TV feed for India v Pakistan), embedded, muted. Commentary is AI-generated.</p></main></div>`;
 }
 
 function aboutView() {

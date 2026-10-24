@@ -37,7 +37,7 @@ Described in words, never copied in.
 
 Our own pages use no match photographs, broadcast stills or player likenesses. The night stadium and
 the team crests in the mockup are drawn in SVG; in the product, the only footage is the
-broadcast highlights embedded from YouTube (ITV for the final, the TV feed for India v Pakistan).
+broadcast highlights embedded from YouTube (the TV coverage for Chelsea v Tottenham, the TV feed for India v Pakistan).
 
 ## Look
 
@@ -61,7 +61,7 @@ broadcast highlights embedded from YouTube (ITV for the final, the TV feed for I
 | `--live` | `#3DDC84` | The nav's live dot and the adapter's result dot only |
 | `--fix` | `#7CD4FF` | Fixed lines |
 | `--err` | `#FF6B6B` | Errors, rejected lines |
-| Teams | Spain `#C8102E`, England `#F4F4F4`, India `#2F7DE1`, Pakistan `#0F8A4C` | Team bars in the score bar and the card crests only |
+| Teams | Chelsea `#034694`, Tottenham `#F4F4F4`, India `#2F7DE1`, Pakistan `#0F8A4C`, Verstappen `#3671C6` | Team bars in the score bar and the card crests only |
 
 Glass: the `--glass` fill, `backdrop-filter: blur(22px) saturate(150%)`, a 1px `--line` border, a 1px
 inner top highlight, and a long soft shadow (`0 24px 64px -28px`, black at 70%).
@@ -169,15 +169,15 @@ flowchart LR
 | Nav | "Live", "Fixtures", "About" |
 | Tagline on the picker | "A live AI commentator for matches nobody calls." |
 | Picker heading | "Pick a match" |
-| Football card | "Football" / "Spain v England" / "2023 Women's World Cup final · Sydney · 20 Aug 2023" / "Spain 1–0 England" |
+| Football card | "Football" / "Battle of the Bridge" / "Premier League · Chelsea v Tottenham · 2 May 2016" / "Chelsea 2–2 Tottenham: Leicester are champions" |
 | Cricket card | "Cricket" / "India v Pakistan" / "T20 World Cup · MCG, Melbourne · 23 Oct 2022" / "India won by 4 wickets, off the last ball" |
-| Card meta | "Highlights 4:56", "4 key moments", "British commentator" (cricket: "Highlights 4:48", "5 key moments", "Indian commentator") |
+| Card meta | "Highlights 3:08", "4 key moments", "British commentator" (cricket: "Highlights 4:48", "5 key moments", "Indian commentator") |
 | Card button | "Start replay →" |
-| Picker footer | "Match data: StatsBomb open data and Cricsheet. Highlights: broadcast highlights on YouTube (ITV for the final, the TV feed for India v Pakistan), embedded, muted. Commentary is AI-generated." |
+| Picker footer | "Match data: StatsBomb open data and Cricsheet. Highlights: broadcast highlights on YouTube (the TV coverage for Chelsea v Tottenham, the TV feed for India v Pakistan), embedded, muted. Commentary is AI-generated." |
 | About heading | "Every match deserves a commentator." |
 | About text | "Most matches are played with nobody calling them. Touchline watches a match's event feed and calls each key moment in one emotional spoken line, about a second after it happens, over the broadcast highlights." / "One commentator, two sports. The same agent calls football and cricket; switch sport and it follows." / "It learns from its producer. A wrong line is fixed in one tap. Every call and every fix goes through Mubit, which trains a smaller commentator that matches the big one at lower cost." |
 | Score bar tag | "REPLAY" |
-| Football clock | "69:01" with "1st half" or "2nd half" |
+| Football clock | "82:39" with "1st half" or "2nd half" |
 | Cricket clock | "Over 19.4" with "need 6 off 3", and "PAK 159/8" |
 | Moment tag | "<clock> · <moment>": "Goal", "Penalty", "Off the woodwork", "Stoppage", "Six", "Wicket", "No-ball · Six", "India win" |
 | ON AIR pill | "ON AIR" and "<voice> commentator"; "VOICE OFF" and "Subtitles only"; "VOICE UNAVAILABLE" and "Subtitles carry on" |
@@ -195,10 +195,10 @@ the video times are placeholders until the video maps land in `data/`):
 
 | Moment | Line |
 |---|---|
-| 15:11 Hemp shot, off the woodwork | "Hemp lets fly from the edge… and it cracks back off the woodwork!" |
-| 28:29 Carmona goal | "Olga Carmona! Low across Earps and in! Spain lead the World Cup final!" |
-| 64:18 Hermoso injury stoppage | "Play stops: Hermoso is down and holding her ankle." |
-| 69:01 Hermoso penalty saved (wrong line, then fixed) | "Hermoso steps up… and doubles Spain's lead!" fixed to "SAVED! Earps guesses right and keeps England alive!" |
+| 34:29 Kane goal | "Harry Kane! Left foot, and Tottenham lead at the Bridge!" |
+| 43:40 Son goal | "Son Heung-Min! Two-nil Spurs, just before the break!" |
+| 57:41 Cahill goal | "Gary Cahill, on the half volley! Chelsea are back in it!" |
+| 82:39 Hazard equaliser (wrong line, then fixed) | "Eden Hazard! And Chelsea lead!" fixed to "Eden Hazard! Two-all! Chelsea have come back from two down!" |
 | Over 18.5 Kohli six off Rauf | "Kohli goes straight back over Rauf's head! Six! India need 22 off 7!" |
 | Over 18.6 Kohli six off Rauf | "And again! Flicked over fine leg! Sixteen needed off the last over!" |
 | Over 19.1 Pandya out | "Pandya goes! Caught off Nawaz, first ball of the last over!" |
