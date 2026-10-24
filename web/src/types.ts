@@ -61,6 +61,7 @@ export interface Line {
   latency_ms: number
   first_word_ms?: number | null // null when the provider reported no first text word
   video_t?: number // A-6.4@2: shown and spoken when the player reaches it (#47)
+  speaker?: 'lead' | 'analyst' // #130: the moment's call, or a stat line between moments; none is the lead
 }
 
 // GET /stats and the `stats` SSE event (CONTRACT.md); percentiles are null until there is a line.

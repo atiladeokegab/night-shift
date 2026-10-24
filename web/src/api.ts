@@ -1,10 +1,11 @@
 // The only module that talks to the match server (docs/CONTRACT.md, 'HTTP'):
 // GET /matches, POST /replays {match_id, speed} -> {replay_id},
 // GET /replays/{id}/stream (SSE: moment, line, stats per moment; error; end last),
-// GET /stats, GET /voices, POST /lines/{id}/fix, POST /replays/{id}/ask and GET /lines/{id}/audio?voice=<id>
+// GET /stats, GET /voices, POST /lines/{id}/fix, POST /replays/{id}/ask, GET /replays/{id}/players/{name}/shots and GET /lines/{id}/audio?voice=<id>
 // (ElevenLabs; 503 when the voice isn't configured).
 import { demoMatches, demoStats, streamDemo } from './demo'
 import { offAir } from './ask'
+import type { Shots } from './shots'
 import type { Answer, Fix, Line, Match, Moment, Stats, StreamEvent, Voice } from './types'
 
 export const isDemo = new URLSearchParams(window.location.search).has('demo')
@@ -117,6 +118,16 @@ export async function askCommentator(replayId: string, question: string, momentI
     // the network failed: off air below
   }
   return offAir(question, momentIdx)
+}
+
+// GET /replays/{id}/players/{name}/shots (#120), up to the moment on screen. null: no shot record for
+// this player or match (a 404), and in the demo, which has no server.
+export async function getShots(replayId: string, name: string, momentIdx: number): Promise<Shots | null> {
+  if (isDemo) return null
+  const res = await fetch(`/replays/${encodeURIComponent(replayId)}/players/${encodeURIComponent(name)}/shots?moment_idx=${momentIdx}`)
+  if (res.status === 404) return null
+  if (!res.ok) throw new Error(`GET shots failed (${res.status})`)
+  return res.json()
 }
 
 export function lineAudioUrl(lineId: string, voiceId?: string): string {

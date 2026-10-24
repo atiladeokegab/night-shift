@@ -652,3 +652,83 @@ def test_a_request_waiting_on_a_dropped_job_starts_a_fresh_one(monkeypatch):
 
     assert asyncio.run(run()) == (AUDIO, "eleven_v3")
     assert len(calls) == 2
+
+
+def test_an_answer_is_read_excited_on_v3_and_plainly_on_the_fallback(monkeypatch):
+    # #131: a viewer's answer is spoken live; flash would read the tag aloud
+    import asyncio
+
+    from core.voice import VOICES, Speaker
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    said = {"line_id": "a1", "sport": "football", "question": "Who scores next?", "text": "Next?"}
+    seen = []
+    assert asyncio.run(Speaker(by_model(seen)).audio(said, VOICES[1])) == (AUDIO, "eleven_v3")
+    assert seen == [("eleven_v3", "[excited] Next?")]
+    seen = []
+    made = asyncio.run(Speaker(by_model(seen, fail={"eleven_v3"})).audio(said, VOICES[1]))
+    assert made == (AUDIO, "eleven_flash_v2_5")
+    assert seen[-1] == ("eleven_flash_v2_5", "Next?")
+
+
+@pytest.mark.parametrize("sport", ["football", "cricket", "basketball", "f1"])
+def test_every_sport_has_an_analyst_who_sounds_like_someone_else(monkeypatch, sport):
+    # #131: a second commentator; a deployed lead pick never makes the analyst the same voice
+    from core.voice import analyst_voice, default_voice
+
+    for env in ({}, {"VOICE_FOOTBALL": "gU0LNdkMOQCOrPrwtbee", "VOICE_F1": "connor"}):
+        lead, analyst = default_voice(sport, env), analyst_voice(sport, env)
+        assert analyst["eleven_id"] != lead["eleven_id"] and analyst["lang"] != lead["lang"]
+
+
+def test_an_analyst_line_is_made_ahead_in_the_analyst_voice_with_a_calmer_tag(monkeypatch):
+    import asyncio
+    import time
+
+    from core.voice import Speaker, analyst_voice
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    seen = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        seen.append((request.url.path.rsplit("/", 1)[-1], body["model_id"], body["text"]))
+        return httpx.Response(200, content=AUDIO)
+
+    speaker = Speaker(httpx.MockTransport(handle))
+    stat = {"line_id": "s1", "sport": "basketball", "speaker": "analyst", "text": "40 tonight."}
+    analyst = analyst_voice("basketball")
+
+    async def run():
+        speaker.prepare(stat, {"type": "Stat"}, time.monotonic() + 30)
+        return await speaker.audio(stat, analyst)  # the page asks for the same job
+
+    assert asyncio.run(run()) == (AUDIO, "eleven_v3")
+    assert seen == [(analyst["eleven_id"], "eleven_v3", "[thoughtful] 40 tonight.")]
+
+
+def test_the_page_gets_an_analyst_line_in_the_analyst_voice(tmp_path, monkeypatch):
+    from core.voice import analyst_voice
+
+    monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
+    seen = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        seen.append((request.url.path.rsplit("/", 1)[-1], body["model_id"], body["text"]))
+        return httpx.Response(500 if body["model_id"] == "eleven_v3" else 200, content=AUDIO)
+
+    store = Store(tmp_path)
+    store.append(
+        "lines", {"line_id": "s2", "sport": "cricket", "speaker": "analyst", "text": "Six fours."}
+    )
+    client = TestClient(create_app(store=store, tts_transport=httpx.MockTransport(handle)))
+    with client:
+        assert client.get("/lines/s2/audio").status_code == 200
+    analyst = analyst_voice("cricket")["eleven_id"]
+    assert [v for v, _, _ in seen] == [analyst] * 3
+    assert seen[0][2] == "[thoughtful] Six fours." and seen[-1] == (
+        analyst,
+        "eleven_flash_v2_5",
+        "Six fours.",
+    )
