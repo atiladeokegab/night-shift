@@ -89,7 +89,7 @@ def test_every_demo_match_has_a_map():
         "f1-9636",
     }
     assert {m["match_id"]: m.get("youtube_id") for m in list_matches()} == {
-        "3754092": "hKWX-6Dtrio",
+        "3754092": "w0ORwSCI7Cs",
         "1298150": "tz_5DAA6IgE",
         "3869685": "VfmQIyDggBU",
         "0049700088": "kwAu78IiixE",
@@ -139,7 +139,7 @@ def test_each_video_starts_10_s_before_its_first_mapped_moment():
     # Kobe's first call is 490 s into the highlights: the page starts the video at 480 s, not 0.
     # 10 s, not 5: the first line is ready ~2 s in, and v3 needs 2-3 s more (#57).
     assert {m["match_id"]: m.get("video_start") for m in list_matches()} == {
-        "3754092": 16,
+        "3754092": 0,
         "1298150": 0,
         "3869685": 71,
         "0049700088": 358,

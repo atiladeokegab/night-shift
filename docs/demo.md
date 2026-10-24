@@ -6,11 +6,10 @@ over the NBA's own broadcast picture. The script runs two minutes.
 Everything runs from main's deployed URL, with the sound on. Anything shown outside our product, such
 as Mubit's console, is said aloud as such.
 
-**One match is commentary only.** Messi v Mbappé is a video whose owner blocks embedding: its tile
-and page show a still and a "highlights on YouTube" link, and the commentary runs on its own clock.
-The demo uses three that embed: Kobe's 81, Jordan's last shot and India v Pakistan. The Battle of the
-Bridge (Chelsea v Tottenham, 2016) and Verstappen's P17 to P1 at Interlagos (2024) embed too; they
-replaced Spain v England and Hamilton at Silverstone, whose videos would not (#114).
+**All six matches embed.** Messi v Mbappé now uses a re-upload of the broadcast (#116). The Battle
+of the Bridge (Chelsea v Tottenham, 2016, a 3-minute clip of the four goals) and Verstappen's P17 to
+P1 at Interlagos (2024, a 3-minute clip) replaced Spain v England and Hamilton at Silverstone, whose
+videos would not embed (#114). The demo uses Kobe's 81, Jordan's last shot and India v Pakistan.
 
 ## Before going on
 
@@ -68,8 +67,7 @@ video map and its play-by-play; they were not seen live (see the check below).
 
 ### 1. The promise (0:00–0:15)
 
-*Wall tab: six matches, none of them called. Kobe, Jordan and India v Pakistan play muted; the other
-three show their still, marked "Commentary only".*
+*Wall tab: six matches, none of them called, all six playing muted.*
 
 "Tonight thousands of matches will be played that nobody calls. Fans get a ticker, or silence.
 Touchline gives every match a commentator."
