@@ -93,6 +93,41 @@ class Sized:
         return {"line_id": uuid.uuid4().hex, "moment_idx": moment["idx"], "text": said.strip()}
 
 
+def test_form_facts_are_cached_per_replay_only_after_a_successful_lookup(tmp_path, monkeypatch):
+    calls = []
+    facts = ["Home form fact", "Away form fact"]
+    monkeypatch.setattr(insight.Gaps, "pack", lambda self, moment: None)
+    monkeypatch.setattr(insight, "_form", lambda pack, past: calls.append(past[-1]["idx"]) or facts)
+    monkeypatch.setattr(insight, "KINDS", (("form", insight._form),))
+
+    def past(idx):
+        return [{"match_id": KOBE, "idx": idx}]
+
+    gaps = insight.Gaps(KOBE, Store(tmp_path / "first"))
+    assert gaps.next_stat(past(1)) == ("form", facts[0])
+    gaps.used.add(facts[0])
+    assert gaps.next_stat(past(2)) == ("form", facts[1])
+    assert calls == [1]
+
+    other = insight.Gaps(CHELSEA, Store(tmp_path / "second"))
+    assert other.next_stat(past(3)) == ("form", facts[0])
+    assert calls == [1, 3]
+
+
+def test_empty_form_lookup_can_recover_on_a_later_moment(tmp_path, monkeypatch):
+    calls = iter(([], ["Recovered form fact"]))
+    monkeypatch.setattr(insight.Gaps, "pack", lambda self, moment: None)
+    monkeypatch.setattr(insight, "_form", lambda pack, past: next(calls))
+    monkeypatch.setattr(insight, "KINDS", (("form", insight._form),))
+    gaps = insight.Gaps(KOBE, Store(tmp_path))
+
+    def past(idx):
+        return [{"match_id": KOBE, "idx": idx}]
+
+    assert gaps.next_stat(past(1)) is None
+    assert gaps.next_stat(past(2)) == ("form", "Recovered form fact")
+
+
 def test_kobe_one_viewing_fills_each_quiet_stretch_until_the_next_moment(tmp_path):
     store, sized = Store(tmp_path), Sized()
     lines, _ = replay(KOBE, store, calls=sized)

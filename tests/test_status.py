@@ -268,3 +268,9 @@ def test_cricket_status_names_the_batters_and_the_wickets():
     named = st.status(m, provider=Says("Pakistan 129 for 7, Masood and Afridi in."))
     assert named["text"] == "Pakistan 129 for 7, Masood and Afridi in."
     assert wants_status("Who's batting?") and wants_status("who is at the crease")
+
+
+def test_a_batter_is_named_by_whole_surname_only():
+    assert not st.names_a_batter("Pakistan 129 for 7, really holding on.", "Moeen Ali")
+    assert st.names_a_batter("Pakistan 129 for 7, Moeen Ali in.", "Moeen Ali")
+    assert st.names_a_batter("ali and masood see it out", "Shan Masood and Moeen Ali")

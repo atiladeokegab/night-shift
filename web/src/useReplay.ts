@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react'
 import { Refused } from './ask'
 import { askCommentator, createReplay, followReplay, getPlayers, getProfile, getShots, lookAt, waitForExample, type StreamStatus } from './api'
-import { presentedSince, release, replayClock, speaks } from './gate'
+import { fresh, release, replayClock } from './gate'
 import { ENDED, gone } from './ended'
 import { TEACHES } from './proof'
 import type { Answer, Fix, Line, LineCheck, LineCheckExample, Moment, Stats } from './types'
-import { sameMoment } from './moment'
 
 export interface ReplayState {
   phase: 'idle' | 'starting' | 'live' | 'failed'
@@ -59,7 +58,7 @@ function reduce(s: ReplayState, a: Action): ReplayState {
     case 'started': return { ...s, phase: 'live' }
     case 'failed': return { ...s, phase: 'failed', refused: a.refused }
     case 'moment': {
-      const seen = (m: Moment) => sameMoment(m, a.moment)
+      const seen = (m: Moment) => m.idx === a.moment.idx
       if (s.moments.some(seen) || s.queuedMoments.some(seen)) return s
       return waits(s, a.moment)
         ? { ...s, queuedMoments: [...s.queuedMoments, a.moment] }
@@ -131,15 +130,13 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
     rewound.current = onRewind
   }, [onLine, onRewind])
 
-  // Speak each newly presented line once, oldest first, unless it was released late or said before a jump
-  // (#163): two presented in one render are both handed on, and the Floor decides which is heard.
-  const before = useRef<Line[]>([])
+  // Speak each newly presented line once, unless it was released late or said before a jump (#163).
+  // Every line new in a render goes to the speaking queue, oldest first: it drops a fill, never a call.
+  const seen = useRef(new Set<string>())
   const spokenAt = useRef<number | null>(null) // video time of the line being spoken
   useEffect(() => {
-    const fresh = presentedSince(state.lines, before.current)
-    before.current = state.lines
-    for (const line of fresh) {
-      if (!speaks(line, state.late)) continue
+    if (!state.lines.length) seen.current.clear() // a new replay
+    for (const line of fresh(state.lines, seen.current, state.late)) {
       spokenAt.current = line.video_t ?? null
       said.current(line)
     }
@@ -202,6 +199,7 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
       const token = ++run.current
       stop.current?.()
       stop.current = null
+      replayId.current = null
       clock.current = null
       origin.current = from
       at.current = 0
@@ -239,6 +237,8 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
   useEffect(() => {
     const on = (e: Event) => {
       if ((e as CustomEvent<string>).detail !== replayId.current) return
+      replayId.current = null
+      run.current++
       stop.current?.()
       stop.current = null
       dispatch({ type: 'failed', refused: ENDED })

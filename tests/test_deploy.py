@@ -17,6 +17,7 @@ if [[ -n "${FAIL_ON:-}" && "$*" == *"$FAIL_ON"* ]]; then
   exit 1
 fi
 if [[ "$*" == *"secrets versions describe"* ]]; then
+  [[ -n "${WARN:-}" ]] && printf 'WARNING: %s\\n' "$WARN" >&2
   if [[ -n "${DISABLED_MATCH:-}" && "$*" == *"$DISABLED_MATCH"* ]]; then
     printf 'DISABLED\\n'
   else
@@ -417,3 +418,8 @@ def test_metadata_permission_error_is_not_reported_as_missing(tmp_path):
 def test_enabled_mounted_secret_versions_pass(tmp_path):
     done, deployed = deploy(tmp_path)
     assert done.returncode == 0 and deployed
+
+
+def test_a_gcloud_warning_on_a_secret_check_is_not_its_state(tmp_path):
+    done, deployed = deploy(tmp_path, WARN="Updates are available for some components")
+    assert done.returncode == 0 and deployed, done.stderr

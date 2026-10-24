@@ -26,9 +26,10 @@ OPTIONAL_SECRETS="converse-llm-secret"
 
 check_secret_version() {
   local secret="$1" version="$2" state
+  # gcloud's own stderr goes to the terminal: a warning (an update notice) is not the state
   if ! state="$(gcloud secrets versions describe "$version" --secret "$secret" \
-    --project "$PROJECT" --format='value(state)' 2>&1)"; then
-    echo "deploy: could not inspect $secret version $version in $PROJECT (check Secret Manager API and caller metadata permissions): $state" >&2
+    --project "$PROJECT" --format='value(state)')"; then
+    echo "deploy: could not inspect $secret version $version in $PROJECT (check Secret Manager API and caller metadata permissions; gcloud's error is above)" >&2
     return 1
   fi
   state="${state//$'\r'/}"
