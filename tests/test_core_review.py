@@ -4,8 +4,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from agent import commentator
-from core import review
+from core import insight, review
 from core.app import Deps, create_app
+from core.stats import stats
 from core.store import Store
 from data.matches import list_matches, load_moments
 
@@ -13,6 +14,7 @@ KOBE = "0020500591"  # idx 4: Bryant's three for 41 points, Lakers 65, Raptors 7
 SAID = "Kobe Bryant from deep, three points! Lakers trail"
 WRONG = f"{SAID} fifty-eight to seventy-five, Bryant with forty-one."
 RIGHT = f"{SAID} sixty-five to seventy-five, Bryant with forty-one."
+WORSE = f"{SAID} fifty-nine to seventy-five, Bryant with forty-one."
 UNSAID = f"{SAID} sixty-five to seventy-five."  # flagged only for leaving out his 41
 CRICKET = "1298150"  # idx 11: Iftikhar's six, his third in four balls only by the moments before it
 SIXES = "Another six! Iftikhar Ahmed, three sixes in four balls! Pakistan 88 for 2."
@@ -82,3 +84,38 @@ def test_a_reply_to_the_analyst_is_checked_against_what_the_analyst_said(tmp_pat
     assert [q["line_id"] for q in queued] == ["unsaid"]
     assert queued[0]["wrong"] == ["33 is not in the moment"]
     assert queued[0]["play"] == f"The lead answers the analyst, who just said: {HEARD}"
+
+
+def test_a_line_said_before_todays_check_is_marked_and_left_out_of_the_autonomy_count(tmp_path):
+    store = Store(tmp_path)
+    for ln in (
+        line("old", WRONG, speaker="lead"),  # said before the check: only today's check fails it
+        line("ok", RIGHT, speaker="lead", checked=True),
+        line("live", RIGHT, speaker="lead", checked=True, fallback=True, tried=WORSE,
+             wrong=["59 is not in the moment"]),  # the retry failed as it was said
+    ):
+        store.append("lines", ln)
+    queued = review.queue(store, Deps(list_matches, load_moments, lambda m, h: None))
+    assert [(q["line_id"], q["text"], q["later_check"]) for q in queued] == [
+        ("live", WORSE, False),
+        ("old", WRONG, True),
+    ]
+    assert queued[1]["wrong"] == ["58 is not in the moment"]  # the checker's reason, today
+    auto = stats(store)["autonomy"]
+    assert (auto["called"], auto["first_time"], auto["to_human"]) == (2, 1, 1)
+
+
+def test_a_second_read_checks_only_the_lines_stored_since_and_a_fix_still_clears(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setattr(review, "_checked", {})
+    checked, real = [], insight.wrong_numbers
+    monkeypatch.setattr(insight, "wrong_numbers", lambda t, *a: checked.append(t) or real(t, *a))
+    store, deps = Store(tmp_path), Deps(list_matches, load_moments, lambda m, h: None)
+    store.append("lines", line("old", WRONG, speaker="lead"))
+    assert [q["line_id"] for q in review.queue(store, deps)] == ["old"]
+    store.append("lines", line("new", WORSE, speaker="lead"))
+    assert [q["line_id"] for q in review.queue(store, deps)] == ["new", "old"]
+    assert checked == [WRONG, WORSE]  # each line checked once
+    store.append("fixes", {"line_id": "old", "corrected_text": RIGHT})
+    assert [q["line_id"] for q in review.queue(store, deps)] == ["new"]
