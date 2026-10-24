@@ -36,10 +36,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #video { position: fixed; inset: 0; background: #03050A; }
 #video iframe { width: 100%; height: 100%; border: 0; }
 #video.off { display: none; }
-.novideo { position: fixed; top: 46%; left: 0; right: calc(var(--side-w) + var(--gut)); text-align: center; color: var(--faint); }
-.novideo a { color: var(--amber); pointer-events: auto; }
+.novideo { position: fixed; top: 46%; left: 0; right: calc(var(--side-w) + var(--gut)); width: fit-content; margin: 0 auto; padding: 6px 12px; border-radius: 10px;
+  background: rgba(6, 8, 15, .78); text-align: center; color: var(--muted); text-shadow: 0 1px 2px rgba(0, 0, 0, .9); }
+.novideo a { color: var(--amber); pointer-events: auto; display: inline-block; padding: 10px 4px; margin: -10px -4px; } /* a bigger tap target, same layout */
 /* An embed-blocked video's poster, darkened so the commentary reads over it. */
-#still { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .4; }
+#still { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .28; }
 /* Overlays let clicks through to the player except where they hold controls. */
 .live { position: fixed; inset: 0; pointer-events: none; }
 .live .nav, .live .side, .live .hud { pointer-events: auto; }
@@ -100,9 +101,16 @@ button { font: inherit; color: inherit; cursor: pointer; }
   .nav .seg { order: 1; flex: 1 1 100%; min-width: 0; overflow-x: auto; scrollbar-width: none; }
   .seg button { flex: none; white-space: nowrap; }
   .lane, .side, .novideo { position: static; width: auto; margin: 16px var(--gut); }
+  .novideo { width: fit-content; max-width: calc(100% - 2 * var(--gut)); margin: 16px auto; }
   /* The sync text can wrap at phone width, and a fully round pill around two lines reads as a blob. */
   .sync { border-radius: 12px; line-height: 1.3; text-wrap: balance; }
   .subtitle::before { display: none; }
+}
+/* A phone on its side: the poster sits behind the page instead of filling the first screen, so the caption
+   and the subtitle stay in view. */
+@media (max-width: 900px) and (orientation: landscape) {
+  #still { position: fixed; inset: 0; height: 100%; }
+  .live, .novideo { position: relative; }
 }
 </style>
 </head>
@@ -340,7 +348,7 @@ setInterval(tick, 100);
 // No video: the replay streams lines faster than anyone can follow, so they go out one at a time,
 // GAP_MS apart and each after the last one's voice has finished.
 function pace() {
-  $("sync").textContent = `No video here · commentary on its own clock${paced.length ? ` · ${paced.length} waiting` : ""}`;
+  $("sync").textContent = ""; // the no-video caption says it once
   // ON AIR is set by the voice's real playing and ended events (a failed <audio> never says it stopped);
   // a voice still on air HOLD_MS after its turn is taken as stuck.
   const talking = $("onair").classList.contains("on") && Date.now() < nextAt + HOLD_MS;
