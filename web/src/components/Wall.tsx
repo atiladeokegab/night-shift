@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { CARD_COPY } from '../teams'
 import { SPORT_NAMES, type Match } from '../types'
 import { Nav, type Screen } from './Nav'
-import { loadYouTube } from '../player'
+import { loadYouTube, mountPlayer } from '../player'
+
+const TILE_START_MS = 8_000 // a tile clip has this long to start playing before the tile settles on its poster
 
 interface Props {
   matches: Match[] | null // null while loading
@@ -58,35 +60,28 @@ function Tile({ match, onOpen }: { match: Match; onOpen: (m: Match) => void }) {
   const title = CARD_COPY[match.match_id]?.title ?? match.title?.split(',')[0] ?? match.match_id
   const detail = CARD_COPY[match.match_id]?.detail ?? match.title?.split(',').slice(1).join(',').trim()
 
-  // Muted, looping and without controls: the tile is a moving picture, never a second commentary.
+  // Muted, looping, without controls or captions: the tile is a moving picture, never a second commentary.
+  // The clip shows only once it is really playing; a clip that errors or isn't playing in TILE_START_MS
+  // gives up (player.ts's deadline, #73) and the tile keeps its thumbnail poster.
   useEffect(() => {
     if (!match.youtube_id || !host.current) return
     const target = document.createElement('div')
     host.current.appendChild(target)
-    let player: YT.Player | null = null
+    let unmount: (() => void) | null = null
     let gone = false
     // GET /matches' video_start (#73) is already just before the first mapped moment.
     const start = Math.max(0, Math.floor(match.video_start ?? 0))
     loadYouTube().then((YT) => {
       if (gone) return
-      player = new YT.Player(target, {
-        videoId: match.youtube_id!,
-        host: 'https://www.youtube-nocookie.com',
-        playerVars: { autoplay: 1, mute: 1, controls: 0, playsinline: 1, rel: 0, modestbranding: 1, disablekb: 1, loop: 1, playlist: match.youtube_id!, start },
-        events: {
-          onReady: (e) => {
-            if (gone) return
-            e.target.mute()
-            e.target.playVideo()
-            setPlaying(true)
-          },
-          onError: () => !gone && setBroken(true),
-        },
-      })
+      unmount = mountPlayer(YT, target, match.youtube_id!, start, {
+        onClock: () => {},
+        onState: (s) => s === 'unavailable' && setBroken(true),
+        onPlaying: () => setPlaying(true),
+      }, TILE_START_MS, { disablekb: 1, loop: 1, playlist: match.youtube_id!, cc_load_policy: 0, iv_load_policy: 3 })
     }, () => !gone && setBroken(true)) // the IFrame API never loaded (player.ts gives up after 10 s)
     return () => {
       gone = true
-      player?.destroy()
+      unmount?.()
       target.remove()
     }
   }, [match.youtube_id, match.video_start])
