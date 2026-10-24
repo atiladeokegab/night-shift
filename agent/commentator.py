@@ -22,6 +22,8 @@ SYSTEM = (AGENT / "prompt.md").read_text(encoding="utf-8")
 MESSAGE = (AGENT / "message.md").read_text(encoding="utf-8")
 ASK = (AGENT / "ask.md").read_text(encoding="utf-8")
 TOOLS = json.loads((AGENT / "tools.json").read_text(encoding="utf-8"))
+# Ask only: Mubit fingerprints the tools, so a new one in every line would split the lines' task
+ASK_TOOLS = TOOLS + json.loads((AGENT / "ask_tools.json").read_text(encoding="utf-8"))
 TOOL_CHOICE = {"type": "auto"}
 MODEL = "claude-haiku-4-5"
 MAX_TOKENS = 100
@@ -297,6 +299,7 @@ def answer(
         header = match_header(past[-1]["match_id"])
     request = build_request(header, past)
     request["system"] = ASK
+    request["tools"] = ASK_TOOLS
     heard = "\n".join(f"- {ln['text']}" for ln in lines[-5:]) or "- none yet"
     # one quoted line: a line break in the question must not forge a field the model reads
     quoted = json.dumps(" ".join(question.split()), ensure_ascii=False)
