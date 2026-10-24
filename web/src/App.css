@@ -578,3 +578,6 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .flag .others summary { cursor: pointer; color: var(--muted); }
 .flag .others ul { margin: 6px 0 0; padding-left: 18px; color: var(--muted); display: grid; gap: 4px; }
 .stats dd a { color: var(--amber); display: inline-block; padding: 12px 0; margin: -12px 0; } /* a 44 px tap target, same layout (#170) */
+.training { margin: 0 0 24px; }
+.training h2 { margin: 0; }
+.training ol { margin: 0; padding-left: 20px; display: grid; gap: 8px; color: var(--muted); }

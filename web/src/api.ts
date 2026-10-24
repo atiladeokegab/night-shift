@@ -8,7 +8,7 @@ import { offAir, Refused, refused } from './ask'
 import { replayGone } from './ended'
 import { playersUrl, type Player, type Profile } from './follow'
 import type { Shots } from './shots'
-import type { Answer, Fix, Line, LineCheck, Ledger, LineCheckExample, Match, Moment, ReviewItem, Stats, StreamEvent, Teams, Voice } from './types'
+import type { Answer, Fix, Line, LineCheck, Ledger, LineCheckExample, Match, Moment, ReviewItem, ScoreCheckExample, ScoreCheckReceipt, Stats, TrainingState, StreamEvent, Teams, Voice } from './types'
 
 export const isDemo = new URLSearchParams(window.location.search).has('demo')
 
@@ -24,9 +24,9 @@ export async function listMatches(): Promise<Match[]> {
   return res.json()
 }
 
-export async function getStats(): Promise<Stats> {
+export async function getStats(signal?: AbortSignal): Promise<Stats> {
   if (isDemo) return demoStats()
-  const res = await fetch('/stats')
+  const res = await fetch('/stats', { signal })
   if (!res.ok) throw new Error(`GET /stats failed (${res.status})`)
   return res.json()
 }
@@ -137,6 +137,47 @@ export async function waitForExample(fix: Fix, tries = 30, every = 2000): Promis
     if (ex && ex.created_at >= since) return ex
   }
   return null
+}
+
+// A signal that aborts after `ms`, or with `outer`: no read waits on a stalled request.
+export function timed(outer: AbortSignal | undefined, ms: number): AbortSignal {
+  const ctl = new AbortController()
+  const t = setTimeout(() => ctl.abort(), ms)
+  const stop = () => (clearTimeout(t), ctl.abort())
+  if (outer?.aborted) stop()
+  else outer?.addEventListener('abort', stop, { once: true })
+  return ctl.signal
+}
+
+const READ_MS = 5_000 // one GET /lines/{id}, its body included
+const BACKOFF_MS = [1_000, 2_000, 4_000, 8_000] // then 8 s each
+
+// GET /lines/{id} → this fix's own Score check examples and its receipt (#400), matched by `fix_uid`, never
+// by time. `seen` gets each change. It stops at the receipt, after `deadline` ms, or when `signal` aborts
+// (the panel closed); no receipt by then is 'unknown', never "none sent".
+export async function followTraining(fix: Fix, seen: (state: TrainingState, xs: ScoreCheckExample[]) => void,
+  signal: AbortSignal, deadline = 60_000): Promise<TrainingState> {
+  if (isDemo || !fix.fix_uid) return 'unknown'
+  const end = Date.now() + deadline
+  let n = 0
+  for (let i = 0; !signal.aborted && Date.now() < end; i++) {
+    await new Promise<void>((r) => timed(signal, Math.min(BACKOFF_MS[Math.min(i, 3)], end - Date.now())).addEventListener('abort', () => r()))
+    if (signal.aborted) break
+    const s = timed(signal, READ_MS)
+    const line = await fetch(`/lines/${encodeURIComponent(fix.line_id)}`, { signal: s })
+      .then((res) => (res.ok ? res.json() : null))
+      .catch(() => null)
+    const xs: ScoreCheckExample[] = (line?.scorecheck_examples ?? []).filter((x: ScoreCheckExample) => x.fix_uid === fix.fix_uid)
+    const got: ScoreCheckReceipt | undefined = (line?.scorecheck_receipts ?? []).find((r: ScoreCheckReceipt) => r.fix_uid === fix.fix_uid)
+    if (got) {
+      const state = got.sent > 0 ? 'sent' : got.failed ? 'failed' : 'none'
+      seen(state, xs)
+      return state
+    }
+    if (xs.length > n) seen('pending', xs)
+    n = Math.max(n, xs.length)
+  }
+  return 'unknown'
 }
 
 // GET /review (#171): stored lines the number check flags. The demo has no store, so nothing.
