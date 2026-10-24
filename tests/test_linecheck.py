@@ -206,6 +206,42 @@ def test_gold_reads_trail_the_team_n_m_to_a_team_and_goalless(match_id, idx, tex
     assert _gold(match_id, idx, text) == want
 
 
+@pytest.mark.parametrize(
+    "idx, text, want",
+    [
+        # At idx 5 Messi has made it 1-0. "Goalless" describes the state before this goal;
+        # it must not override the current one-nil score claim.
+        (5, "Argentina break the goalless deadlock and lead one-nil.", "ok"),
+        # Scoreless references to earlier states are not the current score.
+        (5, "Argentina were scoreless before the penalty; now they lead one-nil.", "ok"),
+        (
+            5,
+            "The earlier match ended goalless; Messi scores the penalty and Argentina lead one-nil.",
+            "ok",
+        ),
+        # At idx 1 the score really is 0-0, while at idx 6 it is 1-0 and play is still live.
+        (1, "Still goalless.", "ok"),
+        (6, "Still goalless.", "wrong"),
+        (5, "Messi's penalty! It is still goalless before half-time.", "wrong"),
+        (
+            5,
+            "They were goalless before the penalty; still goalless now despite Argentina leading one-nil.",
+            "wrong",
+        ),
+    ],
+)
+def test_gold_treats_goalless_as_current_state_not_any_mention_of_zero(idx, text, want):
+    label = _gold("3869685", idx, text)
+    assert label is not None
+    assert label["score"] == want
+
+
+def test_gold_does_not_turn_a_team_scoped_goalless_claim_into_match_0_0():
+    # France have not scored at 1-0, but this line does not say the match is 0-0.
+    # Since gold() has no team-scoped score label, decline to label it rather than call it wrong.
+    assert _gold("3869685", 5, "France remain goalless.") is None
+
+
 def test_gold_never_guesses_a_number_it_cannot_place():
     # 47 is Bryant's total, said without "points": a total or not, code can't tell
     assert _gold("0020500591", 6, "Kobe Bryant from deep, 47 now!") is None
