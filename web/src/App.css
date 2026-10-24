@@ -209,7 +209,8 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .scrim { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 16px; background: rgba(3, 5, 10, .55);
   -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); animation: fade .2s ease-out; }
 @keyframes fade { from { opacity: 0; } }
-.sheet { width: min(580px, 100%); padding: 28px; border-radius: 24px; display: grid; gap: 16px; animation: lift .32s var(--ease); background: linear-gradient(180deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, .02)), rgba(12, 16, 28, .82); }
+/* A sheet taller than the screen scrolls inside the scrim's padding (the voice sheet lists every sport's voices). */
+.sheet { --pad: 28px; width: min(580px, 100%); max-height: calc(100svh - 32px); overflow-y: auto; overscroll-behavior: contain; padding: var(--pad); border-radius: 24px; display: grid; gap: 16px; animation: lift .32s var(--ease); background: linear-gradient(180deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, .02)), rgba(12, 16, 28, .82); }
 @keyframes lift { from { opacity: 0; transform: translateY(16px) scale(.98); } }
 .sheet h2 { margin: 0; font: 600 1.6rem/1.1 var(--display); letter-spacing: -.02em; }
 .sheet .lede { margin: -6px 0 0; color: var(--muted); font-size: .92rem; }
@@ -228,6 +229,9 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .actions .spacer { flex: 1; }
 .sheet .hint { margin: 0; font-size: .8rem; color: var(--faint); }
+/* The voice sheet's Done stays in reach at the bottom while the voices scroll under it. */
+.sheet > .actions:last-child { position: sticky; bottom: calc(-1 * var(--pad)); margin: 0 calc(-1 * var(--pad)) calc(-1 * var(--pad)); padding: 16px var(--pad) var(--pad);
+  background: linear-gradient(180deg, rgba(12, 16, 28, 0), rgba(12, 16, 28, .96) 16px); }
 .voices { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .opts { display: grid; gap: 8px; margin-top: 10px; }
 .opt { position: relative; display: block; }
@@ -250,6 +254,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 @media (max-width: 1100px) {
   :root { --stage-h: 74svh; }
   .lane, .novideo, .banner { right: var(--gut); }
+  .subtitle::before { inset: -64px 0 -40px; } /* on a full-width lane the -18% glow made the page scroll sideways */
   .side { position: static; width: auto; display: grid; grid-template-columns: 1fr 1fr; padding: 16px var(--gut) 32px; align-items: start; }
   .panel.lines .log { max-height: 420px; }
 }
@@ -278,7 +283,6 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   /* The score bar keeps two rows (teams and score; clock and period or chase): no REPLAY tag or rule. */
   .scorebar .replay, .scorebar .sep { display: none; }
   .subtitle { bottom: 170px; gap: 12px; }
-  .subtitle::before { inset: -64px 0 -40px; } /* the -18% glow made the page scroll sideways */
   /* Under the score bar, clear of the moment tag; an alert banner takes the spot while it shows. */
   .novideo { top: 148px; transform: none; font-size: .85rem; }
   /* The scrim sized to the phone's subtitle lane (two lines and the tag above the two-row dock), so
@@ -304,8 +308,27 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   .side { grid-template-columns: 1fr; }
   .stats { grid-template-columns: 1fr 1fr; }
   .voices { grid-template-columns: 1fr; }
-  .sheet { padding: 20px; }
+  .sheet { --pad: 20px; max-height: calc(100svh - 16px); }
   .scrim { place-items: end center; padding: 8px; }
+  /* With no video the stage only needs the height that fits the caption, a two-line subtitle and the dock,
+     so a tall phone shows no empty band (375x667 is already at that height). */
+  :root:has(.novideo) { --stage-h: min(76svh, 510px); }
+}
+/* A phone on its side: the stage takes the whole screen and the dock one row, so the score bar, the
+   no-video caption, the subtitle and the dock stack without touching. */
+@media (orientation: landscape) and (max-height: 500px) {
+  :root, :root:has(.novideo) { --stage-h: 100svh; }
+  .live .nav { padding-top: 12px; padding-bottom: 12px; }
+  .hud { top: 56px; flex-wrap: nowrap; }
+  .novideo { top: 106px; transform: none; font-size: .85rem; }
+  .subtitle { bottom: 124px; gap: 8px; }
+  .subtitle p { font-size: 1.2rem; max-width: 52ch; }
+  .dock { bottom: 60px; }
+  .dock .back { display: none; }
+  .seg { flex: 0 0 auto; }
+  .dock .voice { flex: 1 1 0; min-width: 0; }
+  .dock .voice span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .timeline { bottom: 18px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 
