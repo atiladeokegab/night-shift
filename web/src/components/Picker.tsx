@@ -68,7 +68,9 @@ function Card({ match, voices, onStart }: { match: Match; voices: Voice[]; onSta
     <article className="card">
       <div className="art" dangerouslySetInnerHTML={{ __html: cardArt(match.sport, home, away) }} />
       <div className="card-body">
-        <span className="label">{SPORT_NAMES[match.sport]} · {coverage(match)}</span>
+        <span className="label">{SPORT_NAMES[match.sport]}</span>
+        {/* #246: its own line, as the wall's tiles say it; an uppercase label wraps into itself on a narrow card */}
+        <p className="detail" style={{ color: 'var(--amber)', fontWeight: 600 }}>{coverage(match)}</p>
         <h2>{title}</h2>
         {detail && (
           <p className="detail">
