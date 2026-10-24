@@ -1,4 +1,4 @@
-"""Pre-match player packs (#118): `uv run python -m agent.packs` writes data/packs/<sport>-<id>.json.
+"""Pre-match player packs (#118): `uv run python -m agent.packs` writes data/packs/*.json.
 
 A pack holds only the players and teams in the match, and only their shots from earlier in the same
 season or tournament, up to the day before the match. `tonight` is the match's own shots, each
