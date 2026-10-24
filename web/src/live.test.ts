@@ -47,7 +47,7 @@ const LATER = 'Kobe again! That is forty for the night.'
 const replay: ReplayState = {
   phase: 'live', stream: 'ok', gated: true, now: 500, duration: 1671,
   moments: [moment(3, 490.5, '06:12'), moment(4, 508, '05:40')], lines: [line(4, 508, LATER), line(3, 490.5, EARLY)],
-  late: [], queuedMoments: [], queuedLines: [], ended: false, error: null, stats: null, fixes: {}, answers: [],
+  late: [], queuedMoments: [], queuedLines: [], ended: false, error: null, refused: null, stats: null, fixes: {}, answers: [],
 }
 
 const noop = () => {}
@@ -175,6 +175,15 @@ test('the bar sits in the nav row, and with no video the clock and scrubber go (
   assert.match(html, /<header class="nav">[\s\S]*class="pickbar glass"[\s\S]*<nav class="links"[\s\S]*>Matches<\/button>/)
   assert.match(render({ video: 'unavailable' }), /<section class="vcard"[^>]*data-video="off"/)
   assert.ok(!/<section class="vcard"[^>]*data-video/.test(html))
+})
+
+test('a replay the server turned away (#244) says why, and an Ask it turned away says why too', () => {
+  const turned = { ...replay, phase: 'failed' as const, refused: 'Lots of people are watching. Try again in a minute.' }
+  assert.match(render({ replay: turned }), /Lots of people are watching\. Try again in a minute\./)
+  const notice = 'Commentator is off air for today'
+  const answered = { ...replay, answers: [{ line_id: 'a1', moment_idx: 3, question: 'Who?', text: notice, off_air: true, notice }] }
+  const html = render({ replay: answered, caption: { kind: 'answer', text: notice, speaker: 'analyst' } })
+  assert.match(html, /<p class="cap-state">Commentator is off air for today<\/p>/)
 })
 
 test("an answer shows its own time, and dims on the caption and in the log once a later moment is on screen", () => {

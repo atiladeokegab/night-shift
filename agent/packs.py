@@ -37,7 +37,9 @@ MATCHES = {
     ("football", "3869685"): (43, 106),
     ("football", "3754092"): (2, 27),  # Premier League 2015/16
     ("football", "3913122"): (37, 281),  # FA Women's Super League 2023/24
+    ("football", "7457"): (49, 3),  # NWSL 2018
     ("cricket", "1298150"): ("2022",),
+    ("cricket", "1515217"): ("2026",),  # Netherlands v Nepal, women's T20I
     ("f1", "9636"): (2024,),
 }
 

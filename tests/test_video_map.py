@@ -99,6 +99,8 @@ def test_every_demo_match_has_a_map():
         "0049700088": "kwAu78IiixE",
         "0020500591": "46nYnjGdQlk",
         "9636": "ctd_8sQbF_I",
+        "7457": None,  # the whole matches (#246): no video, every key moment called
+        "1515217": None,
     }
 
 
@@ -112,6 +114,8 @@ def test_only_the_embed_blocked_videos_say_so():
         "0049700088": None,
         "0020500591": None,
         "9636": None,
+        "7457": None,
+        "1515217": None,
     }
 
 
@@ -152,6 +156,8 @@ def test_each_video_starts_25_s_before_its_first_mapped_moment():
         "0049700088": 343,
         "0020500591": 465,
         "9636": 0,
+        "7457": None,
+        "1515217": None,
     }
 
 

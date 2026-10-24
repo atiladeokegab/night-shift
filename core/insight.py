@@ -919,16 +919,28 @@ ENDED = re.compile(
 # play", "Pakistan six for one"). A wrong leader and the model talking to itself are wrong_numbers'.
 THREE = re.compile(
     r"\b(?:three[- ]pointer|3[- ]pointer|from (?:deep|(?:way )?downtown|beyond the arc|long range)"
-    r"|beyond the arc)\b",
+    r"|beyond the arc)\b(?!\s+earlier)",  # "who hit from deep earlier" recalls a past three
     re.I,
 )
 TIE = re.compile(
     r"\b(?:a tie|it's a tie|their tie|the tie|tie it|tied (?:the match|it)|match is tied"
-    r"|level the scores?|levels? it|level (?:with|on)|scores? level|super over"
+    r"|level the scores?|levels? it|level (?:with|on)(?! the (?:\w+[ -])?rate)|scores? level"
+    r"|super over"
     r"|matched \w+'s (?:total|score)|all square)\b",
     re.I,
 )
-SIX = re.compile(r"(?i:\b(?:a|the|another) six\b|\bmaximum\b)|\bSIX\b")  # capitals are a shout
+# capitals are a shout; a six wanted (WANTED_SIX) or a score, "160 for SIX", is no six hit
+SIX = re.compile(r"(?i:\b(?:a|the|another) six\b|\bmaximum\b)|(?<!\d [Ff][Oo][Rr] )\bSIX\b")
+# "need a six", "looking for a six"; "find a six" only asked or wished ("can he find a six?",
+# "unless he finds a six"): "Kohli finds a six!" is one hit
+WANTED_SIX = re.compile(
+    r"(?:\b(?:needs?|needed|needing|look(?:ing)? for) (?:a|another) six\b"
+    r"|\b(?:unless|if|can|could|(?:needs?|has|have|had|try|trying) to)\b[^.!?]*?"
+    r"\bfind(?:s|ing)? (?:a|another) six\b)"
+    r"(?!,? and (?:\w+ )?(?:got|gets|found|finds) (?:one|it))"  # "needed a six, and got one"
+    r"|\bfind(?:s|ing)? (?:a|another) six\b[^.!?,;]*\?",
+    re.I,
+)
 HOW_OUT = {
     "stumped": re.compile(r"\bstump(?:ed|ing)\b", re.I),
     "lbw": re.compile(r"\blbw\b|\bleg before\b", re.I),
@@ -947,8 +959,11 @@ def _wrong_cricket(text: str, m: dict) -> list[str]:
     wrong = []
     if " win " in f" {d.get('chase', '')} " and TIE.search(text):  # "India win by 4 wickets"
         wrong.append(f"a tie is called, but {d['chase']}")
-    if kind in ("Chase", "Last ball") and m.get("outcome") != "6 runs" and SIX.search(text):
+    # a wicket line may recall the bowler's earlier moments: "has a six and a last-ball two"
+    if kind != "Wicket" and m.get("outcome") != "6 runs" and SIX.search(WANTED_SIX.sub("", text)):
         wrong.append(f"a six is called, but the ball was {m.get('outcome')}")
+    if won := re.match(r"(.+?) win\b", d.get("chase", "")):
+        wrong += _wrong_winner(text, m, won[1])
     if kind == "Wicket":
         out = m.get("outcome")
         wrong += [
@@ -957,6 +972,23 @@ def _wrong_cricket(text: str, m: dict) -> list[str]:
             if how != out and said.search(text)
         ]
     return wrong
+
+
+def _wrong_winner(text: str, m: dict, winner: str) -> list[str]:
+    """ "Nepal win it!" on the ball Netherlands won on; "Nepal need a six" names no winner."""
+    from data.matches import match_header
+
+    try:
+        side, names = _sides(match_header(m["match_id"]))
+    except KeyError:  # not a bundled match: no team names to look for
+        return []
+    if (won := side.get(winner.lower())) is None:
+        return []
+    said = rf"\b({names})\s+(?:(?:have|has)\s+)?(?:wins?|won)\b(?! the toss)"
+    called = re.finditer(said, text, re.I)
+    if any(side.get(c[1].lower()) != won for c in called):
+        return [f"the wrong side is called the winner: {winner} win"]
+    return []
 
 
 def _team_scores(text: str, m: dict) -> bool:
@@ -970,7 +1002,8 @@ def _team_scores(text: str, m: dict) -> bool:
         return False
     return bool(
         re.search(
-            rf"\b(?:{names})\s+(?:(?:have|has|just|now)\s+)?score[sd]?\b(?!\s+(?:level|is|are|was))",
+            rf"\b(?:{names})\s+(?:(?:have|has|just|now)\s+)?score[sd]?\b"
+            r"(?!\s+(?:level|is|are|was|twice|once|none|nothing))",  # "scored twice": a recap
             text,
             re.I,
         )
@@ -995,7 +1028,12 @@ def wrong_event(text: str, m: dict) -> list[str]:
         wrong.append(f"a goal is called, but the moment is {m['type']}, {m.get('outcome')}")
     tally = d.get("shootout") or s
     if goal and LEVEL.search(text) and tally.get("home") != tally.get("away"):
-        wrong.append("the scores are not level after this goal")
+        # a shootout kick levels only the shootout: the match was level before it
+        wrong.append(
+            f"the shootout is {tally['home']}-{tally['away']} after this kick, not level"
+            if "shootout" in d
+            else "the scores are not level after this goal"
+        )
     gives_one = "own box" in d.get("where", "") or "shootout" in d  # a foul there can be one
     if "card" in d and not gives_one and PENALTY.search(text):
         wrong.append(f"a penalty is called, but the moment is a {d['card']}")

@@ -100,6 +100,7 @@ def test_the_score_and_a_real_goal_pass(idx, text):
 
 
 JAZZ, KOBE, INDIA = "0049700088", "0020500591", "1298150"
+NEPAL = "1515217"  # Netherlands win by 2 runs; the last ball, idx 62, is a four
 
 # (match, idx, a line heard on the live site, a near miss that must pass): the #190 audit's classes
 OTHER_SPORTS = [
@@ -128,6 +129,34 @@ OTHER_SPORTS = [
         "Three byes off Nawaz! Kohli was the man who took Pakistan six for one, years ago.",
     ),
     (INDIA, 52, "Kohli! SIX! India have 155 for 5, need just 5 more from 3 balls!", None),
+    # a six found or hit "for six" is a six; only a wanted one or a score is not
+    (INDIA, 53, "Kohli finds a six over long-on!", None),
+    (INDIA, 53, "KOHLI FINDS A SIX!", None),
+    (INDIA, 53, "Kohli hits it FOR SIX!", None),
+    (INDIA, 53, "KOHLI GOES FOR SIX! INDIA WIN!", None),
+    (INDIA, 53, "Kohli steps down to Nawaz and finds a six!", None),
+    (INDIA, 53, "Kohli comes to the crease and finds a six over long-on!", None),
+    (INDIA, 53, "India needed a six and got one!", None),
+    (INDIA, 53, "Kohli finds a six, can you believe it?", None),
+    (INDIA, 53, "India needed a six, and got one!", None),
+    (INDIA, 53, "Kohli needs to find a six, and he finds one!", None),
+    # any ball but a six: a six called on the last-ball four, and the losing side called the winner
+    (NEPAL, 62, "SIX! Nepal win it!", "Netherlands win by 2 runs!"),
+    (
+        NEPAL,
+        62,
+        "Nepal hit a six off the last ball!",
+        "FOUR! Nepal fall two short, Netherlands have won!",
+    ),
+    (NEPAL, 61, None, "Nepal need a six off the last ball to win!"),
+    (NEPAL, 62, None, "Nepal needed a six off the last ball to win, and got a four."),
+    # a wicket line recalls the bowler's earlier six: no six is called on this ball
+    (
+        INDIA,
+        27,
+        None,
+        "Haris Rauf has two key moments tonight, a six for 6 runs and a last ball for 2.",
+    ),
     # a run out called a stumping; "bowled" names the bowler and "run out of" is no dismissal
     (
         INDIA,
@@ -216,3 +245,44 @@ def test_every_football_fallback_line_passes_the_event_check():
         for m in load_moments(match["match_id"]):
             text = insight.fallback_text(match_header(match["match_id"]), m)
             assert insight.wrong_event(text, m) == [], (match["match_id"], m["idx"], text)
+
+
+# Right lines the event check flagged; each must pass at its moment
+NEAR_MISSES = [
+    # the match is level at 3-3 through the shootout, which is counted on its own
+    (FINAL, 59, "Mbappé converts! Still three all, and France lead the shootout one-nil."),
+    (FINAL, 59, "Mbappé scores from the spot. The match is level at three all."),
+    # cricket: a six wanted is no six hit, and "FOR SIX" is runs for wickets
+    (INDIA, 53, "Three byes! India need a six off the last ball now!"),
+    (INDIA, 53, "Three byes off Nawaz. Can Kohli find a six?"),
+    (INDIA, 53, "Three byes! Unless Kohli finds a six, it's Pakistan's."),
+    (INDIA, 53, "Three byes. India needed a six there and didn't get one."),
+    (INDIA, 56, "INDIA WIN BY FOUR WICKETS! 160 FOR SIX!"),
+    (INDIA, 56, "India win by four wickets! 160 for SIX!"),
+    (INDIA, 56, "India were level on the run-rate all night, and they win by four wickets!"),
+    (INDIA, 56, "India were level with the run rate all night, and they win by four wickets!"),
+    # a three from earlier play, recalled on a two
+    (JAZZ, 24, "Harper, who hit from deep earlier, now a fifteen-footer!"),
+    # a team's goals recalled on a save
+    (FINAL, 13, "Argentina scored twice in the first half; Lloris saves this one."),
+    (FINAL, 13, "Lloris saves from De Paul. France have scored none so far."),
+]
+
+
+@pytest.mark.parametrize(("match_id", "idx", "text"), NEAR_MISSES)
+def test_a_right_line_the_event_check_used_to_flag_passes(match_id, idx, text):
+    assert insight.wrong_event(text, moment(match_id, idx)) == []
+
+
+@pytest.mark.parametrize(
+    ("idx", "text"),
+    [
+        (59, "Mbappé converts from the spot! France level it up, three all!"),  # France lead it 0-1
+        (67, "MONTIEL! ARGENTINA LEVEL IT! Four-two in the shootout!"),  # the winning kick
+        (25, "Mbappé levels it from the penalty spot! Argentina two, France one!"),
+    ],
+)
+def test_a_kick_that_levels_nothing_is_still_caught(idx, text):
+    wrong = insight.wrong_event(text, moment(FINAL, idx))
+    assert wrong and "not level" in wrong[0], wrong
+    assert ("shootout" in wrong[0]) == (idx != 25)  # the reason names the score it checked

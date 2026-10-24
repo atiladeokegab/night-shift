@@ -4,7 +4,7 @@
 // GET /stats, GET /voices, POST /lines/{id}/fix, POST /replays/{id}/ask, POST /replays/{id}/seen, GET /replays/{id}/players, .../players/{name}/shots and .../profile and GET /lines/{id}/audio?voice=<id>
 // (ElevenLabs; 503 when the voice isn't configured).
 import { demoMatches, demoStats, streamDemo } from './demo'
-import { offAir } from './ask'
+import { offAir, Refused, refused } from './ask'
 import { playersUrl, type Player, type Profile } from './follow'
 import type { Shots } from './shots'
 import type { Answer, Fix, Line, Match, Moment, ReviewItem, Stats, StreamEvent, Voice } from './types'
@@ -37,7 +37,10 @@ export async function createReplay(matchId: string, speed: number, startIdx?: nu
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ match_id: matchId, speed, start_idx: startIdx }),
   })
-  if (!res.ok) throw new Error(`POST /replays failed (${res.status})`)
+  if (!res.ok) {
+    const busy = await refused(res)
+    throw busy ? new Refused(busy) : new Error(`POST /replays failed (${res.status})`)
+  }
   return ((await res.json()) as { replay_id: string }).replay_id
 }
 
@@ -165,6 +168,8 @@ export async function askCommentator(replayId: string, question: string, momentI
       body: JSON.stringify({ question, moment_idx: momentIdx }),
     })
     if (res.ok) return res.json()
+    const busy = await refused(res)
+    if (busy) return { ...offAir(question, momentIdx), text: busy, notice: busy }
   } catch {
     // the network failed: off air below
   }

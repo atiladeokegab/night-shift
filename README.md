@@ -20,6 +20,8 @@ Touchline describes the matches a platform streams with nobody describing them. 
 
 What you hear are **replays, as if live**: real matches' event data played back over their broadcast highlights, each line called at its moment as if the match were on now. Sky Sports now describes [about 109 Premier League games a season](#the-problem) aloud, and none below the top flight.
 
+**Who it is for:** a blind or low-vision fan following a match with no described commentary. Two whole matches lead the page, every key moment from start to finish with no video: Orlando Pride v North Carolina Courage (NWSL, 2018) and Netherlands v Nepal (Women's T20 World Cup Qualifier, 2026). A full replay, mostly highlights, costs $0.37 on average, $0.09 model and $0.28 voice, over the 23 measured on the live [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats) on 24 October 2026 at 16:15 UTC. A whole match calls every moment, so it costs more.
+
 <!-- DEMO GIF SLOT (build-140): the demo GIF, full width, with a one-line caption under it. -->
 
 **How well the check works:** on 300 lines the live site had said, labelled by a separate model
@@ -140,7 +142,7 @@ Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026. Track: Own
 
 | Feature | Status | Proof in the code |
 |---|---|---|
-| [The seven matches](#the-seven-matches) | Live | [`GET /matches`](https://night-shift-5zvig7nbvq-ew.a.run.app/matches), [`agent/feed.py`](agent/feed.py) |
+| [The nine matches](#the-nine-matches) | Live | [`GET /matches`](https://night-shift-5zvig7nbvq-ew.a.run.app/matches), [`agent/feed.py`](agent/feed.py) |
 | [Two commentators: lead and analyst](#two-commentators-lead-and-analyst) | Live (#130, #142) | [`core/insight.py`](core/insight.py), [`core/replay.py`](core/replay.py) |
 | [Ask, by typing](#ask-by-typing-or-by-voice) | Live | [`POST /replays/{id}/ask`](core/app.py), [`agent/ask.md`](agent/ask.md) |
 | [Ask, by voice](#ask-by-typing-or-by-voice) | Live (#145) | [`web/src/voice.ts`](web/src/voice.ts), [`web/src/components/MicButton.tsx`](web/src/components/MicButton.tsx), [`web/src/voice.test.ts`](web/src/voice.test.ts) |
@@ -151,18 +153,20 @@ Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026. Track: Own
 | [The Proof panel](#the-proof-panel) | Live | [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats), [`core/stats.py`](core/stats.py) |
 | Live screen layout: the video in a card, Lines and Proof beside it, playback controls | Live (#132) | [`web/src/components/Live.tsx`](web/src/components/Live.tsx) |
 
-#### The seven matches
+#### The nine matches
 
-<img src="docs/img/wall.png" alt="The home page in a dark theme, at 1440 wide. The amber Touchline. wordmark top left; on the right the links Matches (with a green dot, the current page), Replays, Review and About. Under the eyebrow Touchline: the describer that checks itself, the heading The match nobody described and a short paragraph on what it does. Then the long-tail match as a wide tile across the full row: FOOTBALL · NO DESCRIBED BROADCAST, Brighton v Bristol City, Women's Super League · 21 Jan 2024. Below it, six tiles in three columns and two rows, each with a broadcast still, a Jump to the big moment pill and the link Tap to hear it called: Battle of the Bridge (Chelsea v Tottenham, 2016); Messi v Mbappé (2022 World Cup final); India v Pakistan (T20 World Cup, 2022); Kobe's 81 v Toronto (2006); Jordan's last shot as a Bull (1998 NBA Finals, Game 6); Verstappen, P17 to P1 (2024 São Paulo Grand Prix). Below them, the credits for the match data and the highlights." width="100%">
+<img src="docs/img/wall.png" alt="The home page in a dark theme, at 1440 wide. The amber Touchline. wordmark top left; on the right the links Matches (with a green dot, the current page), Replays, Review and About. Under the eyebrow Touchline: the describer that checks itself, the heading Every match deserves to be described, the line Most matches have no audio description. A blind or low-vision fan following one gets no description, a short paragraph on what it does and what a replay costs. Then nine tiles in three columns and three rows, each with a Jump to the big moment pill and the link Tap to hear it called. First the three long-tail matches: Orlando v North Carolina (NWSL · 24 May 2018) and Netherlands v Nepal (Women's T20 World Cup Qualifier · 22 Jan 2026), each marked No audio description that we could find and Whole match, every key moment, over a drawn stadium; then Brighton v Bristol City (Women's Super League · 21 Jan 2024), marked No described broadcast that we could find and Highlights, synced to video. Then the six famous ones, each over a broadcast still and marked Highlights, synced to video: Battle of the Bridge (Chelsea v Tottenham, 2016); Messi v Mbappé (2022 World Cup final); India v Pakistan (T20 World Cup, 2022); Kobe's 81 v Toronto (2006); Jordan's last shot as a Bull (1998 NBA Finals, Game 6); Verstappen, P17 to P1 (2024 São Paulo Grand Prix). Below them, the credits for the match data and the highlights." width="100%">
 
-One match from the long tail and six famous ones, in four sports, each replayed from real event data
-over its broadcast highlights and called by the same commentator with the same prompt. A line is
-never shown or spoken before its moment reaches the picture: the YouTube player's clock gates it
+Three matches from the long tail and six famous ones, in four sports, each replayed from real event data
+and called by the same commentator with the same prompt. The two whole matches have no video; the
+rest play over their broadcast highlights. A line is never shown or spoken before its moment reaches the picture: the YouTube player's clock gates it
 ([`web/src/gate.ts`](web/src/gate.ts)).
 
 | Match | Sport and data | Voice | What it calls |
 |---|---|---|---|
 | The long tail: Brighton 3-2 Bristol City, Women's Super League, 2024 | Football, StatsBomb | British Football Announcer | The five goals: Bristol City come level twice, then Terland's winner in stoppage time |
+| Orlando Pride v North Carolina Courage, NWSL 2018 | Football, StatsBomb | British Football Announcer | The whole match, every key moment from kick-off to full time: the shots, the substitutions, an own goal, Courage winning 4-3 |
+| Netherlands v Nepal, Women's T20 WC Qualifier 2026 | Cricket, Cricsheet | Raju | The whole match, every key moment: the wickets, the boundaries, Nepal's chase of 141 to the last ball |
 | The Battle of the Bridge: Chelsea 2-2 Tottenham, 2016 | Football, StatsBomb | British Football Announcer | The four goals, Hazard's equaliser that made Leicester champions |
 | Argentina v France, 2022 World Cup final | Football, StatsBomb | British Football Announcer | Messi's two goals, Di María, Mbappé's three, the shoot-out |
 | India v Pakistan, 2022 T20 World Cup | Cricket, Cricsheet | Raju | The wickets, the sixes, Kohli's two sixes off Rauf, the last ball |
@@ -259,13 +263,13 @@ the same numbers as `GET /stats` (its `by_speaker`) ([`web/src/components/ProofP
 Each criterion weighs the same; one line each, with where to check it.
 
 - **Use of Mubit (a correction becomes a model update):** every call goes through one Mubit task; its recorded lines have trained [6 adapter versions](#real-numbers) so far (none passed yet), and a producer's [fix](#producer-fixes) is stored beside the line as the correction for the next version: 66 corrections recorded for training so far, the team's, from the number-check fix list.
-- **Usefulness (a real recurring task):** a major broadcaster now describes [only some Premier League games (about 109 of 380)](#the-problem), and elsewhere live audio description is voluntary and patchy; Touchline speaks the key moments of [seven real matches in four sports](#the-seven-matches) from their real event data.
+- **Usefulness (a real recurring task):** a major broadcaster now describes [only some Premier League games (about 109 of 380)](#the-problem), and elsewhere live audio description is voluntary and patchy; Touchline speaks the key moments of [nine real matches in four sports](#the-nine-matches) from their real event data.
 - **Technical execution:** a line in [546 ms to its first word](#real-numbers) (median), gated on the video's clock, an offline test suite (`make check`) and a live smoke test on every deploy; [architecture](docs/ARCHITECTURE.md) and [known limitations](#known-limitations).
 - **Demo:** about 2:45 on the live URL, opening on the WSL match nobody described, scripted in [docs/demo.md](docs/demo.md); the [60-second path](#the-60-second-path) above is the short version.
 
 ## The product: where this goes
 
-> **Vision, not what's built.** This weekend's build is the seven replays above. This is the full product.
+> **Vision, not what's built.** This weekend's build is the nine replays above. This is the full product.
 
 - **Every streamed match, described aloud.** Leagues, clubs, rights holders and streaming platforms
   switch it on for the long tail of matches they stream with no describer, in any language or voice:
@@ -605,6 +609,15 @@ Recording: [`.env.example`](.env.example) and the deploy set `MUBIT_RECORD=off`,
 nothing. The code itself records unless it says `off` ([`agent/commentator.py`](agent/commentator.py)),
 and `make dev` doesn't read .env: export `MUBIT_RECORD=off` to keep your calls out of training, or
 `MUBIT_RECORD=on` to record them.
+
+The live site's budget guard reads these settings; `0` turns one off, and tests and `make smoke` run with all four off.
+
+| Setting | Default | What it limits |
+|---|---|---|
+| `MAX_LIVE_REPLAYS` | 4 | Replays making new lines at once. Past it, a replay plays the match's stored lines with no model or voice call (browser speech), or the page says to try again in a minute |
+| `REPLAYS_PER_HOUR` | 10 | Replay starts per visitor (the first `X-Forwarded-For` hop) in any hour; then 429 with `Retry-After` |
+| `ASKS_PER_HOUR` | 20 | Asks per visitor in any hour; then 429 with `Retry-After` |
+| `DAILY_BUDGET_USD` | 50 | Today's model and voice spend (UTC). Past it, replays play stored lines in browser speech and Ask answers "Commentator is off air for today"; `GET /stats` shows `budget` |
 
 ## Data and video
 
