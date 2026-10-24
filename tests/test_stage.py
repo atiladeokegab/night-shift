@@ -49,4 +49,4 @@ def test_stage_shows_a_poster_and_a_link_for_an_embed_blocked_video(tmp_path):
     assert "if (!plays(match) || ytFailed) return paced.push(line);" in page  # its own clock
     assert '<img id="still" alt="" hidden>' in page
     assert "i.ytimg.com/vi/${encodeURIComponent(m.youtube_id)}/hqdefault.jpg" in page
-    assert 'replaceChildren("Commentary only · ", link)' in page
+    assert 'replaceChildren("Commentary only ", tail)' in page and 'tail.append("· ", link)' in page
