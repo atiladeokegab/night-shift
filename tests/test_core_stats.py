@@ -1,7 +1,12 @@
+import json
+
 import pytest
 
+from core import stats as stats_mod
 from core.stats import stats
 from core.store import Store
+
+READING = json.loads(stats_mod.CONSOLE.read_text())  # data/mubit_console.json, committed
 
 
 def line(i, model="claude-haiku-4-5", tokens_in=1000, tokens_out=20):
@@ -18,7 +23,21 @@ def test_empty_store_has_no_cost_and_an_untrained_adapter(tmp_path):
         "agree": None,
         "total": None,
         "cost_measurable": False,
+        "console": READING,
     }
+
+
+def test_the_console_reading_is_dated_sourced_and_claims_no_adapter(tmp_path, monkeypatch):
+    # a judge read "collecting, version null" as Mubit unused: /stats carries the console's own
+    # counts, as read by hand on a stated day (#317)
+    c = stats(Store(tmp_path))["adapter"]["console"]
+    assert c["source"] == "Mubit console" and c["read_at"] == "2026-10-24T19:15:00Z"
+    assert (c["tasks"], c["adapters"], c["serving"], c["target"]) == (8, 7, 0, 95)
+    assert max(t["quality"] for t in c["listed"].values()) == 58.3 < c["target"]
+    assert "[" not in json.dumps(c)  # it rides the `stats` event, which carries no brackets
+    assert "pass" not in json.dumps(c).lower()
+    monkeypatch.setattr(stats_mod, "CONSOLE", tmp_path / "none.json")
+    assert stats(Store(tmp_path))["adapter"]["console"] is None
 
 
 def test_cost_per_line_is_tokens_times_list_price(tmp_path):
@@ -64,6 +83,7 @@ def test_adapter_reads_the_latest_recorded_result(tmp_path):
         "agree": 23,
         "total": 25,
         "cost_measurable": False,
+        "console": READING,
     }
 
 
