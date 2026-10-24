@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react'
-import { askCommentator, createReplay, followReplay, getShots, type StreamStatus } from './api'
+import { askCommentator, createReplay, followReplay, getPlayers, getProfile, getShots, type StreamStatus } from './api'
 import { release, replayClock } from './gate'
 import type { Answer, Fix, Line, Moment, Stats } from './types'
 
@@ -243,5 +243,15 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
     return id ? getShots(id, name, momentIdx) : null
   }, [])
 
-  return { state, start, reconnect, leave, setClock, unGate, markFixed, ask, shots }
+  // Who is in the match, and one player's profile, up to the moment on screen (#140).
+  const players = useCallback(async (at: number) => {
+    const id = replayId.current
+    return id ? getPlayers(id, at) : []
+  }, [])
+  const profile = useCallback(async (name: string, momentIdx: number) => {
+    const id = replayId.current
+    return id ? getProfile(id, name, momentIdx) : null
+  }, [])
+
+  return { state, start, reconnect, leave, setClock, unGate, markFixed, ask, shots, players, profile }
 }
