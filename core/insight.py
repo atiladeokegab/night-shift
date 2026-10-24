@@ -816,6 +816,175 @@ def _streaks(m: dict, past: list[dict]) -> set[float]:
     return out
 
 
+def _wrong_clock(words: list, m: dict) -> list[str]:
+    """A basketball clock said to the second is held to the second: "ninety seconds to play" at
+    1:45 is wrong. "Under thirty seconds" needs the clock under it, "about ninety" may round."""
+    if m.get("sport") != "basketball" or not (c := re.match(r"(\d+):(\d+)", str(m.get("clock")))):
+        return []
+    left, wrong = int(c[1]) * 60 + int(c[2]), []
+    for i, n in enumerate(words):
+        if not isinstance(n, float) or words[i + 1 : i + 2] not in (["seconds"], ["second"]):
+            continue
+        if words[i + 2 : i + 3] not in (["to"], ["left"], ["remaining"]):
+            continue  # "eight seconds on the shot clock" is another clock
+        before = set(words[max(0, i - 2) : i])
+        if before & {"under", "inside", "less", "fewer", "within"}:
+            ok = left <= n
+        elif before & {"over", "more"}:
+            ok = left >= n
+        elif before & {"about", "around", "roughly", "nearly", "almost", "some", "close"}:
+            ok = abs(n - left) <= 15
+        else:
+            ok = abs(n - left) <= 1
+        if not ok:
+            wrong.append(f"{n:g} seconds is not the clock, {m['clock']}")
+    return wrong
+
+
+STREAK = re.compile(
+    r"\bback[- ]to[- ]back\b|\bin a row\b|\bon the bounce\b"
+    r"|\b(?:straight|consecutive|successive)\b",
+    re.I,
+)
+STREAK_KIND = {  # what a streak is of, and in basketball the fewest points each one is worth
+    "sixes": ({"Six"}, 0),
+    "maximums": ({"Six"}, 0),
+    "fours": ({"Four"}, 0),
+    "boundaries": ({"Six", "Four"}, 0),
+    "balls": ({"Six", "Four"}, 0),  # "a six and a four off consecutive balls"
+    "wickets": ({"Wicket"}, 0),
+    "buckets": (set(), 2),
+    "baskets": (set(), 2),
+    "shots": (set(), 2),
+    "threes": (set(), 3),
+    "throws": (set(), 1),
+    "points": (set(), 1),
+}
+NOT_PLAY = {"championships", "titles", "wins", "games", "matches", "seasons", "moments", "finals"}
+
+
+def _streak_claims(text: str) -> list[tuple[int, str | None]]:
+    """Each streak a line claims, as (how many, of what): "back-to-back sixes" (2, "sixes"),
+    "three in a row" (3, None), "his third straight bucket" (3, "buckets")."""
+    out = []
+    for sentence in re.split(r"(?<=[.!?])\s+", text):
+        for hit in STREAK.finditer(sentence):
+            words = said(sentence[max(0, hit.start() - 30) : hit.start()])
+            after = said(sentence[hit.end() : hit.end() + 30])
+            kind = next(
+                (w for w in [*words[-2:], *after[:2]] if w in STREAK_KIND or w in NOT_PLAY), None
+            )
+            n = 2 if re.match(r"back|consecutive|successive", hit[0], re.I) else None
+            # the count right before it: "three in a row", "three sixes in a row", "third straight"
+            for w in words[-1:] if words[-1:] != [kind] else words[-2:-1]:
+                n = int(w) if isinstance(w, float) and w > 1 else ORDINALS.get(w, n)
+            if n and kind not in NOT_PLAY:
+                out.append((n, kind))
+    return out
+
+
+def _broken(m: dict, theirs: list[dict], kinds: set[str], n: int) -> bool:
+    """Whether a run of n balls of these kinds ending at m is broken, walking back through the
+    batter's (or bowler's) earlier plays. Only boundaries and wickets are moments, so an unseen ball
+    is neither; a batter keeps the strike after a boundary and a bowler bowls on, so the ball after
+    one in the same over is theirs. After the last ball of an over the next one is not, so the run
+    is not known to be broken."""
+    cur = m
+    for _ in range(n - 1):
+        before = [p for p in theirs if _ball(p) < _ball(cur)]
+        if not before or before[-1]["type"] not in kinds:
+            return True
+        if before[-1]["clock"].endswith(".6"):
+            return False
+        if _ball(before[-1]) + 1 != _ball(cur):
+            return True  # they had the ball after it, and it was not one of these
+        cur = before[-1]
+    return False
+
+
+def _wrong_streak(text: str, m: dict, past: list[dict], header: dict | None) -> list[str]:
+    """A streak claim tested against the ball or the score sequence: "back-to-back sixes" needs
+    the batter's last two balls to be sixes (a dot ball between breaks it); "three straight
+    buckets" needs the points to have come with the other side's score standing still."""
+    claims = _streak_claims(text)
+    if not claims or m.get("type") == "Stat":
+        return []
+    wrong = []
+    if m.get("sport") == "cricket" and m.get("type") in ("Six", "Four", "Wicket"):
+        role = "bowler" if m["type"] == "Wicket" else "batter"
+        who = (m.get("players") or {}).get(role)
+        theirs = [p for p in past if p.get("players", {}).get(role) == who and _ball(p) < _ball(m)]
+        for n, kind in claims:
+            kinds = STREAK_KIND[kind][0] if kind else {m["type"]}
+            if m["type"] not in kinds:
+                continue  # a streak of something else, recalled
+            if _broken(m, theirs, kinds, n):
+                wrong.append(f"no {n} in a row: {who} has not done it on {n} balls running")
+    if (
+        m.get("sport") == "basketball"
+        and header
+        and m.get("team") in (header["home"], header["away"])
+    ):
+        side = "home" if m["team"] == header["home"] else "away"
+        other = "away" if side == "home" else "home"
+        s = m.get("score") or {}
+        # the latest moment the other side's score was lower: they scored after it
+        since = next(
+            (
+                p
+                for p in reversed(past)
+                if (p.get("score") or {}).get(other, s.get(other)) < s.get(other, 0)
+            ),
+            None,
+        )
+        for n, kind in claims:
+            each = STREAK_KIND[kind][1] if kind else 1
+            if since and s[side] - since["score"][side] < n * each:
+                wrong.append(f"no {n} in a row: {header[other]} scored in between")
+    return wrong
+
+
+def _wrong_span(words: list, m: dict, past: list[dict]) -> list[str]:
+    """A cricket batter's runs over a span of balls, "18 off six balls", held to the boundaries
+    that batter hit in the last six balls, or to a run of boundaries that spans exactly six balls
+    ("three sixes in four balls" is 18 off four). "Need 22 from 7 balls" is the chase."""
+    if (
+        m.get("sport") != "cricket"
+        or m.get("type") not in ("Six", "Four")
+        or "batter" not in m.get("players", {})
+    ):
+        return []
+    who, now = m["players"]["batter"], _ball(m)
+    mine = [
+        p
+        for p in [*past, m]
+        if p.get("players", {}).get("batter") == who and p["type"] in ("Six", "Four")
+    ]
+    s, d = m.get("score") or {}, m.get("detail") or {}
+    wrong = []
+    for i, (r, prep, b) in enumerate(zip(words, words[1:], words[2:], strict=False)):
+        if not (isinstance(r, float) and prep in ("off", "from", "in") and isinstance(b, float)):
+            continue
+        unit, prev = words[i + 3 : i + 4], words[i - 1 : i]
+        if prev and (prev[0] in ORDINALS or prev[0] in ("a", "another", "his", "the")):
+            continue  # "his third six in four balls" is a six, not 6 runs
+        if unit not in (["balls"], ["deliveries"]) or b < 2:
+            continue
+        if "target" in s and (r, b) == (s["target"] - s["runs"], d.get("balls_left")):
+            continue  # the chase
+        window = sum(
+            (p.get("detail") or {}).get("runs_batter") or 0 for p in mine if now - _ball(p) < b
+        )
+        runs = {
+            sum((p.get("detail") or {}).get("runs_batter") or 0 for p in mine[-k:])
+            for k in range(1, len(mine) + 1)
+            if now - _ball(mine[-k]) + 1 == b
+        }
+        if r != window and r not in runs:
+            wrong.append(f"{r:g} off {b:g} balls is not {who}'s, {window:g} off the last {b:g}")
+    return wrong
+
+
 # The model reasoning aloud instead of calling the moment ("Wait—I need to reconsider ..."): only at
 # the start of a clause, so "they'll have to wait for the review" is still commentary.
 SELF_TALK = re.compile(
@@ -917,6 +1086,9 @@ def wrong_numbers(
     wrong = [f"{n:g} is not in the moment" for n in heard if n not in given]
     if talks_to_itself(text):
         wrong.append("the line talks to itself")
+    wrong += (
+        _wrong_clock(words, m) + _wrong_streak(text, m, past, header) + _wrong_span(words, m, past)
+    )
     if "home" in s and header:
         wrong += _false_lead(text, m, header) + _wrong_margin(text, m, header)
     if "milestone" in d and not set(numbers(d["milestone"])) & set(numbers(text)):
@@ -1101,11 +1273,112 @@ def wrong_event(text: str, m: dict) -> list[str]:
     gives_one = "own box" in d.get("where", "") or "shootout" in d  # a foul there can be one
     if "card" in d and not gives_one and PENALTY.search(text):
         wrong.append(f"a penalty is called, but the moment is a {d['card']}")
-    if m.get("outcome") in ("Off T", "Wayward") and SAVED.search(text):
-        wrong.append("a save is called, but the shot was off target")
+    if m.get("type") == "Shot":
+        ended = SHOT_ENDED.get(m.get("outcome"))
+        wrong += [
+            f"{'a save' if call == 'saved' else call} is called, but the shot was {ended}"
+            for call, said_it in (
+                ("saved", SAVED),
+                ("blocked", BLOCKED),
+                ("off target", OFF_TARGET),
+            )
+            if ended and call not in CAN_CALL[ended] and said_it.search(text)
+        ]
     if m.get("type") == "Shot" and not goal and not ENDED.search(text):
         wrong.append(f"the line never says how the shot ended: {m.get('outcome')}")
-    return wrong
+    return wrong + _wrong_level(text, m) + _wrong_shootout(text, m)
+
+
+# how a shot that is no goal ended, and what a line may call it: a keeper's block is a save
+SHOT_ENDED = {
+    "Blocked": "blocked",
+    "Saved": "saved",
+    "Off T": "off target",
+    "Wayward": "off target",
+}
+CAN_CALL = {"blocked": {"blocked"}, "saved": {"saved", "blocked"}, "off target": {"off target"}}
+BLOCKED = re.compile(r"\bblock(?:s|ed|ing)?\b", re.I)
+OFF_TARGET = re.compile(r"\b(?:wide|off target|over the bar|skie[sd]|sails? over)\b", re.I)
+# "still level", "all square", "the scores are level": a claim about now, on any football moment;
+# never "were level", "to level it" or a question
+LEVEL_NOW = re.compile(
+    r"\b(?:still|now|back|remains?|stays?|are|is|it's|we're)\s+(?:all\s+)?level\b"
+    r"|\blevel (?:at|on|pegging)\b|\ball square\b|\bscores? (?:are |is )?level\b",
+    re.I,
+)
+
+
+def _wrong_level(text: str, m: dict) -> list[str]:
+    """ "Still level" at 3-2, on a card, a sub or a save as much as on a goal."""
+    s = m.get("score") or {}
+    if "home" not in s or s["home"] == s["away"] or m.get("type") == "Full time":
+        return []  # a shootout's match is level: "still level at three" is the match
+    for sentence in re.split(r"(?<=[.!?])\s+", text):
+        if not sentence.rstrip().endswith("?") and LEVEL_NOW.search(sentence):
+            return [f"the scores are not level: {s['home']}-{s['away']}"]
+    return []
+
+
+SCORE_WORD = r"\d+|nil|zero|one|two|three|four|five|six|seven|eight|nine|ten"
+SCORE_AT = {**{w: i for i, w in enumerate(UNITS[:11])}, "nil": 0}
+# a score said as such: "four-two", "two to one", "two one", "three all", "one apiece"
+SAID_SCORE = re.compile(
+    rf"\b({SCORE_WORD})(?:\s*[-–]\s*|\s+to\s+|\s+)({SCORE_WORD})\b"
+    rf"|\b({SCORE_WORD})[- ](?:all|apiece|each)\b",
+    re.I,
+)
+# where a score is said to be the shootout's: right before "in the shootout", or right after
+# "lead the shootout"
+IN_SHOOTOUT = re.compile(
+    r"^[,\s]*(?:\w+\s+){0,2}?(?:in|on) (?:the |this )?(?:penalty )?shoot-?out\b"
+    r"|^[,\s]*(?:\w+\s+){0,2}?on (?:penalties|pens|spot[- ]kicks)\b",
+    re.I,
+)
+
+
+def _said_scores(sentence: str, m: dict) -> list[tuple[int, int, tuple[int, int]]]:
+    """Each score a sentence says, with where it ends and where it starts, either way round:
+    "Argentina three, France three", "four-two", "three all"."""
+    from data.matches import match_header
+
+    def n(w: str) -> int:
+        return int(w) if w.isdigit() else SCORE_AT[w.lower()]
+
+    out = [
+        (hit.start(), hit.end(), (n(hit[1]), n(hit[2])) if hit[1] else (n(hit[3]), n(hit[3])))
+        for hit in SAID_SCORE.finditer(sentence)
+    ]
+    try:
+        side, names = _sides(match_header(m["match_id"]))
+    except KeyError:  # not a bundled match: no team names to look for
+        return out
+    team = rf"\b({names})\s+({SCORE_WORD})\b"
+    for hit in re.finditer(rf"{team},?\s+(?:and\s+)?{team}", sentence, re.I):
+        if side[hit[1].lower()] != side[hit[3].lower()]:  # "Argentina three, France three"
+            out.append((hit.start(), hit.end(), (n(hit[2]), n(hit[4]))))
+    return out
+
+
+def _wrong_shootout(text: str, m: dict) -> list[str]:
+    """A score said to be the shootout's is the shootout's: "Argentina three, France three in the
+    shootout" at 1-1 on kicks is the match score. A sentence that also gives the kicks ("three
+    all, but it's three to one in the shootout") says both."""
+    so = (m.get("detail") or {}).get("shootout")
+    if not so:
+        return []
+    kicks = sorted((so["home"], so["away"]))
+    for sentence in re.split(r"(?<=[.!?])\s+", text):
+        scores = _said_scores(sentence, m)
+        claimed = [
+            pair
+            for start, end, pair in scores
+            if IN_SHOOTOUT.match(sentence[end:])
+            or re.search(r"\bthe shoot-?out\s*(?:is\s+|at\s+)?$", sentence[:start], re.I)
+        ]
+        if claimed and all(sorted(pair) != kicks for _, _, pair in scores):
+            a, b = claimed[0]
+            return [f"{a}-{b} is not the shootout, {so['home']}-{so['away']}"]
+    return []
 
 
 def checked(commentate, moment: dict, history: list[dict]) -> dict | None:
