@@ -16,7 +16,7 @@ test('Chelsea v Spurs keeps talking past 40 s, in both voices, and the Proof car
     if (/\/lines\/[^/]+\/audio/.test(r.url())) audio.push({ status: r.status(), url: r.url() })
   })
   await page.addInitScript(() => {
-    // the most audio elements playing at once: one speaking queue means never more than one
+    // the most audio elements playing at once: a big moment fades the line it cuts out first, so never more than one
     const w = window as unknown as { maxAudio: number }
     const on = new Set<HTMLMediaElement>()
     w.maxAudio = 0
