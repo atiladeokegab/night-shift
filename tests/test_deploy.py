@@ -36,7 +36,9 @@ def deploy(tmp_path, dotenv="", **env):
     base = {
         k: v
         for k, v in os.environ.items()
-        if not k.startswith(("VOICE_", "GIT_", "PRODUCER_", "CONVERSE_", "MUBIT_", "ELEVENLABS_"))
+        if not k.startswith(
+            ("VOICE_", "GIT_", "PRODUCER_", "CONVERSE_", "MUBIT_", "ELEVENLABS_", "DAILY_BUDGET_")
+        )
     }
     run_env = {**base, "PATH": f"{bin_}{os.pathsep}{os.environ['PATH']}", "CALLS": str(calls)}
     run_env |= {"PROJECT": "p", "DEPLOY_AS_SELF": "1", **env}
@@ -70,7 +72,9 @@ exit 0
     base = {
         k: v
         for k, v in os.environ.items()
-        if not k.startswith(("VOICE_", "GIT_", "PRODUCER_", "CONVERSE_", "MUBIT_", "ELEVENLABS_"))
+        if not k.startswith(
+            ("VOICE_", "GIT_", "PRODUCER_", "CONVERSE_", "MUBIT_", "ELEVENLABS_", "DAILY_BUDGET_")
+        )
     }
     run_env = {
         **base,
@@ -263,3 +267,37 @@ def test_the_backup_voice_version_can_be_overridden_or_turned_off(tmp_path):
 def test_a_bad_or_missing_backup_voice_version_stops_the_deploy(tmp_path, env):
     done, deployed = deploy(tmp_path, **env)
     assert done.returncode == 1 and "ELEVENLABS_FALLBACK_VERSION" in done.stderr and not deployed
+
+
+def test_a_daily_budget_rides_along_only_when_set(tmp_path):
+    done, deployed = deploy(tmp_path, DAILY_BUDGET_USD="80")
+    assert done.returncode == 0, done.stderr
+    assert "DAILY_BUDGET_USD=80" in env_vars(deployed)
+    done, deployed = deploy(tmp_path / "unset")
+    assert not [v for v in env_vars(deployed) if v.startswith("DAILY_BUDGET_USD")]
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["80@PRODUCER_TOKEN=oops", "80=bad", "not-a-number", "-1", "NaN", "Infinity", "1e9999"],
+)
+def test_a_bad_daily_budget_stops_before_any_gcloud_call(tmp_path, value):
+    done, deployed = deploy(tmp_path, DAILY_BUDGET_USD=value)
+    assert done.returncode == 1 and "DAILY_BUDGET_USD" in done.stderr
+    assert not deployed and not (tmp_path / "calls").exists()
+
+
+@pytest.mark.parametrize("value", ["0", "1.25", "2e1"])
+def test_valid_daily_budget_values_are_forwarded_without_rewriting(tmp_path, value):
+    done, deployed = deploy(tmp_path, DAILY_BUDGET_USD=value)
+    assert done.returncode == 0, done.stderr
+    assert f"DAILY_BUDGET_USD={value}" in env_vars(deployed)
+
+
+def test_empty_daily_budget_uses_guard_default_and_zero_disables_it():
+    from core.guard import Guard
+
+    store = type("EmptyStore", (), {"all": lambda self, _: []})()
+    assert Guard(env={}).budget == 50
+    guard = Guard(env={"DAILY_BUDGET_USD": "0"})
+    assert guard.budget == 0 and not guard.off_air(store)

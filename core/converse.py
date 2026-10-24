@@ -81,13 +81,18 @@ class Tap:
                 elif event.type == "content_block_start" and event.content_block.type == "tool_use":
                     self.on_tool()
             msg = stream.get_final_message()
+            headers = getattr(getattr(stream, "response", None), "headers", {})
+        request_id = next(
+            (value for key, value in headers.items() if key.lower() == "x-middleware-request-id"),
+            None,
+        )
         return {
             "content": [commentator._block(b) for b in msg.content],
             "usage": {
                 "input_tokens": msg.usage.input_tokens,
                 "output_tokens": msg.usage.output_tokens,
             },
-            "request_id": None,
+            "request_id": request_id,
         }
 
 
@@ -186,8 +191,19 @@ async def speak(ask, inner, question: str, past: list[dict], lines: list[dict]):
             break
     if said:
         return
-    # nothing was said: no text event we know, a failed sentence or call, a tool round. Ask's own
-    # path answers, so the fan is never left in silence
+    # nothing was said. A tool round held its sentences back (the checks need the tool's output):
+    # the answer that call chain already made is checked whole and said, with no second model call
+    try:
+        made = await task
+    except Exception:  # logged by the done-callback
+        made = None
+    if made and not (
+        insight.wrong_answer(made, question, past, lines)
+        + insight.wrong_claims(made["text"], past, question)
+    ):
+        yield made["text"]
+        return
+    # no text event we know, a failed answer or call: Ask's own path, so the fan is never in silence
     try:
         safe = await asyncio.to_thread(insight.checked_answer, ask, question, past, lines)
     except Exception as exc:  # the status line, never the provider's error
@@ -322,6 +338,7 @@ def converse_router(*, need_deps, viewed, asked_so_far, guard, store, env=os.env
 
         def record(made: dict) -> None:  # as Ask stores its answer: its tokens count in spent_today
             store.append("answers", {**made, "replay_id": held["replay_id"]})
+            guard._spent = None
 
         ask = counted(d.ask, record)
         if body.get("stream", True):
