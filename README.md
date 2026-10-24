@@ -17,6 +17,10 @@
 **Touchline describes matches aloud for fans who can't see them, and checks the score and the key
 numbers in each line against the match data before it goes on air.**
 
+**Why a fan comes back every match day:** for a blind or low-vision fan whose team's match has no
+described broadcast, Touchline calls that match aloud moment by moment, answers their questions
+about it at any point, and a producer's fix to one line carries into every later line of that match.
+
 <img src="docs/media/demo.gif" alt="A 9-second screen recording of the live Touchline page: lines are called one after another and stack in the Lines card as the match goes on, and one of them carries an auto-fixed tag." width="100%">
 
 <sub>Touchline calls match moments as spoken lines. Each line is checked against the match data, and one is marked auto-fixed.</sub>
@@ -95,6 +99,21 @@ code's answer key on 74 of 74 held-out lines (live `/stats` `scorecheck`, saved 
 The Ask run (`eval.ask_eval --provider mubit`, recording off): the one wrong answer, "What just
 happened?" at Lakers 120-102, had an invented lead change; the check caught it and the safe answer
 was said.
+
+### Where Mubit is called
+
+- **Every commentary call:** the Anthropic client points at Mubit, [`agent/commentator.py:36`](agent/commentator.py#L36)
+  (`MUBIT_URL`) and [`:806`](agent/commentator.py#L806); a moment's line is
+  [`commentate`, `:321`](agent/commentator.py#L321), which calls Mubit at [`:741`](agent/commentator.py#L741).
+- **A producer's correction, as the next turn of the line's own call (#245):**
+  [`correct`, `agent/commentator.py:390`](agent/commentator.py#L390); the recorded send is
+  [`:434`](agent/commentator.py#L434). The fix route calls it at [`core/app.py:432`](core/app.py#L432),
+  and later lines of the match carry the fixes ([`core/app.py:70`](core/app.py#L70), at most five).
+- **A fix as a Score check example:** [`teach`, `agent/scorecheck.py:83`](agent/scorecheck.py#L83),
+  sent by [`eval/seed_scorecheck.py:82`](eval/seed_scorecheck.py#L82).
+- **The training ledger:** every example sent to Score check, with its Mubit session and request
+  id, [`ledger`, `core/ledger.py:43`](core/ledger.py#L43), served at `GET /ledger`
+  ([`core/app.py:615`](core/app.py#L615)).
 
 The console, the correction loop and a real fix step by step:
 [the evidence](docs/evidence.md).

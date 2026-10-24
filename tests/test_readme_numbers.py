@@ -43,3 +43,28 @@ def test_the_readme_live_figures_are_the_saved_stats_read():
     sent, fixes = sc["examples_sent"], sc["by_source"]["human"]
     assert f"{sent:,} examples sent to training, {fixes} of them from producer" in text
     assert f"{held['agree']} of {held['scored']} held-out" in text
+
+
+# What each "Where Mubit is called" link must land on; a moved line turns this red.
+CALLS = {
+    ("agent/commentator.py", 36): "MUBIT_URL =",
+    ("agent/commentator.py", 806): "base_url=MUBIT_URL",
+    ("agent/commentator.py", 321): "def commentate(",
+    ("agent/commentator.py", 741): "provider.call(request)",
+    ("agent/commentator.py", 390): "def correct(",
+    ("agent/commentator.py", 434): "ask(trainer)",
+    ("core/app.py", 432): "d.correct,",
+    ("core/app.py", 70): "match_fixes(",
+    ("agent/scorecheck.py", 83): "def teach(",
+    ("eval/seed_scorecheck.py", 82): "def send(",
+    ("core/ledger.py", 43): "def ledger(",
+    ("core/app.py", 615): '@app.get("/ledger")',
+}
+
+
+def test_the_readme_mubit_call_sites_point_at_the_calls():
+    text = readme_numbers.README.read_text()
+    links = {(f, int(n)) for f, n in re.findall(r"\]\(([\w/]+\.py)#L(\d+)\)", text)}
+    assert links == set(CALLS)
+    for (f, n), want in CALLS.items():
+        assert want in (ROOT / f).read_text().splitlines()[n - 1], (f, n)
