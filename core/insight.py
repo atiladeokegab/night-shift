@@ -570,17 +570,23 @@ LEADS = (  # a claim that a team is in front now; "led" and questions are no cla
 )
 
 
-def _false_lead(text: str, m: dict, header: dict) -> list[str]:
-    """Each team a line says leads, when it doesn't: "Chicago Bulls take the lead" at 85-86."""
-    from data.matches import leader
-
+def _sides(header: dict) -> tuple[dict[str, str], str]:
+    """Each way a line names a team ("Chicago Bulls", "Bulls", "Chicago") to its side, and the
+    regex alternation of those names, longest first."""
     side = {}
     for s in ("home", "away"):
         name = header[s].split()
         for n in (header[s], name[-1], " ".join(name[:-1])):
             if n:
                 side[n.lower()] = s
-    names = "|".join(re.escape(n) for n in sorted(side, key=len, reverse=True))
+    return side, "|".join(re.escape(n) for n in sorted(side, key=len, reverse=True))
+
+
+def _false_lead(text: str, m: dict, header: dict) -> list[str]:
+    """Each team a line says leads, when it doesn't: "Chicago Bulls take the lead" at 85-86."""
+    from data.matches import leader
+
+    side, names = _sides(header)
     claims = {
         side[c.lower()]
         for sentence in re.split(r"(?<=[.!?])\s+", text)
@@ -588,6 +594,30 @@ def _false_lead(text: str, m: dict, header: dict) -> list[str]:
         for c in re.findall(rf"\b({names}){LEADS}", sentence, re.I)
     }
     return [f"{header[s]} do not lead" for s in sorted(claims) if s != leader(m)]
+
+
+MARGIN = (  # "Bulls down three", "Utah up by five", "the Jazz lead by two"; not "lead 86-85"
+    r"\s+(?:(?:are|is|now|still)\s+)*(?:down|up|leads?|trails?|ahead|behind)\s+(?:by\s+)?"
+    r"(\d+|[a-z]+(?:-[a-z]+)?)\b(?!\s*[-–]\s*\w|\s+(?:to|seconds?|minutes?|left)\b)"
+)
+
+
+def _wrong_margin(text: str, m: dict, header: dict) -> list[str]:
+    """Each margin a line gives a team that is not the score difference (or, once a shootout's
+    goals are level, the shootout's)."""
+    s, so = m["score"], m["detail"].get("shootout")
+    margins = {float(abs(s["home"] - s["away"]))}
+    if so:
+        margins.add(float(abs(so["home"] - so["away"])))
+    _, names = _sides(header)
+    wrong = []
+    for hit in re.finditer(rf"\b(?:{names}){MARGIN}", text, re.I):
+        n = [1.0] if hit[1].lower() == "one" else said(hit[1])
+        after = said(text[hit.end() : hit.end() + 24])  # a score follows: "trail 69, 53"
+        if len(n) == 1 and isinstance(n[0], float) and not (after and isinstance(after[0], float)):
+            if n[0] not in margins:
+                wrong.append(f"{n[0]:g} is not the margin ({min(margins):g})")
+    return wrong
 
 
 def wrong_numbers(
@@ -607,7 +637,7 @@ def wrong_numbers(
     if talks_to_itself(text):
         wrong.append("the line talks to itself")
     if "home" in s and header:
-        wrong += _false_lead(text, m, header)
+        wrong += _false_lead(text, m, header) + _wrong_margin(text, m, header)
     if "milestone" in d and not set(numbers(d["milestone"])) & set(numbers(text)):
         wrong.append(f"the milestone is unsaid: {d['milestone']}")
     if m.get("sport") == "cricket":
