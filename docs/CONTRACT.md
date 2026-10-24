@@ -126,6 +126,14 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   For a match with a video map, only mapped moments are called, the `moment` and `line` events carry
   `video_t` (seconds), and they are sent as soon as each line is ready rather than paced by `speed`:
   the page shows and speaks each line when the player reaches `video_t`.
+  `linecheck` (#298): after a live replay's checked lead moment line is out (not a fallback, a
+  fix said again or a cached replay), Line check (agent/linecheck.py, the seeded request exactly)
+  gives it a second opinion off its path, and the stored row is published:
+  `{line_id, match_id, moment_idx, labels, wrong, model, tokens_in, tokens_out, mubit_request_id,
+  created_at}`. `labels` is `{score, leader, player_total, event}`, each `ok`, `wrong` or
+  `not_said`, or null when the reply wasn't one canonical line; `wrong` lists the fields called
+  wrong. It comes some time after its line, always before `end`. No call over the daily
+  cap; recorded as `MUBIT_RECORD` says, never for a held-out match. A line is never unsaid.
 - `POST /replays/{id}/seen` → 204 (core, #156): the page's heartbeat every 20 s once the stream has
   ended, playing or paused; 404 once forgotten. A finished replay is forgotten after FORGET_S (60 s)
   with no stream open and no request naming it (stream, seen, ask, players, shots, profile, fix).
@@ -142,7 +150,9 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   line, 422 blank `corrected_text` (trimmed) or over 200 characters, 422 `{detail: {wrong: [...]}}`
   when the number check finds the fix contradicts the line's moment (the review queue's check, a
   milestone left out allowed; nothing stored or sent to Mubit) (#232), 503 no commentator or the
-  Mubit call failed (nothing stored, so the page can send it again). Every later replay of that
+  Mubit call failed (nothing stored, so the page can send it again). A fix with reason Wrong score,
+  Wrong player or Wrong fact also sends one Line check example after it is answered (#298, see
+  `/stats` → `linecheck`). Every later replay of that
   moment says the newest fix's text, rechecked against the moment, instead of calling the model: a
   Line with `fixed: true` and `fix_id` (the fixed line's id), stored in `lines` (#232).
 - `POST /replays/{id}/ask {question, moment_idx?}` → Answer `{line_id, moment_idx, question, text,
@@ -194,15 +204,22 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
 - `GET /review` → `[{line_id, match_id, match, sport, moment_idx, clock, period, score, play, text,
   wrong, later_check, lines, others}]`, newest first: the producer's fix queue, one entry per
   mistake among the stored lead lines the number check flags, unfixed (`wrong` is the check's
-  reasons). Grouping and `later_check` are under `GET /stats` → `autonomy` below. (core,
+  reasons). A line the number check passes but Line check flagged (#298) is queued too, its
+  `wrong` `["Checker model: <field> may be wrong", ...]` (field `player_total` said `player total`). Grouping and `later_check` are under `GET /stats` → `autonomy` below. (core,
   `core/review.py`)
 - `GET /stats` → `{lines, fixes, mubit_requests, first_word_ms_p50, first_word_ms_p95,
   latency_ms_p50, latency_ms_p95, tokens_in, tokens_out, cost_per_line_usd, adapter, by_speaker,
   fixes_recorded, fixes_toward_next, voice_chars, matches_measured, cost_per_match_usd,
   model_cost_per_match_usd, voice_cost_per_match_usd, fixes_auto_sent, spoken_from_fix, autonomy,
-  autonomy_by_match, budget}` (core). The `stats` SSE event carries the same object, without `budget`.
+  autonomy_by_match, linecheck, budget}` (core). The `stats` SSE event carries the same object, without `budget`.
   - `budget: {daily_budget_usd, spent_today_usd, off_air}` (#244): the cap (null when off), the
-    model and voice spend of lines and answers created today (UTC), and whether it is past the cap.
+    model and voice spend of lines, answers and Line checks created today (UTC), and whether it
+    is past the cap.
+  - `linecheck: {checked, flags, rules_missed, fixes_sent}` (#298): live lead lines Line check
+    checked (`linechecks` rows), those it flagged a field `wrong` on, the flags on lines the rules
+    check passed (every live check is on such a line, so today it equals `flags`), and producer
+    fixes sent to Line check as examples (`linecheck_fixes` rows: a fix with reason Wrong score,
+    Wrong player or Wrong fact whose line code can label, sent on the owner's key).
   - `by_speaker: {lead, analyst}`, each `{model, served_by, lines, first_word_ms_p50,
     first_word_ms_p95, cost_per_line_usd}`: the lead's calls and the analyst's stat lines apart (a
     line with no `speaker` is the lead's). `served_by` (#250): the lines' `served_by` values,
