@@ -60,7 +60,7 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
               {item.play}. <span>{item.score}.</span>
             </p>
             <div className="field">
-              <span className="label">What's wrong</span>
+              <span className="label">What's wrong{item.later_check ? ' · found by a later check' : ''}</span>
               <ul className="wrong">
                 {item.wrong.map((w) => (
                   <li key={w}>{w[0].toUpperCase() + w.slice(1)}</li>

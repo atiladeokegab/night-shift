@@ -19,7 +19,14 @@ from core.predict import load_pack
 from core.replay import Replay, run_replay
 from core.smoke import read_stream
 from core.store import Store
-from data.matches import list_matches, load_moments, match_header, video_map
+from data.matches import (
+    balls,
+    list_matches,
+    load_moments,
+    match_header,
+    orientation,
+    video_map,
+)
 
 KOBE, CHELSEA = "0020500591", "3754092"
 
@@ -178,7 +185,8 @@ def test_a_pack_match_cites_the_pack_and_one_without_uses_tonight_only(tmp_path,
     monkeypatch.setattr(predict, "load_pack", lambda sport, match_id: None)
     chelsea, _ = replay(CHELSEA, Store(tmp_path / "chelsea"))
     said = [ln["insight"] for ln in chelsea if "insight" in ln]
-    assert said and {i["kind"] for i in said} <= {"tally", "score story", "momentum"}
+    tonight = {"tally", "score story", "momentum", "orientation"}  # and the ball (#205)
+    assert said and {i["kind"] for i in said} <= tonight
     assert not any("before tonight" in i["detail"] for i in said)
 
 
@@ -469,3 +477,148 @@ def test_the_live_smoke_fails_when_a_streamed_line_never_reached_the_store(tmp_p
     with pytest.raises(AssertionError, match="not in store"):
         smoke.live("http://testserver")
     assert TestClient(app).get("/lines/nope").status_code == 404
+
+
+FINAL = "3869685"  # the 2022 World Cup final
+
+
+def ball_line(match_id: str, i: int) -> str | None:
+    """The plain orientation sentence for the gap after moments[i], if there is a ball."""
+    moments, header = load_moments(match_id), match_header(match_id)
+    b = balls(match_id).get(moments[i]["idx"])
+    return orientation(header, moments[: i + 1], b) if b else None
+
+
+def seconds(period, clock):
+    minute, second = (int(x) for x in clock.split(":"))
+    return period, minute * 60 + second
+
+
+def test_a_football_stretch_opens_on_who_has_the_ball_then_the_pack(tmp_path):
+    lines, _ = replay(FINAL, Store(tmp_path))
+    at = {m["idx"]: i for i, m in enumerate(load_moments(FINAL))}
+    opened = 0
+    for ln in lines:
+        said_as = ln.get("insight") or {}
+        if said_as.get("n") not in (0, 1):
+            continue
+        ball = ball_line(FINAL, at[said_as["after_idx"]])
+        assert ln["speaker"] == "analyst"
+        if said_as["n"] == 0:  # the ball where the data has it, never anywhere else
+            assert (said_as["kind"] == "orientation") == bool(ball)
+            assert said_as["detail"] == ball or not ball
+            opened += bool(ball)
+        elif ball:  # then the stretch's first stat, from the pre-match pack
+            assert said_as["kind"] in ("player profile", "next to score")
+    assert opened >= 5
+
+
+def test_an_orientation_line_is_said_at_the_balls_time_and_no_moment_carries_it(tmp_path):
+    """A-1.4: an orientation line's time is the latest feed time it reads, after the moment it
+    follows and before the next; no published moment carries the ball."""
+    r, fake = Replay(FINAL, 1e9), Fake()
+    calls = functools.partial(commentator.commentate, provider=fake)
+    moments = load_moments(FINAL)
+    asyncio.run(run_replay(r, moments, calls, Store(tmp_path), video_map(FINAL)))
+    published = [e["data"] for e in r.events if e["event"] == "moment"]
+    assert published and not any("ball" in m for m in published)
+    found, nxt = balls(FINAL), dict(zip([m["idx"] for m in moments], moments[1:], strict=False))
+    said = [m for m in published if str(m.get("outcome", "")).startswith("orientation")]
+    assert len(said) >= 5
+    for m in said:
+        b = found[m["idx"]]
+        assert m["clock"] == b["clock"]  # its time is the ball's, the latest it reads
+        here = seconds(m["period"], m["clock"])
+        assert seconds(m["period"], moments[m["idx"]]["clock"]) < here  # after its moment
+        if m["idx"] in nxt:  # and before the next one
+            assert here < seconds(nxt[m["idx"]]["period"], nxt[m["idx"]]["clock"])
+
+
+def test_the_ball_after_messis_penalty_is_said_with_the_score_it_made():
+    assert load_moments(FINAL)[5]["outcome"] == "Goal"
+    assert ball_line(FINAL, 5) == (
+        "France have the ball in Argentina's half, attacking Argentina's goal. Argentina lead 1-0."
+    )
+    assert ball_line(FINAL, 3) == (  # idx 3: no goal, no score
+        "France have the ball inside their own box, attacking Argentina's goal."
+    )
+
+
+@pytest.mark.parametrize("match_id", [FINAL, "3913122"])
+def test_every_orientation_sentence_passes_the_checks(match_id):
+    moments, header = load_moments(match_id), match_header(match_id)
+    said = 0
+    for i, m in enumerate(moments):
+        if text := ball_line(match_id, i):
+            b = balls(match_id)[m["idx"]]
+            said_as = {"kind": "orientation", "detail": text, "heard": "", "clock": b["clock"]}
+            assert insight.wrong_orientation(text, m, said_as, header, moments[: i + 1]) == []
+            said += 1
+    assert said >= 10
+
+
+@pytest.mark.parametrize(
+    "wrong",
+    [
+        "Messi scores again, and France are on the back foot!",  # no goal in open play
+        "France have the ball, three goals down.",  # no number the moment gives
+        "France lead and they have the ball.",  # Argentina lead 1-0
+        "France have the ball and they're looking to get it wide.",  # not in the data
+        "France'll push forward from their own half.",
+    ],
+)
+def test_an_orientation_line_that_gets_it_wrong_says_the_ball_instead(tmp_path, wrong):
+    def calls(moment, history):
+        line = commentator.commentate(moment, history, provider=FakeProvider())
+        if moment["outcome"].startswith("orientation") and moment["idx"] == 5:
+            line["text"] = wrong
+        return line
+
+    lines, _ = replay(FINAL, Store(tmp_path), calls=calls)
+    after = [
+        ln for ln in lines if gap(ln).get("kind") == "orientation" and gap(ln)["after_idx"] == 5
+    ]
+    assert after, "the gap after Messi's penalty opens on the ball"
+    assert after[0]["text"] == after[0]["insight"]["detail"] and after[0]["fallback"] is True
+
+
+def test_a_stretch_stored_before_the_ball_now_opens_on_it(tmp_path, monkeypatch):
+    store = Store(tmp_path)
+    with monkeypatch.context() as before:  # stored before #205: every stretch opens on a stat
+        before.setattr(insight.Gaps, "balls", lambda self: {})
+        replay(FINAL, store)
+    lines, _ = replay(FINAL, store)
+    first = [ln["insight"]["kind"] for ln in lines if ln.get("insight", {}).get("n") == 0]
+    assert "orientation" in first
+
+
+def test_a_wsl_side_has_the_ball_without_its_wfc():
+    assert ball_line("3913122", 8) == (
+        "Bristol City have the ball in Brighton & Hove Albion's half, attacking Brighton & Hove "
+        "Albion's goal. Brighton & Hove Albion lead 1-0."
+    )
+
+
+def test_a_dropped_orientation_hands_its_slot_to_a_stat_at_the_moments_time(tmp_path):
+    fake = Fake()
+
+    def calls(moment, history):
+        if moment["outcome"].startswith("orientation") and moment["idx"] == 5:
+            return None  # the line filter dropped it
+        return commentator.commentate(moment, history, provider=fake)
+
+    lines, _ = replay(FINAL, Store(tmp_path), calls=calls)
+    [first] = [ln for ln in lines if gap(ln).get("after_idx") == 5 and gap(ln)["n"] == 0]
+    assert first["insight"]["kind"] != "orientation"
+    stat = insight.said_over(first, load_moments)[-1]
+    assert stat["clock"] == load_moments(FINAL)[5]["clock"] == "22:24"
+
+
+def test_the_ball_is_said_again_though_it_reads_like_the_last_ball_line(tmp_path):
+    # the fake reads the stat back, "Stat, orientation: France have the ball ...", so ball lines
+    # read alike; each is still where the ball is now, so each gap with a ball opens on it
+    calls = functools.partial(commentator.commentate, provider=FakeProvider())
+    lines, _ = replay(FINAL, Store(tmp_path), calls=calls)
+    first = {gap(ln)["after_idx"]: gap(ln)["kind"] for ln in lines if gap(ln).get("n") == 0}
+    with_ball = [idx for idx in first if idx in balls(FINAL)]
+    assert len(with_ball) >= 5 and {first[idx] for idx in with_ball} == {"orientation"}

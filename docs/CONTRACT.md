@@ -172,7 +172,9 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
     time; `auto_fixed`, the retry passed (stored `retried: true`); `to_human`, the retry failed too, so the fallback was
     said and the line is stored `fallback: true` with the failed try as `tried` and the check's
     reasons as `wrong`, which the review queue lists. The four always sum: `called` is the rest's
-    total. `autonomy_by_match: {match_id: the same}`.
+    total. `autonomy_by_match: {match_id: the same}`. `GET /review` also lists stored lead lines
+    that today's check fails but that passed it (or predate it) when said: those entries carry
+    `later_check: true` (a `to_human` try, `false`) and are never counted here (#220).
   - `fixes_toward_next: int`: recorded fixes since the latest `adapter` record (all of them before one).
   - `voice_chars: int`: characters in every `voice` record.
   - `cost_per_match_usd: number | null`: the mean full replay's spend, `model_cost_per_match_usd`
