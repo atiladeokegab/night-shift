@@ -92,7 +92,7 @@ and refuses to start without `STORE_URL=gs://bucket/prefix`.
   marks `data/sample/`; `youtube_id` and `video_start` are there when the match has a video map.
   `embed: false` (absent otherwise) means the video's owner blocks embedding: pages show its poster and
   a link to it on YouTube, never the player, and the commentary runs on the replay's own clock.
-  `video_start` is the whole second the page starts the video at, 25 s before its first mapped moment (or 0): room for the cold open (#221).
+  `video_start` is the whole second the page starts the video at, 12 s before its first mapped moment (or 0): room for the two cold open lines (#221, #297).
   `peak_idx` (#163) is the moment "Jump to the big moment" starts at; `peak_video_start` is the video's start
   for that jump, 10 s before the first mapped moment from `peak_idx` on.
 - **Video map** (data/video/): `{youtube_id, embed?, source, moments: [{idx, video_t}]}`; `idx` is a Moment's
@@ -236,13 +236,19 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
     the keys in `ELEVENLABS_API_KEY_FALLBACKS` (comma-separated) in order; a backup key's 402 is
     tried once more in George, the one voice a free-plan key may speak. Unset, nothing changes.
   - `linecheck: {checked, flags, rules_missed, fixes_sent, examples_today,
-    examples_today_by_kind}` (#298, #305): live lead lines Line check
+    examples_today_by_kind, heldout}` (#298, #305, #317): live lead lines Line check
     checked (`linechecks` rows), those it flagged a field `wrong` on, the flags on lines the rules
     check passed (every live check is on such a line, so today it equals `flags`), and producer
     fixes sent to Line check as examples (`linecheck_fixes` rows: a fix with reason Wrong score,
     Wrong player or Wrong fact whose line code can label, sent on the owner's key; kind error
     left out). `examples_today` counts those created today (UTC) and `examples_today_by_kind`
-    splits them by kind, e.g. `{"corrected": 2, "matched": 1}`.
+    splits them by kind, e.g. `{"corrected": 2, "matched": 1}`. `heldout` (#317) is
+    `eval/linecheck_heldout.json` as `eval/linecheck_eval.py --json` wrote it from one keyed,
+    unrecorded run on the held-out labels: `{labels, lines, wrong, rules: {caught, false_alarms},
+    line_check: {caught, false_alarms}, errors}`, or `null` without the file, when the card shows
+    neither the result nor the note below. The Proof card's Checker model row says it in counts, e.g. "held-out: caught 3 of 5 wrong lines (rules: 1 of 5),
+    3 false alarms", never as a percentage. A flag only sends a line to the fix queue; it never
+    unsays it.
   - `by_speaker: {lead, analyst}`, each `{model, served_by, lines, first_word_ms_p50,
     first_word_ms_p95, cost_per_line_usd}`: the lead's calls and the analyst's stat lines apart (a
     line with no `speaker` is the lead's). `served_by` (#250): the lines' `served_by` values,
@@ -286,7 +292,7 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   - `cost_per_line_usd: number | null`: mean cost of the stored lines, tokens × the model's list
     price; null when no line's model has a known price.
   - `adapter: {state: "collecting"|"testing"|"passed", summary, kept: int|null, agree: int|null,
-    total: int|null, cost_measurable: bool}`. `state` is what the record shows:
+    total: int|null, cost_measurable: bool, console}`. `state` is what the record shows:
     `passed` only when Mubit's gate was recorded as passed, `testing` once a version, score or failed
     gate is recorded, else `collecting`; never inferred from the record's `status` or a count of fixes. `summary`
     says it in words, as of the record's time, e.g. "Testing: no version passed; best 55.8% of a 95%
@@ -298,6 +304,12 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
     stored lines, since a stored line doesn't prove Mubit kept it. `cost_measurable` is false while
     the app can't call the adapter. These are the commentary task's: a record with no `task` is
     commentary's, and another task's record leaves this key and `fixes_toward_next` alone.
+    `console` (#317) is `data/mubit_console.json`, Mubit's console overview read by hand at
+    `read_at`: `{source, read_at, how, tasks, adapters, serving, target, listed: {[name]: {status,
+    examples, quality}}}` (keyed by name: the `stats` event carries no brackets), or `null` without the file. It is a dated reading, never live data, and
+    changes only when someone reads the console again and commits it. The Proof card's Adapter row
+    shows it as "Mubit console, 24 Oct 19:15 UTC: 8 tasks, 7 adapters, 0 serving; best 58.3% of a
+    95% target".
   - `adapters: {[task]: {state, version: int|null, score: number|null, target: number|null,
     passed: bool|null, kept: int|null, recorded_at}}`: each Mubit task's latest `adapter` record
     (#209), keyed `commentary`, `where_are_we` or `line_check`; a task with no record is absent.

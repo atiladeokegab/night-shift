@@ -3,6 +3,7 @@ later moment, the packs when the engine fails, and "Also in our library" from a 
 
 import json
 import logging
+import sys
 
 import pytest
 from fastapi.testclient import TestClient
@@ -94,6 +95,31 @@ def test_the_packs_answer_when_the_engine_fails(tmp_path, monkeypatch, caplog):
     ) as c:
         rid = replayed(c, "3869685")
         assert c.get(rid_url.format(rid)).json() == off[1]
+
+
+def test_missing_sdk_import_keeps_graph_and_profile_routes_on_json_fallback(tmp_path, monkeypatch):
+    # Simulate the wheel being absent at import time, rather than only making graph.load fail.
+    monkeypatch.setitem(sys.modules, "surrealdb", None)
+    monkeypatch.setattr(graph, "_db", None)
+    assert graph.start() is None
+    assert graph.pack("3869685") is None
+    assert graph.library("football", "3869685", "Hugo Lloris") == []
+
+    match_id = "3869685"
+    moments = load_moments(match_id)
+    pack = predict.load_pack("football", match_id)
+    expected_players = predict.players(pack, moments)
+    expected_profile = predict.profile(pack, moments, len(moments) - 1, "Hugo Lloris")
+
+    app = create_app(store=Store(tmp_path), deps=Deps(list_matches, load_moments, line))
+    with TestClient(app) as c:
+        rid = replayed(c, match_id)
+        players = c.get(f"/replays/{rid}/players")
+        profile = c.get(f"/replays/{rid}/players/Lloris/profile")
+        assert players.status_code == profile.status_code == 200
+        assert players.json() == expected_players
+        assert profile.json() == expected_profile
+        assert "library" not in profile.json()
 
 
 def write_match(tmp, mid, home, away, players, date):

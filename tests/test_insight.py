@@ -842,6 +842,15 @@ def test_the_name_note_and_length_reminder_reach_the_user_message_only(tmp_path)
             "One goal from eleven shots before tonight.",
         ),
         (" ".join(["word"] * 25) + ".", " ".join(["word"] * 25) + "."),  # never mid-sentence
+        *(
+            (text, text)  # an abbreviation's full stop ends no sentence
+            for text in (
+                "He scores at St. James Park with a header from a corner, his first goal at this "
+                "ground in four seasons and his third of the year.",
+                "Mr. Smith has refereed this fixture eleven times before tonight and he has sent "
+                "off a player in each of the last three of them.",
+            )
+        ),
     ],
 )
 def test_a_long_line_is_cut_at_its_last_full_sentence_that_fits(text, said):
