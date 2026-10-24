@@ -107,4 +107,11 @@ test('keyboard only: Tab to Kobe, Enter, it is called aloud; Tab to Ask, Enter, 
   await expect(page.getByText('Answer ready', { exact: true })).toBeAttached()
   const text = (await answer.locator('.text > span').textContent())!
   await expect.poll(async () => (await said(page)).slice(before), { timeout: 30_000 }).toContain(text)
+
+  // A sheet takes the focus and gives it back: no trap, no lost place.
+  await page.getByRole('button', { name: /^Voice:/ }).focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('dialog', { name: 'Commentator voice' }).locator(':focus')).toHaveCount(1)
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('button', { name: /^Voice:/ })).toBeFocused()
 })

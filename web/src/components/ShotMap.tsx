@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useSheetFocus } from '../focus'
 import { place, zoneName, type Shots } from '../shots'
 
 interface Props {
@@ -22,6 +23,8 @@ function forQuery(got: Got | null, name: string, momentIdx: number): Shots | nul
 // versus missed, and the hit rate per zone. Numbers only, no commentator, so it works while off air.
 export function ShotMap({ name, momentIdx, load, onClose }: Props) {
   const [got, setGot] = useState<Got | null>(null)
+  const sheet = useRef<HTMLDivElement>(null)
+  useSheetFocus(sheet)
   const shots = forQuery(got, name, momentIdx)
 
   useEffect(() => {
@@ -38,7 +41,7 @@ export function ShotMap({ name, momentIdx, load, onClose }: Props) {
 
   return (
     <div className="scrim" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="sheet glass shotmap" role="dialog" aria-modal="true" aria-labelledby="shots-h">
+      <div className="sheet glass shotmap" ref={sheet} role="dialog" aria-modal="true" aria-labelledby="shots-h">
         {/* Close sits in the header: a footer bar would cover the zone table's last rows */}
         <div className="shots-h">
           <h2 id="shots-h">{name}</h2>

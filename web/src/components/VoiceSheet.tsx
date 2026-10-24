@@ -1,4 +1,5 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
+import { useSheetFocus } from '../focus'
 import { sheetName, sheetVoices } from '../teams'
 import { SPORT_NAMES, type Sport, type Voice } from '../types'
 
@@ -16,6 +17,8 @@ interface Props {
 // The voice setting (docs/design.md; A-6.3@1): on/off, then per sport the voices GET /voices lists,
 // the default marked. A change applies from the next line, without reloading.
 export function VoiceSheet({ sports, voices, chosen, available, on, onToggle, onPick, onClose }: Props) {
+  const sheet = useRef<HTMLDivElement>(null)
+  useSheetFocus(sheet)
   useEffect(() => {
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', esc)
@@ -24,7 +27,7 @@ export function VoiceSheet({ sports, voices, chosen, available, on, onToggle, on
 
   return (
     <div className="scrim" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="sheet glass" role="dialog" aria-modal="true" aria-labelledby="voice-h">
+      <div className="sheet glass" ref={sheet} role="dialog" aria-modal="true" aria-labelledby="voice-h">
         <h2 id="voice-h">Commentator voice</h2>
         <p className="lede">Each line is spoken in this voice. A change applies from the next line, without reloading.</p>
         {available ? (
