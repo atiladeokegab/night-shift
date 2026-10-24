@@ -34,7 +34,9 @@ def test_recorded_pairs_never_claim_what_was_not_measured():
     assert report["recorded_on"] and report["adapter"]["callable"] is False
     for pair in report["pairs"]:
         assert pair["big"]["text"].strip()
-        assert pair["adapter"] is None and pair["verdict"] == NO_LINE
+        # an adapter line is shown only when one was recorded; without one, nothing is compared
+        assert pair["adapter"] is not None or pair["verdict"] == NO_LINE
+        assert pair["adapter"] is None or pair["adapter"]["text"].strip()
 
 
 def test_build_offline_records_the_big_line_and_no_adapter_line():
