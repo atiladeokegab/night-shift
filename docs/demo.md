@@ -123,9 +123,6 @@ main and the total time. Check in particular:
 - the voice changes when the sport changes;
 - a fix shows as Fixed and the proof panel's fix count goes up by one.
 
-Retake the README's live-goal.png once #80 is deployed: it still shows "Spain Women's", which #80
-corrects.
-
 ### Headless check, 2026-10-24 about 00:15 UTC
 
 Each step was checked on the deployed URL (main at 42f73cc, the wall live) in headless Chrome on our
