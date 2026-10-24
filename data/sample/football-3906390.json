@@ -831,6 +831,22 @@
    },
    "x": 110.3,
    "y": 45.5
+  },
+  {
+   "sport": "football",
+   "match_id": "3906390",
+   "idx": 36,
+   "period": 2,
+   "clock": "104:18",
+   "type": "Full time",
+   "team": "",
+   "players": {},
+   "outcome": "Full time",
+   "score": {
+    "home": 1,
+    "away": 0
+   },
+   "detail": {}
   }
  ]
 }
