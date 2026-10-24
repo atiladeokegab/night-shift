@@ -91,7 +91,7 @@ export function Live(props: Props) {
         <Nav current="live" onGo={onGo} />
         <div className="lane hud" ref={hud}>
           <ScoreBar match={match} moment={moment} moments={shown.moments} />
-          <OnAir voice={voice} label={voiceLabel} />
+          <OnAir voice={voice} label={voiceLabel} offAir={!!replay.error} />
         </div>
         {showNoVideoCaption(replay, video) && (blocked ? (
           <p className="novideo">Commentary only · <a href={watchUrl(match)} target="_blank" rel="noopener noreferrer">highlights on YouTube ↗</a></p>
@@ -153,7 +153,15 @@ export function Live(props: Props) {
   )
 }
 
-function OnAir({ voice, label }: { voice: Props['voice']; label: string }) {
+function OnAir({ voice, label, offAir }: { voice: Props['voice']; label: string; offAir: boolean }) {
+  if (offAir) {
+    return (
+      <span className="onair glass off" role="status">
+        <span className="rec" />OFF AIR
+        <span className="who">{label}</span>
+      </span>
+    )
+  }
   if (voice.status !== 'on') {
     return (
       <span className="onair glass">

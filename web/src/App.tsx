@@ -12,7 +12,7 @@ import { Picker } from './components/Picker'
 import type { VideoState } from './components/VideoStage'
 import { VoiceSheet } from './components/VoiceSheet'
 import { Wall } from './components/Wall'
-import { chipName, commentatorName, defaultVoice, voiceName } from './teams'
+import { chipName, defaultVoice } from './teams'
 import { SPORTS, type Line, type Match, type Sport, type Voice } from './types'
 import { useReplay } from './useReplay'
 import { useSpeech } from './useSpeech'
@@ -215,7 +215,7 @@ export default function App() {
           onToggle={speech.setOn}
           onPick={(s, v) => {
             setPicked((p) => ({ ...p, [s]: v.id }))
-            say(`${commentatorName(voiceName(v))} from the next line.`)
+            say(`${chipName(v)} from the next line.`)
           }}
           onClose={() => setVoiceSheet(false)}
         />

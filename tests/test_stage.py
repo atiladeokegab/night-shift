@@ -58,3 +58,4 @@ def test_stage_shows_the_commentator_off_air_never_the_error_text(tmp_path):
     page = TestClient(create_app(store=Store(tmp_path))).get("/stage").text
     assert 'subtitle("Commentator is off air for a moment", "waiting", "Off air")' in page
     assert "JSON.parse(e.data).detail" not in page and "Commentator error" not in page
+    assert "offAir(true);" in page and 'off ? "OFF AIR" : "ON AIR"' in page
