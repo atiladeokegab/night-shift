@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { getStats } from '../api'
 import type { Adapter, SpeakerStats, Stats } from '../types'
 import { SideBySide } from './SideBySide'
@@ -36,9 +36,9 @@ export function ProofPanel({ live }: Props) {
           {/* own heading so the fix counts don't read as the analyst's */}
           <div className="wide">
             <dt className="label">Training</dt>
-            <dd>Producer fixes Mubit recorded</dd>
+            <dd>Your fixes Mubit trains on</dd>
           </div>
-          <Figure label="Fixes recorded" value={String(stats.fixes_recorded ?? 0)} />
+          <Figure label="Fixes" value={String(stats.fixes_recorded ?? 0)} />
           {stats.fixes_toward_next !== undefined && (
             <Figure label="Next adapter" value={`${stats.fixes_toward_next} of ${adapter?.needed ?? 25}`} />
           )}
@@ -75,14 +75,16 @@ function Speaker({ name, s }: { name: string; s: SpeakerStats }) {
         <dt className="label">{name}</dt>
         <dd>{[s.model, `${s.lines.toLocaleString()} lines · all matches`].filter(Boolean).join(' · ')}</dd>
       </div>
-      <Figure label="First word · median" value={v(seconds(s.first_word_ms_p50))} />
-      <Figure label="First word · p95" value={v(seconds(s.first_word_ms_p95))} />
+      {/* one "First word" caption over both, so each label fits one line at 1280 px */}
+      <div className="cap" aria-hidden="true"><dt className="label">First word</dt></div>
+      <Figure label={<><span className="sr-only">First word </span>Median</>} value={v(seconds(s.first_word_ms_p50))} />
+      <Figure label={<><span className="sr-only">First word </span>P95</>} value={v(seconds(s.first_word_ms_p95))} />
       <Figure label="Cost per line" value={v(dollars(s.cost_per_line_usd))} />
     </>
   )
 }
 
-function Figure({ label, value }: { label: string; value: string }) {
+function Figure({ label, value }: { label: ReactNode; value: string }) {
   return (
     <div>
       <dt className="label">{label}</dt>
