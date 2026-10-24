@@ -106,7 +106,7 @@ export function LineLog({ lines, late, fixes, checks = {}, examples = {}, moment
                       ? <span className="num">Not called</span> // a producer's fix (#232): no model, so no timing
                       : took && <span className="num" title={`${firstWord ? 'model first text word' : 'model reply'} ${took}`}>{took}</span>}
                   {/* #314: what "checks itself" means, on the line it checked */}
-                  {(l as Line & { checked?: boolean }).checked && !fix && !l.fixed && (
+                  {(l as Line & { checked?: boolean }).checked && !check && !fix && !l.fixed && (
                     <span className="pill checked" title="Score, leader and key numbers checked against the match data before it was spoken">✓ Checked</span>
                   )}
                   {l.served_by && <span className="pill served" title="Served by: the model Mubit's reply said answered">{l.served_by}</span>}
