@@ -8,11 +8,11 @@ The adapter is tested only when it can be: the latest adapter record in the stor
 MUBIT_API_KEY is set. Otherwise this prints "not tested: <reason>" and calls nothing. Both models
 run with recording off, so held-out moments never become training examples.
 
-Per moment the two lines agree only when their facts provably match: both exist, neither is late,
-and they state the same numbers in the same order (score words too), name the same players in the
-same order, name no team or person the big model doesn't (bar the moment's own team), and carry the
-same outcome terms (goal, saved, out, not out, six, overtake, pit, ...). Anything
-uncertain, and an empty, skipped or late line on either side, is a disagreement.
+The headline is strict agreement, a lower bound: a moment counts only when both lines exist, neither
+is late, and they are the same words once lowercased, stripped of punctuation, with number words as
+digits ("Two-nil!" and "2 nil"). Two rounds of review showed word-list fact matching lets
+contradictions through, so it never scores. Under the headline, the fact checker lists possible
+disagreements (different numbers, players, names or outcome terms) for the lines that don't match.
 """
 
 from __future__ import annotations
@@ -31,6 +31,49 @@ from core.store import open_store
 from scripts.replay_matches import FOOTBALL, pick
 
 LATE_MS = 1500  # A-3.3's p95 bound on the first word
+HEADLINE = "strict agreement (lower bound)"
+HEADLINE_NOTE = (
+    "counts only lines that state the same thing in the same words; true agreement is at least this"
+)
+
+_DIGITS = {
+    w: str(i)
+    for i, w in enumerate(
+        "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen "
+        "fifteen sixteen seventeen eighteen nineteen".split()
+    )
+} | {
+    w: str(10 * i)
+    for i, w in enumerate("_ _ twenty thirty forty fifty sixty seventy eighty ninety".split())
+    if w != "_"
+}
+
+
+def normalise(text: str) -> str:
+    """Lowercased, punctuation stripped, number words as digits, whitespace collapsed; no more."""
+    words = re.sub(r"[^\w\s]|_", " ", text.lower()).split()
+    return " ".join(_DIGITS.get(w, w) for w in words)
+
+
+def _unusable(big: dict | None, adapter: dict | None) -> str | None:
+    """Why a pair can't agree at all: a skipped, empty or late line on either side."""
+    for side, line in (("big model", big), ("adapter", adapter)):
+        if line is None:
+            return f"{side} skipped"
+        if not line.get("text", "").strip():
+            return f"{side} empty"
+        ms = line.get("first_word_ms")
+        ms = line.get("latency_ms") if ms is None else ms
+        if ms is not None and ms > LATE_MS:
+            return f"{side} late ({ms} ms)"
+    return None
+
+
+def strict(big: dict | None, adapter: dict | None) -> str | None:
+    """None when the two lines strictly agree (the headline); otherwise why not."""
+    if why := _unusable(big, adapter):
+        return why
+    return None if normalise(adapter["text"]) == normalise(big["text"]) else "different words"
 
 
 def _fold(text: str) -> str:
@@ -166,22 +209,14 @@ def _names(text: str, cast: set[str]) -> list[str] | None:
     return order
 
 
-def disagreement(
+def possible_disagreement(
     moment: dict, big: dict | None, adapter: dict | None, cast: set[str] | None = None
 ) -> str | None:
-    """Why the adapter's line disagrees with the big model's, or None when their facts provably
-    match: the same numbers in the same order, the same players in the same order and the same
-    outcome terms. Anything uncertain disagrees. `cast` is every player in the match, so naming the
-    wrong one counts; the moment's players by default."""
-    for side, line in (("big model", big), ("adapter", adapter)):
-        if line is None:
-            return f"{side} skipped"
-        if not line.get("text", "").strip():
-            return f"{side} empty"
-        ms = line.get("first_word_ms")
-        ms = line.get("latency_ms") if ms is None else ms
-        if ms is not None and ms > LATE_MS:
-            return f"{side} late ({ms} ms)"
+    """Diagnostics only, never the score: a factual difference between the two lines (numbers,
+    players, other names, outcome terms), or None when it finds none, which proves nothing.
+    `cast` is every player in the match, so naming the wrong one shows; the moment's by default."""
+    if why := _unusable(big, adapter):
+        return why
     said, want = adapter["text"], big["text"]
     if _numbers(said) != _numbers(want):
         return f"numbers {_numbers(said)}, big model {_numbers(want)}"
@@ -239,8 +274,9 @@ def _line(header: dict, moments: list[dict], idx: int, provider) -> dict | None:
 
 
 def compare(matches, big, adapter, per_match: int = 10) -> dict:
-    """matches: (header, moments) pairs. Each picked moment is called by both providers."""
-    agree, misses = 0, []
+    """matches: (header, moments) pairs. Each picked moment is called by both providers. `agree`
+    counts strict agreement; `possible_disagreements` is what the fact checker finds in the rest."""
+    agree, total, misses = 0, 0, []
     for header, moments in matches:
         by_idx = {m["idx"]: m for m in moments}
         cast = {name for m in moments for name in m.get("players", {}).values()}
@@ -248,12 +284,12 @@ def compare(matches, big, adapter, per_match: int = 10) -> dict:
         for idx in pick(moments, per_match):
             ours = _line(header, moments, at[idx], big)
             theirs = _line(header, moments, at[idx], adapter)
-            why = disagreement(by_idx[idx], ours, theirs, cast)
-            if why is None:
+            total += 1
+            if strict(ours, theirs) is None:
                 agree += 1
-            else:
+            elif why := possible_disagreement(by_idx[idx], ours, theirs, cast):
                 misses.append({"match_id": header["match_id"], "idx": idx, "why": why})
-    return {"agree": agree, "total": agree + len(misses), "disagreements": misses}
+    return {"agree": agree, "total": total, "possible_disagreements": misses}
 
 
 def held_out_matches(football: int, cricket: int):
@@ -293,9 +329,10 @@ def main(argv=None, env=os.environ) -> dict:
     adapter = Model(MubitProvider(env["MUBIT_API_KEY"], record=False), env["MUBIT_ADAPTER_MODEL"])
     matches = held_out_matches(a.football, a.cricket)
     report = compare(matches, big, adapter, a.per_match)
-    for miss in report["disagreements"]:
-        print(f"  disagree {miss['match_id']} #{miss['idx']}: {miss['why']}")
-    print(f"agreement: {report['agree']} of {report['total']} moments")
+    print(f"{HEADLINE}: {report['agree']} of {report['total']} moments ({HEADLINE_NOTE})")
+    print(f"possible disagreements: {len(report['possible_disagreements'])}")
+    for miss in report["possible_disagreements"]:
+        print(f"  {miss['match_id']} #{miss['idx']}: {miss['why']}")
     return {"tested": True, **report}
 
 

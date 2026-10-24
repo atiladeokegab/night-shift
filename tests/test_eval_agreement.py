@@ -6,7 +6,7 @@ import pytest
 from agent.commentator import FakeProvider
 from core.store import Store
 from eval import agreement
-from eval.agreement import compare, disagreement, main
+from eval.agreement import compare, main, normalise, possible_disagreement, strict
 
 SAMPLE = Path(__file__).resolve().parent.parent / "data" / "sample"
 GOAL = {
@@ -61,6 +61,70 @@ CAST = {
 }
 
 
+# Every counterexample from Prometheus's reviews of #75 and #77, exactly as written: none may count
+# as agreement under the headline, nor lowercased.
+REVIEWED = [
+    ("Messi! Argentina lead 1-0!", "Messi! Argentina trail 0-1!"),
+    ("Messi scores!", "Messi misses wide!"),
+    ("Messi makes it 1-0!", "Messi makes it 22-0!"),
+    ("Messi! Argentina lead one nil!", "Messi! Argentina lead two nil!"),
+    ("Messi! Argentina lead France 1-0!", "Messi! France lead Argentina 1-0!"),
+    ("Messi scores!", "Messi did not score!"),
+    ("Messi beats Lloris!", "Lloris beats Messi!"),
+    ("Messi fouls Lloris!", "Lloris fouls Messi!"),
+    ("Messi scores the penalty!", "Messi has his penalty saved!"),
+    ("Messi gets a yellow card!", "Messi gets a red card!"),
+    ("Messi scores, goal allowed!", "Messi scores, ruled out for offside!"),
+    ("Kohli smashes four!", "Kohli smashes six!"),
+    ("Kohli is out!", "Kohli is not out!"),
+    ("Kohli is bowled by Afridi!", "Afridi is bowled by Kohli!"),
+    ("Kohli needs 6 off 3!", "Kohli needs 3 off 6!"),
+    ("Kohli! India are 10 for 2!", "Kohli! India are 2 for 10!"),
+    ("Chris Smith scores!", "Alex Smith scores!"),
+    ("Mitchell Marsh hits four!", "Shaun Marsh hits four!"),
+    ("Kohli is caught!", "Kohli is bowled!"),
+    ("What a goal! 1-0!", "John Doe scores! 1-0!"),
+    ("India are six for three, Kohli!", "India are three for six, Kohli!"),
+    ("Messi fouls Lloris!", "Messi is fouled by Lloris!"),
+    ("Kohli hits four, Afridi takes a wicket!", "Kohli takes a wicket, Afridi hits four!"),
+]
+
+
+@pytest.mark.parametrize("big, adapter", REVIEWED + [(b.lower(), a.lower()) for b, a in REVIEWED])
+def test_no_reviewed_contradiction_counts_as_agreement(big, adapter):
+    assert strict(line(big), line(adapter)) == "different words"
+
+
+@pytest.mark.parametrize(
+    "big, adapter",
+    [
+        ("Two-nil!", "2 nil"),
+        ("Kohli: SIX! India need 22 off 7.", "kohli six india need 22 off seven"),
+        ("Nineteen points for Jordan!", "19 points for Jordan"),
+    ],
+)
+def test_the_same_words_after_normalising_strictly_agree(big, adapter):
+    assert strict(line(big), line(adapter)) is None
+
+
+def test_normalising_is_case_punctuation_number_words_and_spaces_only():
+    assert normalise("  Two-nil!  Mbappé's   NINETEEN… ") == "2 nil mbappé s 19"
+
+
+@pytest.mark.parametrize(
+    "big, adapter, why",
+    [
+        (line("2 nil"), line(" "), "adapter empty"),
+        (line("2 nil"), None, "adapter skipped"),
+        (None, line("2 nil"), "big model skipped"),
+        (line("2 nil"), line("2 nil", first_word_ms=2400), "adapter late (2400 ms)"),
+    ],
+)
+def test_an_empty_skipped_or_late_line_never_strictly_agrees(big, adapter, why):
+    assert strict(big, adapter) == why
+
+
+# The fact checker below is diagnostics only: it lists possible disagreements, never the score.
 @pytest.mark.parametrize(
     "big, adapter",
     [
@@ -75,8 +139,8 @@ CAST = {
         ("Jordan doesn't score, 86-87!", "Michael Jordan can't... no, he doesn't score! 86-87!"),
     ],
 )
-def test_the_same_facts_in_other_words_agree(big, adapter):
-    assert disagreement(GOAL, line(big), line(adapter), CAST) is None
+def test_the_fact_checker_finds_nothing_in_the_same_facts_in_other_words(big, adapter):
+    assert possible_disagreement(GOAL, line(big), line(adapter), CAST) is None
 
 
 # Prometheus's after-merge finding on #75: each pair contradicts itself, and each once scored as
@@ -112,12 +176,14 @@ CONTRADICTIONS = [
 
 
 @pytest.mark.parametrize("big, adapter", CONTRADICTIONS)
-def test_contradictory_lines_disagree(big, adapter):
-    assert disagreement(GOAL, line(big), line(adapter), CAST) is not None
+def test_the_fact_checker_flags_contradictory_lines(big, adapter):
+    assert possible_disagreement(GOAL, line(big), line(adapter), CAST) is not None
 
 
 def test_lines_with_no_outcome_to_compare_disagree():
-    why = disagreement(GOAL, line("What a moment for Messi!"), line("What a moment for Messi!"))
+    why = possible_disagreement(
+        GOAL, line("What a moment for Messi!"), line("What a moment for Messi!")
+    )
     assert why == "no outcome to compare"
 
 
@@ -133,13 +199,13 @@ def test_lines_with_no_outcome_to_compare_disagree():
     ],
 )
 def test_a_wrong_empty_skipped_or_late_adapter_line_disagrees(adapter, why):
-    assert disagreement(GOAL, line("Messi scores, 1-0!"), adapter) == why
+    assert possible_disagreement(GOAL, line("Messi scores, 1-0!"), adapter) == why
 
 
 def test_a_skipped_or_late_big_model_line_disagrees_too():
-    assert disagreement(GOAL, None, line("Messi! 1-0!")) == "big model skipped"
+    assert possible_disagreement(GOAL, None, line("Messi! 1-0!")) == "big model skipped"
     late = {"text": "Messi! 1-0!", "first_word_ms": None, "latency_ms": 1900}
-    assert disagreement(GOAL, late, line("Messi! 1-0!")) == "big model late (1900 ms)"
+    assert possible_disagreement(GOAL, late, line("Messi! 1-0!")) == "big model late (1900 ms)"
 
 
 def test_seeded_with_one_known_bad_line_it_reports_one_disagreement():
@@ -148,7 +214,7 @@ def test_seeded_with_one_known_bad_line_it_reports_one_disagreement():
     bad = Adapter({"innings 1, 3.6": "Babar Azam is out!"})
     report = compare([cricket], FakeProvider(), bad, per_match=4)
     assert (report["agree"], report["total"]) == (3, 4)
-    assert report["disagreements"] == [
+    assert report["possible_disagreements"] == [
         {"match_id": "1298150", "idx": 3, "why": "names ['Babar Azam'], big model []"}
     ]
     assert compare([cricket], FakeProvider(), Adapter({}), per_match=4)["agree"] == 4
@@ -181,7 +247,9 @@ def test_a_ready_adapter_the_app_cannot_call_is_not_tested(tmp_path, env, reason
     assert main([], {"STORE_DIR": str(tmp_path), **env}) == {"tested": False, "reason": reason}
 
 
-def test_a_ready_adapter_is_compared_on_held_out_matches_with_recording_off(tmp_path, monkeypatch):
+def test_a_ready_adapter_is_compared_on_held_out_matches_with_recording_off(
+    tmp_path, monkeypatch, capsys
+):
     Store(tmp_path).append("adapter", {"status": "ready", "kept": 31})
     made, models = [], []
 
@@ -201,5 +269,11 @@ def test_a_ready_adapter_is_compared_on_held_out_matches_with_recording_off(tmp_
     env = {"STORE_DIR": str(tmp_path), "MUBIT_API_KEY": "k", "MUBIT_ADAPTER_MODEL": "adapter-v1"}
     report = main(["--per-match", "3"], env)
     assert (report["tested"], report["agree"], report["total"]) == (True, 3, 3)
+    out = capsys.readouterr().out
+    assert (
+        "strict agreement (lower bound): 3 of 3 moments (counts only lines that state the same "
+        "thing in the same words; true agreement is at least this)" in out
+    )
+    assert "possible disagreements: 0" in out
     assert made == [False, False]  # held-out moments never train the task
     assert "adapter-v1" in models and "claude-haiku-4-5" in models
