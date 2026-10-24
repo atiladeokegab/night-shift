@@ -114,7 +114,7 @@ function Tile({ match, onOpen, onJump }: { match: Match; onOpen: (m: Match) => v
     {blocked && <a className="tile-yt" href={watchUrl(match)} target="_blank" rel="noopener noreferrer">Watch highlights on YouTube ↗</a>}
     {/* #163: top right, clear of the sport label on the left (below the YouTube link when both show); inline as App.css is #153's */}
     {match.peak_idx !== undefined && (
-      <button className="tile-yt" style={{ top: blocked ? 50 : 12, cursor: 'pointer' }} onClick={() => onJump(match)}
+      <button className="tile-yt" style={{ top: blocked ? 50 : 12, cursor: 'pointer', background: 'rgba(6, 8, 15, .94)', boxShadow: '0 1px 8px rgba(0, 0, 0, .6)' }} onClick={() => onJump(match)}
         aria-label={`Jump to the big moment of ${title}`}>Jump to the big moment</button>
     )}
     </div>
