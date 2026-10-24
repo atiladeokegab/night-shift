@@ -243,6 +243,13 @@ _PREAMBLE = re.compile(
 )
 
 
+# An answer's own decline, which the preamble rule would drop whole (#332): "I don't see Megan
+# Rapinoe in this match." Said aloud, it is the answer to a trap.
+_DECLINE = re.compile(r"^I(?:'m)?\s+(?:\w+\s+)?(?:can['’]t|cannot|don['’]t|do not|not|have no)\b")
+# An answer opening on the viewer's question said back (agent/ask.md asks for it), which _fit kept
+# alone when the answer ran long: "How much time remains in this final?" (#332).
+_ECHO = re.compile(r"^[^.!?\n]*\?\s+(?=\S)")
+
 # A stray grade word the model put before the line: "BAD Manenti with a boundary!".
 _STRAY = re.compile(r"^BAD\s+(?=[A-Z])")
 MAX_WORDS = 20
@@ -256,12 +263,15 @@ _META = re.compile(
 )
 
 
-def spoken(text: str, limit: int = MAX_WORDS) -> str:
-    """The line as spoken: preamble dropped, and any paragraph about the input left out."""
-    kept = []
-    for para in re.split(r"\n\s*\n", text.strip()):
+def spoken(text: str, limit: int = MAX_WORDS, ask: bool = False) -> str:
+    """The line as spoken: preamble dropped, and any paragraph about the input left out. An answer
+    (`ask`) also drops the question said back before it and keeps a first-person decline."""
+    kept, text = [], text.strip()
+    while ask and (m := _ECHO.match(text)):
+        text = text[m.end() :]
+    for para in re.split(r"\n\s*\n", text):
         para = para.strip()
-        while (m := _PREAMBLE.match(para)) and m.end():
+        while (m := _PREAMBLE.match(para)) and m.end() and not (ask and _DECLINE.match(para)):
             para = para[m.end() :].lstrip()
         para = _STRAY.sub("", para)
         if para and not _META.search(para):
@@ -600,9 +610,14 @@ def answer(
     start = time.monotonic()
     reply, replies, tool_calls, _ = _call(provider or unrecorded_provider(), request, header, past)
     said = " ".join(b["text"] for b in reply["content"] if b["type"] == "text")
-    text = spoken(said, ANSWER_WORDS)
-    if not text:
-        raise NoLine(f"no answer at moment {past[-1]['idx']}")
+    text, fell = spoken(said, ANSWER_WORDS, ask=True), False
+    if not text or text.endswith("?"):  # nothing to say, or only the question: never off air (#332)
+        from agent.status import fallback_text
+
+        try:
+            text, fell = f"No word on that yet. {fallback_text(header, past[-1])}", True
+        except KeyError as e:
+            raise NoLine(f"no answer at moment {past[-1]['idx']}") from e
     return {
         "line_id": uuid.uuid4().hex,  # an answer is spoken like a line: /lines/{id}/audio
         "sport": header["sport"],
@@ -617,6 +632,7 @@ def answer(
         "mubit_request_ids": [r["request_id"] for r in replies],
         "tool_calls": tool_calls,
         "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
+        **({"fallback": True} if fell else {}),
     }
 
 

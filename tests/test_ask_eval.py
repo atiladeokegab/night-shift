@@ -12,6 +12,46 @@ def asked(match_id: str, idx: int) -> str:
     return provider.requests[0]["messages"][0]["content"]
 
 
+class Says:
+    """A model that replies with each scripted content list in turn."""
+
+    def __init__(self, *contents):
+        self.contents = list(contents)
+
+    def call(self, request):
+        content = self.contents.pop(0)
+        if isinstance(content, str):
+            content = [{"type": "text", "text": content}]
+        return {"content": content, "usage": {"input_tokens": 1, "output_tokens": 1}, "request_id": "r"}
+
+
+def said_to(match_id: str, idx: int, *replies) -> dict:
+    return answer("Asked?", load_moments(match_id)[: idx + 1], [], provider=Says(*replies))
+
+
+def test_an_answer_drops_the_question_said_back():
+    # #332: the keyed run said "How much time remains in this final?" and nothing else
+    long = "We're at 87 minutes and level at two-two, with three minutes of normal time left"
+    said = said_to("3869685", 30, f"How much time remains in this final? {long}, what a final!")
+    assert said["text"] == f"{long}, what a final!" and "fallback" not in said
+
+
+def test_a_first_person_decline_is_said_not_dropped():
+    # #332: "I don't ..." went as preamble, leaving nothing, and the viewer heard off air
+    said = said_to("7457", 30, "I don't see Megan Rapinoe in this match. The Courage lead three-two.")
+    assert said["text"] == "I don't see Megan Rapinoe in this match. The Courage lead three-two."
+    later = said_to("3754092", 26, "I can't tell you what comes later, but Spurs lead two-one.")
+    assert later["text"] == "I can't tell you what comes later, but Spurs lead two-one."
+
+
+def test_an_answer_with_nothing_to_say_gives_the_status_not_off_air():
+    tool = [{"type": "tool_use", "id": "t1", "name": "get_score", "input": {}}]
+    for replies in (["I have all the information I need."], ["How long is left?"], [tool, tool]):
+        said = said_to("3754092", 26, *replies)
+        assert said["fallback"] and said["text"].startswith("No word on that yet. "), replies
+        assert "Tottenham Hotspur lead 2-1" in said["text"]
+
+
 def test_a_football_ask_holds_each_sides_shots_cards_and_each_scorers_goals():
     said = asked("3754092", 45)  # Chelsea v Tottenham, the last yellow card
     assert "Shots so far (not shootout kicks): Chelsea 13, Tottenham Hotspur 16" in said
