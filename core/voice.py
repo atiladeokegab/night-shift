@@ -95,6 +95,10 @@ TAGS = {
 }
 
 ANSWER_TAG = "[excited]"
+ANALYST_TAG = "[thoughtful]"  # the analyst's stat lines between moments (#130) are calmer
+
+# The second commentator per sport (#131): a library voice with another accent than the lead.
+ANALYST_FOR = {"cricket": "george", "football": "sam", "basketball": "george", "f1": "sam"}
 
 
 def _big_basket(m: dict) -> bool:
@@ -143,8 +147,24 @@ def default_voice(sport: str | None, env=os.environ) -> dict:
     )
 
 
+def analyst_voice(sport: str | None, env=os.environ) -> dict:
+    """The sport's analyst, never the lead's voice: a deployed lead pick may take the analyst's, and
+    then another voice stands in, another accent first."""
+    lead = default_voice(sport, env)
+    others = [v for v in all_voices(env) if v["eleven_id"] != lead["eleven_id"]]
+    pick = next((v for v in others if v["id"] == ANALYST_FOR.get(str(sport))), None)
+    return pick or min(others, key=lambda v: v["lang"] == lead["lang"])
+
+
 def model_for(sport: str | None, env=os.environ) -> str:
     return env.get(f"VOICE_MODEL_{str(sport).upper()}") or MODEL  # empty in .env means unset
+
+
+def voice_of(line: dict) -> dict:
+    """Who reads a line when the page picks no voice: the analyst's lines in the analyst voice."""
+    if line.get("speaker") == "analyst":
+        return analyst_voice(line.get("sport"))
+    return default_voice(line.get("sport"))
 
 
 class Speaker:
@@ -164,7 +184,7 @@ class Speaker:
         moment plays, None to speak it as it arrives."""
         self.tags[line["line_id"]] = tag_for(moment)
         if os.environ.get("ELEVENLABS_API_KEY"):
-            self._job(line, default_voice(line.get("sport")), deadline)
+            self._job(line, voice_of(line), deadline)
 
     async def audio(self, line: dict, voice: dict, retry=True) -> tuple[bytes, str] | None:
         key = (line["line_id"], voice["id"])
@@ -203,7 +223,12 @@ class Speaker:
         end = deadline if deadline is not None else time.monotonic() + LIVE_BUDGET_S
         model = model_for(line.get("sport"))
         # a viewer's answer (it carries its question) is spoken live, like a call
-        said = ANSWER_TAG if "question" in line else self.tags.get(line["line_id"])
+        if "question" in line:
+            said = ANSWER_TAG
+        elif line.get("speaker") == "analyst":
+            said = ANALYST_TAG
+        else:
+            said = self.tags.get(line["line_id"])
         tag = said if "v3" in model else None
         text = f"{tag} {line['text']}" if tag else line["text"]
         # made ahead (a video time still to come): one long v3 call, not two squeezed ones
@@ -316,8 +341,9 @@ def voice_router(store, speaker: Speaker) -> APIRouter:
             chosen = next((v for v in all_voices() if v["id"] == voice), None)
             if chosen is None:
                 raise HTTPException(404, f"no voice {voice!r}")
-        else:
-            chosen = default_voice(line.get("sport"))
+        # the page's pick is the lead's voice; the analyst follows the sport
+        if not voice or line.get("speaker") == "analyst":
+            chosen = voice_of(line)
         if not os.environ.get("ELEVENLABS_API_KEY"):
             raise HTTPException(503, "voice not configured")
         started = time.perf_counter()
