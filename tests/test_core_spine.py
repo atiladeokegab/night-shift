@@ -70,6 +70,19 @@ def test_commentator_failure_ends_the_stream_with_error(tmp_path):
     assert names == ["moment", "error", "end"]
 
 
+def test_commentator_error_payload_is_generic(tmp_path):
+    def broke(moment, history):
+        raise RuntimeError(
+            "402 starter_credit_used_up: see https://console.mubit.ai request_id=abc123"
+        )
+
+    deps = Deps(lambda: [], lambda mid: MOMENTS[mid], broke)
+    with TestClient(create_app(store=Store(tmp_path), deps=deps)) as client:
+        rid = client.post("/replays", json={"match_id": "f1", "speed": 1e6}).json()["replay_id"]
+        error = dict(read_stream(client, rid))["error"]
+    assert error == {"code": "commentator_off_air", "detail": "Commentator is off air for a moment"}
+
+
 def test_no_line_leaves_the_moment_silent(tmp_path):
     deps = Deps(lambda: [], lambda mid: MOMENTS[mid], lambda m, h: None)
     store = Store(tmp_path)

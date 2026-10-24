@@ -60,7 +60,10 @@ export function followReplay(
   source.addEventListener('error', (e) => {
     // A server `error` event carries {detail}; a dropped connection is a plain Event with no data.
     const data = (e as MessageEvent).data
-    if (data) return onEvent({ type: 'error', detail: (JSON.parse(data) as { detail: string }).detail })
+    if (data) {
+      console.error('commentator error', data)
+      return onEvent({ type: 'error', detail: (JSON.parse(data) as { detail: string }).detail })
+    }
     tries += 1
     if (tries >= MAX_TRIES || source.readyState === EventSource.CLOSED) {
       source.close()

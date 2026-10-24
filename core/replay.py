@@ -112,6 +112,8 @@ async def run_replay(
         # the provider's status and error type, e.g. Mubit's 402 when its credit runs out
         name = type(exc).__name__
         log.warning("replay %s stopped: %s: %s", replay.match_id, name, str(exc)[:300])
-        await replay.publish("error", {"detail": str(exc)})
+        # never the provider's text: it can carry its console URL and request id onto the screen
+        off_air = {"code": "commentator_off_air", "detail": "Commentator is off air for a moment"}
+        await replay.publish("error", off_air)
     finally:
         await replay.finish()
