@@ -188,7 +188,14 @@ def test_a_flag_reaches_the_fix_queue_and_stats(tmp_path):
     # the rules passed the line; Line check's flag puts it in the producer's queue all the same
     entry = next(q for q in queued if q["line_id"] == "k6")
     assert entry["wrong"] == ["Checker model: score may be wrong"] and entry["text"] == RIGHT
-    assert stats["linecheck"] == {"checked": 1, "flags": 1, "rules_missed": 1, "fixes_sent": 0}
+    assert stats["linecheck"] == {
+        "checked": 1,
+        "flags": 1,
+        "rules_missed": 1,
+        "fixes_sent": 0,
+        "examples_today": 0,
+        "examples_today_by_kind": {},
+    }
 
 
 def test_no_check_past_the_daily_cap(tmp_path, monkeypatch):
@@ -246,6 +253,15 @@ def test_a_fix_with_a_wrong_reason_teaches_line_check_once(tmp_path):
         assert client.post("/lines/w/fix", json=tone).status_code == 200
         time.sleep(0.1)
         stats = client.get("/stats").json()
+        shown = client.get("/lines/w").json()["linecheck_example"]
+        store.append("linecheck_fixes", {"line_id": "x", "kind": "error", "created_at": "2026"})
+        store.append("linecheck_fixes", {"line_id": "y", "kind": "matched", "created_at": "2020"})
+        later = client.get("/stats").json()["linecheck"]
+    # the line shows the example its fix sent: the correction turn's request id and the kind
+    assert (shown["mubit_request_id"], shown["kind"]) == ("lc-2", "corrected")
+    assert stats["linecheck"]["examples_today_by_kind"] == {"corrected": 1}
+    # a failed send is no example, and an earlier day's counts in total but not today
+    assert (later["fixes_sent"], later["examples_today"]) == (2, 1)
     key = gold(*_at(), WRONG)
     assert key["score"] == "wrong"  # the line as first said is the example, not the fix
     assert store.all("linecheck_fixes")[0]["gold"] == dumps(key)
@@ -264,7 +280,10 @@ def test_a_fix_code_cannot_label_sends_nothing():
 def test_a_matching_reply_is_one_call_and_no_correction():
     fake = Says(dumps(gold(*_at(), RIGHT)))
     line = {"line_id": "r", "match_id": KOBE, "moment_idx": 6, "text": RIGHT}
-    assert linecheck.teach(line, provider=fake)["kind"] == "matched" and len(fake.requests) == 1
+    sent = linecheck.teach(line, provider=fake)
+    assert (sent["kind"], sent["mubit_request_id"]) == ("matched", "lc-1") and len(
+        fake.requests
+    ) == 1
 
 
 def test_a_held_out_match_or_no_recorder_sends_nothing(monkeypatch):
