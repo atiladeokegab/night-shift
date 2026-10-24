@@ -76,10 +76,10 @@ def test_lead_and_analyst_lines_are_reported_apart(tmp_path):
         "lines", {**line(3, model="claude-sonnet-5-5"), "first_word_ms": 2000, "speaker": "analyst"}
     )
     lead, analyst = stats(store)["by_speaker"]["lead"], stats(store)["by_speaker"]["analyst"]
-    assert lead["models"] == ["claude-haiku-4-5"] and lead["lines"] == 2
+    assert lead["model"] == "claude-haiku-4-5" and lead["lines"] == 2
     assert lead["first_word_ms_p95"] == 700 and lead["cost_per_line_usd"] == pytest.approx(0.0011)
     assert analyst == {
-        "models": ["claude-sonnet-5-5"],
+        "model": "claude-sonnet-5-5",
         "lines": 1,
         "first_word_ms_p50": 2000,
         "first_word_ms_p95": 2000,

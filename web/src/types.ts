@@ -83,7 +83,7 @@ export interface Stats {
 }
 
 export interface SpeakerStats {
-  models: string[]
+  model: string // the models seen, comma-separated
   lines: number
   first_word_ms_p50: number | null
   first_word_ms_p95: number | null

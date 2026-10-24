@@ -28,7 +28,7 @@ export function ProofPanel({ live }: Props) {
     // the lead's calls (Haiku) and the analyst's stat lines (Sonnet) apart, so neither skews the other
     const groups: [string, SpeakerStats][] = stats.by_speaker
       ? [['Lead', stats.by_speaker.lead], ['Analyst', stats.by_speaker.analyst]]
-      : [['All lines', { ...stats, models: [], cost_per_line_usd: stats.cost_per_line_usd ?? null }]]
+      : [['All lines', { ...stats, model: '', cost_per_line_usd: stats.cost_per_line_usd ?? null }]]
     body = (
       <>
         <dl className="stats">
@@ -68,7 +68,7 @@ function Speaker({ name, s }: { name: string; s: SpeakerStats }) {
     <>
       <div className="wide">
         <dt className="label">{name}</dt>
-        <dd>{[...s.models, `${s.lines.toLocaleString()} lines · all matches`].join(' · ')}</dd>
+        <dd>{[s.model, `${s.lines.toLocaleString()} lines · all matches`].filter(Boolean).join(' · ')}</dd>
       </div>
       <Figure label="First word · median" value={v(seconds(s.first_word_ms_p50))} />
       <Figure label="First word · p95" value={v(seconds(s.first_word_ms_p95))} />

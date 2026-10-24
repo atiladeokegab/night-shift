@@ -124,7 +124,7 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
 - `GET /stats` → `{lines, fixes, mubit_requests, first_word_ms_p50, first_word_ms_p95,
   latency_ms_p50, latency_ms_p95, tokens_in, tokens_out, cost_per_line_usd, adapter, by_speaker,
   fixes_toward_next}` (core). The `stats` SSE event carries the same object.
-  - `by_speaker: {lead, analyst}`, each `{models, lines, first_word_ms_p50, first_word_ms_p95,
+  - `by_speaker: {lead, analyst}`, each `{model, lines, first_word_ms_p50, first_word_ms_p95,
     cost_per_line_usd}`: the lead's calls and the analyst's stat lines apart (a line with no
     `speaker` is the lead's).
   - `fixes_toward_next: int`: fixes stored since the latest `adapter` record (all of them before one).

@@ -39,7 +39,8 @@ def _speaker(lines: list[dict]) -> dict:
     first = [ln["first_word_ms"] for ln in lines if ln.get("first_word_ms") is not None]
     costs = [c for c in map(_cost, lines) if c is not None]
     return {
-        "models": sorted({ln["model"] for ln in lines if ln.get("model")}),
+        # one string, not a list: a `stats` event carries no brackets (a TTS tag must never show)
+        "model": ", ".join(sorted({ln["model"] for ln in lines if ln.get("model")})),
         "lines": len(lines),
         "first_word_ms_p50": _pct(first, 0.5),
         "first_word_ms_p95": _pct(first, 0.95),
