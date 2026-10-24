@@ -14,10 +14,10 @@
 
 [**Try it live**](https://night-shift-5zvig7nbvq-ew.a.run.app) · [**For judges**](#for-judges) · [**Real numbers**](#real-numbers) · [**Architecture**](docs/ARCHITECTURE.md) · [**Known limitations**](#known-limitations) · [**Run it**](#run-it) · [**Demo script**](docs/demo.md)
 
-<img src="docs/img/live.png" alt="The live page calling Michael Jordan's last game, the 1998 NBA Finals Game 6. Above the video card, the sport bar with Wall, the four sports, Voice: Sam and Next match. On the video card, the score bug JAZ 70-70 BUL, 08:05, Q4, an ON AIR pill naming Sam, and playback controls along the bottom. Under the card, the docked caption, marked ANALYST and 08:05 3 POINTS: Level at 70, and the numbers say there's a 44% chance Michael Jordan scores Chicago's next basket. That's the best single option on the floor. On the right, the Lines card, newest first: the lead's call, Kukoc from deep! Toni Kukoc with the three from twenty-five feet, and it's tied at seventy!; then the analyst's stat line, Kukoc came in shooting 46 percent this season, 481 of 1044 over 94 games; then the prediction line. Each line has a Fix button and its model first-text-word time. Below, the Proof card." width="100%">
+<img src="docs/img/live.png" alt="The live page calling the 1998 NBA Finals Game 6, Michael Jordan's last shot as a Bull. Above the video card, the sport bar with Wall, the four sports, Voice: Sam and Next match. On the video card, the score bug JAZ 70-70 BUL, 08:05, Q4, an ON AIR pill naming Sam, and playback controls along the bottom. Under the card, the docked caption, marked ANALYST and 08:05 3 POINTS: Level at 70, and the numbers say there's a 44% chance Michael Jordan scores Chicago's next basket. That's the best single option on the floor. On the right, the Lines card, newest first, all at 08:05: at the top the analyst's prediction line, the same as the caption; below it the analyst's stat line, Kukoc came in shooting 46 percent this season, 481 of 1044 over 94 games. Chicago needed that, with the game all square.; and below that the lead's call, Kukoc from deep! Toni Kukoc with the three from twenty-five feet, and it's tied at seventy! Each line has a Fix button and its model first-text-word time. Below, the Proof card." width="100%">
 
-<sub>The live site on 24 October 2026 at 13:20 UTC, captured in headless Chrome: Jordan's last shot
-being called by the lead, with the analyst's stat lines in the gap after Kukoc's three. YouTube won't play in a headless browser, so the video area is empty and the page says
+<sub>The live site on 24 October 2026 at 13:20 UTC, captured in headless Chrome: the 1998 NBA Finals Game 6, Jordan's last shot as a Bull,
+with the lead calling Kukoc's three and the analyst's stat lines in the gap after it. YouTube won't play in a headless browser, so the video area is empty and the page says
 so; the lines, voice timing and numbers are live.</sub>
 
 </div>
@@ -71,7 +71,7 @@ moment reaches the picture: the YouTube player's clock gates it ([`web/src/gate.
 | The Battle of the Bridge: Chelsea 2-2 Tottenham, 2016 | Football, StatsBomb | British Football Announcer | The four goals, Hazard's equaliser that made Leicester champions |
 | Argentina v France, 2022 World Cup final | Football, StatsBomb | British Football Announcer | Messi's two goals, Di María, Mbappé's three, the shoot-out |
 | India v Pakistan, 2022 T20 World Cup | Cricket, Cricsheet | Raju | The wickets, the sixes, Kohli's two sixes off Rauf, the last ball |
-| Michael Jordan's last shot, 1998 NBA Finals Game 6 | Basketball, NBA play-by-play | Sam | The fourth quarter's baskets, Jordan's steal from Malone, the winning shot, the buzzer |
+| Michael Jordan's last shot as a Bull, 1998 NBA Finals Game 6 | Basketball, NBA play-by-play | Sam | The fourth quarter's baskets, Jordan's steal from Malone, the winning shot, the buzzer |
 | Kobe Bryant's 81 against Toronto, 2006 | Basketball, NBA play-by-play | Sam | His baskets through the second half, the record-breaking points, the buzzer |
 | Max Verstappen from 17th to win the 2024 São Paulo Grand Prix | F1, OpenF1 timing | British Football Announcer | The rain, the safety car, the red flag, Verstappen taking the lead, the flag |
 
