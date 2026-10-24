@@ -64,14 +64,16 @@ Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026. Track: Own
 
 <img src="docs/img/wall.png" alt="The home page, under the Touchline. logo and the Live, Fixtures and About links: the line A live AI commentator for matches nobody calls above the heading Tap a match to hear it called, then six tiles, each with its sport, title, competition and date and the link Tap to hear it called: Battle of the Bridge (Premier League, Chelsea v Tottenham, 2 May 2016), Messi v Mbappé (2022 World Cup final, Argentina v France, 18 Dec 2022), India v Pakistan (T20 World Cup, MCG, Melbourne, 23 Oct 2022), Kobe's 81 v Toronto (Lakers v Raptors, 22 Jan 2006), Jordan's last shot as a Bull (1998 NBA Finals, Game 6, Jazz v Bulls, 14 Jun 1998) and Verstappen, P17 to P1 (2024 São Paulo Grand Prix, Interlagos, 3 Nov 2024). Below them, the credits for the match data and the highlights." width="100%">
 
-Six famous matches in four sports, each replayed from real event data over its broadcast highlights
-and called by the same commentator with the same prompt. A line is never shown or spoken before its
-moment reaches the picture: the YouTube player's clock gates it ([`web/src/gate.ts`](web/src/gate.ts)).
+Six famous matches and one from the long tail, in four sports, each replayed from real event data
+over its broadcast highlights and called by the same commentator with the same prompt. A line is
+never shown or spoken before its moment reaches the picture: the YouTube player's clock gates it
+([`web/src/gate.ts`](web/src/gate.ts)).
 
 | Match | Sport and data | Voice | What it calls |
 |---|---|---|---|
 | The Battle of the Bridge: Chelsea 2-2 Tottenham, 2016 | Football, StatsBomb | British Football Announcer | The four goals, Hazard's equaliser that made Leicester champions |
 | Argentina v France, 2022 World Cup final | Football, StatsBomb | British Football Announcer | Messi's two goals, Di María, Mbappé's three, the shoot-out |
+| The long tail: Brighton 3-2 Bristol City, Women's Super League, 2024 | Football, StatsBomb | British Football Announcer | The five goals: Bristol City come level twice, then Terland's winner in stoppage time |
 | India v Pakistan, 2022 T20 World Cup | Cricket, Cricsheet | Raju | The wickets, the sixes, Kohli's two sixes off Rauf, the last ball |
 | Michael Jordan's last shot as a Bull, 1998 NBA Finals Game 6 | Basketball, NBA play-by-play | Sam | The fourth quarter's baskets, Jordan's steal from Malone, the winning shot, the buzzer |
 | Kobe Bryant's 81 against Toronto, 2006 | Basketball, NBA play-by-play | Sam | His baskets through the second half, the record-breaking points, the buzzer |
@@ -376,9 +378,9 @@ make dev     # the server on localhost; set MUBIT_API_KEY in .env for real comme
 - F1: timing data from the [OpenF1](https://openf1.org) API.
 - Video: broadcast highlights on YouTube, embedded and muted, never downloaded or rehosted; the
   commentator reads the event feed, not the video. The two basketball games are from the NBA's own
-  channel. Argentina v France, Chelsea v Tottenham, India v Pakistan and the São Paulo Grand Prix are
-  re-uploads or fan edits of the TV coverage by others, because the official uploads block embedding
-  or don't exist.
+  channel, and Brighton v Bristol City from Brighton & Hove Albion's. Argentina v France, Chelsea v
+  Tottenham, India v Pakistan and the São Paulo Grand Prix are re-uploads or fan edits of the TV
+  coverage by others, because the official uploads block embedding or don't exist.
 
 ## Pre-existing work
 
