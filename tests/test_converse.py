@@ -251,3 +251,23 @@ def test_a_provider_that_cannot_stream_still_answers(monkeypatch):
     inner = SimpleNamespace(client=object(), call=fake.call)
     monkeypatch.setattr(converse.commentator, "unrecorded_provider", lambda: fake)
     assert asyncio.run(sentences(inner)) == ["So far, Reds 1, Blues 0."]
+
+
+class Broken:
+    def call(self, request):
+        raise RuntimeError("sk-secret-key and the prompt")
+
+
+def test_every_error_is_logged_without_the_key_and_the_fan_gets_the_status_line(
+    monkeypatch, caplog
+):
+    from data import matches
+
+    monkeypatch.setattr(matches, "match_header", lambda mid: HEADER)
+    monkeypatch.setattr(converse.commentator, "unrecorded_provider", Broken)
+    with caplog.at_level("WARNING", logger="touchline.converse"):
+        said = asyncio.run(sentences(SimpleNamespace(client=None, call=Broken().call)))
+    assert said == ["First half, 1 minutes played. Reds 1, Blues 0."]
+    assert any("model call: RuntimeError" in r.message for r in caplog.records)
+    assert any("answer: RuntimeError" in r.message for r in caplog.records)
+    assert "sk-secret" not in caplog.text and "prompt" not in caplog.text
