@@ -1,6 +1,6 @@
 # The idea
 
-The full, current requirements are in `docs/PRD.md` (PRD v5, 2026-10-23). Build and review against it.
+The full, current requirements are in `docs/PRD.md` (PRD v6). Build and review against it.
 
 The lead writes this once the team has agreed the idea, and no issue is created before it is
 complete. If your task doesn't fit this page, open a change-request (AGENTS.md §7).
@@ -14,13 +14,16 @@ still on screen, and too expensive to run for every moment of every match.
 
 ## The idea
 
-Touchline is one live AI commentator for any sport with an event feed. Switch from a football match to a
+Touchline is the describer that checks itself, for the matches a platform streams with nobody
+describing them, in any sport with an event feed. Switch from a football match to a
 cricket match and the same agent changes its context on the fly and calls the new sport. It watches the
 feed, looks up the facts it needs with tools (score, player, recent play) and calls each key moment in
-one short spoken line, in under a second, over a replay of iconic real moments. A producer fixes any line that's wrong, and the fix is sent back
+one short spoken line, with the model's first word in about half a second (median, `GET /stats`),
+over a replay of iconic real moments. It checks the numbers in each moment's line before it speaks. A producer fixes any line that's wrong, and the fix is sent back
 through Mubit, so the commentator is trained on corrected calls. Every call goes through Mubit, which
-trains a small commentator model that gives the same calls as the big one: the cost that makes
-commentary for every match possible.
+trains a small commentator model on the recorded calls. The aim is one that gives the same calls as
+the big one at lower cost; 6 versions have been trained, the best scored 55.8% on Mubit's test, none
+has passed, and the app calls none.
 
 ## What we build
 
@@ -50,14 +53,14 @@ commentary for every match possible.
 - Sports beyond football, cricket, basketball and F1 this weekend, and any sport without real event data.
 - Unsourced statistics in the pitch.
 - Our own fine-tuning or model hosting: Mubit trains the model.
-- Any claim that our model beats the big one: it matches it, at lower cost.
+- Any claim that our model beats the big one, or matches it: none of its versions has passed Mubit's test yet.
 - Betting or betting odds. Predictions are in scope (the lead, 2026-10-24) only as rates from each player's pre-match record plus the match so far, never from a later moment.
 
 ## The demo, in one line
 
-Kobe Bryant's 81-point game plays and Touchline calls each moment aloud, like a TV commentator, in under a second, the
-producer fixes one wrong line on stage, our own trained commentator calls a moment beside the big model,
-then one tap switches to Kohli's last overs against Pakistan in 2022 and the same commentator calls cricket.
+Kobe Bryant's 81-point game plays and Touchline calls each moment aloud, like a TV commentator, the
+producer fixes one wrong line on stage, the proof panel shows our own commentator's training (the aim
+is to call moments beside the big model; no version has passed Mubit's test yet), then one tap switches to Kohli's last overs against Pakistan in 2022 and the same commentator calls cricket.
 
 ## Areas and owners
 
@@ -66,12 +69,12 @@ contracts; only the lead changes it.
 
 | Area | Directories | Owner | Issues |
 |---|---|---|---|
-| backend: core, commentator, data, eval, deploy | `core/`, `agent/`, `data/`, `eval/`, `scripts/`, `docs/`, `Makefile`, `pyproject.toml`, `Dockerfile`, `.dockerignore` | @atiladeokegab [Zeus], @atiladeokegab, @atiladeokegab [Hermes] | #1, #3, #13, #14, #15, #16, #17, #20, #25, #40 |
+| backend: core, commentator, data, eval, deploy | `core/`, `agent/`, `data/`, `eval/`, `scripts/`, `docs/`, `Makefile`, `pyproject.toml`, `Dockerfile`, `.dockerignore` | @atiladeokegab | #1, #3, #13, #14, #15, #16, #17, #20, #25, #40 |
 | web | `web/` | @PersiaF04 | #4, #18, #19 |
-| tests | `tests/`, `data/sample/` | @atiladeokegab [Prometheus] | #6, #11, #12 |
-| submission | `README.md`, `docs/` | @atiladeokegab [Zeus] | #1, #21 |
+| tests | `tests/`, `data/sample/` | @atiladeokegab | #6, #11, #12 |
+| submission | `README.md`, `docs/` | @atiladeokegab | #1, #21 |
 
-Deploy owner: @atiladeokegab (Zeus). Only they run `make deploy`, from `main` after it moves; two
+Deploy owner: @atiladeokegab. Only they run `make deploy`, from `main` after it moves; two
 laptops deploying undo each other.
 
 ### Ceilings
@@ -80,6 +83,6 @@ The shortcuts each area takes on purpose, and what replaces each if we outgrow i
 work against these; a shortcut not listed here is a finding.
 
 - core: one server process and a JSON-lines store of lines and fixes; a database if two producers edit at once.
-- commentator: replayed StatsBomb and Cricsheet matches only; a live data provider's feed if this goes beyond the demo.
-- web: browser speech for the voice; a hosted voice model if the browser voice sounds too flat on stage.
+- commentator: replayed matches only, from StatsBomb, Cricsheet, the NBA's play-by-play and OpenF1; a live data provider's feed if this goes beyond the demo.
+- voice: ElevenLabs `eleven_v3` (docs/voice.md), browser speech only as the fallback; the last 500 lines' audio kept in one process's memory; a bucket if Cloud Run runs more than one instance.
 - data and eval: matches chosen by hand; a sampler across all 80 competition-seasons if the adapter needs more variety.
