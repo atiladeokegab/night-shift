@@ -114,6 +114,16 @@ export interface LineCheckStats {
   flags: number
   rules_missed: number
   fixes_sent: number // producer fixes sent to Line check as examples
+  examples_today?: number // #305: those sent today (UTC)
+  examples_today_by_kind?: Record<string, number>
+}
+
+// #305: GET /lines/{id} → `linecheck_example`, the Line check example a producer's fix sent
+export interface LineCheckExample {
+  line_id: string
+  kind: 'matched' | 'corrected' | 'uncorrected' | 'leader_only' | 'error'
+  mubit_request_id: string | null
+  created_at: string
 }
 
 // The `linecheck` SSE event (#298): Line check's answer on one line. labels null: no canonical reply.
