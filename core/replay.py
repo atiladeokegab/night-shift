@@ -9,6 +9,7 @@ import logging
 import time
 import uuid
 from collections.abc import Callable
+from datetime import UTC, datetime
 
 from core import insight
 from core.stats import stats
@@ -46,6 +47,10 @@ class Replay:
         self.done = False
         self.listeners = 0  # open streams; none for REJOIN_S stops the replay (core/app.py)
         self.stopping: asyncio.TimerHandle | None = None  # that stop, until a stream opens
+        # a video replay's lines are all sent ahead: when (time.monotonic) the viewer reaches the
+        # last one, so it is not forgotten while the video still plays (core/app.py)
+        self.ends_at: float | None = None
+        self.seen = self.started  # a viewer's last request (time.monotonic), for FORGET_S
         self._changed = asyncio.Condition()
 
     async def publish(self, event: str, data: dict) -> None:
@@ -72,6 +77,30 @@ class Replay:
                 return
 
 
+async def auto_fix(store, correct, rejected: dict, kept: dict) -> None:
+    """The number check's rejected first try, corrected to the kept retry as a Fix that is visibly
+    not a human's: the try was recorded before the check could see it."""
+    try:
+        sent = await asyncio.to_thread(correct, rejected, kept["text"])
+    except Exception as exc:  # the kept line is already said; only the correction is lost
+        log.warning("auto fix for %s not sent: %s", rejected.get("line_id"), str(exc)[:300])
+        return
+    await asyncio.to_thread(
+        store.append,
+        "auto_fixes",  # never in `fixes`: those are the people's, and the review queue's "fixed"
+        {
+            "line_id": rejected["line_id"],
+            "corrected_text": kept["text"],
+            "reason": "auto: number check",
+            "auto": True,
+            "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
+            "mubit_request_id": sent["mubit_request_id"],
+            "reply_matched": sent["reply_matched"],
+            "recorded": sent.get("recorded", False),
+        },
+    )
+
+
 async def run_replay(
     replay: Replay,
     moments: list[dict],
@@ -80,21 +109,29 @@ async def run_replay(
     video: dict | None = None,
     speak: Callable[[dict, dict, float | None], None] | None = None,
     start_idx: int = 0,
+    correct: Callable[[dict, str], dict] | None = None,
 ) -> None:
     # A video map: only mapped moments are called, each tagged with its video time and sent as
     # soon as it is ready; the page holds each line until the player reaches that time.
     video_t = {m["idx"]: m["video_t"] for m in video["moments"]} if video else None
-    gaps = insight.Gaps(replay.match_id, store) if video else None
+    if video_t:
+        replay.ends_at = replay.started + max(video_t.values()) - video.get("start", 0)
+    # every store call runs in a thread: a slow bucket must never stall the event loop (#156)
+    gaps = (
+        await asyncio.to_thread(insight.Gaps, replay.match_id, store, replay.id) if video else None
+    )
 
     async def say(line: dict, moment: dict) -> None:
         # shortcut: due as if the video starts with the replay at its `start` second;
         # the player's own clock if the page ever sends it.
         if speak:
             due = replay.started + line["video_t"] - video.get("start", 0) if video else None
-            speak(line, moment, due)
+            # this replay's id, so a cached line spoken again is charged to the replay that spoke it
+            speak({**line, "replay_id": replay.id}, moment, due)
         await replay.publish("line", line)
-        await replay.publish("stats", stats(store))
+        await replay.publish("stats", await asyncio.to_thread(stats, store))
 
+    fixes: list[asyncio.Task] = []
     try:
         last = None
         history: list[dict] = []
@@ -143,8 +180,12 @@ async def run_replay(
             line = await asyncio.to_thread(insight.checked, commentate, moment, list(history))
             history.append(moment)
             if line is not None:  # None: the commentator had nothing usable to say
-                await say(store.append("lines", {**line, **tag, "speaker": "lead"}), moment)
+                rejected = line.pop("rejected", None)
+                said_line = {**line, **tag, "speaker": "lead", "replay_id": replay.id}
+                await say(await asyncio.to_thread(store.append, "lines", said_line), moment)
                 recent.append(line.get("text") or "")
+                if rejected and correct:  # after the kept line is out: never on its path
+                    fixes.append(asyncio.create_task(auto_fix(store, correct, rejected, line)))
             if not tag:
                 continue
             # the quiet stretch until the next mapped moment: stat lines, each due once the
@@ -165,6 +206,9 @@ async def run_replay(
                 await say({**said_line, "video_t": t}, stat)
                 said = said_line["text"]
                 recent.append(said)
+        if not start_idx:  # played from kick-off to its last moment: a match for cost per match
+            done = {"replay_id": replay.id, "match_id": replay.match_id}
+            await asyncio.to_thread(store.append, "replays", done)
     except Exception as exc:  # the stream says why it stopped instead of hanging open
         # the provider's status and error type, e.g. Mubit's 402 when its credit runs out
         name = type(exc).__name__
@@ -172,4 +216,5 @@ async def run_replay(
         off_air = {"code": "commentator_off_air", "detail": OFF_AIR}
         await replay.publish("error", off_air)
     finally:
+        await asyncio.gather(*fixes, return_exceptions=True)
         await replay.finish()

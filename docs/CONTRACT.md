@@ -18,7 +18,7 @@ where our trained commentator's will go (6 versions trained, none has passed Mub
 | Piece | Where | Use it for |
 |---|---|---|
 | App factory | `core/app.py`, `create_app(store=None, deps=None)` | every route |
-| Store | `core/store.py`: `all(kind)`, `append(kind, record)`; kinds `lines`, `fixes`, `adapter`, `answers` | all state |
+| Store | `core/store.py`: `all(kind)`, `append(kind, record)`; kinds `lines`, `fixes`, `auto_fixes`, `adapter`, `answers`, `voice`, `replays` | all state |
 | Replayer | `core/replay.py`: `run_replay` publishes `moment`, `line`, `stats` | the live stream |
 | Stats | `core/stats.py`: `stats(store)` | proof panel numbers, from the store only |
 | Seam to #13 | `data.matches.list_matches()`, `data.matches.load_moments(match_id)`, `agent.commentator.commentate(moment, history)` | wired by `core.app.default_deps()` |
@@ -43,7 +43,11 @@ and refuses to start without `STORE_URL=gs://bucket/prefix`.
   wicket kind, xG, card, play, player_points, lead_change, tyres, pit_lane_time); `x, y` on StatsBomb's 120 x 80 when known.
 - **Line** (agent/): `{line_id, sport, match_id, moment_idx, text, model, latency_ms,
   first_word_ms, tokens_in, tokens_out, mubit_request_ids: [], tool_calls: [], created_at}`; tokens
-  and latency summed over the whole tool loop; each id from `x-middleware-request-id`.
+  and latency summed over the whole tool loop; each id from `x-middleware-request-id`. A Line a
+  replay stores carries its `replay_id` (#174; none before).
+- **Cost records** (core/, #174): `voice` `{line_id, replay_id, model, chars}` for each ElevenLabs call
+  that returned audio (`chars`: the text sent, tag included), and `replays` `{replay_id, match_id}` for
+  each replay played from its first moment to its last (not a jump, not abandoned or off air).
 - **Speakers, insights and replies** (core/insight.py, #130): every streamed and stored Line has
   `speaker: "lead" | "analyst"`. Moment lines are `"lead"`. With a video map, the quiet stretch after
   each mapped moment is filled with lines due at the last line's words / 2.7 + 2 s, until 6 s before
@@ -93,6 +97,9 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   For a match with a video map, only mapped moments are called, the `moment` and `line` events carry
   `video_t` (seconds), and they are sent as soon as each line is ready rather than paced by `speed`:
   the page shows and speaks each line when the player reaches `video_t`.
+- `POST /replays/{id}/seen` → 204 (core, #156): the page's heartbeat every 20 s once the stream has
+  ended, playing or paused; 404 once forgotten. A finished replay is forgotten after FORGET_S (60 s)
+  with no stream open and no request naming it (stream, seen, ask, players, shots, profile, fix).
 - `GET /lines/{line_id}` → the stored Line, 404 if none (core): the live smoke checks each line it
   streamed was stored.
 - `POST /lines/{line_id}/fix {corrected_text, reason?}` → Fix (core): stores the Fix in `fixes`
@@ -144,12 +151,21 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   `voice line=<id> first_byte_ms=<n> model=<model>`. (core)
 - `GET /stats` → `{lines, fixes, mubit_requests, first_word_ms_p50, first_word_ms_p95,
   latency_ms_p50, latency_ms_p95, tokens_in, tokens_out, cost_per_line_usd, adapter, by_speaker,
-  fixes_recorded, fixes_toward_next}` (core). The `stats` SSE event carries the same object.
+  fixes_recorded, fixes_toward_next, voice_chars, matches_measured, cost_per_match_usd,
+  model_cost_per_match_usd, voice_cost_per_match_usd, fixes_auto}` (core). The `stats` SSE event carries the same object.
   - `by_speaker: {lead, analyst}`, each `{model, lines, first_word_ms_p50, first_word_ms_p95,
     cost_per_line_usd}`: the lead's calls and the analyst's stat lines apart (a line with no
     `speaker` is the lead's).
   - `fixes_recorded: int`: fixes with `recorded: true`; `fixes` counts every stored fix.
+  - `fixes_auto: int`: the `auto_fixes` records, fixes the number check sent itself (reason
+    `auto: number check`): a lead line's rejected first try, corrected to its accepted retry (#162).
+    Stored apart from `fixes`, so never in `fixes`, `fixes_recorded` or the review queue's fixed lines.
   - `fixes_toward_next: int`: recorded fixes since the latest `adapter` record (all of them before one).
+  - `voice_chars: int`: characters in every `voice` record.
+  - `cost_per_match_usd: number | null`: the mean full replay's spend, `model_cost_per_match_usd`
+    (its lines' and answers' tokens × list price) plus `voice_cost_per_match_usd` (its `voice`
+    characters × ElevenLabs' price per model); over `matches_measured` full replays. A part is null
+    with no full replay, a model with no known price, or (voice) no `voice` record; the total then too.
   - `cost_per_line_usd: number | null`: mean cost of the stored lines, tokens × the model's list
     price; null when no line's model has a known price.
   - `adapter: {status: "not_trained"|"training"|"ready", kept: int|null, needed, agree: int|null,

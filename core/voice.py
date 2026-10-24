@@ -25,6 +25,7 @@ FALLBACK_MIN_S = 1.5  # flash always gets this long once it has a slot: a little
 LIVE_BUDGET_S = 4.0  # a line with no video time is spoken as it arrives
 PREPARED_V3_S = 7.0  # v3's least time for a line made before its moment: late v3 beats flat flash
 CONCURRENCY = 3  # a whole match's lines arrive in seconds; ElevenLabs caps concurrent requests
+KEEP_JOBS = 500  # finished audio kept, least recently asked first out: ~25 MB at ~50 KB a line
 
 # The page's voice setting. ids are ours; eleven_id never leaves the server. VOICE_<SPORT> takes an
 # id here or any ElevenLabs voice id (all_voices) as the sport's default: the lead's pick from
@@ -171,10 +172,11 @@ class Speaker:
     """Each line's audio per voice, made once and kept. The tag goes into the TTS text only, never
     into the stored line or anything sent to Mubit."""
 
-    # shortcut: audio is kept in this process's memory (~50 KB a line); a bucket if a session
-    # outgrows it or Cloud Run runs more than one instance.
-    def __init__(self, transport: httpx.AsyncBaseTransport | None = None):
+    # shortcut: the last KEEP_JOBS lines' audio is kept in this process's memory; a bucket if
+    # older lines must replay with ElevenLabs audio or Cloud Run runs more than one instance.
+    def __init__(self, transport: httpx.AsyncBaseTransport | None = None, store=None):
         self.transport = transport
+        self.store = store  # gets a `voice` record per line spoken: the characters billed (#174)
         self.jobs: dict[tuple[str, str], asyncio.Task] = {}
         self.tags: dict[str, str | None] = {}
         self.slots = asyncio.Semaphore(CONCURRENCY)
@@ -212,9 +214,21 @@ class Speaker:
 
     def _job(self, line: dict, voice: dict, deadline: float | None) -> asyncio.Task:
         key = (line["line_id"], voice["id"])
-        if key not in self.jobs:
-            self.jobs[key] = asyncio.create_task(self._make(line, voice, deadline))
-        return self.jobs[key]
+        job = self.jobs.pop(key, None)
+        if job is None:
+            job = asyncio.create_task(self._make(line, voice, deadline))
+            job.add_done_callback(lambda _: self._trim())  # pending jobs may have filled the cap
+        self.jobs[key] = job  # most recently asked last
+        self._trim(keep=key)
+        while len(self.tags) > KEEP_JOBS * 4:  # a dropped tag only flattens a re-made line
+            del self.tags[next(iter(self.tags))]
+        return job
+
+    def _trim(self, keep: tuple[str, str] | None = None) -> None:
+        """Forget the least recently asked finished audio past KEEP_JOBS; never unfinished jobs."""
+        over = max(0, len(self.jobs) - KEEP_JOBS)
+        for old in [k for k, job in self.jobs.items() if job.done() and k != keep][:over]:
+            del self.jobs[old]
 
     async def _make(self, line: dict, voice: dict, deadline: float | None):
         key = os.environ.get("ELEVENLABS_API_KEY")
@@ -240,12 +254,25 @@ class Speaker:
                     least = PREPARED_V3_S if ahead else 0.0
                     audio = await self._tts(client, key, voice, model, text, until, least)
                     if audio:
+                        await self._spent(line, model, text)
                         return audio, model
             until = min(end, time.monotonic() + FALLBACK_TIMEOUT_S)
             audio = await self._tts(
                 client, key, voice, FALLBACK_MODEL, line["text"], until, FALLBACK_MIN_S
             )
-            return (audio, FALLBACK_MODEL) if audio else None
+            if not audio:
+                return None
+            await self._spent(line, FALLBACK_MODEL, line["text"])
+            return audio, FALLBACK_MODEL
+
+    async def _spent(self, line: dict, model: str, text: str) -> None:
+        # shortcut: counts calls that returned audio; a timed-out call ElevenLabs still bills is
+        # missed, so voice cost is a floor. Its usage API per request if that gap matters.
+        if self.store is not None:
+            said = {"line_id": line["line_id"], "replay_id": line.get("replay_id")}
+            await asyncio.to_thread(
+                self.store.append, "voice", {**said, "model": model, "chars": len(text)}
+            )
 
     async def _tts(self, client, key, voice, model, text, until, least=0.0) -> bytes | None:
         async with self.slots:
@@ -333,7 +360,7 @@ def voice_router(store, speaker: Speaker) -> APIRouter:
     @router.get("/lines/{line_id}/audio")
     async def line_audio(line_id: str, voice: str | None = None):
         # only stored lines and answers are spoken, so the key can't read out arbitrary text
-        said = store.all("lines") + store.all("answers")
+        said = await asyncio.to_thread(lambda: store.all("lines") + store.all("answers"))
         line = next((ln for ln in said if ln.get("line_id") == line_id), None)
         if line is None:
             raise HTTPException(404, f"no line {line_id!r}")

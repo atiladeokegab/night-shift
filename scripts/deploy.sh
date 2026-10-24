@@ -74,6 +74,7 @@ done
 # survives a redeploy. A replay lives in the process that started it, so the stream must reach
 # the same instance: one instance (IDEA.md ceiling: one server process), CPU kept on between
 # requests so a replay runs while nobody is streaming, and an hour per request for a whole match.
+# 1 GiB: replays and their audio live in memory (capped in core/app.py and core/voice.py).
 gcloud run deploy "$SERVICE" --source . --region "$REGION" --project "$PROJECT" \
   --allow-unauthenticated \
   --set-secrets "${MOUNTS%,}" \
@@ -81,6 +82,7 @@ gcloud run deploy "$SERVICE" --source . --region "$REGION" --project "$PROJECT" 
   --labels "commit=$COMMIT" \
   --min-instances "$MIN_INSTANCES" \
   --max-instances 1 \
+  --memory 1Gi \
   --no-cpu-throttling \
   --timeout 3600 \
   --quiet

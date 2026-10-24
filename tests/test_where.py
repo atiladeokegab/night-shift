@@ -2,31 +2,35 @@
 
 import pytest
 
+from agent.commentator import render_message
 from core.insight import wrong_numbers
-from data.matches import _where, load_moments
+from data.matches import _where, load_moments, match_header
 
 FINAL = "3869685"  # Argentina v France, the 2022 World Cup final
 
 
+HEADER = {"home": "Argentina", "away": "France"}
+
+
 def at(x, y, kind="Foul Committed"):
-    return {"type": kind, "x": x, "y": y}
+    return {"type": kind, "team": "France", "x": x, "y": y}  # France commits it
 
 
 @pytest.mark.parametrize(
     ("x", "y", "zone"),
     [
-        (108, 40, "inside the box"),  # the penalty spot
-        (102, 40, "on the edge of the box"),
+        (108, 40, "inside Argentina's box"),  # the penalty spot
+        (102, 40, "on the edge of Argentina's box"),
         (90, 5, "on the left wing"),  # in the opponent's half
         (90, 75, "on the right wing"),
-        (40, 40, "in their own half"),
-        (116, 40, "inside the six-yard box"),
-        (10, 40, "inside their own box"),
-        (80, 40, "in the opponent's half"),
+        (40, 40, "in France's own half"),
+        (116, 40, "inside Argentina's six-yard box"),
+        (10, 40, "inside France's own box"),
+        (80, 40, "in Argentina's half"),
     ],
 )
 def test_an_event_says_its_zone(x, y, zone):
-    assert _where(at(x, y)) == zone
+    assert _where(HEADER, at(x, y)) == zone
 
 
 @pytest.mark.parametrize(
@@ -39,7 +43,7 @@ def test_an_event_says_its_zone(x, y, zone):
     ],
 )
 def test_a_shot_says_its_distance_and_side(x, y, where):
-    assert _where(at(x, y, "Shot")) == where
+    assert _where(HEADER, at(x, y, "Shot")) == where
 
 
 def test_left_is_left_on_a_real_goal():
@@ -64,3 +68,11 @@ def test_the_number_check_takes_a_where_distance_as_given():
     assert wrong_numbers("Messi from 20 yards, and Argentina lead!", penalty) == [
         "20 is not in the moment"
     ]
+
+
+def test_the_place_is_in_the_event_line_beside_the_outcome():
+    moments = load_moments(FINAL)
+    message = render_message(match_header(FINAL), moments[:10])  # up to Di María's goal
+    assert "Event: Shot, Goal, from 11 yards, left of centre\n" in message
+    foul = render_message(match_header(FINAL), moments[:54])  # Montiel's handball
+    assert "Event: Foul Committed, Yellow Card, inside Argentina's own box\n" in foul
