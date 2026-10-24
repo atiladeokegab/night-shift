@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { getReview, getStats } from '../api'
 import type { Adapter, Autonomy, SpeakerStats, Stats } from '../types'
 import { SideBySide } from './SideBySide'
-import { autonomyRows, nextAdapter } from '../proof'
+import { adapterRows, autonomyRows, nextAdapter } from '../proof'
 
 interface Props {
   live: Stats | null // the latest `stats` event from the replay, newer than the first GET /stats
@@ -29,6 +29,7 @@ export function ProofPanel({ live, matchId }: Props) {
   else {
     const empty = stats.lines === 0
     const adapter = stats.adapter
+    const tasks = adapterRows(stats.adapters)
     const next = nextAdapter(stats.fixes_toward_next ?? 0, adapter?.needed ?? 25)
     // the lead's calls (Haiku) and the analyst's stat lines (Sonnet) apart, so neither skews the other
     const groups: [string, SpeakerStats][] = stats.by_speaker
@@ -60,6 +61,13 @@ export function ProofPanel({ live, matchId }: Props) {
             <dt className="label">Adapter</dt>
             <dd className={adapter?.status === 'ready' ? 'good' : undefined}>{adapterText(adapter)}</dd>
           </div>
+          {/* each Mubit task's latest version, as recorded from Mubit's console (#209) */}
+          {!!tasks.length && (
+            <div className="wide">
+              <dt className="label">Mubit tasks</dt>
+              {tasks.map((row) => <dd key={row}>{row}</dd>)}
+            </div>
+          )}
         </dl>
         {empty && <p className="small">No lines yet.</p>}
       </>

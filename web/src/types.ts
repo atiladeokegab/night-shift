@@ -80,7 +80,8 @@ export interface Stats {
   tokens_in: number
   tokens_out: number
   cost_per_line_usd?: number | null
-  adapter?: Adapter | null
+  adapter?: Adapter | null // the commentary task's
+  adapters?: Record<string, TaskAdapter> // #209: each Mubit task's latest record, by task
   by_speaker?: { lead: SpeakerStats; analyst: SpeakerStats } // #161: Haiku's calls apart from Sonnet's stat lines
   fixes_recorded?: number // fixes Mubit recorded for training; `fixes` counts every stored fix
   fixes_toward_next?: number // recorded fixes since the latest adapter record (#161)
@@ -133,6 +134,16 @@ export interface Adapter {
   agree: number | null
   total: number | null
   cost_measurable: boolean
+}
+
+// One Mubit task's latest adapter record (#209), as the lead read it off Mubit's console; null where it didn't say.
+export interface TaskAdapter {
+  status: 'not_trained' | 'training' | 'ready'
+  version: number | null
+  score: number | null // the test score, 0 to 100
+  passed: boolean | null // Mubit's gate: Passed or Failed
+  kept: number | null
+  recorded_at: string | null
 }
 
 // POST /lines/{line_id}/fix's answer and the `fixed` SSE event (CONTRACT.md).
