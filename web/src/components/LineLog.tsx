@@ -51,7 +51,7 @@ export function LineLog({ lines, late, fixes, checks = {}, examples = {}, moment
   return (
     <section className="panel lines glass" aria-label="Lines">
       <div className="panel-h">
-        <h3>Lines</h3>
+        <h2>Lines</h2>
         <span className="label">{count(lines)}</span>
       </div>
       <AskBox onAsk={onAsk} mic={mic} />

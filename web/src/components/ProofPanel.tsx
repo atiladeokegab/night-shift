@@ -101,7 +101,7 @@ export function ProofPanel({ live, matchId, fellBack = false }: Props) {
   return (
     <>
       <section className="panel glass" aria-label="Proof">
-        <div className="panel-h"><h3>Proof</h3></div>
+        <div className="panel-h"><h2>Proof</h2></div>
         {body}
         <p className="small">
           First time: the call passed the number check. Auto-fixed: it failed, and the retry passed. To a human:
