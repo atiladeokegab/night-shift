@@ -22,6 +22,12 @@ SAID = {  # (match, idx): the line a listener hears
         "9636",
         3,
     ): "Esteban Ocon passes Yuki Tsunoda for third place. Lap twenty-eight of sixty-nine.",
+    ("3869685", 66): "Kolo Muani scores the penalty! Argentina lead the shootout three, two. "
+    "Three all in the match.",
+    (
+        "1298150",
+        56,
+    ): "R Ashwin, one run. India win by four wickets. India one hundred and sixty for six.",
     ("3754092", 28): "Ryan Mason comes on for Son Heung-Min. Tottenham Hotspur lead two, one.",
 }
 
@@ -42,7 +48,7 @@ def test_every_fallback_is_short_right_and_free_of_raw_labels():
         where = (match_id, m["idx"], text)
         assert len(text.split()) <= 20, where
         assert insight.wrong_numbers(text, m, header) == [], where
-        assert not re.search(r"\d|Off T|Field goal|\bpoints?,|Wayward", text), where
+        assert not re.search(r"\d|Off T|Field goal|\bpoints?,|Wayward|from zero", text), where
 
 
 def test_numbers_are_said_as_the_check_hears_them():

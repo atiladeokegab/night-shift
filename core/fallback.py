@@ -47,12 +47,17 @@ def _who(m: dict, role: str) -> str:
 def _score(header: dict, m: dict, say=words) -> str:
     """Who leads, or that it's level, and a shootout's tally: "Argentina lead two, one"."""
     s, so = m["score"], m["detail"].get("shootout")
-    h, a = (so["home"], so["away"]) if so and s["home"] == s["away"] else (s["home"], s["away"])
-    shootout = " the shootout" if so and s["home"] == s["away"] else ""
+    if so and s["home"] == s["away"]:  # the shootout's tally, then the match's level score
+        h, a, shootout = so["home"], so["away"], " the shootout"
+        drawn = f" {say(s['home']).capitalize()} all in the match."
+    else:
+        h, a, shootout, drawn = s["home"], s["away"], "", ""
+    if h == a and not h:  # no goals, or no penalties scored yet
+        return drawn.strip() or "Goalless."
     if h == a:
-        return f"Level at {say(h)} all{shootout and ' in the shootout'}." if h else "Goalless."
+        return f"Level at {say(h)} all{shootout and ' in the shootout'}.{drawn}"
     side = "home" if h > a else "away"
-    return f"{header[side]} lead{shootout} {say(max(h, a))}, {say(min(h, a))}."
+    return f"{header[side]} lead{shootout} {say(max(h, a))}, {say(min(h, a))}.{drawn}"
 
 
 def _nil(n: int) -> str:
