@@ -79,8 +79,11 @@ and refuses to start without `STORE_URL=gs://bucket/prefix`.
   All three are cached per (match_id, after_idx, n, v: 4) and reused by later replays; a replay
   makes at most 160 new calls for them. A fix on any goes back, unrecorded, with that line's own
   Stat request.
-- **Fix** (core/): `{line_id, corrected_text, reason, created_at, mubit_request_id, correction,
-  reply_passed: bool, recorded: bool}`; `correction` is the exact user turn Mubit was given (#245);
+- **Fix** (core/): `{line_id, corrected_text, reason, match_id, moment_idx, said, wrong,
+  created_at, mubit_request_id, correction, reply_passed: bool, recorded: bool}`; `reason` is at
+  most 200 characters; `match_id`, `moment_idx`, `said` (the line, or its failed try) and `wrong`
+  (the check's reasons) are the fixed line's, stamped so later requests need not read `lines` (a Fix
+  stored before has none); `correction` is the exact user turn Mubit was given (#245);
   `reply_passed` is whether the provider's corrected reply passed the number check (a Fix before
   #245 has `reply_matched` instead); `recorded` is true only when Mubit recorded the correction
   for training (the owner's key). A Fix stored before it has none and counts as not recorded.
@@ -254,6 +257,12 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
 
 ## Agent
 
+- Producer fixes as context: each line's request (`build_request(header, past, fixes)`) appends to
+  the user message the match's last 5 stored fixes said at or before its moment (when, the line
+  said or the failed try, the check's reasons or the producer's reason, the producer's line; each
+  quoted). Never the system prompt, tools or model; with none, the request is byte-identical. The
+  replay reads them (`match_fixes(store, match_id)`, only `fixes`; an unstamped Fix's line is read
+  from `lines` once) on every call, so a fix applies to the next lines straight away. `correct()` builds its request without them.
 - System prompt `agent/prompt.md`, never templated. User message from one frozen template
   `agent/message.md` carrying the sport, the moment, its score and recent play.
 - Tools `agent/tools.json`, sport-neutral: `get_score`, `get_player`, `get_recent_play`;
