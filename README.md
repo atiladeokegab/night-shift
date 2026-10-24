@@ -85,9 +85,11 @@ stat line built only from the pre-match pack and the match so far, in a calmer s
 fourth line, the lead replies ([`core/insight.py`](core/insight.py)). Stat lines are stored and reused
 by later replays of the same match.
 
-**In progress (#142):** on the live site the analyst often repeats the play instead of saying the
-number. #142 gives the analyst its own prompt with the stat as the event, kept unrecorded so it never
-splits the commentator's Mubit task.
+Since #142 the analyst has its own prompt ([`agent/analyst.md`](agent/analyst.md)) with the stat
+as the event, and each fact states its period, such as "this season before tonight". Analyst lines
+and the lead's replies run on `claude-sonnet-5-5` with its lowest thinking setting
+(`between_tools`), unrecorded, so they never split the moment lines' Mubit task
+([`agent/commentator.py`](agent/commentator.py)).
 
 #### Ask, by typing or by voice
 
@@ -172,9 +174,11 @@ Each criterion weighs the same; one line each, with where to check it.
 ## Real numbers
 
 Read from the live service's [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats) on
-24 October 2026 at 13:04 UTC, adapter status included. They move as people use the site.
+24 October 2026 at 13:04 UTC, adapter status included. They move as people use the site. At 13:04
+every line was a `claude-haiku-4-5` call; since #142, analyst lines and replies run on
+`claude-sonnet-5-5`, and `/stats` counts them in the same figures, priced at Sonnet's rate.
 
-| | Big model (`claude-haiku-4-5` via Mubit) | Our trained commentator (Mubit adapter) |
+| | Big model (`claude-haiku-4-5` moment lines via Mubit) | Our trained commentator (Mubit adapter) |
 |---|---|---|
 | Lines called | 4,715 (4,836 Mubit calls, counted by their request ids) | none: not callable by the app |
 | First word of the model's text, p50 / p95 | 534 ms / 779 ms | not measured |
@@ -219,8 +223,9 @@ line, as a correction for the commentator's next training.
 Every LLM call goes through Mubit, and Mubit trains a small commentator model on our recorded traffic;
 producer fixes go into the same task as corrections. That smaller model is what would make a commentator for every match affordable.
 
-1. **Every call goes through Mubit.** Each line is one call to Mubit's Anthropic endpoint
-   (`claude-haiku-4-5`), or two when the agent uses its one permitted round of tools. There is one
+1. **Every call goes through Mubit.** Each moment line is one call to Mubit's Anthropic endpoint
+   (`claude-haiku-4-5`, recorded), or two when the agent uses its one permitted round of tools. The
+   analyst's stat lines and the lead's replies are one call each to `claude-sonnet-5-5`, unrecorded. There is one
    session per match, and no model is called from the browser
    ([`agent/commentator.py`](agent/commentator.py)).
 2. **One task for every sport.** The system prompt, message template, tools and model are the same,
