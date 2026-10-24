@@ -1,7 +1,7 @@
 """Replay real matches through the commentator so the Mubit task trains on real, varied calls.
 
-    export MUBIT_API_KEY=...  # the owner's key, which records
-    uv run python scripts/replay_matches.py --football 8 --cricket 8
+    export MUBIT_API_KEY=...  # the owner's key
+    uv run python scripts/replay_matches.py --football 8 --cricket 8 --record
 
 Each match is one Mubit session. Held-out and demo matches are never replayed, and neither is any
 match already in the lines file. --fake runs offline with FakeProvider.
@@ -20,7 +20,8 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from agent import feed  # noqa: E402
-from agent.commentator import FakeProvider, MubitProvider, line_for  # noqa: E402
+from agent.commentator import FakeProvider, MubitProvider, line_for, recorded  # noqa: E402
+from core.insight import wrong_numbers  # noqa: E402
 
 # Hand-picked StatsBomb competition-seasons, men's and women's, one match from each in turn.
 FOOTBALL = [
@@ -122,12 +123,19 @@ def pick(moments: list[dict], k: int) -> list[int]:
     return sorted(big + [others[int(i * len(others) / want)] for i in range(want)])
 
 
-def replay(sport: str, match_id: str, meta, provider, per_match: int, out: Path) -> int:
+def replay(
+    sport: str, match_id: str, meta, provider, per_match: int, out: Path, trainer=None
+) -> int:
+    """`trainer`, a recording provider: a line that passes the number check is sent again."""
     header, moments = feed.load(sport, match_id, meta)
     written = failures = 0
     for idx in pick(moments, per_match):
         try:
             line = line_for(header, moments, idx, provider)
+            if trainer and not wrong_numbers(line["text"], moments[idx], header, moments[:idx]):
+                line["recorded"] = (recorded(header, moments, idx, provider=trainer) or {}).get(
+                    "recorded", False
+                )
         except Exception as exc:  # a failed call skips the moment, never the run
             failures += 1
             print(f"  {sport} {match_id} #{idx}: {exc!r}", file=sys.stderr)
@@ -149,7 +157,8 @@ def main(argv=None) -> int:
     ap.add_argument("--per-match", type=int, default=10, help="moments called per match")
     ap.add_argument("--out", type=Path, default=LINES, help="JSON-lines file to append to")
     ap.add_argument("--fake", action="store_true", help="offline, with FakeProvider")
-    ap.add_argument("--no-record", action="store_true", help="send x-middleware-record: off")
+    # off by default: a line is recorded only once it passed the number check (#399)
+    ap.add_argument("--record", action="store_true", help="send each checked line again, recorded")
     args = ap.parse_args(argv)
 
     if args.fake:
@@ -158,7 +167,8 @@ def main(argv=None) -> int:
         key = os.environ.get("MUBIT_API_KEY")
         if not key:
             ap.error("MUBIT_API_KEY is not set (or pass --fake)")
-        provider = MubitProvider(key, record=not args.no_record)
+        provider = MubitProvider(key, record=False)
+    trainer = MubitProvider(key, record=True) if args.record and not args.fake else None
 
     seen = replayed(args.out)
     total = broken = 0
@@ -170,7 +180,7 @@ def main(argv=None) -> int:
         for match_id, meta in candidates(seen) if wanted else ():
             print(f"{sport} {match_id}")
             try:
-                written = replay(sport, match_id, meta, provider, args.per_match, args.out)
+                written = replay(sport, match_id, meta, provider, args.per_match, args.out, trainer)
             except Exception as exc:  # a bad match is skipped, not fatal
                 print(f"skip {sport} {match_id}: {exc!r}", file=sys.stderr)
                 broken += 1

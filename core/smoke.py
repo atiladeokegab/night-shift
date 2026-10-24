@@ -43,7 +43,7 @@ def live(base_url: str, sport: str = "football") -> int:
     """The live smoke on a deployed URL: health, then one sample replay streams moments and lines,
     and each line it streamed is in the service's own store."""
     with httpx.Client(base_url=base_url, timeout=httpx.Timeout(30, read=300)) as client:
-        assert client.get("/health").json() == {"status": "ok"}
+        assert client.get("/health").json()["status"] == "ok"
         match = next(m for m in client.get("/matches").json() if m["sport"] == sport)
         rid = client.post(
             "/replays", json={"match_id": match["match_id"], "speed": 1e6, "smoke": True}

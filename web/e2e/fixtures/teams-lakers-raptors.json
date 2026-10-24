@@ -1,0 +1,20 @@
+{
+ "date": "2006-01-22",
+ "match_id": "0020500591",
+ "sport": "basketball",
+ "teams": {
+  "teams": [
+   {
+    "team": "Los Angeles Lakers",
+    "form": [],
+    "squad": []
+   },
+   {
+    "team": "Toronto Raptors",
+    "form": [],
+    "squad": []
+   }
+  ],
+  "head_to_head": []
+ }
+}
