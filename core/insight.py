@@ -934,8 +934,10 @@ SIX = re.compile(r"(?i:\b(?:a|the|another) six\b|\bmaximum\b)|(?<!\d [Ff][Oo][Rr
 # "unless he finds a six"): "Kohli finds a six!" is one hit
 WANTED_SIX = re.compile(
     r"\b(?:needs?|needed|needing|look(?:ing)? for) (?:a|another) six\b"
-    r"|\b(?:unless|if|can|could|to)\b[^.!?]*?\bfind(?:s|ing)? (?:a|another) six\b"
-    r"|\bfind(?:s|ing)? (?:a|another) six\b[^.!?]*\?",
+    r"(?! and (?:got|gets|found|finds) (?:one|it))"
+    r"|\b(?:unless|if|can|could|(?:needs?|has|have|had|try|trying) to)\b[^.!?]*?"
+    r"\bfind(?:s|ing)? (?:a|another) six\b"
+    r"|\bfind(?:s|ing)? (?:a|another) six\b[^.!?,;]*\?",
     re.I,
 )
 HOW_OUT = {

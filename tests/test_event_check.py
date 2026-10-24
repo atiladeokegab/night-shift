@@ -133,6 +133,10 @@ OTHER_SPORTS = [
     (INDIA, 53, "KOHLI FINDS A SIX!", None),
     (INDIA, 53, "Kohli hits it FOR SIX!", None),
     (INDIA, 53, "KOHLI GOES FOR SIX! INDIA WIN!", None),
+    (INDIA, 53, "Kohli steps down to Nawaz and finds a six!", None),
+    (INDIA, 53, "Kohli comes to the crease and finds a six over long-on!", None),
+    (INDIA, 53, "India needed a six and got one!", None),
+    (INDIA, 53, "Kohli finds a six, can you believe it?", None),
     # a run out called a stumping; "bowled" names the bowler and "run out of" is no dismissal
     (
         INDIA,
