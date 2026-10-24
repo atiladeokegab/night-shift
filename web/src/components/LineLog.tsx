@@ -75,7 +75,7 @@ export function LineLog({ lines, late, fixes, moments, onFix, answers, onAsk, sh
             const ms = l.first_word_ms ?? l.latency_ms
             const took = `${(ms / 1000).toFixed(2)} s`
             return (
-              <li key={l.line_id} className={fix ? 'fixed' : isLate ? 'late' : undefined} data-follow={mine || undefined}>
+              <li key={l.line_id} className={fix || l.fixed ? 'fixed' : isLate ? 'late' : undefined} data-follow={mine || undefined}>
                 <span className="when num">{m ? clockText(m, true) : ''}</span>
                 <div className="text">
                   <span>{fix ? fix.corrected_text : l.text}</span>
@@ -88,9 +88,12 @@ export function LineLog({ lines, late, fixes, moments, onFix, answers, onAsk, sh
                   <span className={`chip ${l.speaker ?? 'lead'}`}>{l.speaker === 'analyst' ? 'Analyst' : 'Lead'}</span>
                   {l.history
                     ? <span className="num">From an earlier replay</span> // a jump (#163) never called it, so no timing
-                    : <span className="num" title={`${firstWord ? 'model first text word' : 'model reply'} ${took}`}>{took}</span>}
+                    : l.fixed
+                      ? <span className="num">Not called</span> // a producer's fix (#232): no model, so no timing
+                      : <span className="num" title={`${firstWord ? 'model first text word' : 'model reply'} ${took}`}>{took}</span>}
                   {mine && <span className="pill follow">{shortName(followed!)}</span>}
                   {fix && <span className="pill fixed">Fixed</span>}
+                  {l.fixed && !fix && <span className="pill fixed producer">Fixed by producer</span>}
                   {isLate && !fix && <span className="pill late" title="The video had moved past it, so it was not shown or spoken">Late</span>}
                 </div>
               </li>
