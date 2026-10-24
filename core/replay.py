@@ -52,9 +52,12 @@ class Replay:
         # last one, so it is not forgotten while the video still plays (core/app.py)
         self.ends_at: float | None = None
         self.seen = self.started  # a viewer's last request (time.monotonic), for FORGET_S
+        self.moment_at = self.started  # the latest moment's publish: moment-to-audio's start (#233)
         self._changed = asyncio.Condition()
 
     async def publish(self, event: str, data: dict) -> None:
+        if event == "moment":
+            self.moment_at = time.monotonic()
         async with self._changed:
             self.events.append({"event": event, "data": data})
             self._changed.notify_all()
@@ -128,7 +131,7 @@ async def run_replay(
         if speak:
             due = replay.started + line["video_t"] - video.get("start", 0) if video else None
             # this replay's id, so a cached line spoken again is charged to the replay that spoke it
-            speak({**line, "replay_id": replay.id}, moment, due)
+            speak({**line, "replay_id": replay.id, "moment_at": replay.moment_at}, moment, due)
         spoke.append(line["line_id"])
         await replay.publish("line", line)
         await replay.publish("stats", await asyncio.to_thread(stats, store))

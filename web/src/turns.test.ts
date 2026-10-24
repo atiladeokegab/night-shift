@@ -112,7 +112,8 @@ test('the stage shows the question, then the answer while it is spoken, then the
   assert.deepEqual(shown, [{ kind: 'question', text: 'A viewer asks: Who scores next? · thinking…' }])
   answer({ text: 'Who scores next? Reds are pressing!' })
   await asking // the ask box is free once the answer is in, while it waits for a gap and is spoken
-  assert.equal(shown.length, 1) // still thinking: the commentary goes on until a gap
+  // answered, so no longer "thinking…": the question alone while the commentary goes on until a gap
+  assert.deepEqual(shown.at(-1), { kind: 'question', text: 'A viewer asks: Who scores next?' })
   start()
   assert.deepEqual(shown.at(-1), { kind: 'answer', text: 'Who scores next? Reds are pressing!', speaker: 'analyst' })
   spoken()
@@ -123,7 +124,7 @@ test('the stage shows the question, then the answer while it is spoken, then the
 test('an answer that is not spoken stays up for the read time; a replaced replay changes nothing', async () => {
   const shown: (string | null)[] = []
   await airAnswer('Score?', async () => ({ text: 'Off air' }), () => null, (c) => shown.push(c?.text ?? null), () => true, 20)
-  assert.deepEqual(shown, ['A viewer asks: Score? · thinking…', 'Off air'])
+  assert.deepEqual(shown, ['A viewer asks: Score? · thinking…', 'A viewer asks: Score?', 'Off air'])
   await sleep(40)
   assert.equal(shown.at(-1), null)
   const stale: (string | null)[] = []
