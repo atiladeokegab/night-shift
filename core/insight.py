@@ -923,15 +923,16 @@ THREE = re.compile(
 )
 TIE = re.compile(
     r"\b(?:a tie|it's a tie|their tie|the tie|tie it|tied (?:the match|it)|match is tied"
-    r"|level the scores?|levels? it|level (?:with|on)(?! the (?:[\w-]+ )?rate)|scores? level"
+    r"|level the scores?|levels? it|level (?:with|on)(?! the (?:\w+[ -])?rate)|scores? level"
     r"|super over"
     r"|matched \w+'s (?:total|score)|all square)\b",
     re.I,
 )
-# capitals are a shout; a six wanted ("need a six") or "160 FOR SIX" is no six hit
-SIX = re.compile(
-    r"(?i:(?<!need )(?<!needs )(?<!needing )(?<!find )\b(?:a|the|another) six\b|\bmaximum\b)"
-    r"|(?<!FOR )\bSIX\b"
+# capitals are a shout; a six wanted ("need a six", WANTED_SIX) or "160 for SIX" is no six hit
+SIX = re.compile(r"(?i:\b(?:a|the|another) six\b|\bmaximum\b)|(?<![Ff][Oo][Rr] )\bSIX\b")
+WANTED_SIX = re.compile(
+    r"\b(?:needs?|needed|needing|finds?|finding|(?:look|looking|go|going) for) (?:a|another) six\b",
+    re.I,
 )
 HOW_OUT = {
     "stumped": re.compile(r"\bstump(?:ed|ing)\b", re.I),
@@ -951,7 +952,8 @@ def _wrong_cricket(text: str, m: dict) -> list[str]:
     wrong = []
     if " win " in f" {d.get('chase', '')} " and TIE.search(text):  # "India win by 4 wickets"
         wrong.append(f"a tie is called, but {d['chase']}")
-    if kind in ("Chase", "Last ball") and m.get("outcome") != "6 runs" and SIX.search(text):
+    six = SIX.search(WANTED_SIX.sub("", text))
+    if kind in ("Chase", "Last ball") and m.get("outcome") != "6 runs" and six:
         wrong.append(f"a six is called, but the ball was {m.get('outcome')}")
     if kind == "Wicket":
         out = m.get("outcome")

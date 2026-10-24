@@ -226,7 +226,11 @@ NEAR_MISSES = [
     # cricket: a six wanted is no six hit, and "FOR SIX" is runs for wickets
     (INDIA, 53, "Three byes! India need a six off the last ball now!"),
     (INDIA, 53, "Three byes off Nawaz. Can Kohli find a six?"),
+    (INDIA, 53, "Three byes! Unless Kohli finds a six, it's Pakistan's."),
+    (INDIA, 53, "Three byes. India needed a six there and didn't get one."),
     (INDIA, 56, "INDIA WIN BY FOUR WICKETS! 160 FOR SIX!"),
+    (INDIA, 56, "India win by four wickets! 160 for SIX!"),
+    (INDIA, 56, "India were level on the run-rate all night, and they win by four wickets!"),
     (INDIA, 56, "India were level with the run rate all night, and they win by four wickets!"),
     # a three from earlier play, recalled on a two
     (JAZZ, 24, "Harper, who hit from deep earlier, now a fifteen-footer!"),
