@@ -214,7 +214,7 @@ def test_a_replay_whose_stream_closed_stops_calling_the_model_and_frees_its_voic
 ):
     (said, voiced), after = abandoned_replay(tmp_path, monkeypatch, follow=True)
     assert 4 <= said < len(LONG)  # stopped: at 600x the whole match takes ~6 s
-    assert voiced == 3  # the 3 shared slots were busy; the queued lines never went out
+    assert voiced == 1  # its one voice slot was busy; the queued lines never went out
     assert after == (said, voiced)
 
 

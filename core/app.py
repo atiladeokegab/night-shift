@@ -8,6 +8,7 @@ import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from functools import partial
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -114,7 +115,14 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
         replays[replay.id] = replay
         video = d.video_map(req.match_id)
         task = asyncio.create_task(
-            run_replay(replay, moments, d.commentate, store, video, speaker.prepare)
+            run_replay(
+                replay,
+                moments,
+                d.commentate,
+                store,
+                video,
+                partial(speaker.prepare, replay=replay.id),
+            )
         )
         tasks.add(task)
         task.add_done_callback(tasks.discard)
@@ -138,6 +146,7 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
             forget_later(replay)
         else:
             replays.pop(replay.id, None)
+            speaker.lanes.pop(replay.id, None)
 
     def abandon(replay: Replay) -> None:
         """Stop a replay nobody follows, and its voice jobs, so they free the 3 shared slots."""

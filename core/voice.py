@@ -4,6 +4,7 @@ kind; one retry, then eleven_flash_v2_5; with no key or every attempt failed the
 and the page uses browser speech instead. The key stays on the server."""
 
 import asyncio
+import contextlib
 import logging
 import os
 import sys
@@ -25,6 +26,8 @@ FALLBACK_MIN_S = 1.5  # flash always gets this long once it has a slot: a little
 LIVE_BUDGET_S = 4.0  # a line with no video time is spoken as it arrives
 PREPARED_V3_S = 7.0  # v3's least time for a line made before its moment: late v3 beats flat flash
 CONCURRENCY = 3  # a whole match's lines arrive in seconds; ElevenLabs caps concurrent requests
+PER_REPLAY = 1  # TTS calls in flight per replay, so one replay never holds all 3 slots
+BREAKER_S = 20.0  # after a 429, no TTS call this long: queued lines go straight to subtitles
 KEEP_JOBS = 500  # finished audio kept, least recently asked first out: ~25 MB at ~50 KB a line
 
 # The page's voice setting. ids are ours; eleven_id never leaves the server. VOICE_<SPORT> takes an
@@ -179,13 +182,17 @@ class Speaker:
         self.jobs: dict[tuple[str, str], asyncio.Task] = {}
         self.tags: dict[str, str | None] = {}
         self.slots = asyncio.Semaphore(CONCURRENCY)
+        self.lanes: dict[str, asyncio.Semaphore] = {}  # replay id: its PER_REPLAY slots
+        self.closed_until = 0.0  # time.monotonic() the 429 breaker closes again
 
-    def prepare(self, line: dict, moment: dict, deadline: float | None = None) -> None:
+    def prepare(
+        self, line: dict, moment: dict, deadline: float | None = None, replay: str | None = None
+    ) -> None:
         """Start the line's audio in its sport's voice; `deadline` is when (time.monotonic) its
-        moment plays, None to speak it as it arrives."""
+        moment plays, None to speak it as it arrives; `replay` gets PER_REPLAY calls at a time."""
         self.tags[line["line_id"]] = tag_for(moment)
         if os.environ.get("ELEVENLABS_API_KEY"):
-            self._job(line, voice_of(line), deadline)
+            self._job(line, voice_of(line), deadline, replay)
 
     async def audio(self, line: dict, voice: dict, retry=True) -> tuple[bytes, str] | None:
         key = (line["line_id"], voice["id"])
@@ -211,11 +218,14 @@ class Speaker:
                 job.cancel()
                 del self.jobs[key]
 
-    def _job(self, line: dict, voice: dict, deadline: float | None) -> asyncio.Task:
+    def _job(
+        self, line: dict, voice: dict, deadline: float | None, replay: str | None = None
+    ) -> asyncio.Task:
         key = (line["line_id"], voice["id"])
         job = self.jobs.pop(key, None)
         if job is None:
-            job = asyncio.create_task(self._make(line, voice, deadline))
+            lane = self.lanes.setdefault(replay, asyncio.Semaphore(PER_REPLAY)) if replay else None
+            job = asyncio.create_task(self._make(line, voice, deadline, lane))
             job.add_done_callback(lambda _: self._trim())  # pending jobs may have filled the cap
         self.jobs[key] = job  # most recently asked last
         self._trim(keep=key)
@@ -229,7 +239,7 @@ class Speaker:
         for old in [k for k, job in self.jobs.items() if job.done() and k != keep][:over]:
             del self.jobs[old]
 
-    async def _make(self, line: dict, voice: dict, deadline: float | None):
+    async def _make(self, line: dict, voice: dict, deadline: float | None, lane=None):
         key = os.environ.get("ELEVENLABS_API_KEY")
         if not key:
             return None
@@ -251,20 +261,25 @@ class Speaker:
                 for _ in range(1 if ahead else 2):  # a cold first request can time out; retry warm
                     until = min(end - FALLBACK_RESERVE_S, time.monotonic() + V3_TIMEOUT_S)
                     least = PREPARED_V3_S if ahead else 0.0
-                    audio = await self._tts(client, key, voice, model, text, until, least)
+                    audio = await self._tts(client, key, voice, model, text, until, least, lane)
                     if audio:
                         return audio, model
             until = min(end, time.monotonic() + FALLBACK_TIMEOUT_S)
             audio = await self._tts(
-                client, key, voice, FALLBACK_MODEL, line["text"], until, FALLBACK_MIN_S
+                client, key, voice, FALLBACK_MODEL, line["text"], until, FALLBACK_MIN_S, lane
             )
             return (audio, FALLBACK_MODEL) if audio else None
 
-    async def _tts(self, client, key, voice, model, text, until, least=0.0) -> bytes | None:
-        async with self.slots:
+    async def _tts(
+        self, client, key, voice, model, text, until, least=0.0, lane=None
+    ) -> bytes | None:
+        async with lane or contextlib.nullcontext(), self.slots:
             left = max(until - time.monotonic(), least)
             if left <= 0:  # it would land after the moment
                 log.warning("voice %s skipped: out of time", model)
+                return None
+            if time.monotonic() < self.closed_until:
+                log.warning("voice %s skipped: ElevenLabs rate limit", model)
                 return None
             try:
                 # httpx's timeout is per read: only this bounds the request plus every chunk
@@ -279,6 +294,8 @@ class Speaker:
             except (httpx.HTTPError, TimeoutError) as exc:
                 log.warning("voice %s failed: %s", model, type(exc).__name__)
                 return None
+        if resp.status_code == 429:
+            self.closed_until = time.monotonic() + BREAKER_S
         if resp.status_code != 200 or not resp.content:
             log.warning("voice %s answered %d", model, resp.status_code)
             return None
