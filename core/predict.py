@@ -271,7 +271,8 @@ def profile_text(pack: dict, moments: list, idx: int, name: str) -> str:
     try:
         name = find(pack, name)
     except KeyError:
-        return f"No pre-match record for {name or 'that player'} in this match."
+        # never echo the name: it came through the model from a viewer and could forge a field
+        return "No pre-match record for that player in this match."
     if pack["sport"] == "cricket":
         return _cricket_profile(pack, so_far, name)
     return _shots_profile(pack, so_far, name)
