@@ -16,6 +16,7 @@ interface Props {
 // sheet stays open with the producer's text, so it can be sent again: a 503 stores nothing.
 export function FixSheet({ line, phase, onSend, onCancel }: Props) {
   const [text, setText] = useState(line.text)
+  const unchanged = !text.trim() || text.trim() === line.text.trim() // nothing to send yet
   const [reason, setReason] = useState(REASONS[0])
   const box = useRef<HTMLTextAreaElement>(null)
   const sending = phase === 'sending'
@@ -38,7 +39,7 @@ export function FixSheet({ line, phase, onSend, onCancel }: Props) {
         <div className="field">
           <label className="label" htmlFor="fix-text">Corrected line</label>
           <textarea id="fix-text" ref={box} value={text} disabled={sending} onChange={(e) => setText(e.target.value)} />
-          {!text.trim() && <p className="hint">Type the corrected line.</p>}
+          {unchanged && <p className="hint">Type the corrected line.</p>}
         </div>
         <div className="field">
           <span className="label">What was wrong</span>
@@ -53,7 +54,7 @@ export function FixSheet({ line, phase, onSend, onCancel }: Props) {
         </div>
         {phase === 'error' && <p className="err-text" role="alert">Fix not saved. Check the connection and send again.</p>}
         <div className="actions">
-          <button className="btn primary" disabled={sending || !text.trim()} onClick={() => onSend(text.trim(), reason)}>
+          <button className="btn primary" disabled={sending || unchanged} onClick={() => onSend(text.trim(), reason)}>
             {sending ? <><span className="spin sm" />Sending fix…</> : 'Send fix'}
           </button>
           <span className="spacer" />

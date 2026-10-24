@@ -21,7 +21,7 @@ export function Wall({ matches, error, onRetry, onOpen, onGo }: Props) {
   if (error) {
     body = (
       <div className="notice glass err" role="alert">
-        Couldn't load matches. Is the server running?
+        Couldn't load matches. Check the connection and try again.
         <button className="btn" onClick={onRetry}>Try again</button>
       </div>
     )
@@ -33,7 +33,7 @@ export function Wall({ matches, error, onRetry, onOpen, onGo }: Props) {
       </>
     )
   } else if (matches.length === 0) {
-    body = <div className="notice glass">No matches yet. Load the demo data, then refresh.</div>
+    body = <div className="notice glass">No matches yet.</div>
   } else {
     body = <div className="wall">{matches.map((m) => <Tile key={m.match_id} match={m} onOpen={onOpen} />)}</div>
   }
@@ -44,7 +44,8 @@ export function Wall({ matches, error, onRetry, onOpen, onGo }: Props) {
         <p className="eyebrow">A live AI commentator for matches nobody calls.</p>
         <h1>Tap a match to hear it called</h1>
         {body}
-        <p className="foot">
+        {/* --muted: .foot's --faint is 3.77:1 at 13 px, under WCAG AA (#154); App.css is #153's until it merges */}
+        <p className="foot" style={{ color: 'var(--muted)' }}>
           Match data: StatsBomb open data, Cricsheet, NBA play-by-play and OpenF1. Highlights: broadcast highlights on
           YouTube, embedded and muted where their owners allow it, linked where they don't. Commentary is AI-generated.
         </p>
@@ -68,7 +69,8 @@ function Tile({ match, onOpen }: { match: Match; onOpen: (m: Match) => void }) {
 
   // Muted, looping, without controls or captions: the tile is a moving picture, never a second commentary.
   // The clip shows only once it is really playing; a clip that errors or isn't playing in TILE_START_MS
-  // gives up (player.ts's deadline, #73) and the tile keeps its thumbnail poster.
+  // gives up (player.ts's deadline, #73) and the tile keeps its thumbnail poster and its call to tap: on slow
+  // wifi the clip is late, not missing (#154). Only a video whose owner blocks embedding says "Commentary only".
   useEffect(() => {
     if (!plays || !host.current) return
     const target = document.createElement('div')
@@ -104,7 +106,7 @@ function Tile({ match, onOpen }: { match: Match; onOpen: (m: Match) => void }) {
         <span className="label">{SPORT_NAMES[match.sport]}</span>
         <span className="tile-title">{title}</span>
         {detail && <span className="tile-detail">{phrases(detail)}</span>}
-        <span className="tile-cta">{phrases(blocked ? 'Commentary only · Tap to hear it called →' : broken ? 'Highlights unavailable here · Tap for commentary' : 'Tap to hear it called →')}</span>
+        <span className="tile-cta">{phrases(blocked ? 'Commentary only · Tap to hear it called →' : 'Tap to hear it called →')}</span>
       </span>
     </button>
     {/* A sibling, not inside the button: a link can't sit inside another control. */}

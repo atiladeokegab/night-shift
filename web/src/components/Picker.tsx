@@ -21,7 +21,7 @@ export function Picker({ matches, error, voices, onRetry, onStart, onGo }: Props
   if (error) {
     body = (
       <div className="notice glass err" role="alert">
-        Couldn't load matches. Is the server running?
+        Couldn't load matches. Check the connection and try again.
         <button className="btn" onClick={onRetry}>Try again</button>
       </div>
     )
@@ -33,7 +33,7 @@ export function Picker({ matches, error, voices, onRetry, onStart, onGo }: Props
       </>
     )
   } else if (matches.length === 0) {
-    body = <div className="notice glass">No matches yet. Load the demo data, then refresh.</div>
+    body = <div className="notice glass">No matches yet.</div>
   } else {
     body = <div className="cards">{matches.map((m) => <Card key={m.match_id} match={m} voices={voices} onStart={onStart} />)}</div>
   }
@@ -44,7 +44,8 @@ export function Picker({ matches, error, voices, onRetry, onStart, onGo }: Props
         <p className="eyebrow">A live AI commentator for matches nobody calls.</p>
         <h1>Pick a match</h1>
         {body}
-        <p className="foot">
+        {/* --muted: .foot's --faint is 3.77:1 at 13 px, under WCAG AA (#154); App.css is #153's until it merges */}
+        <p className="foot" style={{ color: 'var(--muted)' }}>
           Match data: StatsBomb open data, Cricsheet, NBA play-by-play (stats.nba.com) and OpenF1. Highlights on
           YouTube, embedded and muted: the NBA channel, and fan uploads of the TV coverage of the 2022 World Cup final,
           Chelsea v Tottenham, India v Pakistan and the 2024 São Paulo Grand Prix. Commentary is AI-generated.

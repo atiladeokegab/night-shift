@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 
 from agent import commentator
 from agent.commentator import FakeProvider
-from core import insight, predict
+from core import insight, predict, smoke
 from core.app import Deps, create_app
 from core.predict import load_pack
 from core.replay import Replay, run_replay
@@ -24,14 +24,20 @@ from data.matches import list_matches, load_moments, match_header, video_map
 KOBE, CHELSEA = "0020500591", "3754092"
 
 
+def letters(n: int) -> str:
+    """A word of its own for each n, so no two fake lines nearly repeat each other."""
+    return "".join(chr(97 + int(d)) for d in str(n))
+
+
 class Fake(FakeProvider):
-    """FakeProvider, its read-back cut to 7 words: an insight's Event is the whole stat."""
+    """FakeProvider, its read-back swapped for 7 copies of a word new to each call: an insight's
+    Event reads back the whole stat, and stretch lines that repeat one another are dropped."""
 
     def call(self, request):
         reply = super().call(request)
         for b in reply["content"]:
             if b["type"] == "text":
-                b["text"] = " ".join(b["text"].split()[:7])
+                b["text"] = " ".join([letters(len(self.requests))] * 7)
         return reply
 
 
@@ -62,7 +68,7 @@ class Sized:
 
     def __call__(self, moment, history):
         self.stats += moment["type"] == "Stat"
-        said = f"{moment['type']} {moment['idx']} " + "word " * 12
+        said = f"{moment['type']} {moment['idx']} " + f"{letters(self.stats)} " * 12
         return {"line_id": uuid.uuid4().hex, "moment_idx": moment["idx"], "text": said.strip()}
 
 
@@ -300,6 +306,59 @@ def test_a_dropped_analyst_line_hands_its_slot_to_the_next_kind_once(tmp_path):
     assert per_stretch and set(per_stretch.values()) == {2}
 
 
+GOAL = "GOAL! Cole Palmer slots it home, and Chelsea lead 1-0!"
+
+
+def test_the_analyst_never_restates_the_leads_call(tmp_path):
+    fake, opened = Fake(), set()
+
+    def calls(moment, history):
+        if moment["type"] != "Stat":
+            return {"line_id": uuid.uuid4().hex, "moment_idx": moment["idx"], "text": GOAL}
+        if moment["idx"] not in opened:  # each stretch opens on the real repeat shape
+            opened.add(moment["idx"])
+            return {
+                "line_id": uuid.uuid4().hex,
+                "moment_idx": moment["idx"],
+                "text": "Palmer scores, and Chelsea lead 1-0.",
+            }
+        return commentator.commentate(moment, history, provider=fake)
+
+    store = Store(tmp_path)
+    lines, _ = replay(CHELSEA, store, calls=calls)
+    assert opened and all(ln["text"] != "Palmer scores, and Chelsea lead 1-0." for ln in lines)
+    assert [ln["text"] for ln in store.all("lines")] == [ln["text"] for ln in lines]
+    assert sum(ln["text"] == GOAL for ln in lines) == len(video_map(CHELSEA)["moments"])
+    assert any("insight" in ln for ln in lines)  # the next kind took the slot
+
+
+@pytest.mark.parametrize(
+    ("line", "repeat"),
+    [
+        ("Palmer scores, and Chelsea lead 1-0.", True),
+        ("Palmer finds the net, Chelsea 1-0 up.", True),
+        (GOAL, True),
+        ("Cole Palmer this season before tonight: 5 goals from 20 shots.", False),
+        ("Chance Palmer scores the next Chelsea goal: 18%.", False),
+        ("Chelsea tonight: 4 shots, 2 on target.", False),
+    ],
+)
+def test_a_line_repeats_the_call_unless_it_adds_a_fact(line, repeat):
+    assert insight.repeats(line, [GOAL]) is repeat
+
+
+@pytest.mark.parametrize(
+    ("line", "before"),
+    [
+        ("Palmer tonight: 3 shots, 1 goal.", "Palmer tonight: 2 shots, 1 goal."),
+        ("Ocon up to P5 now, three places gained.", "Ocon up to P8 now, three places gained."),
+    ],
+)
+def test_an_updated_stat_is_a_new_fact(line, before):
+    assert insight.repeats(before, [before]) and not insight.repeats(line, [before])
+    assert not insight.repeats(line, [GOAL, "a", "b", "c"])  # only the last 3 lines count
+
+
 def test_a_second_replay_makes_no_new_insight_calls(tmp_path):
     store = Store(tmp_path)
     first, fake = replay(CHELSEA, store)
@@ -382,3 +441,29 @@ def test_a_fix_on_an_insight_or_reply_goes_back_with_its_own_request(tmp_path):
             assert ("\nEvent: Stat, " in q[0]["content"]) == bool(gap(ln))
             if gap(ln):
                 assert f"Partner just said: {gap(ln)['heard']}" in q[0]["content"]
+
+
+def test_the_live_smoke_passes_on_a_replay_that_reuses_stored_insight_lines(tmp_path, monkeypatch):
+    # #149: the deployed smoke match already has stored insight lines; a replay streams them again
+    # without storing them twice, so the store grows by fewer lines than were streamed
+    monkeypatch.delenv("ELEVENLABS_API_KEY", raising=False)
+    calls = functools.partial(commentator.commentate, provider=FakeProvider())
+    app = create_app(store=Store(tmp_path), deps=Deps(list_matches, load_moments, calls, video_map))
+    monkeypatch.setattr(smoke.httpx, "Client", lambda **_: TestClient(app))
+    assert smoke.live("http://testserver") == 0
+    assert smoke.live("http://testserver") == 0  # its insight lines come from the store
+
+
+def test_the_live_smoke_fails_when_a_streamed_line_never_reached_the_store(tmp_path, monkeypatch):
+    class Lossy(Store):  # every line append is lost
+        def _write(self, kind, text):
+            if kind != "lines":
+                super()._write(kind, text)
+
+    monkeypatch.delenv("ELEVENLABS_API_KEY", raising=False)
+    calls = functools.partial(commentator.commentate, provider=FakeProvider())
+    app = create_app(store=Lossy(tmp_path), deps=Deps(list_matches, load_moments, calls, video_map))
+    monkeypatch.setattr(smoke.httpx, "Client", lambda **_: TestClient(app))
+    with pytest.raises(AssertionError, match="not in store"):
+        smoke.live("http://testserver")
+    assert TestClient(app).get("/lines/nope").status_code == 404
