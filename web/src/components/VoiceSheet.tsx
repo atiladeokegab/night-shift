@@ -9,13 +9,15 @@ interface Props {
   available: boolean
   on: boolean
   onToggle: (on: boolean) => void
+  describeQuiet: boolean // #186: a "Where are we?" after 15 s of play with no line
+  onDescribeQuiet: (on: boolean) => void
   onPick: (sport: Sport, voice: Voice) => void
   onClose: () => void
 }
 
 // The voice setting (docs/design.md; A-6.3@1): on/off, then per sport the voices GET /voices lists,
 // the default marked. A change applies from the next line, without reloading.
-export function VoiceSheet({ sports, voices, chosen, available, on, onToggle, onPick, onClose }: Props) {
+export function VoiceSheet({ sports, voices, chosen, available, on, onToggle, describeQuiet, onDescribeQuiet, onPick, onClose }: Props) {
   useEffect(() => {
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', esc)
@@ -35,6 +37,11 @@ export function VoiceSheet({ sports, voices, chosen, available, on, onToggle, on
         ) : (
           <p className="err-text" role="alert">Voice unavailable. Subtitles carry on.</p>
         )}
+        <div className="toggle">
+          <span>Describe quiet spells</span>
+          <button className="switch" role="switch" aria-checked={describeQuiet} aria-label="Describe quiet spells"
+            onClick={() => onDescribeQuiet(!describeQuiet)} />
+        </div>
         <div className="voices">
           {sports.map((sport) => (
             <div key={sport} role="radiogroup" aria-label={`${SPORT_NAMES[sport]} voice`}>
