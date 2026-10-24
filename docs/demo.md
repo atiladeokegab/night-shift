@@ -6,10 +6,11 @@ over the NBA's own broadcast picture. The script runs two minutes.
 Everything runs from main's deployed URL, with the sound on. Anything shown outside our product, such
 as Mubit's console, is said aloud as such.
 
-**Three matches are commentary only.** Spain v England, Messi v Mbappé and Hamilton at Silverstone
-are videos whose owners block embedding: their tiles and pages show a still and a "highlights on
-YouTube" link, and the commentary runs on its own clock. The demo uses the three that embed: Kobe's
-81, Jordan's last shot and India v Pakistan.
+**One match is commentary only.** Messi v Mbappé is a video whose owner blocks embedding: its tile
+and page show a still and a "highlights on YouTube" link, and the commentary runs on its own clock.
+The demo uses three that embed: Kobe's 81, Jordan's last shot and India v Pakistan. The Battle of the
+Bridge (Chelsea v Tottenham, 2016) and Verstappen's P17 to P1 at Interlagos (2024) embed too; they
+replaced Spain v England and Hamilton at Silverstone, whose videos would not (#114).
 
 ## Before going on
 
@@ -157,7 +158,7 @@ on our build server, with the commentator off air:
   commentary waits" before YouTube refused to play headless (error 150). The stream's error turned the
   badge to OFF AIR with the subtitle "Commentator is off air for a moment". On the wall, Kobe, Jordan
   and India v Pakistan read "Tap to hear it called"; Messi v Mbappé, Spain v England and Hamilton read
-  "Commentary only".
+  "Commentary only" (the last two since replaced, #114).
 - **From the data, not seen live:** Kobe's replay has 20 moments, each with a video time, hence "20
   held". The video map puts the 30-point jumper at 8:10 (490.5 s), the free throws for 80 and 81 at
   23:53 and 24:03 (1433 and 1443 s), Bonner's jumper at 24:23 and the final buzzer at 25:02. These come
@@ -174,7 +175,7 @@ build server. This is not the timed rehearsal, which still needs a person.
   Pakistan); the other three are commentary only, because their owners block embedding (#104). For the
   three that embed, this is most likely the headless browser on a cloud server. Confirm playback on
   the demo laptop.
-- **Wall:** six tiles. Tapping Spain v England went full screen, and the first call came 5.9 s later.
+- **Wall:** six tiles. Tapping Spain v England (since replaced, #114) went full screen, and the first call came 5.9 s later.
   ← Wall took 0.1 s. India v Pakistan's first call came 20.2 s after the tap; that run's first audio
   request returned 503, and the same request returned 200 in 2.5 s when retried.
 - **Stage, with a stand-in for the player's clock:** football held all 15 lines 18 s after the tap,
