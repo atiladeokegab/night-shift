@@ -7,11 +7,12 @@ competition-season (nothing is cached, raw events are dropped after each match) 
 SurrealDB's embedded surrealkv store to data/graph, shipped in the image. Two tables:
 
     fixture     one per match: sport, competition, season, start (ISO kickoff), home, away, score
-    appearance  one per player per match: team, start, minutes, sport-specific totals
+    appearance  one per player, team and season: its games as [start, minutes, *totals]
 """
 
 import csv
 import io
+import json
 import shutil
 import sys
 import tarfile
@@ -22,7 +23,7 @@ from pathlib import Path
 import httpx
 
 from agent import feed
-from agent.packs import MATCHES
+from agent.packs import MATCHES, NOT_BOWLERS
 
 GRAPH = Path(__file__).resolve().parent.parent / "data" / "graph"
 
@@ -217,7 +218,107 @@ def basketball() -> tuple[list[dict], list[dict]]:
     return [f for fs, _ in got for f in fs], [a for _, aps in got for a in aps]
 
 
-BUILDERS = {"football": football, "basketball": basketball}
+# --- cricket: Cricsheet T20Is of the sample matches' years
+
+
+def cricket_match(m: dict) -> tuple[dict, list[dict]]:
+    info = m["info"]
+    teams = [feed._s(t) for t in info["teams"]]
+    day = info["dates"][0]
+    start = f"{day}T23:59:59"  # no start time in Cricsheet: the whole day is "not before"
+    score = dict.fromkeys(teams, 0)
+    tot, played = {}, set()  # played: who batted or bowled a ball
+    for team, names in info["players"].items():
+        for name in names:
+            tot[name] = {
+                "team": feed._s(team),
+                "totals": {"runs": 0, "balls": 0, "wickets": 0},
+            }
+    for inn in m.get("innings") or []:
+        if inn.get("super_over"):
+            continue
+        for over in inn.get("overs") or []:
+            for d in over.get("deliveries") or []:
+                score[feed._s(inn["team"])] = (
+                    score.get(feed._s(inn["team"]), 0) + d["runs"]["total"]
+                )
+                played |= {d["batter"], d["bowler"]}
+                bat = tot.get(d["batter"])
+                if bat and "wides" not in d.get("extras", {}):
+                    bat["totals"]["balls"] += 1
+                if bat:
+                    bat["totals"]["runs"] += d["runs"]["batter"]
+                for w in d.get("wickets") or []:
+                    bowler = tot.get(d["bowler"])
+                    if bowler and w["kind"] not in NOT_BOWLERS:
+                        bowler["totals"]["wickets"] += 1
+    fixture = {
+        "sport": "cricket",
+        "mid": "",
+        "competition": "T20I",  # one stretch per year: a tour's few games would be no season
+        "season": day[:4],
+        "start": start,
+        "home": teams[0],
+        "away": teams[1],
+        "hg": score[teams[0]],
+        "ag": score[teams[1]],
+    }
+    apps = [
+        {
+            **{k: fixture[k] for k in ("sport", "competition", "season", "start")},
+            "mid": "",
+            "player": feed._s(name),
+            "team": t["team"],
+            "minutes": 0,
+            "totals": t["totals"],
+        }
+        for name, t in tot.items()
+        if name in played
+    ]
+    return fixture, apps
+
+
+def cricket() -> tuple[list[dict], list[dict]]:
+    years = {a for (sport, _), arch in MATCHES.items() if sport == "cricket" for a in arch}
+    print(f"cricket: years {sorted(years)}", flush=True)
+    archive = feed.cricsheet_zip()
+    fixtures, apps = [], []
+    for n in sorted(archive.namelist()):
+        if not n.endswith(".json"):
+            continue
+        m = json.loads(archive.read(n))
+        if not m["info"].get("dates") or m["info"]["dates"][0][:4] not in years:
+            continue
+        f, a = cricket_match(m)
+        mid = n.removesuffix(".json")
+        f["mid"] = mid
+        for row in a:
+            row["mid"] = mid
+        fixtures.append(f)
+        apps += a
+    return fixtures, apps
+
+
+BUILDERS = {"football": football, "basketball": basketball, "cricket": cricket}
+
+
+def stints(apps: list[dict]) -> list[dict]:
+    """One record per player, team and season, its games as rows [start, minutes, *totals]: a
+    record per appearance repeated every field name and made the store four times the size."""
+    out: dict[tuple, dict] = {}
+    for a in sorted(apps, key=lambda a: a["start"]):
+        key = (a["sport"], a["player"], a["team"], a["competition"], a["season"])
+        rec = out.setdefault(
+            key,
+            {
+                "id": list(key),
+                **dict(zip(("sport", "player", "team", "competition", "season"), key, strict=True)),
+                "keys": list(a["totals"]),
+                "games": [],
+            },  # fmt: skip
+        )
+        rec["games"].append([a["start"], a["minutes"], *a["totals"].values()])
+    return list(out.values())
 
 
 def write(sport_rows: dict[str, tuple[list[dict], list[dict]]], path: Path = GRAPH) -> None:
@@ -237,7 +338,7 @@ def write(sport_rows: dict[str, tuple[list[dict], list[dict]]], path: Path = GRA
     )
     for fixtures, apps in sport_rows.values():
         fixtures = [{"id": [f["sport"], f["mid"]], **f} for f in fixtures]
-        apps = [{"id": [a["sport"], a["mid"], a["player"], a["team"]], **a} for a in apps]
+        apps = stints(apps)
         for table, rows in (("fixture", fixtures), ("appearance", apps)):
             for i in range(0, len(rows), 2000):
                 db.query(f"INSERT INTO {table} $rows RETURN NONE", {"rows": rows[i : i + 2000]})

@@ -277,10 +277,28 @@ def head_to_head(sport: str, a: str, b: str, before: str, n: int = 5) -> list[di
     return [_result(f, a) for f in found or []]
 
 
-APPEARANCES = (
-    "SELECT * FROM appearance WHERE sport = $s AND {who} = $w AND start < $b ORDER BY start"
-)
+APPEARANCES = "SELECT * FROM appearance WHERE sport = $s AND {who} = $w"
 LEAD = {"football": "goals", "basketball": "points", "cricket": "runs", "f1": "points"}
+
+
+def _games(sport: str, who: str, w: str, before: str) -> list[dict] | None:
+    """The player's (or team's) appearances before `before`, oldest first, one dict per game."""
+    found = _rows(APPEARANCES.format(who=who), {"s": sport, "w": w})
+    if found is None:
+        return None
+    return sorted(
+        (
+            {
+                **{k: r[k] for k in ("player", "team", "competition", "season")},
+                "start": g[0],
+                "totals": dict(zip(r["keys"], g[2:], strict=True)),
+            }  # fmt: skip
+            for r in found
+            for g in r["games"]
+            if g[0] < before
+        ),
+        key=lambda a: a["start"],
+    )
 
 
 def _sum(apps: list[dict]) -> dict:
@@ -301,7 +319,7 @@ def _latest(apps: list[dict]) -> list[dict]:
 
 def player_season(sport: str, name: str, before: str) -> dict | None:
     """The player's newest competition-season before `before`: team, matches and summed totals."""
-    apps = _rows(APPEARANCES.format(who="player"), {"s": sport, "w": name, "b": before})
+    apps = _games(sport, "player", name, before)
     if not apps:
         return None
     mine = _latest(apps)
@@ -316,7 +334,7 @@ def player_season(sport: str, name: str, before: str) -> dict | None:
 
 def squad(sport: str, team: str, before: str) -> list[dict]:
     """Who played for the team in its newest competition-season before `before`, best first."""
-    apps = _rows(APPEARANCES.format(who="team"), {"s": sport, "w": team, "b": before})
+    apps = _games(sport, "team", team, before)
     if not apps:
         return []
     by: dict[str, list[dict]] = {}

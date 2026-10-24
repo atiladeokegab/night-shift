@@ -109,3 +109,83 @@ def test_no_store_is_the_same_fallback(monkeypatch):
     monkeypatch.setattr(graph, "_kv", None)
     assert graph.team_form("football", "Chelsea", NOW) == []
     assert graph.player_season("football", "Costa", NOW) is None
+
+
+def test_basketball_row_counts_points_rebounds_assists_and_the_last_score():
+    def row(kind, home="", visitor="", score="", p1=("Kobe", "LAL"), p2=("", "")):
+        r = {"EVENTMSGTYPE": kind, "HOMEDESCRIPTION": home, "VISITORDESCRIPTION": visitor,
+             "SCORE": score}  # fmt: skip
+        for n, (name, abbr) in ((1, p1), (2, p2), (3, ("", ""))):
+            r |= {f"PLAYER{n}_NAME": name, f"PLAYER{n}_TEAM_ABBREVIATION": abbr,
+                  f"PLAYER{n}_TEAM_CITY": "LA" if abbr == "LAL" else "To",
+                  f"PLAYER{n}_TEAM_NICKNAME": "Lakers" if abbr == "LAL" else "Raptors"}  # fmt: skip
+        return r
+
+    g = {"names": {}, "totals": {}, "score": None}
+    meta = ("2006-01-22", "LAL", "TOR")
+    for r in (
+        row("1", home="Kobe 3PT Jump Shot (3 PTS) (Odom 1 AST)", score="0 - 3", p2=("Odom", "LAL")),
+        row("3", home="Kobe Free Throw 1 of 2 (4 PTS)", score="0 - 4"),
+        row("3", home="MISS Kobe Free Throw 2 of 2"),
+        row("4", visitor="Bosh REBOUND", p1=("Bosh", "TOR")),
+    ):
+        build_graph._basketball_row(g, r, meta)
+    assert g["score"] == (0, 4) and g["names"] == {"LAL": "LA Lakers", "TOR": "To Raptors"}
+    assert g["totals"][("Kobe", "LAL")] == {"points": 4, "rebounds": 0, "assists": 0}
+    assert g["totals"][("Odom", "LAL")]["assists"] == 1
+    assert g["totals"][("Bosh", "TOR")]["rebounds"] == 1
+
+
+def test_cricket_match_scores_innings_and_credits_runs_balls_wickets():
+    def ball(batter, bowler, runs, wides=0, kind=None):
+        d = {"batter": batter, "bowler": bowler, "runs": {"batter": runs, "total": runs + wides}}
+        if wides:
+            d["extras"] = {"wides": wides}
+        if kind:
+            d["wickets"] = [{"kind": kind, "player_out": batter}]
+        return d
+
+    m = {
+        "info": {
+            "dates": ["2022-10-23"],
+            "teams": ["A", "B"],
+            "players": {"A": ["Bat", "Bench"], "B": ["Bowl"]},
+        },  # fmt: skip
+        "innings": [
+            {
+                "team": "A",
+                "overs": [
+                    {
+                        "deliveries": [
+                            ball("Bat", "Bowl", 4),
+                            ball("Bat", "Bowl", 0, wides=1),
+                            ball("Bat", "Bowl", 0, kind="bowled"),
+                        ]
+                    }
+                ],
+            },  # fmt: skip
+            {"team": "B", "overs": [{"deliveries": [ball("Bowl", "Bat", 1)]}]},
+        ],
+    }
+    f, apps = build_graph.cricket_match(m)
+    assert (f["home"], f["hg"], f["ag"], f["start"]) == ("A", 5, 1, "2022-10-23T23:59:59")
+    got = {a["player"]: a["totals"] for a in apps}
+    assert got == {"Bat": {"runs": 4, "balls": 2, "wickets": 0},
+                   "Bowl": {"runs": 1, "balls": 1, "wickets": 1}}  # fmt: skip
+
+
+def test_shipped_store_kobes_81_game_sees_only_earlier_games(monkeypatch):
+    monkeypatch.setattr(graph, "_kv", None)
+    graph._open_store()
+    assert graph._kv is not None
+    kickoff = "2006-01-22"  # the 81-point game against Toronto
+    form = graph.team_form("basketball", "Los Angeles Lakers", kickoff, n=100)
+    assert form and all(g["date"] < kickoff for g in form)
+    assert all(g["opponent"] != "Toronto Raptors" or g["date"] < kickoff for g in form)
+    kobe = graph.player_season("basketball", "Kobe Bryant", kickoff)
+    assert kobe["season"] == "2005-06" and kobe["matches"] > 30
+    after = graph.player_season("basketball", "Kobe Bryant", "2006-01-23")
+    assert (
+        after["totals"]["points"] - kobe["totals"]["points"] == 81
+    )  # can go red: it is in the store
+    assert graph.teams("cricket") and graph.teams("football") and graph.teams("basketball")
