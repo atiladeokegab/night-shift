@@ -108,8 +108,8 @@ export interface Caption {
 
 export const READ_MS = 6000 // an answer that isn't spoken (voice off, off air) stays up this long
 
-// A viewer's question on the stage: "A viewer asks: … · thinking…" until the answer starts (#139: it
-// waits for a gap in the commentary), then the answer in the analyst's voice for as long as it is spoken
+// A viewer's question on the stage: "A viewer asks: … · thinking…" until the answer is in, then the
+// question alone until the answer starts (#139: it waits for a gap in the commentary), then the answer in the analyst's voice for as long as it is spoken
 // (`speak` calls `started` as it goes on air and resolves at its end; null when it isn't spoken, and then
 // it shows at once), then the lines again. Resolves once the answer is in, so the ask box is free while
 // it waits and is spoken. `current` is false once the replay or a newer question replaced this one: it
@@ -127,6 +127,7 @@ export async function airAnswer<A extends { text: string }>(
   const answer = await ask()
   if (!current()) return
   if (!answer) return show(null)
+  show({ kind: 'question', text: `${asker}${question}` }) // answered: no longer thinking, waiting for a gap
   const started = () => current() && show({ kind: 'answer', text: answer.text, speaker: 'analyst' })
   const spoken = speak(answer, started)
   if (!spoken) started()
