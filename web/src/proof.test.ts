@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { adapterGood, adapterRows, autonomyRows, TRAINING_LABEL } from './proof.ts'
+import { adapterGood, adapterRows, autonomyRows, checkText, linecheckRow, TRAINING_LABEL } from './proof.ts'
 
 const all = { called: 10, first_time: 6, auto_fixed: 2, to_human: 2 }
 const kobe = { called: 6, first_time: 3, auto_fixed: 1, to_human: 2 }
@@ -58,4 +58,13 @@ test('the Adapter row is green only for a recorded pass of the gate', () => {
 
 test('the fix counts are headed as training data, never a bare "Training" that reads as under way', () => {
   assert.equal(TRAINING_LABEL, 'Training data')
+})
+
+test("a checked line's chip says all ok or the fields the checker model flags, and nothing without a reply (#298)", () => {
+  const labels = { score: 'ok', leader: 'not_said', player_total: 'wrong', event: 'ok' } as const
+  assert.equal(checkText({ line_id: 'a', labels, wrong: [] }), 'Checker model: all ok')
+  assert.equal(checkText({ line_id: 'a', labels, wrong: ['player_total'] }), 'Checker model: player total may be wrong')
+  assert.equal(checkText({ line_id: 'a', labels: null, wrong: [] }), null)
+  assert.equal(checkText(undefined), null)
+  assert.equal(linecheckRow({ checked: 9, flags: 2, rules_missed: 2, fixes_sent: 1 }), '9 checked · 2 flagged (2 the rules missed) · 1 fixes sent to it')
 })

@@ -262,6 +262,8 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .pill { font: 600 .62rem/1 var(--body); letter-spacing: .14em; text-transform: uppercase; border-radius: 5px; padding: 4px 6px; }
 .pill.fixed { color: #06202d; background: var(--fix); }
 .pill.late { color: var(--muted); border: 1px solid var(--line-hi); }
+.pill.check { color: var(--muted); border: 1px solid var(--line-hi); text-transform: none; letter-spacing: 0; font-weight: 500; } /* #298 */
+.pill.check.flag { color: var(--on-amber); background: var(--amber); border-color: transparent; }
 .pill.served { color: var(--muted); border: 1px solid var(--line-hi); text-transform: none; letter-spacing: 0; font-weight: 500; } /* a model id, as Mubit wrote it */
 /* Ask the commentator (#117): the form under the Lines heading; a question and its answer sit in the log on a
    tint of their own, apart from the play-by-play. 16px text so a phone doesn't zoom into the field. */

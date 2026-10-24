@@ -96,7 +96,7 @@ class Clock:
         return self.now
 
 
-def watched(tmp_path, said, env=None, correct=None):
+def watched(tmp_path, said, env=None, correct=None, linecheck=None):
     """An app whose replay of match 7 holds at moment 0 until `go` is set, and the `seen` each
     line's commentate was given. Each line has a rejected first try; a line made with a note is
     marked `screen`, as the real commentate marks it."""
@@ -110,6 +110,7 @@ def watched(tmp_path, said, env=None, correct=None):
         screen = {"screen": True} if kw.get("seen") else {}
         rejected = {"line_id": f"r{m['idx']}", "text": "Old", **screen}
         line = {"line_id": f"l{m['idx']}", "match_id": "7", "moment_idx": m["idx"], "text": "New"}
+        line["checked"] = True
         return {**line, **screen, "rejected": rejected}
 
     def see(image, names):
@@ -117,6 +118,7 @@ def watched(tmp_path, said, env=None, correct=None):
 
     video = {"youtube_id": "x", "start": 0, "moments": [{"idx": i, "video_t": t} for i, t in DUE]}
     deps = Deps(lambda: [], lambda mid: MOMENTS, commentate, lambda *a: video, correct, look=see)
+    deps.linecheck = linecheck
     looks = Looks(env or {}, clock)
     client = TestClient(create_app(store=Store(tmp_path), deps=deps, looks=looks))
     return client, go, seen, eyes, clock
@@ -191,7 +193,10 @@ def test_a_line_made_with_a_note_is_only_that_viewers(tmp_path, monkeypatch):
         sent.append(rejected)
         return {"mubit_request_id": "m"}
 
-    client, go, seen, _, _ = watched(tmp_path, "a corner kick", correct=correct)
+    checked = []
+    client, go, seen, _, _ = watched(
+        tmp_path, "a corner kick", correct=correct, linecheck=lambda ln, *a: checked.append(ln)
+    )
     with client:
         rid = started(client)
         assert go.held.wait(5)
@@ -211,6 +216,8 @@ def test_a_line_made_with_a_note_is_only_that_viewers(tmp_path, monkeypatch):
     assert spoken.status_code == 503 and shown.status_code == 404
     # its rejected try never becomes a correction: the others' do
     assert len(sent) == 2 and not any(r.get("screen") for r in sent)
+    # nor sent to Line check, whose flags reach the producers' fix queue
+    assert len(checked) == 2 and not any(ln.get("screen") for ln in checked)
 
 
 def test_numbers_in_words_and_nothing_are_no_note():

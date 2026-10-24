@@ -7,7 +7,7 @@ import { demoMatches, demoStats, streamDemo } from './demo'
 import { offAir, Refused, refused } from './ask'
 import { playersUrl, type Player, type Profile } from './follow'
 import type { Shots } from './shots'
-import type { Answer, Fix, Line, Match, Moment, ReviewItem, Stats, StreamEvent, Voice } from './types'
+import type { Answer, Fix, Line, LineCheck, Match, Moment, ReviewItem, Stats, StreamEvent, Voice } from './types'
 
 export const isDemo = new URLSearchParams(window.location.search).has('demo')
 
@@ -74,6 +74,7 @@ export function followReplay(
   source.addEventListener('line', (e) => onEvent({ type: 'line', line: JSON.parse(e.data) as Line }))
   source.addEventListener('stats', (e) => onEvent({ type: 'stats', stats: JSON.parse(e.data) as Stats }))
   source.addEventListener('fixed', (e) => onEvent({ type: 'fixed', fix: JSON.parse(e.data) as Fix }))
+  source.addEventListener('linecheck', (e) => onEvent({ type: 'linecheck', check: JSON.parse(e.data) as LineCheck }))
   source.addEventListener('answer', (e) => onEvent({ type: 'answer', answer: JSON.parse(e.data) as Answer }))
   source.addEventListener('error', (e) => {
     // A server `error` event carries {detail}; a dropped connection is a plain Event with no data.
