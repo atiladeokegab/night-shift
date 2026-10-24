@@ -41,18 +41,11 @@ def pack(sport: str, match_id: str) -> dict | None:
     return {**file, **found, "players": {**file["players"], **players}}
 
 
-def _graph(fn: str, *args):
-    """A graph contract function's answer, None while the graph lacks it."""
-    from core import graph
-
-    # shortcut: getattr while the contract (#373) may merge after this; call it plainly once it has
-    f = getattr(graph, fn, None)
-    return f(*args) if f else None
-
-
 def season_text(sport: str, name: str, before: str) -> str:
     """A player's season before the match, from the graph; "" when it has none."""
-    s = _graph("player_season", sport, name, before)
+    from core import graph
+
+    s = graph.player_season(sport, name, before)
     if not s:
         return ""
     totals = ", ".join(f"{v} {k}" for k, v in (s.get("totals") or {}).items())
@@ -69,12 +62,14 @@ def _results(rows: list[dict]) -> str:
 
 def form_texts(sport: str, home: str, away: str, before: str) -> list[str]:
     """Each team's last results and their meetings before the match, from the graph."""
+    from core import graph
+
     out = [
         f"{team}, the last {len(rows)} before this match: {_results(rows)}."
         for team in (home, away)
-        if (rows := _graph("team_form", sport, team, before))
+        if (rows := graph.team_form(sport, team, before))
     ]
-    if rows := _graph("head_to_head", sport, home, away, before):
+    if rows := graph.head_to_head(sport, home, away, before):
         out.append(f"{home} against {away} before this match: {_results(rows)}.")
     return out
 

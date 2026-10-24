@@ -42,7 +42,7 @@ def _profile(monkeypatch, season):
         calls.append((sport, name, before))
         return season
 
-    monkeypatch.setattr(graph, "player_season", player_season, raising=False)
+    monkeypatch.setattr(graph, "player_season", player_season)
     header, past = match_header(KOBE), load_moments(KOBE)[:5]
     return run_tool("get_player_profile", {"name": "kobe"}, header, past), calls
 
@@ -58,7 +58,7 @@ def test_the_profile_tool_adds_the_players_season_from_the_graph(monkeypatch):
 
 
 def test_the_profile_tool_is_unchanged_when_the_graph_has_nothing(monkeypatch):
-    monkeypatch.delattr(graph, "player_season", raising=False)
+    monkeypatch.setattr(graph, "_db", None)  # the graph off: the real function finds nothing
     without = run_tool(
         "get_player_profile", {"name": "kobe"}, match_header(KOBE), load_moments(KOBE)[:5]
     )
@@ -67,8 +67,8 @@ def test_the_profile_tool_is_unchanged_when_the_graph_has_nothing(monkeypatch):
 
 def test_the_analyst_gets_each_teams_form_and_their_meetings(monkeypatch):
     seen = []
-    monkeypatch.setattr(graph, "team_form", lambda *a, n=5: seen.append(a) or FORM, raising=False)
-    monkeypatch.setattr(graph, "head_to_head", lambda *a, n=5: seen.append(a) or H2H, raising=False)
+    monkeypatch.setattr(graph, "team_form", lambda *a, n=5: seen.append(a) or FORM)
+    monkeypatch.setattr(graph, "head_to_head", lambda *a, n=5: seen.append(a) or H2H)
     got = insight._form({}, load_moments(KOBE)[:5])
     assert seen == [
         ("basketball", "Los Angeles Lakers", "2006-01-22"),
@@ -85,8 +85,8 @@ def test_the_analyst_gets_each_teams_form_and_their_meetings(monkeypatch):
 
 
 def test_no_graph_form_means_no_form_fact(monkeypatch):
-    monkeypatch.setattr(graph, "team_form", lambda *a, n=5: [], raising=False)
-    monkeypatch.setattr(graph, "head_to_head", lambda *a, n=5: None, raising=False)
+    monkeypatch.setattr(graph, "team_form", lambda *a, n=5: [])
+    monkeypatch.setattr(graph, "head_to_head", lambda *a, n=5: None)
     assert insight._form({}, load_moments(KOBE)[:5]) == []
 
 
