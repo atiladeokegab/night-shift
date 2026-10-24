@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import './App.css'
-import { listMatches, listVoices, postFix } from './api'
+import { listMatches, listVoices, postFix, videoStartAt } from './api'
 import { About } from './components/About'
 import type { FixPhase } from './components/FixSheet'
 import { FixSheet } from './components/FixSheet'
@@ -15,6 +15,7 @@ import { VoiceSheet } from './components/VoiceSheet'
 import { Wall } from './components/Wall'
 import { chipName, defaultVoice } from './teams'
 import { SPORTS, type Line, type Match, type Moment, type Sport, type Voice } from './types'
+import { QuietSpell, WHERE } from './quiet'
 import { airAnswer, bigSoon, isBig, type Caption } from './turns'
 import { onScreen, useReplay } from './useReplay'
 import { useSpeech } from './useSpeech'
@@ -38,6 +39,7 @@ export default function App() {
   const [asking, setAsking] = useState<Caption | null>(null)
   const asked = useRef(0) // only the newest question may change the caption
   const [paused, setPaused] = useState(false)
+  const [describeQuiet, setDescribeQuiet] = useState(true) // #186: on by default
   const speech = useSpeech()
 
   const chosen = useCallback(
@@ -173,6 +175,19 @@ export default function App() {
     return () => window.removeEventListener('popstate', onPop)
   })
 
+  // #188: ?match=<id>&at=<idx> opens that match at that moment, as its jump pill does (a film take).
+  const opened = useRef(false)
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search)
+    const m = matches?.find((x) => x.match_id === q.get('match'))
+    const at = Number(q.get('at') ?? NaN)
+    if (!m || !Number.isInteger(at) || opened.current) return
+    opened.current = true
+    videoStartAt(m.match_id, at).then((s) =>
+      start({ ...m, video_start: s ?? m.video_start }, m.youtube_id ? 1 : 4, false, false, at),
+    )
+  })
+
   // #171: the Proof card links to #review, so it opens the Review screen without a route through Live.
   // The hash is replaced by Review's own entry, so the link works again next time.
   useEffect(() => {
@@ -207,7 +222,7 @@ export default function App() {
 
   // #117: an off-air answer is shown, never spoken. #131: the stage shows the question, then the answer
   // while it is spoken. #139: the analyst answers at a gap, never with a big moment due in the next 3 s.
-  const askCommentator = async (question: string, momentIdx: number) => {
+  const askCommentator = async (question: string, momentIdx: number, viewer = true) => {
     const sent = session.current
     const mine = ++asked.current
     await airAnswer(
@@ -217,6 +232,8 @@ export default function App() {
         answer.off_air ? null : speech.sayAnswer(answer, voiceNow.current, started, () => bigSoon(ahead.current.queuedMoments, ahead.current.now)),
       setAsking,
       () => session.current === sent && asked.current === mine,
+      undefined,
+      viewer ? undefined : '',
     )
   }
 
@@ -227,6 +244,23 @@ export default function App() {
   const fixed = latest && replay.state.fixes[latest.line_id]
   const caption: Caption | null =
     asking ?? (latest ? { kind: 'line', text: fixed ? fixed.corrected_text : latest.text, speaker: latest.speaker ?? 'lead' } : null)
+
+  // #186: 15 s of play with no new line, and the page asks "Where are we?" itself, once per quiet spell.
+  const quiet = useRef(new QuietSpell())
+  useEffect(() => quiet.current.said(Date.now()), [latest?.line_id, current?.key])
+  const onAir = shown.moments.at(-1)
+  const playing = screen === 'live' && replay.state.phase === 'live' && video !== 'loading' && !paused && !asking &&
+    !(replay.state.ended && replay.state.queuedMoments.length === 0)
+  const tick = useRef(() => {})
+  useEffect(() => {
+    tick.current = () => {
+      if (quiet.current.due(Date.now(), playing && describeQuiet && !!onAir) && onAir) void askCommentator(WHERE, onAir.idx, false)
+    }
+  })
+  useEffect(() => {
+    const id = window.setInterval(() => tick.current(), 1000)
+    return () => window.clearInterval(id)
+  }, [])
   // Pausing stops the voice at once; the paused player's clock holds the commentary (A-6.4@2).
   const stage = {
     caption,
@@ -244,6 +278,8 @@ export default function App() {
   const sports = SPORTS.filter((s) => matches?.some((m) => m.sport === s))
   const voiceUsable = speech.available || voices.some((v) => !v.browser)
   const voiceStatus: VoiceStatus = !voiceUsable ? 'unavailable' : speech.on ? 'on' : 'off'
+  // Who reads the analyst's lines: the server's voice for the sport, or the browser's own speech.
+  const analyst = voice?.browser ? chipName(voice) : chipName(voices.find((v) => sport && v.analyst_for?.includes(sport)) ?? null)
 
   return (
     <>
@@ -255,7 +291,7 @@ export default function App() {
           replayKey={current.key}
           switching={current.switching}
           sports={sports}
-          voice={{ status: voiceStatus, chip: chipName(voice), speaking: speech.speaking }}
+          voice={{ status: voiceStatus, chip: chipName(voice), speaking: speech.speaking, analyst }}
           video={video}
           onVideo={onVideo}
           onClock={replay.setClock}
@@ -315,6 +351,8 @@ export default function App() {
           available={voiceUsable}
           on={speech.on}
           onToggle={speech.setOn}
+          describeQuiet={describeQuiet}
+          onDescribeQuiet={setDescribeQuiet}
           onPick={(s, v) => {
             setPicked((p) => ({ ...p, [s]: v.id }))
             say(`${chipName(v)} from the next line.`)

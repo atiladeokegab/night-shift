@@ -1,8 +1,9 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { withAnswers } from '../ask'
 import { names, shortName } from '../follow'
 import { MicButton } from './MicButton'
 import { clockText } from '../moment'
+import { WHERE } from '../quiet'
 import type { Answer, Fix, Line, Moment } from '../types'
 
 interface Props {
@@ -101,7 +102,7 @@ export function LineLog({ lines, late, fixes, moments, onFix, answers, onAsk, sh
 }
 
 // "Ask the commentator" (#117): text in, or by voice (#139), one question at a time; the answer lands in
-// the log and is spoken.
+// the log and is spoken. "Where are we?" (#186) is one press, or the W key while no field has focus.
 function AskBox({ onAsk }: { onAsk: Props['onAsk'] }) {
   const [question, setQuestion] = useState('')
   const [asking, setAsking] = useState(false)
@@ -121,18 +122,38 @@ function AskBox({ onAsk }: { onAsk: Props['onAsk'] }) {
       setAsking(false)
     }
   }
+  const latest = useRef(ask) // the window's key handler asks with the newest state
+  useEffect(() => {
+    latest.current = ask
+  })
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() !== 'w' || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return
+      if ((e.target as Element | null)?.closest?.('input, textarea, select, [contenteditable]')) return
+      e.preventDefault()
+      void latest.current(WHERE)
+    }
+    window.addEventListener('keydown', down)
+    return () => window.removeEventListener('keydown', down)
+  }, [])
   return (
-    <form className="ask" onSubmit={send}>
-      <label className="sr-only" htmlFor="ask-q">Ask the commentator</label>
-      {/* A one-row box that grows, so a long question reads from its start (#153); Enter sends, as the input did. */}
-      <textarea id="ask-q" rows={1} value={question} maxLength={200} readOnly={asking} disabled={!onAsk} autoComplete="off" enterKeyHint="send"
-        placeholder={!onAsk ? 'Ask once play starts' : hint || 'Ask the commentator…'} onChange={(e) => setQuestion(e.target.value.replace(/\n/g, ' '))}
-        onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && (e.preventDefault(), e.currentTarget.form?.requestSubmit())} />
-      <MicButton disabled={!onAsk || asking} onHeard={(t) => (setHint(''), setQuestion(t))} onSend={(t) => (setQuestion(t), void ask(t))}
-        onHint={(h) => (setQuestion(''), setHint(h))} />
-      <button className="btn sm primary" disabled={!onAsk || asking || !question.trim()}>
-        {asking ? <><span className="spin sm" />Asking…</> : 'Ask'}
+    <>
+      <button type="button" className="btn where" aria-keyshortcuts="W" title="Where are we? (W)" disabled={!onAsk || asking}
+        onClick={() => void ask(WHERE)}>
+        {WHERE}
       </button>
-    </form>
+      <form className="ask" onSubmit={send}>
+        <label className="sr-only" htmlFor="ask-q">Ask the commentator</label>
+        {/* A one-row box that grows, so a long question reads from its start (#153); Enter sends, as the input did. */}
+        <textarea id="ask-q" rows={1} value={question} maxLength={200} readOnly={asking} disabled={!onAsk} autoComplete="off" enterKeyHint="send"
+          placeholder={!onAsk ? 'Ask once play starts' : hint || 'Ask the commentator…'} onChange={(e) => setQuestion(e.target.value.replace(/\n/g, ' '))}
+          onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && (e.preventDefault(), e.currentTarget.form?.requestSubmit())} />
+        <MicButton disabled={!onAsk || asking} onHeard={(t) => (setHint(''), setQuestion(t))} onSend={(t) => (setQuestion(t), void ask(t))}
+          onHint={(h) => (setQuestion(''), setHint(h))} />
+        <button className="btn sm primary" disabled={!onAsk || asking || !question.trim()}>
+          {asking ? <><span className="spin sm" />Asking…</> : 'Ask'}
+        </button>
+      </form>
+    </>
   )
 }

@@ -2,6 +2,7 @@
 far, stores it, publishes it on the stream and speaks it; off air it gives the calm copy."""
 
 import asyncio
+import re
 import threading
 from functools import partial
 
@@ -147,7 +148,8 @@ def test_off_air_is_the_calm_copy_and_stores_nothing(tmp_path):
     said = resp.json()
     assert resp.status_code == 200
     assert said["off_air"] is True and said["text"] == OFF_AIR and said["moment_idx"] == 3
-    assert "402" not in resp.text and "mubit" not in resp.text
+    # a word boundary: a random hex id can contain "402"
+    assert not re.search(r"\b402\b", resp.text) and "mubit" not in resp.text
     assert store.all("answers") == [] and ("answer", said) in events
 
 

@@ -128,10 +128,21 @@ test('an off-air answer is a calm state with the Analyst chip, never a headline 
   assert.ok(!html.includes('<p class="cap-text">The commentator'), 'no headline')
 })
 
-test('ON AIR names the speaker on air: the lead by the chosen voice, the analyst by name (#153)', () => {
+test('ON AIR names the speaker on air: the lead by the chosen voice, the analyst by the voice reading it (#153)', () => {
   assert.match(render(), /class="who">Lead · Sam</)
   const analyst = { ...replay, lines: [{ ...line(3, 490.5, EARLY), speaker: 'analyst' as const }] }
-  assert.match(render({ replay: analyst }), /class="who">Analyst · George</)
+  const voice = { status: 'on', chip: 'Sam', speaking: true }
+  assert.match(render({ replay: analyst, voice: { ...voice, analyst: 'George' } }), /class="who">Analyst · George</)
+  assert.match(render({ replay: analyst, voice: { ...voice, chip: 'Browser voice', analyst: 'Browser voice' } }),
+    /class="who">Analyst · Browser voice</, 'browser speech reads the analyst too')
+  assert.match(render({ replay: analyst }), /class="who">Analyst</, 'no name rather than a wrong one')
+})
+
+test('a final settled on penalties says the shoot-out at full time', () => {
+  const final: Match = { match_id: '3869685', sport: 'football', title: "Argentina v France, FIFA World Cup Final" }
+  const last = { ...moment(68, 1600, '125:58'), sport: 'football' as const, type: 'Full time', score: { home: 3, away: 3 }, detail: { shootout: { home: 4, away: 2 } } }
+  const html = render({ match: final, replay: { ...replay, moments: [last], lines: [], ended: true, now: 1670 }, onNext: noop })
+  assert.match(html, /<p class="cap-text">Full time · ARG 3–3 FRA · pens 4–2<\/p>/)
 })
 
 test('at full time the picture offers Watch again and Next match; not before the picture gets there (#153)', () => {
