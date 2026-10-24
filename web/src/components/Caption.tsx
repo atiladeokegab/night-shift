@@ -10,14 +10,15 @@ interface Props {
   pending?: string // a viewer's question waiting for its answer, one line in the header (#153)
   title?: string // the match, at the header's end (a phone drops it while a question waits)
   children?: ReactNode // a state in place of the caption: waiting, off air
+  announce?: boolean // #170: read out by a screen reader only while the voice is silent, never over it
 }
 
 // The caption card docked under the video (#132): the current caption with a speaker chip and the moment
 // tag, then the line; an answer shows under its question. Long text wraps inside the card, never clipped.
-export function Caption({ caption, tag, fixed, asked, offAir, pending, title, children }: Props) {
+export function Caption({ caption, tag, fixed, asked, offAir, pending, title, children, announce }: Props) {
   const speaker = caption?.kind === 'question' ? 'Viewer' : caption?.speaker === 'analyst' ? 'Analyst' : 'Lead'
   return (
-    <section className={`caption glass${fixed ? ' fixed' : ''}`} aria-label="Caption" aria-live="polite">
+    <section className={`caption glass${fixed ? ' fixed' : ''}`} aria-label="Caption" aria-live={announce ? 'polite' : 'off'}>
       {children ?? (caption && (
         <div key={caption.kind + caption.text}>
           <div className="cap-h">

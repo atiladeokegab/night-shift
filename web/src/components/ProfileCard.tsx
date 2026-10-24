@@ -44,7 +44,7 @@ export function ProfileCard({ name, replayKey, momentIdx, load, onShots, onUnfol
         <>
           <dl className="stat-lines">
             {p.before && <><dt className="label">Before tonight</dt><dd className="num">{recordLine(p)}</dd></>}
-            <dt className="label">Tonight</dt><dd className="num" aria-live="polite">{tonightLine(p)}</dd>
+            <dt className="label">Tonight</dt><dd className="num">{tonightLine(p)}</dd>
           </dl>
           {note && <p className="hint">{note}</p>}
           {p.sport === 'cricket' && <Phases p={p} />}
