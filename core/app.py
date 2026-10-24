@@ -22,6 +22,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from core import graph, insight, ledger, predict, review
+from core.converse import converse_router
 from core.guard import OFF_TODAY, Guard, SayOnly, cached_commentator, client_ip
 from core.look import Looks, Unshared
 from core.predict import load_pack, shot_points
@@ -657,6 +658,11 @@ def create_app(
 
     app.include_router(teams_router)
     app.include_router(voice_router(store, speaker), dependencies=[Depends(voice_on)])
+    app.include_router(
+        converse_router(
+            need_deps=need_deps, viewed=viewed, asked_so_far=asked_so_far, guard=guard, store=store
+        )
+    )
     # the built page (web/, #18) at /, mounted last so every API route above wins
     if WEB.is_dir():
         app.mount("/", StaticFiles(directory=WEB, html=True), name="web")

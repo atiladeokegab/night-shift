@@ -13,6 +13,7 @@ import { Caption } from './Caption'
 import { Controls } from './Controls'
 import { FollowPicker } from './FollowPicker'
 import { LineLog } from './LineLog'
+import { Converse } from './Converse'
 import type { Mic } from './MicButton'
 import { Nav, type Screen } from './Nav'
 import { ProfileCard } from './ProfileCard'
@@ -60,6 +61,7 @@ interface Props {
   muted?: boolean
   onVolume?: (volume: number, muted: boolean) => void
   closed?: boolean // "Close your eyes" (#277): the picture covered; local to the page unless App holds it
+  replayId?: () => string | null // Talk (#380): the replay the conversation is about; unset, no Talk button
   onLook?: (image: string, t: number) => Promise<boolean> // Let them watch (#291): a frame of the shared tab
 }
 
@@ -76,6 +78,7 @@ export function Live(props: Props) {
   const blocked = gated && !embeds(match)
   const voiceLabel = voice.chip // the dock chip's name, never a lone nationality
   // The shot map follows the moment on screen while it is open (#120).
+  const [talkHint, setTalkHint] = useState('') // why Talk could not start (#380)
   const [picked, setPicked] = useState<Picked>(null)
   const mapOf = pickedFor(picked, replayKey)
   const mapped = MAPPED.includes(match.sport)
@@ -307,6 +310,14 @@ export function Live(props: Props) {
             )}
           </div>
           <div className="pane lines-pane" role="tabpanel" id="pane-lines" aria-labelledby="tab-lines" data-on={tab === 'lines'}>
+            {props.replayId && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <Converse sport={match.sport} matchId={match.match_id} momentIdx={moment?.idx ?? null} paused={!!props.paused}
+                  getReplayId={props.replayId} onPause={() => props.onPause?.()} onPlay={() => props.onPlay?.()}
+                  onHint={setTalkHint} />
+                {talkHint && <p className="hint" role="status">{talkHint}</p>}
+              </div>
+            )}
             <LineLog lines={shown.lines} late={replay.late} fixes={replay.fixes} checks={replay.checks} examples={replay.examples} moments={shown.moments} onFix={onFix}
               answers={replay.answers} interrupted={props.interrupted} onHear={props.onHear} onAsk={moment ? (q) => onAsk(q, moment.idx) : null} shooter={null} onShots={openMap} followed={followed} roster={roster} onUnfollow={() => setFollow(null)} voiced={voiced} mic={props.mic} />
           </div>
