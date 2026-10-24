@@ -567,7 +567,8 @@ def talks_to_itself(text: str) -> bool:
 LEADS = (  # a claim that a team is in front now; "led" and questions are no claim
     r"\s+(?:(?:are|is|now|still|back|again)\s+){0,2}"
     r"(?:(?:take|takes|retake|retakes|regain|regains|reclaim|reclaims)\s+(?:the|a)\s+lead"
-    r"|leads?|go ahead|goes ahead|ahead|in front)\b"
+    r"|leads?(?!\s+(?:has|had|is|was|became|of|over|to)\b)|go ahead|goes ahead|ahead"
+    r"|in front(?!\s+of\b))\b"
 )
 
 
@@ -614,11 +615,17 @@ def _wrong_margin(text: str, m: dict, header: dict) -> list[str]:
     _, names = _sides(header)
     wrong = []
     for hit in re.finditer(rf"\b(?:{names}){MARGIN}", text, re.I):
-        n = [1.0] if hit[1].lower() == "one" else said(hit[1])
-        after = said(text[hit.end() : hit.end() + 24])  # a score follows: "trail 69, 53"
-        if len(n) == 1 and isinstance(n[0], float) and not (after and isinstance(after[0], float)):
-            if n[0] not in margins:
-                wrong.append(f"{n[0]:g} is not the margin ({min(margins):g})")
+        # the whole spoken number, then what follows it: "lead one hundred and two to ninety-three"
+        # is a score, as is "trail 69, 53"
+        if len(said(hit[1])) > 1:  # "lead two-one" is a score
+            continue
+        n, *after = said(text[hit.start(1) : hit.start(1) + 48]) or [None]
+        n = 1.0 if n == "one" else n
+        if isinstance(n, float) and not (
+            after and (isinstance(after[0], float) or after[0] == "to")
+        ):
+            if n not in margins:
+                wrong.append(f"{n:g} is not the margin ({min(margins):g})")
     return wrong
 
 
@@ -629,6 +636,8 @@ def wrong_numbers(
     play gives (`past`: the moments before it); [] when nothing."""
     s, d = m.get("score") or {}, m.get("detail") or {}
     given = _given(m, header) | _streaks(m, past)
+    if m.get("type") == "Stat" and past:  # said just after that moment: "two free throws" on 2 of 2
+        given |= _given(past[-1], header)
     words = said(text)
     heard = [  # "Number 23" names a player, it is no stat
         n

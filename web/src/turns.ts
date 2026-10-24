@@ -106,7 +106,7 @@ export const READ_MS = 6000 // an answer that isn't spoken (voice off, off air) 
 // (`speak` calls `started` as it goes on air and resolves at its end; null when it isn't spoken, and then
 // it shows at once), then the lines again. Resolves once the answer is in, so the ask box is free while
 // it waits and is spoken. `current` is false once the replay or a newer question replaced this one: it
-// then changes nothing.
+// then changes nothing. `asker` is '' for the page's own "Where are we?" in a quiet spell (#186).
 export async function airAnswer<A extends { text: string }>(
   question: string,
   ask: () => Promise<A | null>,
@@ -114,8 +114,9 @@ export async function airAnswer<A extends { text: string }>(
   show: (caption: Caption | null) => void,
   current: () => boolean,
   readMs = READ_MS,
+  asker = 'A viewer asks: ',
 ): Promise<void> {
-  show({ kind: 'question', text: `A viewer asks: ${question} · thinking…` })
+  show({ kind: 'question', text: `${asker}${question} · thinking…` })
   const answer = await ask()
   if (!current()) return
   if (!answer) return show(null)
