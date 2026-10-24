@@ -27,9 +27,13 @@ def _cost(line: dict) -> float | None:
     return (line.get("tokens_in", 0) * price[0] + line.get("tokens_out", 0) * price[1]) / 1e6
 
 
-def _adapter(store) -> dict:
-    # eval/record_adapter.py appends {status, kept?, agree?, total?} from Mubit's console
-    latest = (store.all("adapter") or [{}])[-1]
+def _by_task(store) -> dict[str, dict]:
+    """Each Mubit task's latest adapter record. eval/record_adapter.py appends {task, status, ...}
+    from Mubit's console; a record from before #209's tasks carries no task: it was commentary's."""
+    return {r.get("task", "commentary"): r for r in store.all("adapter")}
+
+
+def _adapter(latest: dict) -> dict:
     return {
         "status": latest.get("status", "not_trained"),
         # a stored line doesn't prove Mubit kept it: unknown until a console count is recorded
@@ -39,6 +43,21 @@ def _adapter(store) -> dict:
         "total": latest.get("total"),
         # the app can't call the adapter, so its cost per line isn't measurable
         "cost_measurable": False,
+    }
+
+
+def _adapters(by_task: dict[str, dict]) -> dict:
+    # only what a record says: a field the console reading left out stays None, never inferred
+    return {
+        task: {
+            "status": r.get("status", "not_trained"),
+            "version": r.get("version"),
+            "score": r.get("score"),
+            "passed": r.get("passed"),
+            "kept": r.get("kept"),
+            "recorded_at": r.get("created_at"),
+        }
+        for task, r in by_task.items()
     }
 
 
@@ -97,7 +116,9 @@ def stats(store) -> dict:
     # a stat line between moments is the analyst's; a line with no speaker predates #130: the lead
     analyst = [ln for ln in lines if ln.get("speaker") == "analyst"]
     lead = [ln for ln in lines if ln.get("speaker") != "analyst"]
-    since = (store.all("adapter") or [{}])[-1].get("created_at", "")
+    adapters = _by_task(store)
+    commentary = adapters.get("commentary", {})
+    since = commentary.get("created_at", "")
     # only a fix Mubit recorded for training counts; one stored before #161 carries no flag
     recorded = [f for f in fixes if f.get("recorded") is True]
     first = [ln["first_word_ms"] for ln in lines if ln.get("first_word_ms") is not None]
@@ -120,10 +141,11 @@ def stats(store) -> dict:
         "tokens_in": sum(ln.get("tokens_in", 0) for ln in lines),
         "tokens_out": sum(ln.get("tokens_out", 0) for ln in lines),
         "cost_per_line_usd": sum(costs) / len(costs) if costs else None,
-        "adapter": _adapter(store),
+        "adapter": _adapter(commentary),  # the commentary task's, as before per-task records
+        "adapters": _adapters(adapters),
         "by_speaker": {"lead": _speaker(lead), "analyst": _speaker(analyst)},
         "fixes_recorded": len(recorded),
-        # fixes recorded since the latest adapter record: the corrections toward the next one
+        # recorded since commentary's latest adapter record: the corrections toward the next one
         "fixes_toward_next": sum(f.get("created_at", "") > since for f in recorded),
         "fixes_auto": len(store.all("auto_fixes")),  # the number check's own (#162), not a person's
         "voice_chars": sum(v.get("chars", 0) for v in voice),

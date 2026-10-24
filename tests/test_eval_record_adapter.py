@@ -37,3 +37,63 @@ def test_bad_results_are_refused_and_nothing_is_written(tmp_path, args):
     with pytest.raises(SystemExit):
         main(args, {"STORE_DIR": str(tmp_path)})
     assert Store(tmp_path).all("adapter") == []
+
+
+def test_each_task_keeps_its_own_latest_record_and_adapter_stays_commentary(tmp_path):
+    env = {"STORE_DIR": str(tmp_path)}
+    store = Store(tmp_path)
+    store.append("adapter", {"status": "training", "kept": 25})  # before tasks: commentary's
+    main(["--task", "line_check", "--status", "training", "--kept", "40"], env)
+    main(
+        [
+            "--task",
+            "line_check",
+            "--status",
+            "ready",
+            "--version",
+            "1",
+            "--score",
+            "82",
+            "--passed",
+        ],
+        env,
+    )
+    main(["--task", "where_are_we", "--status", "ready", "--version", "2", "--failed"], env)
+    s = stats(store)
+    line_check = s["adapters"]["line_check"]
+    assert line_check["recorded_at"] == store.all("adapter")[-2]["created_at"]
+    assert {k: v for k, v in line_check.items() if k != "recorded_at"} == {
+        "status": "ready",
+        "version": 1,
+        "score": 82.0,
+        "passed": True,
+        "kept": None,  # the latest record didn't say: not carried over from the one before
+    }
+    where = s["adapters"]["where_are_we"]
+    assert (where["version"], where["score"], where["passed"]) == (2, None, False)
+    assert s["adapters"]["commentary"]["kept"] == 25
+    assert (s["adapter"]["status"], s["adapter"]["kept"]) == ("training", 25)
+
+
+def test_a_task_with_no_record_is_absent_not_guessed(tmp_path):
+    main(["--task", "line_check", "--status", "training"], {"STORE_DIR": str(tmp_path)})
+    s = stats(Store(tmp_path))
+    assert list(s["adapters"]) == ["line_check"]
+    assert s["adapter"]["status"] == "not_trained"  # no commentary record yet
+    assert s["adapters"]["line_check"]["passed"] is None
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ["--task", "summary", "--status", "ready"],
+        ["--status", "ready", "--version", "0"],
+        ["--status", "ready", "--score", "101"],
+        ["--status", "ready", "--score", "-1"],
+        ["--status", "ready", "--passed", "--failed"],
+    ],
+)
+def test_bad_task_results_are_refused_and_nothing_is_written(tmp_path, args):
+    with pytest.raises(SystemExit):
+        main(args, {"STORE_DIR": str(tmp_path)})
+    assert Store(tmp_path).all("adapter") == []
