@@ -424,7 +424,12 @@ async function start(id) {
   const live = (fn) => (e) => (token === run ? fn(e) : src.close());
   src.addEventListener("moment", live((e) => { const mo = JSON.parse(e.data); moments[mo.idx] = mo; }));
   src.addEventListener("line", live((e) => arrive(JSON.parse(e.data))));
-  src.addEventListener("error", live((e) => { if (e.data) subtitle(JSON.parse(e.data).detail, "err", "Commentator error"); }));
+  // The calm off-air state on screen whatever the server sent; the payload goes to the console only.
+  src.addEventListener("error", live((e) => {
+    if (!e.data) return;
+    console.error("commentator error", e.data);
+    subtitle("Commentator is off air for a moment", "waiting", "Off air");
+  }));
   src.addEventListener("end", () => src.close());
 }
 
