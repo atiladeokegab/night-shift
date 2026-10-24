@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { Caption as CaptionData } from '../player'
+import type { Caption as CaptionData } from '../turns'
 
 interface Props {
   caption: CaptionData | null
@@ -10,7 +10,7 @@ interface Props {
 }
 
 // The caption card docked under the video (#132): the current caption with a speaker chip and the moment
-// tag; for Ask, "A viewer asks: ..." and then the answer. Long text wraps inside the card, never clipped.
+// tag; for Ask, App's "A viewer asks: ..." and then the answer under its question. Long text wraps inside the card, never clipped.
 export function Caption({ caption, tag, fixed, asked, children }: Props) {
   const speaker = caption?.kind === 'question' ? 'Viewer' : caption?.speaker === 'analyst' ? 'Analyst' : 'Lead'
   return (
@@ -22,7 +22,7 @@ export function Caption({ caption, tag, fixed, asked, children }: Props) {
             {tag && <span className={`tag${fixed ? ' fixed' : ''}`}>{fixed ? 'Fixed · ' : ''}{tag}</span>}
           </div>
           {caption.kind === 'question' ? (
-            <p className="cap-asks">A viewer asks: {caption.text}</p>
+            <p className="cap-asks">{caption.text}</p>
           ) : (
             <>
               {asked && <p className="cap-asks">A viewer asks: {asked}</p>}

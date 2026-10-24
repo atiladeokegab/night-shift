@@ -1,3 +1,4 @@
+import type { Caption } from './turns'
 import type { Match } from './types'
 import type { Clock, ReplayState } from './useReplay'
 
@@ -25,15 +26,9 @@ export function setPlaying(play: boolean, transport: Transport | null, on: { onP
   }
 }
 
-// The caption card's text (#132, from #131's App): a question or an answer as given; a line only while it is
+// The caption card's text (#132; App's caption, #131): a question or an answer as given; a line only while it is
 // one the picture has reached (`reached`: those lines' texts, newest first), else the newest of them, so a
 // backward seek never leaves a later line on screen (A-6.4).
-export interface Caption {
-  kind: 'line' | 'question' | 'answer'
-  text: string
-  speaker?: 'lead' | 'analyst'
-}
-
 export function shownCaption(caption: Caption | null | undefined, reached: string[]): Caption | null {
   if (caption && (caption.kind !== 'line' || reached.includes(caption.text))) return caption
   return reached.length ? { kind: 'line', text: reached[0] } : null

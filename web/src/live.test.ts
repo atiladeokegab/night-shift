@@ -99,7 +99,7 @@ test('a seek backwards never shows a line from later than the new time (A-6.4)',
 test('the sidebar, the caption and the sport bar are never inside the video card; only the score bug and ON AIR are', () => {
   const html = render()
   const card = videoCard(html)
-  for (const outside of ['class="side"', 'class="panel lines', 'aria-label="Caption"', 'class="pickbar', 'aria-label="Sport"']) {
+  for (const outside of ['class="side"', 'class="panel lines', 'aria-label="Proof"', 'aria-label="Shot map"', 'aria-label="Caption"', 'class="pickbar', 'aria-label="Sport"']) {
     assert.ok(!card.includes(outside), `${outside} sits outside the video card`)
     assert.ok(html.includes(outside), `${outside} is on the page`)
   }
@@ -107,7 +107,10 @@ test('the sidebar, the caption and the sport bar are never inside the video card
   assert.match(card, /class="controls"[\s\S]*aria-label="Pause"[\s\S]*aria-label="Seek"[\s\S]*aria-label="Mute commentary"[\s\S]*aria-label="Commentary volume"[\s\S]*aria-label="Fullscreen"/)
 })
 
-test('an answer shows under its question in the caption card, with the moment it was asked at', () => {
+test('a question shows once as App words it, and its answer shows under it with the moment it was asked at', () => {
+  const asking = render({ caption: { kind: 'question', text: 'A viewer asks: Who scores next?' } })
+  assert.equal(asking.split('A viewer asks:').length, 2)
+  assert.match(asking, /<span class="chip viewer">Viewer<\/span>/)
   const answered = { ...replay, answers: [{ line_id: 'a1', moment_idx: 3, question: 'Who scores next?', text: 'Kobe, on this form.' }] }
   const html = render({ replay: answered, caption: { kind: 'answer', text: 'Kobe, on this form.', speaker: 'analyst' } })
   assert.match(html, /<span class="chip analyst">Analyst<\/span><span class="tag">06:12 · [^<]+<\/span><\/div><p class="cap-asks">A viewer asks: Who scores next\?<\/p><p class="cap-text">Kobe, on this form\.<\/p>/)

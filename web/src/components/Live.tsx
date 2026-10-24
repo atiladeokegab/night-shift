@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { momentTag } from '../moment'
-import { embeds, posterUrl, setPlaying, showNoVideoCaption, shownCaption, watchUrl, type Caption as CaptionData, type Transport } from '../player'
+import { embeds, posterUrl, setPlaying, showNoVideoCaption, shownCaption, watchUrl, type Transport } from '../player'
+import type { Caption as CaptionData } from '../turns'
 import { SPORT_NAMES, type Line, type Match, type Sport } from '../types'
 import { onScreen, type Clock, type ReplayState } from '../useReplay'
+import { latestShooter, MAPPED, pickedFor, type Picked, type Shots } from '../shots'
 import { Caption } from './Caption'
 import { Controls } from './Controls'
 import { LineLog } from './LineLog'
 import { Nav, type Screen } from './Nav'
 import { ProofPanel } from './ProofPanel'
 import { ScoreBar } from './ScoreBar'
+import { ShotMap } from './ShotMap'
 import { VideoStage, type VideoState } from './VideoStage'
 
 export type VoiceStatus = 'on' | 'off' | 'unavailable'
@@ -28,6 +31,7 @@ interface Props {
   onVoiceSheet: () => void
   onFix: (line: Line) => void
   onAsk: (question: string, momentIdx: number) => Promise<void>
+  onShots: (name: string, momentIdx: number) => Promise<Shots | null>
   onRetry: () => void
   onReconnect: () => void
   onGo: (screen: Screen) => void
@@ -46,7 +50,7 @@ interface Props {
 // docked under it, the sport and match bar above it, and Lines and Proof in a scrollable sidebar (below 900px
 // one column, with a tab bar for them). Only the score bug and the ON AIR pill sit on the picture.
 export function Live(props: Props) {
-  const { match, replay, replayKey, switching, sports, voice, video, onVideo, onClock, onSport, onNext, onVoiceSheet, onFix, onAsk, onRetry, onReconnect, onGo } = props
+  const { match, replay, replayKey, switching, sports, voice, video, onVideo, onClock, onSport, onNext, onVoiceSheet, onFix, onAsk, onShots, onRetry, onReconnect, onGo } = props
   const shown = onScreen(replay)
   const moment = shown.moments.at(-1) ?? null
   const busy = replay.phase !== 'live'
@@ -54,6 +58,12 @@ export function Live(props: Props) {
   // The owner blocks embedding: a still poster and a YouTube link, never the player's error screen.
   const blocked = gated && !embeds(match)
   const voiceLabel = voice.chip // the dock chip's name, never a lone nationality
+  // The shot map follows the moment on screen while it is open (#120).
+  const [picked, setPicked] = useState<Picked>(null)
+  const mapOf = pickedFor(picked, replayKey)
+  const mapped = MAPPED.includes(match.sport)
+  const shooter = mapped ? latestShooter(shown.moments) : null
+  const openMap = (name: string) => setPicked({ name, replay: replayKey })
 
   // Play, pause and seek reach the player once it is ready; a new player starts playing.
   const card = useRef<HTMLElement>(null)
@@ -79,7 +89,8 @@ export function Live(props: Props) {
     setLocalVolume({ volume: v, muted: m })
     props.onVolume?.(v, m)
   }
-  const [tab, setTab] = useState<'lines' | 'proof'>('lines')
+  const [chosenTab, setTab] = useState<'lines' | 'proof' | 'shots'>('lines')
+  const tab = chosenTab === 'shots' && !mapped ? 'lines' : chosenTab // a sport with no shot map shows Lines
 
   let overlay = null
   if (replay.phase === 'starting') {
@@ -104,11 +115,12 @@ export function Live(props: Props) {
   }
 
   const dim = replay.stream !== 'ok' || busy || video === 'loading'
-  // The caption: #131's question or answer, or a line the picture has reached (never one from later, A-6.4).
+  // The caption: App's question or answer, or a line the picture has reached (never one from later, A-6.4),
+  // in its fixed wording once a producer fixed it.
   const live = shown.lines.filter((l) => !replay.late.includes(l.line_id))
-  const caption = shownCaption(props.caption, live.map((l) => l.text))
-  const line = caption?.kind === 'line' ? live.find((l) => l.text === caption.text) : undefined
-  const fix = line ? replay.fixes[line.line_id] : undefined
+  const said = (l: Line) => replay.fixes[l.line_id]?.corrected_text ?? l.text
+  const caption = shownCaption(props.caption, live.map(said))
+  const line = caption?.kind === 'line' ? live.find((l) => said(l) === caption.text) : undefined
   const answer = caption?.kind === 'answer' ? replay.answers.find((a) => a.text === caption.text) : undefined
   const tagged = shown.moments.find((m) => m.idx === (line ?? answer)?.moment_idx) ?? (caption?.kind === 'line' ? undefined : moment)
   const marks = [...replay.moments, ...replay.queuedMoments].filter((m) => m.video_t !== undefined)
@@ -178,7 +190,7 @@ export function Live(props: Props) {
                 </div>
               </Caption>
             ) : caption ? (
-              <Caption caption={fix ? { ...caption, text: fix.corrected_text } : caption} fixed={!!fix}
+              <Caption caption={{ ...caption, speaker: caption.speaker ?? line?.speaker }} fixed={!!line && !!replay.fixes[line.line_id]}
                 tag={tagged ? momentTag(tagged) : undefined} asked={answer?.question} />
             ) : (
               <Caption caption={null}><p className="cap-state" aria-live="polite">Waiting for the first moment…</p></Caption>
@@ -189,16 +201,27 @@ export function Live(props: Props) {
           <div className="tabs" role="tablist" aria-label="Lines and proof">
             <button role="tab" id="tab-lines" aria-controls="pane-lines" aria-selected={tab === 'lines'} onClick={() => setTab('lines')}>Lines</button>
             <button role="tab" id="tab-proof" aria-controls="pane-proof" aria-selected={tab === 'proof'} onClick={() => setTab('proof')}>Proof</button>
+            {mapped && <button role="tab" id="tab-shots" aria-controls="pane-shots" aria-selected={tab === 'shots'} onClick={() => setTab('shots')}>Shot map</button>}
           </div>
           <div className="pane lines-pane" role="tabpanel" id="pane-lines" aria-labelledby="tab-lines" data-on={tab === 'lines'}>
             <LineLog lines={shown.lines} late={replay.late} fixes={replay.fixes} moments={shown.moments} onFix={onFix}
-              answers={replay.answers} onAsk={moment ? (q) => onAsk(q, moment.idx) : null} />
+              answers={replay.answers} onAsk={moment ? (q) => onAsk(q, moment.idx) : null} shooter={null} onShots={openMap} />
           </div>
           <div className="pane" role="tabpanel" id="pane-proof" aria-labelledby="tab-proof" data-on={tab === 'proof'}>
             <ProofPanel live={replay.stats} />
           </div>
+          {mapped && (
+            <div className="pane" role="tabpanel" id="pane-shots" aria-labelledby="tab-shots" data-on={tab === 'shots'}>
+              <section className="panel glass shots-card" aria-label="Shot map">
+                <h3>Shot map</h3>
+                {shooter ? <button className="btn sm" onClick={() => openMap(shooter)}>Shot map · {shooter}</button>
+                  : <p className="hint">Opens with the first shot on screen.</p>}
+              </section>
+            </div>
+          )}
         </aside>
       </div>
+      {mapOf && moment && <ShotMap key={replayKey} name={mapOf} momentIdx={moment.idx} load={onShots} onClose={() => setPicked(null)} />}
     </div>
   )
 }

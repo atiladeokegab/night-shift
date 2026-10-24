@@ -15,6 +15,8 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 
+from core import insight
+from core.predict import load_pack, shot_points
 from core.replay import OFF_AIR, Replay, run_replay
 from core.stats import stats
 from core.store import open_store
@@ -164,7 +166,10 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
         if d.correct is None:
             raise HTTPException(503, "commentator not configured")
         try:
-            sent = await asyncio.to_thread(d.correct, line, req.corrected_text)
+            # an insight or reply goes back with its own Stat request, not its moment's
+            over = insight.said_over(line, d.load_moments)
+            more = {"moments": over} if over else {}
+            sent = await asyncio.to_thread(d.correct, line, req.corrected_text, **more)
         except Exception as exc:  # nothing is stored, so the page can send the fix again
             raise HTTPException(503, f"correction not sent: {exc}") from exc
         fix = store.append(
@@ -218,6 +223,25 @@ def create_app(store=None, deps: Deps | None = None, tts_transport=None) -> Fast
             reply = store.append("answers", {**said, "replay_id": replay_id})
         await replay.publish("answer", reply)
         return reply
+
+    @app.get("/replays/{replay_id}/players/{name}/shots")
+    def shots(replay_id: str, name: str, moment_idx: int | None = None):
+        """A player's shot map: pre-match shots plus tonight's up to the moment on screen, never
+        past the last moment sent, so a later shot never shows. No LLM: it works off air."""
+        d = need_deps()
+        replay = replays.get(replay_id)
+        if replay is None:
+            raise HTTPException(404, f"no replay {replay_id!r}")
+        past, _ = asked_so_far(replay, d.load_moments(replay.match_id), moment_idx)
+        if not past:
+            raise HTTPException(409, "nothing has happened yet")
+        pack = load_pack(past[-1]["sport"], replay.match_id)
+        try:  # ValueError: a sport with no shot locations (cricket); KeyError: no such player
+            if pack is None:
+                raise KeyError(replay.match_id)
+            return shot_points(pack, past, len(past) - 1, name)
+        except (ValueError, KeyError) as exc:
+            raise HTTPException(404, f"no shot map for {name!r} in this match") from exc
 
     @app.get("/stats")
     def get_stats():
