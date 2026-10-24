@@ -95,7 +95,8 @@ Mubit's 95% target and no adapter serves.
 | Live television commentator 2 | Testing | 111 | 25.0% |
 
 What we did about it: [Line check](#how-it-uses-mubit), one frozen task whose answer key comes from
-code, with its recorded checks and the producers' fixes. It runs live beside the rules (#298); its
+code, with its recorded checks and the producers' fixes. Beside the rules (#298), it checks each new lead
+line; stored replays are checked once as they play (its count is `linecheck` on [`/stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats)). Its
 flags go to the producer's fix queue ([how well it works](#line-check-beside-the-rules)).
 [`data/side_by_side.json`](data/side_by_side.json) still holds an earlier hand-copied read, best
 55.8%, and `/stats`'s `adapter` still says "Collecting", from a record made at 13:04 UTC.
@@ -304,7 +305,7 @@ Each criterion weighs the same; one line each, with where to check it.
 - **Use of Mubit (a correction recorded for the next model version):** every call goes through Mubit; each prompt change started a new task, so the console shows [six commentary tasks](#correction-loop-with-evidence), best 58.3% against a 95% target, 0 adapters serving; and a producer's [fix](#producer-fixes) is stored beside the line as the correction for the next version: 67 corrections recorded for training so far, the team's, from the number-check fix list.
 - **Usefulness (a real recurring task):** a major broadcaster now describes [only some Premier League games (about 109 of 380)](#the-problem), and elsewhere live audio description is voluntary and patchy; Touchline speaks the key moments of [nine real matches in four sports](#the-nine-matches) from their real event data.
 - **Technical execution:** a line in [549 ms to its first word](#real-numbers) (median), gated on the video's clock, an offline test suite (`make check`), browser tests in CI on every PR and a live smoke test on every deploy; [architecture](docs/ARCHITECTURE.md) and [known limitations](#known-limitations).
-- **Demo:** about 2:45 on the live URL, opening on the WSL match nobody described, scripted in [docs/demo.md](docs/demo.md); the [60-second path](#the-60-second-path) above is the short version.
+- **Demo:** a film under 2:00 (1:50 target) on the live URL, opening on Brighton v Bristol City with **Close your eyes**, scripted in [docs/demo.md](docs/demo.md); the [60-second path](#the-60-second-path) above is the short version.
 
 ## The product: where this goes
 
@@ -588,7 +589,8 @@ Mubit's test, and none has yet ([as its console shows it](#correction-loop-with-
    model, and a line code can't decide is left out. Some examples are **planted**: a right line with
    one field changed so it is wrong, marked `planted: true`. They balance the labels; they are not
    real errors the commentator made. Every line of the WSL match (3913122) and the F1 race (9636)
-   is held out and never sent to Mubit. It now runs live beside the rules (#298): a flag sends the
+   is held out and never sent to Mubit. Beside the rules (#298), it checks each new lead line; stored
+   replays are checked once as they play (`linecheck` on [`/stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats)). A flag sends the
    line to the producer's fix queue and never stops it being said
    ([how well it works](#line-check-beside-the-rules)).
 
@@ -669,6 +671,9 @@ the player's other matches and teammates. If the graph fails, it reads the packs
   own environment (never `.env`), so the live service has it exactly when the deploy did; one set
   on the service by hand is wiped by the next deploy. It is a plain Cloud Run env var, not a secret: it is visible in the service config, in the deployer's gcloud logs and under `bash -x`. Either way, a fix is number-checked against its
   moment before it is stored, and one that contradicts the data gets a 422 and is never sent to Mubit.
+- **Two files break the repo's own 1,000-line rule** ([AGENTS.md](AGENTS.md)): [`core/insight.py`](core/insight.py)
+  at 1,728 lines and [`tests/test_core_voice.py`](tests/test_core_voice.py) at 1,001. Splitting them waits
+  until after the event.
 - **One instance.** The service runs with `--max-instances 1` ([`scripts/deploy.sh`](scripts/deploy.sh)):
   replays and voice clips live in that process's memory
   ([`core/replay.py`](core/replay.py), [`core/voice.py`](core/voice.py)).
