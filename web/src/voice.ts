@@ -55,3 +55,73 @@ export function listen(make: () => Recognizer, on: Heard): () => void {
   }
   return () => r.stop()
 }
+
+// Mic on (#286): hands-free, the viewer talks whenever they like. The page's own voice reaches the mic too, so
+// a transcript is the viewer's only if most of its words are not the line on air (or the one that just ended),
+// and while a line is on air only from 3 words.
+const words = (s: string) => s.toLowerCase().match(/[\p{L}\p{N}']+/gu) ?? []
+export function isViewer(text: string, onAir: string | null): boolean {
+  const said = words(text)
+  if (!onAir || !said.length) return said.length > 0
+  const line = new Set(words(onAir))
+  return said.length >= 3 && said.filter((w) => line.has(w)).length / said.length < 0.6
+}
+
+export const MIC_FAILED = "Mic off: voice isn't working here, so type your question"
+const DENIED = ['not-allowed', 'service-not-allowed', 'audio-capture']
+
+export interface Always extends Heard {
+  barge: () => void // the viewer started talking: hush the commentary now
+}
+
+// Listens until the returned stop, starting the recognizer again whenever it ends (Chrome stops after a
+// silence); a session that ended within a second waits a second first, so a failing one never spins.
+// Each sentence the viewer says goes to `done` once; an echo of `airing()` is never sent. `hint` turns it off.
+export function listenAlways(make: () => Recognizer, on: Always, airing: () => string | null): () => void {
+  let r: Recognizer | null = null
+  let live = true
+  let again: ReturnType<typeof setTimeout> | undefined
+  const off = (hint?: string) => {
+    if (!live) return
+    live = false
+    clearTimeout(again)
+    r?.stop()
+    if (hint) on.hint(hint)
+  }
+  const begin = () => {
+    const rec = (r = make())
+    rec.lang = 'en-GB'
+    rec.interimResults = true
+    rec.continuous = false
+    const began = Date.now()
+    let barged = false
+    let shown = false
+    rec.onresult = (e) => {
+      const text = Array.from(e.results, (res) => res[0].transcript).join('').trim()
+      const viewer = isViewer(text, airing())
+      if (viewer && !barged) {
+        barged = true
+        on.barge()
+      }
+      const final = e.results[e.results.length - 1]?.isFinal
+      if (viewer) (final ? on.done : on.heard)(text)
+      else if (shown && final) on.heard('') // the words shown turned out to be the page's own
+      shown = !final && (shown || viewer)
+      barged &&= !final // the next sentence may barge in again
+    }
+    rec.onerror = (e) => {
+      if (DENIED.includes(e.error)) off(NO_MIC)
+      else if (!['no-speech', 'aborted'].includes(e.error)) off(MIC_FAILED)
+    }
+    rec.onend = () => {
+      if (live) again = setTimeout(begin, Date.now() - began < 1000 ? 1000 : 0)
+    }
+    try {
+      rec.start()
+    } catch {
+      off(NO_MIC)
+    }
+  }
+  begin()
+  return () => off()
+}
