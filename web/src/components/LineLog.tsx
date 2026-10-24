@@ -4,12 +4,14 @@ import { names, shortName } from '../follow'
 import { MicButton, MicOn, type Mic } from './MicButton'
 import { clockText } from '../moment'
 import { WHERE } from '../quiet'
-import type { Answer, Fix, Line, Moment } from '../types'
+import { checkText } from '../proof'
+import type { Answer, Fix, Line, LineCheck, Moment } from '../types'
 
 interface Props {
   lines: Line[] // newest first, only what the picture has reached
   late: string[] // released after the video had moved past them: never shown or spoken
   fixes: Record<string, Fix>
+  checks?: Record<string, LineCheck> // Line check's second opinion, by line_id (#298)
   moments: Moment[]
   onFix: (line: Line) => void
   answers: Answer[] // newest first
@@ -35,7 +37,7 @@ function count(lines: Line[]): string {
   return [called && `${called} called`, earlier && `${earlier} earlier`].filter(Boolean).join(' · ')
 }
 
-export function LineLog({ lines, late, fixes, moments, onFix, answers, interrupted = [], onHear, onAsk, shooter, onShots, followed, roster, onUnfollow, voiced, mic }: Props) {
+export function LineLog({ lines, late, fixes, checks = {}, moments, onFix, answers, interrupted = [], onHear, onAsk, shooter, onShots, followed, roster, onUnfollow, voiced, mic }: Props) {
   const said = (l: Line) => fixes[l.line_id]?.corrected_text ?? l.text
   const theirs = followed ? lines.filter((l) => names(said(l), followed, roster)).length : 0
   return (
@@ -83,6 +85,7 @@ export function LineLog({ lines, late, fixes, moments, onFix, answers, interrupt
             const firstWord = l.first_word_ms != null // undefined or null: only the whole reply was timed
             const ms = l.first_word_ms ?? l.latency_ms
             const took = `${(ms / 1000).toFixed(2)} s`
+            const check = checkText(checks[l.line_id])
             return (
               <li key={l.line_id} className={fix || l.fixed ? 'fixed' : isLate ? 'late' : undefined} data-follow={mine || undefined}>
                 <span className="when num">{m ? clockText(m, true) : ''}</span>
@@ -103,6 +106,8 @@ export function LineLog({ lines, late, fixes, moments, onFix, answers, interrupt
                   {l.served_by && <span className="pill served" title="Served by: the model Mubit's reply said answered">{l.served_by}</span>}
                   {mine && <span className="pill follow">{shortName(followed!)}</span>}
                   {fix && <span className="pill fixed">Fixed</span>}
+                  {check && <span className={`pill check${checks[l.line_id].wrong.length ? ' flag' : ''}`}
+                    title="A second model checks each line's score, leader, player total and event">{check}</span>}
                   {l.fixed && !fix && <span className="pill fixed producer">Fixed by producer</span>}
                   {isLate && !fix && <span className="pill late" title="The video had moved past it, so it was not shown or spoken">Late</span>}
                 </div>
