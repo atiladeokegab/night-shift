@@ -23,7 +23,7 @@ async function openTeams(page: Page, tile: RegExp, body: Recorded['teams'], widt
   await page.getByRole('button', { name: tile }).click()
   await expect(page.locator('.caption .cap-text')).toBeVisible({ timeout: 45_000 })
   await page.keyboard.press('t')
-  await expect(page.getByRole('heading', { name: 'Teams', level: 3 })).toBeFocused()
+  await expect(page.getByRole('heading', { name: 'Teams', level: 2 })).toBeFocused()
   return page.getByRole('region', { name: 'Teams' })
 }
 
@@ -40,8 +40,8 @@ for (const { name, tile } of MATCHES) {
       await expect(panel.getByText('No team facts for this match.')).toBeVisible()
       return
     }
-    for (const t of rec.teams.teams) await expect(panel.getByRole('heading', { name: t.team, level: 4 })).toBeVisible()
-    const cells = await panel.locator('li, p, h4, h5').allInnerTexts()
+    for (const t of rec.teams.teams) await expect(panel.getByRole('heading', { name: t.team, level: 3 })).toBeVisible()
+    const cells = await panel.locator('li, p, h3, h4').allInnerTexts()
     expect(cells.length).toBeGreaterThan(0)
     for (const text of cells) {
       expect(text.trim(), 'an empty cell').not.toBe('')
@@ -65,6 +65,6 @@ for (const { name, tile } of MATCHES) {
     await page.locator('body').click({ position: { x: 1, y: 1 } })
     await page.keyboard.press('t')
     await expect(page.locator('#tab-teams')).toHaveAttribute('aria-selected', 'true')
-    await expect(page.getByRole('heading', { name: 'Teams', level: 3 })).toBeFocused()
+    await expect(page.getByRole('heading', { name: 'Teams', level: 2 })).toBeFocused()
   })
 }

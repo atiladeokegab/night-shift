@@ -33,6 +33,7 @@ Object.assign(globalThis, { window: { location: { search: '' } } }) // api.ts re
 const { TeamFacts, TeamPanel } = await import('./components/TeamPanel.tsx')
 
 const game = { date: '2016-04-20', opponent: 'Everton', home: true, score: '2-1', result: 'W' }
+const headings = (html: string) => [...html.matchAll(/<h([1-6])[\s>]/g)].map((m) => Number(m[1]))
 
 test('the panel reads top to bottom: headings, then short lists', () => {
   const html = renderToStaticMarkup(createElement(TeamFacts, { data: {
@@ -42,8 +43,23 @@ test('the panel reads top to bottom: headings, then short lists', () => {
     ],
     head_to_head: [game],
   } }))
-  for (const s of ['<h4 id="team-Chelsea">Chelsea</h4>', 'Chelsea: won 1 of their last 1', 'Eden Hazard: 9 goals in 21',
-    'Tottenham Hotspur: no recent games on record', '<h4 id="team-h2h">Head to head</h4>', 'Won 2-1 at home against Everton, 20 April 2016']) assert.ok(html.includes(s), s)
+  for (const s of ['<h3 id="team-Chelsea">Chelsea</h3>', 'Chelsea: won 1 of their last 1', '<h4>Squad</h4>', 'Eden Hazard: 9 goals in 21',
+    '<h3 id="team-TottenhamHotspur">Tottenham Hotspur</h3>', 'Tottenham Hotspur: no recent games on record', '<h3 id="team-h2h">Head to head</h3>',
+    'Won 2-1 at home against Everton, 20 April 2016']) assert.ok(html.includes(s), s)
+})
+
+test('Teams starts at h2 under the Live h1 and nests its headings without skips', () => {
+  const panel = renderToStaticMarkup(createElement(TeamPanel, { sport: 'football', matchId: '1' }))
+  const facts = renderToStaticMarkup(createElement(TeamFacts, { data: {
+    teams: [
+      { team: 'Chelsea', form: [game], squad: [{ name: 'Eden Hazard', matches: 21, headline: '9 goals in 21' }] },
+      { team: 'Tottenham Hotspur', form: [], squad: [] },
+    ],
+    head_to_head: [game],
+  } }))
+  const levels = [1, ...headings(panel), ...headings(facts)]
+  assert.deepEqual(levels, [1, 2, 3, 4, 3, 3])
+  levels.forEach((level, i) => i && assert.ok(level <= levels[i - 1] + 1, `h${levels[i - 1]} then h${level}: ${levels.join(',')}`))
 })
 
 test('an empty graph says so instead of showing empty lists', () => {
