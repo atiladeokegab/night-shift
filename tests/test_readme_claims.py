@@ -1,11 +1,20 @@
 """Each README claim traced to its source: the keyboard table's links and every figure that
-tests/test_readme_numbers.py leaves out, so a claim can't drift from its code or saved run."""
+tests/test_readme_numbers.py leaves out, so a claim can't drift from its code or saved run. Each
+known limitation a test can show is pinned too: once the limit is gone, the README must say so."""
 
+import asyncio
 import json
 import re
 from pathlib import Path
+from types import SimpleNamespace
 
+from core import insight
+from core.app import asked_so_far
 from core.guard import Guard
+from core.replay import Replay, run_replay
+from core.store import Store
+from data.matches import load_moments
+from tests.test_converse import ToolClient, sentences
 
 ROOT = Path(__file__).parent.parent
 README = ROOT / "README.md"
@@ -156,3 +165,47 @@ def test_the_graph_holds_the_football_matches_the_readme_counts(monkeypatch):
     sql = "SELECT count() AS n FROM fixture WHERE sport = 'football' GROUP ALL"
     n = graph._rows(sql, {})[0]["n"]
     assert f"in football ({n} matches)" in readme()
+
+
+def test_two_stored_analyst_admissions_pass_the_check_and_a_fix_to_one_is_not_heard(tmp_path):
+    # the words `admits` misses, so the stored lines replay; agent/analyst.md is frozen
+    assert not insight.admits("Season numbers I can't give you here, but forty tonight.")
+    assert not insight.admits("Smush I can't speak to, but Bryant has forty.")
+    store, kobe = Store(tmp_path), "0020500591"
+    line = {"line_id": "a", "match_id": kobe, "moment_idx": 4, "speaker": "analyst", "text": "x"}
+    store.append("lines", line)
+    store.append("fixes", {"line_id": "a", "corrected_text": "Bryant has forty-one."})
+    r = Replay(kobe, 1e9)
+
+    def commentate(m, history):
+        return {"line_id": f"n{m['idx']}", "match_id": kobe, "moment_idx": m["idx"], "text": "new"}
+
+    asyncio.run(run_replay(r, load_moments(kobe)[:6], commentate, store))
+    said = [e["data"] for e in r.events if e["event"] == "line"]
+    assert said and not any(ln.get("fixed") for ln in said)
+    assert "Two stored analyst lines on Lakers v Raptors admit" in readme()
+    assert "heard on later replays only for a lead line" in readme()
+
+
+def test_at_the_cold_open_the_server_already_gives_the_first_mapped_event():
+    async def run():
+        replay = Replay("1298150", 1)
+        await replay.publish("moment", {"idx": 0, "type": "Stat", "clock": "0.0"})
+        return asked_so_far(replay, load_moments("1298150"), 0)[0]
+
+    assert [(m["idx"], m["type"]) for m in asyncio.run(run())] == [(0, "Wicket")]
+    assert "gates both in the page only, so a direct API caller can bypass it" in readme()
+
+
+def test_talk_says_a_sentence_written_before_a_tool_call():
+    class EarlyText(ToolClient):
+        def __iter__(self):
+            if self.tool:  # said at once, checked against the match data only
+                yield SimpleNamespace(type="text", text="Player1 scored for the Reds. ")
+            yield from super().__iter__()
+
+    client = EarlyText([(0, "A fine finish by Player1.")])
+    said = asyncio.run(sentences(SimpleNamespace(client=client, call=None)))
+    assert said == ["Player1 scored for the Reds.", "A fine finish by Player1."]
+    assert client.calls == 2
+    assert "Talk can say a sentence the model wrote before it called a tool" in readme()
