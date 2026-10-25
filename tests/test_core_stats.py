@@ -31,9 +31,11 @@ def test_the_console_reading_is_dated_sourced_and_claims_no_adapter(tmp_path, mo
     # a judge read "collecting, version null" as Mubit unused: /stats carries the console's own
     # counts, as read by hand on a stated day (#317)
     c = stats(Store(tmp_path))["earlier_tasks"]["adapter"]["console"]
-    assert c["source"] == "Mubit console" and c["read_at"] == "2026-10-24T19:15:00Z"
-    assert (c["tasks"], c["adapters"], c["serving"], c["target"]) == (8, 7, 0, 95)
+    assert c["source"] == "Mubit console" and c["read_at"] == "2026-10-25T00:14:00Z"
+    assert (c["tasks"], c["adapters"], c["serving"], c["target"]) == (11, 8, 0, 95)
     assert max(t["quality"] for t in c["listed"].values()) == 58.3 < c["target"]
+    # the console no longer reports examples per task: none is carried, so none is guessed
+    assert not any("examples" in t for t in c["listed"].values())
     assert "[" not in json.dumps(c)  # it rides the `stats` event, which carries no brackets
     assert "pass" not in json.dumps(c).lower()
     monkeypatch.setattr(stats_mod, "CONSOLE", tmp_path / "none.json")

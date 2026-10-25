@@ -243,7 +243,8 @@ export interface ConsoleReading {
   adapters: number
   serving: number
   target: number
-  listed: Record<string, { status: string; examples: number; quality: number }> // by task name: no brackets in a `stats` event
+  // by task name: no brackets in a `stats` event; test_cases null where the console didn't show it
+  listed: Record<string, { status: string; version: number; quality: number; test_cases: number | null; note?: string }>
 }
 
 // One Mubit task's latest adapter record (#209), as the lead read it off Mubit's console; null where it didn't say.

@@ -32,6 +32,11 @@ def test_the_side_by_side_panel_and_readme_match_the_console_read():
     assert f"{CONSOLE['adapters']} adapters" in text and f"{best}%" in text
     # no other adapter count or best score anywhere in the README
     assert set(re.findall(r"(\d+) adapters", text)) == {str(CONSOLE["adapters"])}
+    # Score check's adapter: the console cuts its name short ("Check one line of…")
+    (sc,) = (t for name, t in CONSOLE["listed"].items() if name.startswith("Check one line"))
+    flat = " ".join(text.split())
+    said = f"first Score check version scored {sc['quality']}% against a {CONSOLE['target']}%"
+    assert said in flat
 
 
 def test_the_readme_live_figures_are_the_saved_stats_read():

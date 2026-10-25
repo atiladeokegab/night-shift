@@ -93,7 +93,10 @@ The figures we have, side by side ([the problem](docs/evidence.md#the-problem)):
 ## For judges
 
 **Live:** <https://night-shift-5zvig7nbvq-ew.a.run.app> (Cloud Run, real Mubit calls, sound on).
-Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026. Track: Own your intelligence layer.
+Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026. **Track: Recurring tasks.**
+Score check is the recurring task: does this line's score match the match data? The number check
+answers it in code for every lead line on every match before air, and every producer's fix goes to
+Score check's training on Mubit as a labelled example. Training, not serving.
 
 ### The 60-second path
 
@@ -116,9 +119,10 @@ card, each traced to its code and its test, or marked not tested:
 
 Every model call goes through Mubit. Training runs and eligible correction examples are recorded;
 Ask and Talk answers are unrecorded, and deployed commentary defaults to recording off. Mubit's console,
-read by hand on 24 October 2026 at about 19:15 UTC ([`data/mubit_console.json`](data/mubit_console.json)),
-shows 8 tasks, 7 adapters and 0 serving: the best commentary task scores 58.3% against a 95% target.
-No adapter has passed, the app cannot call one, and we make no claim that any matches the big model.
+read by hand on 25 October 2026 at 00:14 UTC ([`data/mubit_console.json`](data/mubit_console.json)),
+shows 11 tasks, 8 adapters and 0 serving. The first Score check version scored 33.3% against a 95%
+target, on 12 test cases; the best commentary task scores 58.3%. Every version reads "Not ready yet"
+or is still training, the app cannot call one, and we make no claim that any matches the big model.
 Score check, the narrower task above, has 2,161 examples sent to training, 60 of them from producer
 fixes (46 the model already matched, 5 corrected, 9 not corrected); the big model agreed with the
 code's answer key on 74 of 74 held-out lines (live `/stats` `scorecheck`, saved on 24 October 2026 at

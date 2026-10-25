@@ -46,8 +46,8 @@ export function heldoutRow(h: HeldOut | null | undefined): string | null {
   return `held-out: caught ${h.line_check.caught} of ${h.wrong} wrong lines (rules: ${h.rules.caught} of ${h.wrong}), ${alarms} false alarm${alarms === 1 ? '' : 's'}`
 }
 
-// Mubit's console as read by hand (#317), with its source and time, e.g. "Mubit console, 24 Oct 19:15
-// UTC: 8 tasks, 7 adapters, 0 serving; best 58.3% of a 95% target". A dated reading, never live data.
+// Mubit's console as read by hand (#317), with its source and time, e.g. "Mubit console, 25 Oct 00:14
+// UTC: 11 tasks, 8 adapters, 0 serving; best 58.3% of a 95% target". A dated reading, never live data.
 export function consoleRow(c: ConsoleReading | null | undefined): string | null {
   if (!c) return null
   const day = new Date(c.read_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })

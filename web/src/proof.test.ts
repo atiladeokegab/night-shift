@@ -144,9 +144,9 @@ test('the held-out row says Line check beside the rules in counts, never a perce
 test("the console row is the committed reading, dated and sourced, and claims no adapter serves (#317)", () => {
   const c: ConsoleReading = JSON.parse(readFileSync(new URL('../../data/mubit_console.json', import.meta.url), 'utf8'))
   const row = consoleRow(c) ?? ''
-  assert.equal(row, 'Mubit console, 24 Oct 19:15 UTC: 8 tasks, 7 adapters, 0 serving; best 58.3% of a 95% target')
+  assert.equal(row, 'Mubit console, 25 Oct 00:14 UTC: 11 tasks, 8 adapters, 0 serving; best 58.3% of a 95% target')
   assert.doesNotMatch(row, /pass/i)
-  assert.equal(consoleRow({ ...c, listed: {} }), 'Mubit console, 24 Oct 19:15 UTC: 8 tasks, 7 adapters, 0 serving')
+  assert.equal(consoleRow({ ...c, listed: {} }), 'Mubit console, 25 Oct 00:14 UTC: 11 tasks, 8 adapters, 0 serving')
   assert.equal(consoleRow(null), null)
   assert.equal(consoleRow(undefined), null)
 })
