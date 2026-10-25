@@ -39,7 +39,8 @@ broadcast highlights, each line called at its moment, in four sports.
    first: the score, who leads, the margin, the players' counts
    ([`core/insight.py`](core/insight.py) `wrong_numbers`). In Jordan's last game as a Bull the model
    wrote "Chicago Bulls take the lead, 85-86!" when Utah led 86-85; the check's reason was "Chicago
-   Bulls do not lead", so that line was never said. A failed line gets one retry, then a line built
+   Bulls do not lead", so that line was never said. (Score check, the Mubit task in step 2, judges only
+   the score's numbers, not who leads: its key for this line is ok, since 85 and 86 are the score.) A failed line gets one retry, then a line built
    from the data is said instead and the wrong one goes to the producer's fix queue. Press **E** to
    **Close your eyes**: the picture goes black, only the line and the score stay, and the commentary
    carries on. **Orlando v North Carolina** (NWSL, 2018) has no video at all: the whole match, every
