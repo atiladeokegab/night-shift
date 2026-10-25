@@ -125,9 +125,10 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .eyes p { margin: 0; max-width: 30ch; text-align: center; color: #fff; font: 600 clamp(1.25rem, 3.2vw, 2.4rem)/1.3 var(--display); text-wrap: balance; }
 .frame[data-eyes] .onair, .frame[data-eyes] .bug::before { visibility: hidden; }
 /* The score bug and ON AIR pill: small, inside the card's top edge, and the only things on the picture. */
-.bug { position: absolute; top: 10px; left: 10px; right: 10px; z-index: 2; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; pointer-events: none; }
-/* A shade behind the bug, so the video's own title never shows through it (#153). */
-.bug::before { content: ""; position: absolute; z-index: -1; inset: -10px -10px auto; height: 88px; background: linear-gradient(180deg, rgba(3, 5, 10, .82), rgba(3, 5, 10, 0)); }
+.bug { position: absolute; inset: 10px; z-index: 2; display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; pointer-events: none; }
+.bug .onair { align-self: flex-start; }
+/* The score sits at the picture's foot, so the video's own title (top left) stays readable; a shade keeps it legible (#153). The ON AIR pill keeps the top right, clear of the player's own foot controls; phones put both at the foot. */
+.bug::before { content: ""; position: absolute; z-index: -1; inset: auto -10px -10px; height: 88px; background: linear-gradient(0deg, rgba(3, 5, 10, .82), rgba(3, 5, 10, 0)); }
 .bug button.onair { position: relative; pointer-events: auto; color: var(--fg); cursor: pointer; }
 /* The pill is under 44px tall; an invisible hit area, growing down into the picture so the frame never clips it, makes the target 44px. */
 .bug button.onair::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: max(100%, 44px); }
@@ -212,7 +213,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .banner .warn b { background: var(--amber); animation: rec 1.4s ease-out infinite; }
 .banner .err b { background: var(--err); }
 /* The caption card: the speaker chip and moment tag, then the line; long text wraps, never clipped. */
-.caption { padding: 14px 18px; min-height: 96px; display: grid; align-content: center; }
+.caption { padding: 14px 18px; min-height: 96px; display: grid; grid-template-columns: minmax(0, 1fr); align-content: center; }
 .cap-h { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
 /* The header's end: a question waiting for its answer, else the match's name. One line, never wrapping. */
 .cap-side { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; color: var(--muted); font: 500 .85rem/1.2 var(--body); }
@@ -222,7 +223,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .chip { font: 600 .65rem/1 var(--body); letter-spacing: .14em; text-transform: uppercase; padding: 5px 8px; border-radius: 6px; color: var(--fg); background: rgba(255, 255, 255, .1); }
 .chip.analyst { color: var(--fix); background: rgba(124, 212, 255, .12); }
 .chip.viewer { color: var(--muted); }
-.caption .tag { font: 600 .65rem/1 var(--body); letter-spacing: .16em; text-transform: uppercase; color: var(--amber); padding: 5px 9px; border-radius: 999px;
+.caption .tag { min-width: 0; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 600 .65rem/1 var(--body); letter-spacing: .16em; text-transform: uppercase; color: var(--amber); padding: 5px 9px; border-radius: 999px;
   background: rgba(255, 181, 71, .1); border: 1px solid rgba(255, 181, 71, .28); }
 .caption .tag.fixed { color: var(--fix); background: rgba(124, 212, 255, .1); border-color: rgba(124, 212, 255, .3); }
 .caption p { margin: 0; overflow-wrap: anywhere; }
@@ -244,6 +245,8 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
 .panel.lines { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .panel.lines .log { max-height: calc(100svh - var(--nav-h) - 180px); } /* the Lines card fits the sidebar's window, Proof peeks below */
 .panel-h { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
+.panel-h .panel-act { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; }
+.panel-h .label + .panel-act { margin-left: 12px; }
 .panel h2 { margin: 0; font: 600 1.05rem/1 var(--display); letter-spacing: -.01em; }
 .panel .hint { margin: 0; color: var(--muted); font-size: .85rem; }
 .log { list-style: none; margin: 0 -6px; padding: 0 6px 28px; display: grid; gap: 4px; overflow: auto; min-height: 0; scrollbar-width: thin;
@@ -388,7 +391,9 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   .card h2 { font-size: 1.8rem; }
   .meta { margin-top: 4px; padding-top: 8px; }
   /* The score bug keeps to the picture's top edge: no period, no voice name or bars. */
-  .bug { top: 6px; left: 6px; right: 6px; }
+  .bug { inset: 6px; }
+  .bug .onair { align-self: flex-end; }
+  .bug button.onair::after { top: auto; bottom: 0; } /* the hit area grows up into the picture, not onto the controls */
   .bug .scorebar { padding: 5px 9px; font-size: .78rem; gap: 4px 8px; }
   .bug .score { font-size: .95rem; }
   .bug .clock { font-size: .82rem; }
@@ -458,7 +463,7 @@ h1 { font: 600 clamp(2.25rem, 4vw, 3.25rem)/1.05 var(--display); letter-spacing:
   /* with Let them watch in the bar (desktop browsers only) the clock goes, or Fullscreen is clipped off the card */
   .controls:has(.watch-btn) .time { display: none; }
   /* the score never gives way to the voice pill: the pill's name is cut short instead */
-  .bug { flex-wrap: wrap; }
+  .bug { flex-wrap: wrap; align-content: flex-end; }
   .bug .scorebar { flex: none; }
   .bug .onair { flex: 0 1 auto; min-width: 44px; }
   .bug .onair .lbl ~ .who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

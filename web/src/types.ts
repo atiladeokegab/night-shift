@@ -174,10 +174,11 @@ export interface ScoreCheckReceipt {
   fix_uid: string
   sent: number // the examples it wrote: 0 when each was already sent or can't be labelled
   failed: boolean // a Mubit call failed
+  held_out?: boolean // the match is held out of training (eval/linecheck.py HELD_OUT): nothing is sent
 }
 
 // A fix's Score check send as the review page knows it (#400): no receipt within the deadline is unknown
-export type TrainingState = 'pending' | 'sent' | 'none' | 'failed' | 'unknown'
+export type TrainingState = 'pending' | 'sent' | 'none' | 'held_out' | 'failed' | 'unknown'
 
 // The `linecheck` SSE event (#298): Line check's answer on one line. labels null: no canonical reply.
 export interface LineCheck {
@@ -290,6 +291,7 @@ export interface Answer {
   moment_idx: number
   question: string
   text: string
+  asked_moment?: Moment // local snapshot of the visible event when this Ask began; absent from the API response
   off_air?: boolean
   notice?: string // off air on purpose (#244): the page shows this, not its calm try-again copy
 }

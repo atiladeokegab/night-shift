@@ -5,6 +5,7 @@ import { fresh, release, replayClock } from './gate'
 import { ENDED, gone } from './ended'
 import { TEACHES } from './proof'
 import type { Answer, Fix, Line, LineCheck, LineCheckExample, Moment, Stats } from './types'
+import { sameMoment } from './moment'
 
 export interface ReplayState {
   phase: 'idle' | 'starting' | 'live' | 'failed'
@@ -58,7 +59,7 @@ function reduce(s: ReplayState, a: Action): ReplayState {
     case 'started': return { ...s, phase: 'live' }
     case 'failed': return { ...s, phase: 'failed', refused: a.refused }
     case 'moment': {
-      const seen = (m: Moment) => m.idx === a.moment.idx
+      const seen = (m: Moment) => sameMoment(m, a.moment)
       if (s.moments.some(seen) || s.queuedMoments.some(seen)) return s
       return waits(s, a.moment)
         ? { ...s, queuedMoments: [...s.queuedMoments, a.moment] }
@@ -258,14 +259,15 @@ export function useReplay(onLine: (line: Line) => void, onRewind: () => void) {
 
   // A viewer's question about the moment on screen; the answer shows at once (the `answer` event that
   // follows is the same one) and is returned for the caller to speak, unless the replay was replaced.
-  const ask = useCallback(async (question: string, momentIdx: number): Promise<Answer | null> => {
+  const ask = useCallback(async (question: string, momentIdx: number, askedMoment?: Moment): Promise<Answer | null> => {
     const token = run.current
     const id = replayId.current
     if (!id) return null
     const answer = await askCommentator(id, question, momentIdx)
     if (!answer || run.current !== token) return null
-    dispatch({ type: 'answer', answer })
-    return answer
+    const withMoment = askedMoment ? { ...answer, asked_moment: askedMoment } : answer
+    dispatch({ type: 'answer', answer: withMoment })
+    return withMoment
   }, [])
 
   // A player's shot map up to the moment on screen (#120); null before a replay or with no shot record.

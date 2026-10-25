@@ -197,14 +197,12 @@ def test_one_instance_with_a_gibibyte(tmp_path):
     assert "--max-instances 1 " in deployed and "--memory 1Gi " in deployed
 
 
-def test_the_producer_token_rides_along_only_when_the_deploy_has_it(tmp_path):
-    # #255: --set-env-vars replaces every var, so a token set by hand would go at the next deploy
-    done, deployed = deploy(tmp_path, PRODUCER_TOKEN="Zk3-x_9.Q/a+b=")
+def test_the_producer_token_is_mounted_from_its_secret_never_a_plain_env_var(tmp_path):
+    done, deployed = deploy(tmp_path)
     assert done.returncode == 0, done.stderr
-    assert "PRODUCER_TOKEN=Zk3-x_9.Q/a+b=" in env_vars(deployed)
-    done, deployed = deploy(tmp_path / "unset", "PRODUCER_TOKEN=from-dotenv\n")
-    assert done.returncode == 0, done.stderr
+    assert "PRODUCER_TOKEN=producer-token:latest" in secrets(deployed)
     assert not [v for v in env_vars(deployed) if v.startswith("PRODUCER_TOKEN")]
+    assert "versions describe latest --secret producer-token" in (tmp_path / "calls").read_text()
 
 
 def test_talk_bearer_is_mounted_as_a_secret_only_when_talk_is_enabled(tmp_path):
@@ -240,6 +238,7 @@ def test_bootstrap_gives_deploy_caller_secret_scoped_metadata_viewer_only(tmp_pa
     assert {c.split("secrets add-iam-policy-binding ")[1].split()[0] for c in viewer} == {
         "mubit-api-key",
         "elevenlabs-api-key",
+        "producer-token",
         "converse-llm-secret",
     }
     assert all("--member user:tester@example.com" in c for c in viewer)
@@ -295,10 +294,11 @@ def test_bootstrap_grants_an_existing_talk_secret_without_recreating_it(tmp_path
     assert not any("secrets create converse-llm-secret" in call for call in calls)
 
 
-def test_a_producer_token_that_could_inject_another_var_stops_the_deploy(tmp_path):
-    done, deployed = deploy(tmp_path, PRODUCER_TOKEN="ab@MUBIT_RECORD=on")
-    assert done.returncode == 1 and "PRODUCER_TOKEN" in done.stderr and not deployed
-    assert "ab@MUBIT" not in done.stderr + done.stdout
+def test_a_producer_token_in_the_deploy_environment_never_reaches_the_service(tmp_path):
+    done, deployed = deploy(tmp_path, PRODUCER_TOKEN="Zk3-x_9.Q/a+b=")  # a sourced producer.env
+    assert done.returncode == 0, done.stderr
+    assert "PRODUCER_TOKEN=producer-token:latest" in secrets(deployed)
+    assert "Zk3-x_9" not in deployed + done.stderr + done.stdout
 
 
 def test_the_backup_voice_keys_mount_from_a_pinned_version_that_must_exist(tmp_path):
@@ -393,6 +393,7 @@ def test_the_converse_secret_is_checked_only_when_it_will_mount(tmp_path):
     [
         ("latest --secret mubit-api-key", {}),
         ("latest --secret elevenlabs-api-key", {}),
+        ("latest --secret producer-token", {}),
         ("3 --secret mubit-api-key", {}),
         ("4 --secret elevenlabs-api-key", {}),
         ("latest --secret converse-llm-secret", {"CONVERSE_AGENT_ID": "agent-1"}),

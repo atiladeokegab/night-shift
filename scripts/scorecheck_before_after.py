@@ -10,10 +10,16 @@ answered by whatever Mubit then serves.
     uv run python scripts/scorecheck_before_after.py before [--case NAME | --line-id ID]
     (then the same with `after`)
 
-Cases: `cahill` (default), and two lines the base model's Score check answered against the key on
-live (the /ledger rows kind "corrected": Claude's first reply differed from the key): `jordan`,
-`kohli`. `--line-id` takes any stored live line (GET /lines/<id>, no key needed) and uses the key
-code computes from the event data (eval/linecheck.py `gold`).
+Score check judges only a line's score numbers, in either order when the line gives no team order,
+never who leads (agent/scorecheck.py SYSTEM). Cases: `cahill` (default), the one keyed `wrong`; and
+two lines keyed `ok` that the base model answered `wrong` on live (the /ledger rows kind
+"corrected"): `jordan` ("Chicago Bulls take the lead, 85-86!" at Utah 86-85: the numbers are
+right, the leader is wrong, and the leader is the number check's job, not Score check's) and
+`kohli` ("need just two from the final ball" at 2 needed from 2 balls: the runs are right; balls
+left are not a score).
+
+`--line-id` takes a stored line (GET /lines/<id>, no key needed) from a supported sport with a
+canonical Score check label, computed from the event data (eval/linecheck.py `gold`).
 
 Writes eval/scorecheck_before_after_<UTC time>_<label>_<case>.json and prints the same."""
 
@@ -58,14 +64,20 @@ def pick(case: str, line_id: str | None) -> tuple[str, int, str]:
 
 
 def run(label: str, case: str, line_id: str | None = None) -> dict:
-    provider = default_provider()
-    if isinstance(provider, FakeProvider):
-        raise SystemExit("no MUBIT_API_KEY: nothing to ask Mubit")
     match, idx, line = pick(case, line_id)
     header, moments = match_header(match), load_moments(match)
     i = next(i for i, m in enumerate(moments) if m["idx"] == idx)
-    key = (gold(header, moments[i], moments[:i], line) or {}).get("score")
-    reply = provider.call(scorecheck.build_request(header, moments[i], line))
+    moment = moments[i]
+    if moment["sport"] not in scorecheck.SPORTS:
+        raise SystemExit(f"Score check does not support {moment['sport']}")
+    labels = gold(header, moment, moments[:i], line)
+    key = labels.get("score") if labels else None
+    if key not in scorecheck.LABELS:
+        raise SystemExit("line has no canonical score label")
+    provider = default_provider()
+    if isinstance(provider, FakeProvider):
+        raise SystemExit("no MUBIT_API_KEY: nothing to ask Mubit")
+    reply = provider.call(scorecheck.build_request(header, moment, line))
     said = "".join(b.get("text", "") for b in reply["content"] if b["type"] == "text")
     return {
         "label": label,

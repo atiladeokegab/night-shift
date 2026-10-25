@@ -1,6 +1,6 @@
 import { Component, lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { answeredAt, isStale } from '../ask'
-import { clockText, momentTag } from '../moment'
+import { clockText, momentOf, momentTag } from '../moment'
 import { eyesKey } from '../eyes'
 import { embeds, posterUrl, setPlaying, showNoVideoCaption, shownCaption, watchUrl, type Transport } from '../player'
 import type { Caption as CaptionData } from '../turns'
@@ -189,7 +189,7 @@ export function Live(props: Props) {
   const caption = shownCaption(pending === undefined ? props.caption : null, live.map(said))
   const line = caption?.kind === 'line' ? live.find((l) => said(l) === caption.text) : undefined
   const answer = caption?.kind === 'answer' ? replay.answers.find((a) => a.text === caption.text) : undefined
-  const tagged = shown.moments.find((m) => m.idx === (line ?? answer)?.moment_idx) ?? (caption?.kind === 'line' ? undefined : moment)
+  const tagged = (line ? momentOf(shown.moments, line) : shown.moments.find((m) => m.idx === answer?.moment_idx)) ?? (caption?.kind === 'line' ? undefined : moment)
   const marks = [...replay.moments, ...replay.queuedMoments].filter((m) => m.video_t !== undefined)
     .map((m) => ({ t: m.video_t!, done: m.video_t! <= replay.now }))
   const canPlay = !!transport && video === 'ok' && !busy
@@ -332,8 +332,9 @@ export function Live(props: Props) {
             )}
           </div>
           <div className="pane lines-pane" role="tabpanel" id="pane-lines" aria-labelledby="tab-lines" data-on={tab === 'lines'}>
-            {props.replayId && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <LineLog action={props.replayId && (
+              <>
+                {talkHint && <span className="hint" role="status">{talkHint}</span>}
                 <TalkBoundary>
                   <Suspense fallback={null}>
                     <Converse sport={match.sport} matchId={match.match_id} momentIdx={moment?.idx ?? null} paused={!!props.paused}
@@ -341,10 +342,8 @@ export function Live(props: Props) {
                       onHint={setTalkHint} />
                   </Suspense>
                 </TalkBoundary>
-                {talkHint && <p className="hint" role="status">{talkHint}</p>}
-              </div>
-            )}
-            <LineLog lines={shown.lines} late={replay.late} fixes={replay.fixes} checks={replay.checks} examples={replay.examples} moments={shown.moments} onFix={onFix}
+              </>
+            )} lines={shown.lines} late={replay.late} fixes={replay.fixes} checks={replay.checks} examples={replay.examples} moments={shown.moments} onFix={onFix}
               answers={replay.answers} interrupted={props.interrupted} onHear={props.onHear} onAsk={moment ? (q) => onAsk(q, moment.idx) : null} shooter={null} onShots={openMap} followed={followed} roster={roster} onUnfollow={() => setFollow(null)} voiced={voiced} mic={props.mic} />
           </div>
           <div className="pane" role="tabpanel" id="pane-proof" aria-labelledby="tab-proof" data-on={tab === 'proof'}>

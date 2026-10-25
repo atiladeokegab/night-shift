@@ -177,6 +177,7 @@ interface Training {
 const OUTCOME: Partial<Record<TrainingState, string>> = {
   pending: 'Waiting for Score check\'s receipt…',
   none: 'No new Score check example: each was already sent, or the data can\'t label it',
+  held_out: 'This match is held out of training, so the eval that scores the model stays fair',
   failed: 'A Mubit call failed: nothing was sent to training',
   unknown: 'No receipt within a minute: the send may still finish. The ledger below lists every example sent.',
 }
