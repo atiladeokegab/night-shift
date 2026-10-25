@@ -1912,7 +1912,7 @@ def _wrong_minute(text: str, m: dict) -> list[str]:
         r"(?:^|(?<=[.!?])\s+)"
         r"(?:(?:we['’]re|we are|it['’]s|it is)\s+(?:now\s+)?)?"
         r"([\w -]+?)\s+minutes?\s+(?:gone|played|elapsed)\b"
-        r"(?![, ]*\s(?:earlier|ago|before|then|when|at)\b)",
+        r"(?!\s*\?|[, ]*\s(?:earlier|ago|before|then|when|at)\b)",
         text,
         re.I,
     ):

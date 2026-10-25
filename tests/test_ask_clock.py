@@ -41,6 +41,7 @@ def test_a_current_minute_is_checked_against_the_clock_not_other_numbers(text):
         "About one hundred minutes gone.",
         "We could have one hundred and four minutes played.",
         "Are we one hundred and four minutes gone?",
+        "One hundred and four minutes gone?",
         "Messi scored after twenty-two minutes played.",
     ],
 )
