@@ -114,8 +114,23 @@ def football() -> tuple[list[dict], list[dict]]:
     todo = [m for comp, season in sorted(seen) for m in feed.statsbomb_matches(comp, season)]
     print(f"football: {len(todo)} matches in {len(seen)} competition-seasons", flush=True)
     with ThreadPoolExecutor(12) as pool:
-        got = list(pool.map(football_match, todo))
+        got = [g for g in pool.map(_or_skip(football_match), todo) if g is not None]
+    if skipped := len(todo) - len(got):
+        print(f"football: skipped {skipped} malformed matches", flush=True)
     return [f for f, _ in got], [a for _, apps in got for a in apps]
+
+
+def _or_skip(build):
+    """`build`, with a malformed upstream record (a missing field, a wrong type) answered None so
+    one bad match is skipped and counted. A network error still raises: a gap is never silent."""
+
+    def run(m):
+        try:
+            return build(m)
+        except (KeyError, IndexError, TypeError, ValueError, AttributeError):
+            return None
+
+    return run
 
 
 # --- basketball: stats.nba.com play-by-play for the score and totals, the shot archive for the date
