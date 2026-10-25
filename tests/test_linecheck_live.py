@@ -331,11 +331,11 @@ def test_stats_serve_the_held_out_result_the_eval_wrote(tmp_path, monkeypatch):
     from core import stats as stats_mod
     from eval import linecheck_eval
 
-    # the shape --json writes (web/src/proof.test.ts reads the same fixture)
+    # the shape --json writes, with eval/linecheck_heldout.json's values
     fixture = Path(__file__).parent / "fixtures" / "linecheck_heldout.json"
     result = json.loads(fixture.read_text())
-    rules = {"overall": {"lines": 288, "tp": 1, "fn": 4, "fp": 0}}
-    model = {"overall": {"tp": 3, "fp": 5}}
+    rules = {"overall": {"lines": 288, "tp": 2, "fn": 3, "fp": 0}}
+    model = {"overall": {"tp": 3, "fp": 3}}
     out = {"rules": rules, "line_check": model, "errors": 0}
     assert linecheck_eval.summary("heldout_labels.jsonl", out) == result
     store = Store(tmp_path / "store")
