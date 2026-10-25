@@ -35,7 +35,7 @@ from core.voice import Speaker, voice_of, voice_router
 
 log = logging.getLogger("touchline.app")
 REJOIN_S = 10.0  # a replay with no open stream this long is stopped: its lines cost model calls
-FIX_PER_MIN = 6  # fixes a minute, all producers: each is a paid, recorded call on the owner's key
+FIX_PER_MIN = 20  # fixes a minute, all producers: each is a paid, recorded call on the owner's key
 FORGET_S = 60.0  # a finished replay is forgotten once nobody streams or touches it this long
 
 WEB = Path(__file__).resolve().parent.parent / "web" / "dist"
