@@ -10,12 +10,22 @@ Read every figure off the screen at the time; the one written here (step 5) is d
    matches** (**First time**, **Auto-fixed**, **To a human**), then **Per full replay** (**Total**,
    **Model**, **Voice**).
 3. **A producer's fix.** This step needs the producer token, so have it ready but never on screen.
-   **Review** in the top nav. Find Cahill's card, Chelsea v Tottenham Hotspur · 57:41; it is the one whose
-   line says "one-all". Then **Fix this line**: enter the **Producer token**, type exactly
-   `Gary Cahill scores! Chelsea pull one back, but Tottenham still lead two to one.`, and press **Send fix**.
-   In a new tab, open <https://night-shift-5zvig7nbvq-ew.a.run.app/?match=3754092&at=26>: the replay says
-   that moment in the fixed words, tagged **Fixed by producer**. Every later line of the match is called
-   with that match's fixes, at most five, in its request.
+   **Review** in the top nav. Don't fix Cahill's "level it at one-all" line again: a fixed mistake leaves
+   the queue, and each Score check example is sent only once, so the count would not move. Fix a fresh
+   lead line instead, from any match but Brighton & Hove Albion WFC v Bristol City WFC or the São Paulo
+   Grand Prix: those two are held out of training (`HELD_OUT` in
+   [`eval/linecheck.py`](../eval/linecheck.py)). At 05:20 UTC on 25 Oct the queue held, for one, the card
+   Chelsea v Tottenham Hotspur · 57:41, "Gary Cahill with the half volley! Chelsea are back in it, but
+   Tottenham lead one-nil— two-one!". **Fix this line**: enter the **Producer token**, type
+   `Gary Cahill with the half volley! Chelsea are back in it, but Tottenham still lead two-one.` (it
+   passes the number check), and press **Send fix**. In a new tab, open
+   <https://night-shift-5zvig7nbvq-ew.a.run.app/?match=3754092&at=26>: the replay says that moment in the producer's words, tagged
+   **Fixed by producer**. Every later line of the match is called with that match's fixes, at most
+   five, in its request.
+
+   If the queue has no fresh card, or the fix is refused, show the fix already made instead: on Review,
+   **Corrections sent to Mubit** lists Cahill's two Score check rows from 23:45 UTC on 24 Oct, each with
+   its session and request.
 4. **The training receipt.** Back on the Review tab, the panel under the fix reads **Sent to training**,
    then:
    - **Fix saved: request** with its Mubit request id;
@@ -23,13 +33,15 @@ Read every figure off the screen at the time; the one written here (step 5) is d
    - **Score check examples: N → M**;
    - **Training run pending**, or **Latest Score check adapter: v**N once a version is recorded.
 
-   Say "the count went up", not by how much: an example sent before is skipped.
+   Say "the count went up" only if M is more than N. If the panel reads "No new Score check example",
+   say that: each was already sent, or the data can't label it.
 5. **Mubit's console.** Open it beforehand, signed in, and say it is Mubit's page, not ours: the
    **Adapters** page, the **Score check** card ("Check one line of…"). As read at 00:14 UTC on 25 Oct:
    v1 at 33.3% on 12 test cases against a 95% target, "Not ready yet". Say "the first Score check
    version scored 33.3% against a 95% target; every fix is training for the next one". Read the card
    again on the day.
 
-**Fallback:** if live is off air ("Commentator is off air for today", the $20 daily budget), or past 10 new
+**Fallback:** if live is off air ("Commentator is off air for today", the live deploy's `DAILY_BUDGET_USD` of $20; the code's default
+is $50), or past 10 new
 replays an hour ("You've started a lot of replays"), the site replays stored lines with no new calls,
 so play the MP4 of the film instead.
