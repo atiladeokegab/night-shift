@@ -360,8 +360,13 @@ def converse_router(*, need_deps, viewed, asked_so_far, guard, store, env=os.env
         sent = request.headers.get("authorization", "")
         if not hmac.compare_digest(sent.encode(), f"Bearer {secret}".encode()):
             raise HTTPException(401, "bad token")
-        body = await request.json()
-        messages = body.get("messages") or []
+        try:
+            body = await request.json()
+        except ValueError:
+            raise HTTPException(400, "body is not JSON") from None
+        messages = (body.get("messages") or []) if isinstance(body, dict) else None
+        if not isinstance(messages, list) or not all(isinstance(m, dict) for m in messages):
+            raise HTTPException(400, "body is not a chat completion request")
         system = " ".join(words(m.get("content")) for m in messages if m.get("role") == "system")
         found = CTX.search(system)
         held = contexts.get(found[1]) if found else None
