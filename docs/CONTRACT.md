@@ -10,8 +10,8 @@ updates for a recurring task." Track: Recurring tasks; Score check is the recurr
 
 Demo: Kobe Bryant's 81 against Toronto (2006) replays and Touchline calls it aloud, the first word of text in
 about 0.5 s (median), the producer fixes one wrong line, the big model's recorded lines are shown
-where our trained commentator's will go (8 adapters on Mubit's console, none ready yet, best
-58.3%, and the app does not call an adapter), then one tap switches to India v Pakistan 2022 and the same commentator calls cricket.
+where our trained commentator's will go (Mubit's console, read by hand 25 Oct 2026 06:27 UTC: 12 tasks,
+9 adapters; earlier, 00:14 UTC: 8 adapters, best commentary task 58.3%; the app does not call an adapter), then one tap switches to India v Pakistan 2022 and the same commentator calls cricket.
 
 ## Shared core
 

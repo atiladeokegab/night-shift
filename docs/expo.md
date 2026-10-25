@@ -36,9 +36,10 @@ Read every figure off the screen at the time; the one written here (step 5) is d
    Say "the count went up" only if M is more than N. If the panel reads "No new Score check example",
    say that: each was already sent, or the data can't label it.
 5. **Mubit's console.** Open it beforehand, signed in, and say it is Mubit's page, not ours: the
-   **Adapters** page, the **Score check** card ("Check one line of…"). As read at 00:14 UTC on 25 Oct:
-   v1 at 33.3% on 12 test cases against a 95% target, "Not ready yet". Say "the first Score check
-   version scored 33.3% against a 95% target; every fix is training for the next one". Read the card
+   **Adapters** page, the "Check one line of 2" card. Mubit's "Check one line of 2" task (one of our two line-checking tasks; the console cuts the name short) shows 94.6% for its first version, testing v1, in testing (console read by hand, 25 Oct 2026 06:27 UTC). The app does not call an adapter.
+   Earlier, at 00:14 UTC on 25 Oct, the Score check card ("Check one line of…") showed v1 at 33.3% on
+   12 test cases against a 95% target, "Not ready yet". Say "Mubit's 'Check one line of 2' task shows
+   94.6% for its first version, in testing; every fix is training for the next one". Read the card
    again on the day.
 
 **Fallback:** if live is off air ("Commentator is off air for today", the live deploy's `DAILY_BUDGET_USD` of $20; the code's default

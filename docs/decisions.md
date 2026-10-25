@@ -112,7 +112,8 @@ against its moment's facts and answer JSON (`ok`, `wrong`, `not_said`). The answ
 code, never a model; a line code can't label is never sent.
 
 **Context.** Commentary has no single right answer, so a trained commentator is hard to grade.
-The best commentary version scored 58.3% against Mubit's 95% target (evidence.md).
+In the console reading of 25 Oct 2026, 00:14 UTC, the best commentary version scored 58.3% against
+Mubit's 95% target (evidence.md).
 
 **Why.** A check has exact answers the data settles, so Mubit's test means something. Score check
 was split off because Claude repeated its own Line check answer only 95% of the time on a 60-line
@@ -154,8 +155,9 @@ breaks the event's rule. Recording everything: wrong lines become training data.
 
 **Consequences.** A recorded reply is a new generation we can't see first, so it can still fail;
 it is marked `recorded: true, reply_passed: false` and does not count toward the next version. The
-second call costs extra. No version trained on our data is in use: the console (25 Oct, 00:14 UTC)
-shows 11 tasks, 8 adapters and none in use.
+second call costs extra. No version trained on our data is in use: the console (25 Oct 2026, 06:27 UTC)
+shows 12 tasks and 9 adapters, and the app does not call an adapter; earlier (25 Oct, 00:14 UTC)
+it showed 11 tasks, 8 adapters and none in use.
 
 **Where.** `agent/commentator.py:36` (endpoint), `:480` (`default_provider`), `:510`
 (`unrecorded_provider`), `scripts/deploy.sh:104`.
@@ -300,8 +302,9 @@ Basketball's request is not compared byte for byte in a test.
 **Decision.** The commentator, Line check and Score check prompts are frozen, and tests pin them. A
 CI gate lets only PRs labelled `fix` merge after code freeze.
 
-**Context.** Each prompt change started a new Mubit task: the console shows 11 tasks and 8
-adapters, with our commentary split across them (evidence.md).
+**Context.** Each prompt change started a new Mubit task: the console shows 12 tasks and 9
+adapters (25 Oct 2026, 06:27 UTC; earlier, 00:14 UTC: 11 tasks and 8 adapters), with our commentary
+split across them (evidence.md).
 
 **Why.** That split is the cost we paid; freezing stops it recurring. Byte-identity tests fail a
 PR that would fork a task by accident. The freeze gate keeps the demo build stable in the last

@@ -191,7 +191,7 @@ flowchart LR
 | Lines card | "Lines", "<n> called", "Fix", "first word 0.58 s", "Fixed", "Rejected" |
 | Fix sheet | "Fix this line" / "Touchline said" / "Corrected line" / "What was wrong" / "Wrong fact", "Wrong player", "Wrong score", "Tone", "Other" / "Send fix", "Reject line", "Cancel" / "Your fix goes back through Mubit and is kept beside the original." |
 | Toasts | "Fix sent. Kept beside the original." / "Line rejected." |
-| Proof card | "Proof" / "First word p50", "First word p95", "Cost per line", "Lines", "Fixes", "Adapter" / "7 adapters on Mubit's console, best 58.3% on its test; none passed yet." / "First word: time from the moment to the first spoken word. Measured through Mubit." |
+| Proof card | "Proof" / "First word p50", "First word p95", "Cost per line", "Lines", "Fixes", "Adapter" / one dated row per Mubit console reading, newest first, in the words CONTRACT.md's `console` gives (latest 25 Oct 2026 06:27 UTC: 12 tasks, 9 adapters; earlier 00:14 UTC: 11 tasks, 8 adapters, 0 serving) / "First word: time from the moment to the first spoken word. Measured through Mubit." |
 
 Sample lines in the mockup (samples of the emotional register A-3.6 asks for, not the agent's output;
 the video times are the mockup's, not the video maps' in `data/video/`):

@@ -22,9 +22,10 @@ feed, looks up the facts it needs with tools (score, player, recent play) and ca
 one short spoken line, with the model's first word in about half a second (median, `GET /stats`),
 over a replay of iconic real moments. It checks the numbers in each moment's line before it speaks. A producer fixes any line that's wrong, and the fix is sent back
 through Mubit as a training example. Every call goes through Mubit: this is training, not serving.
-Each prompt change started a new Mubit task: the console (25 Oct, 00:14 UTC) shows 11 tasks,
-8 adapters and 0 serving; the first Score check version scored 33.3% and the best commentary task
-58.3%, against a 95% target; none is ready, and the app calls no adapter.
+Each prompt change started a new Mubit task: the console (25 Oct 2026, 06:27 UTC) shows 12 tasks
+and 9 adapters. Mubit's "Check one line of 2" task (one of our two line-checking tasks; the console cuts the name short) shows 94.6% for its first version, testing v1, in testing (console read by hand, 25 Oct 2026 06:27 UTC). The app does not call an adapter.
+Earlier (25 Oct, 00:14 UTC): 11 tasks, 8 adapters and 0 serving; the first Score check version
+scored 33.3% and the best commentary task 58.3%, against a 95% target.
 
 Track: Recurring tasks. Score check is the recurring task: does this line's score match the match data? The number check answers it in code for every lead line on every match before air, and every producer's fix goes to Score check's training on Mubit as a labelled example. Training, not serving.
 
@@ -56,7 +57,7 @@ Track: Recurring tasks. Score check is the recurring task: does this line's scor
 - Sports beyond football, cricket, basketball and F1 this weekend, and any sport without real event data.
 - Unsourced statistics in the pitch.
 - Our own fine-tuning or model hosting: Mubit trains the model.
-- Any claim that our model beats the big one, or matches it: no adapter has passed Mubit's 95% target yet.
+- Any claim that our model beats the big one, or matches it: the app does not call an adapter.
 - Betting or betting odds. Predictions are in scope (the lead, 2026-10-24) only as rates from each player's pre-match record plus the match so far, never from a later moment.
 
 ## The demo, in one line
