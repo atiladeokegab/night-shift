@@ -1,7 +1,7 @@
 # Mubit: a correction, step by step
 
 A producer's fix becomes a labelled Score check example sent to Mubit; Mubit trains a version of
-that task and tests it against Claude's answers. Every step below points at code, a ledger row, a
+a task and tests it against Claude's answers. Every step below points at code, a ledger row, a
 Mubit request id or a console reading.
 
 ```mermaid
@@ -9,8 +9,6 @@ flowchart LR
   A[Producer fixes a line] --> B[App sends the line as said and the fix<br/>to Score check as recorded examples<br/>teach]
   B --> C[Mubit trains a version<br/>of the task]
   C --> D[Mubit tests it against<br/>Claude's answers]
-  D --> E[testing v1: 94.6%<br/>target 95%]
-  E -. once a version reaches its target .-> F[Score check asked<br/>on fresh lines]
 ```
 
 Score check asks one question of one line: does every score it gives match the score at its
@@ -23,11 +21,11 @@ The ledger counts are from a copy of the deployed store's ledgers, taken on 25 O
 
 | Step | What happens | Code | Evidence |
 |---|---|---|---|
-| 1. Fix | A producer fixes a line on the page. A fix that contradicts the match data gets a 422 and never reaches Mubit | [`core/app.py`](../core/app.py#L457) `fix_line` | `fixes` ledger: 70 producer fixes, each with its own Mubit request id |
+| 1. Fix | A producer fixes a line on the page. A fix that contradicts the match data gets a 422 and never reaches Mubit | [`core/app.py`](../core/app.py#L457) `fix_line` | `fixes` ledger: 70 producer fixes, each with its own Mubit request id. 66 have the reason "fix list: …" and were made 14:13 to 14:17 UTC on 24 Oct: the team's fixes from the number check's fix list |
 | 2. Label | Code labels the line as said, and the fixed text, from the event data. No model labels anything. A held-out match, an analyst's line, or a line code can't label is skipped | [`agent/scorecheck.py`](../agent/scorecheck.py#L83) `teach`, [`eval/linecheck.py`](../eval/linecheck.py#L492) `gold` | Held-out matches: `HELD_OUT` at [`eval/linecheck.py:20`](../eval/linecheck.py#L20) |
 | 3. Send | Each labelled line goes to Score check as a recorded example: the request, Claude's reply, and a correction turn with the code's answer when Claude's reply differs. Each example is sent once ever | [`eval/seed_scorecheck.py`](../eval/seed_scorecheck.py#L129) `send_fix`, [`send`](../eval/seed_scorecheck.py#L82); started by the fix route at [`core/app.py:521`](../core/app.py#L521) | `scorecheck_examples`: 2,163 sent, each with a request id. 62 came from fixes (48 Claude already matched, 5 corrected, 9 not corrected) and 2,101 from seeding |
-| 4. Receipt | Each fix gets a receipt: how many examples went, and whether a call failed | [`core/app.py:337`](../core/app.py#L337) `score_teach` | `scorecheck_receipts`: 3 rows (below) |
-| 5. Train and test | Mubit trains a version of the task on the examples it keeps and tests it against Claude's answers | Mubit; read off the console by hand into [`data/mubit_console.json`](../data/mubit_console.json) | Console, 25 Oct 06:27 UTC: testing v1 at 94.6%, 192 kept examples ([below](#the-946-version)) |
+| 4. Receipt | Each fix gets a receipt: how many examples went, and whether a call failed | [`core/app.py:337`](../core/app.py#L337) `score_teach` | `scorecheck_receipts`: 3 rows: Cahill (2 sent), Terland (0 sent) and Abigail Harrison (3913122 moment 15, 23:41 UTC, 0 sent because the match is held out) |
+| 5. Train and test | Mubit trains a version of a task on the examples it keeps and tests it against Claude's answers | Mubit; read off the console by hand into [`data/mubit_console.json`](../data/mubit_console.json) | Console, 25 Oct 06:27 UTC: "Check one line of 2" (Line check or Score check; the console cuts the name short), testing v1 at 94.6%, 192 kept examples ([below](#the-946-version)) |
 | 6. Ask | Every request is built the same way, so each call joins the same Mubit task. A test pins the request's hash, since any change would start a new task | [`agent/scorecheck.py:58`](../agent/scorecheck.py#L58) `build_request`, [`tests/test_scorecheck.py`](../tests/test_scorecheck.py) | Asked by `teach`, the seeding script and the held-out run ([below](#held-out-run-25-oct)) |
 
 ### Worked examples (real ledger rows)
@@ -63,19 +61,20 @@ Read by hand off Mubit's console ([`data/mubit_console.json`](../data/mubit_cons
 
 | Reading (UTC) | Tasks | Adapters | Task as the console shows it | Version | Score | Status |
 |---|---|---|---|---|---|---|
-| 25 Oct 00:14 | 11 | 8 (0 serving) | "Check one line of…" (Score check) | v1 | 33.3% on 12 test cases, target 95% | Not ready yet |
+| 25 Oct 00:14 | 11 | 8 (0 serving) | "Check one line of…" (Score check) | v1 | 33.3% on 12 test cases, target 95% (read at 00:14) | Not ready yet |
 | 25 Oct 06:27 | 12 | 9 | "Check one line of 2" | testing v1 | 94.6%; 2,235 calls, 192 kept examples | Testing |
 
 "Check one line of 2" is one of our two line-checking tasks (Line check or Score check): both
 prompts start "You check one line", and the console cuts the name short. Between the readings
 the console gained one task and one adapter, so we don't claim the 94.6% version is the same
 task's v1 as the 33.3% one. Mubit's docs: a version that reaches its target becomes available in
-Try models. 94.6% is just under the 95% target.
+Try models. 94.6% is just under the 95% target the console showed at 00:14; the target was not
+read at 06:27.
 
 ## Held-out run, 25 Oct
 
-Score check's request went through Mubit to Claude Sonnet 5.5 with recording off, on the 74
-held-out lines from matches 3913122 and 9636 ([`eval/scorecheck_heldout.jsonl`](../eval/scorecheck_heldout.jsonl)).
+Score check's request went through Mubit to Claude Sonnet 5.5 with recording off, on the 74 lines
+of held-out match 3913122 ([`eval/scorecheck_heldout.jsonl`](../eval/scorecheck_heldout.jsonl)).
 None of those lines was ever sent as training.
 
 | Code's answer | Lines | Claude agreed |
@@ -88,14 +87,15 @@ None of those lines was ever sent as training.
 Run on 25 Oct 2026 at about 07:44 UTC with `uv run python -m eval.seed_scorecheck --claude`, then
 `--score` ([`eval/seed_scorecheck.py`](../eval/seed_scorecheck.py)). The same result was recorded
 on 24 Oct at 20:09 UTC (`scorecheck_evals`). This is the yardstick Mubit grades each version
-against: Claude's own answers. Testing v1 matches 94.6% of the provider model's answers on its
-own test cases.
+against: Claude's own answers. Testing v1 of "Check one line of 2" (Line check or Score check;
+the console cuts the name short) matches 94.6% of the provider model's answers on its own test
+cases.
 
 ## What is not true yet
 
 | Limit | Why |
 |---|---|
-| No version is serving | testing v1 is at 94.6%, under the 95% target. No trained version answers anything in the app |
+| The app calls no adapter | The console counted 0 serving at 00:14; serving was not read at 06:27. Testing v1 is at 94.6%, under the 95% target the console showed at 00:14. No trained version answers anything in the app |
 | The app cannot name an adapter as its model | Mubit has no model id for an adapter: "you can't send a call to an adapter by naming it as the model", docs.mubit.ai, Keep your model IDs ([`eval/side_by_side.py`](../eval/side_by_side.py)) |
 | The live app does not ask Score check on fresh lines | The number check in code ([`core/insight.py`](../core/insight.py)) answers that question for every line before air. Line check, a separate Mubit task, gives the live second opinion: 1,313 calls in `linechecks`, all Claude Sonnet 5.5 |
 | Some labelled examples are planted | Seeding adds, for each line whose score is right, one copy with a score number changed, labelled `wrong` by the code's answer key ([`eval/seed_scorecheck.py`](../eval/seed_scorecheck.py#L46) `examples`, [`eval/linecheck.py`](../eval/linecheck.py#L678) `plant`) |
