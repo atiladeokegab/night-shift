@@ -79,6 +79,16 @@ class AskEverything(FakeProvider):
         return super().call(request)
 
 
+def test_lead_model_env_overrides_haiku_at_request_time(monkeypatch):
+    monkeypatch.delenv("LEAD_MODEL", raising=False)
+    haiku = build_request(FOOT, [moment(FOOT, 0)])
+    assert haiku["model"] == "claude-haiku-4-5" and "thinking" not in haiku
+    monkeypatch.setenv("LEAD_MODEL", "claude-sonnet-5-5")
+    sonnet = build_request(FOOT, [moment(FOOT, 0)])
+    assert sonnet["model"] == "claude-sonnet-5-5"
+    assert sonnet["thinking"] == {"type": "between_tools"}
+
+
 def test_frozen_parts_are_byte_identical_across_sports():
     f = build_request(FOOT, [moment(FOOT, 0)])
     c = build_request(CRIC, [moment(CRIC, 0)])
