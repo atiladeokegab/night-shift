@@ -31,6 +31,8 @@ PEAKS = {
     "7457": 37,  # Orlando's 82nd-minute equaliser, then the 89th-minute own goal
     "9636": 12,  # Verstappen into P1
 }
+# Off the match picker; their files stay for the tests, and a direct replay still works.
+HIDDEN = {"7457", "1515217"}
 
 
 def _path(match_id: str) -> Path:
@@ -48,6 +50,8 @@ def list_matches() -> list[dict]:
     out = []
     for path in sorted(SAMPLE.glob("*.json")):
         h = json.loads(path.read_text(encoding="utf-8"))["header"]
+        if h["match_id"] in HIDDEN:
+            continue
         sides = f"{h['home']} v {h['away']}, " if "home" in h else ""  # a race has no sides
         title = f"{sides}{h['competition']} {h['stage']}".strip()
         match = {"match_id": h["match_id"], "sport": h["sport"], "title": title, "sample": True}

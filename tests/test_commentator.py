@@ -169,12 +169,14 @@ def test_pick_keeps_goals_and_spreads_the_rest():
 
 
 def test_server_seam_on_the_bundled_samples(monkeypatch):
-    from data.matches import list_matches, load_moments
+    from data.matches import HIDDEN, list_matches, load_moments
 
     monkeypatch.delenv("MUBIT_API_KEY", raising=False)
     monkeypatch.setattr(commentator, "_provider", None)
     samples = list_matches()
-    assert {(m["sport"], m["match_id"]) for m in samples} == feed.DEMO
+    assert {(m["sport"], m["match_id"]) for m in samples} == {
+        d for d in feed.DEMO if d[1] not in HIDDEN
+    }
     assert all(m["sample"] for m in samples)
     for m in samples:
         moments = load_moments(m["match_id"])
