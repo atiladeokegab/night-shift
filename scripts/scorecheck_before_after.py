@@ -10,10 +10,16 @@ answered by whatever Mubit then serves.
     uv run python scripts/scorecheck_before_after.py before [--case NAME | --line-id ID]
     (then the same with `after`)
 
-Cases: `cahill` (default), and two lines the base model's Score check answered against the key on
-live (the /ledger rows kind "corrected": Claude's first reply differed from the key): `jordan`,
-`kohli`. `--line-id` takes a stored line (GET /lines/<id>, no key needed) from a supported sport
-with a canonical Score check label, computed from the event data (eval/linecheck.py `gold`).
+Score check judges only a line's score numbers, in either order when the line gives no team order,
+never who leads (agent/scorecheck.py SYSTEM). Cases: `cahill` (default), the one keyed `wrong`; and
+two lines keyed `ok` that the base model answered `wrong` on live (the /ledger rows kind
+"corrected"): `jordan` ("Chicago Bulls take the lead, 85-86!" at Utah 86-85: the numbers are
+right, the leader is wrong, and the leader is the number check's job, not Score check's) and
+`kohli` ("need just two from the final ball" at 2 needed from 2 balls: the runs are right; balls
+left are not a score).
+
+`--line-id` takes a stored line (GET /lines/<id>, no key needed) from a supported sport with a
+canonical Score check label, computed from the event data (eval/linecheck.py `gold`).
 
 Writes eval/scorecheck_before_after_<UTC time>_<label>_<case>.json and prints the same."""
 
