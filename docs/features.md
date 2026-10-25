@@ -143,9 +143,11 @@ every live page.
 
 The screenshot that stood here (24 Oct, 16:04 UTC) showed a fix threshold and an adapter "Training" that the card no longer shows (#281), so it is removed; the live page shows the current card.
 
-Live latency, cost per line and lines called, split by lead and analyst (#166); the fixes recorded in Mubit
-as training data and how many count toward the next adapter; Line check's row (#298); and the adapter's state. All computed from the store,
-the same numbers as `GET /stats` (its `by_speaker`) ([`web/src/components/ProofPanel.tsx`](../web/src/components/ProofPanel.tsx),
+Calls checked, this match and all matches (#204); cost per full replay; live latency, cost per line and lines
+called, split by lead and analyst (#166); the fixes that passed the check, recorded in Mubit as training data, and
+how many have been heard since; Line check's row and its held-out result (#298, #317); and Score check's version,
+examples and held-out score, with the earlier commentary tasks folded away (#321, #363). All from `GET /stats`
+(its `by_speaker` for the split); the console reading under Earlier tasks is dated and read by hand, never live ([`web/src/components/ProofPanel.tsx`](../web/src/components/ProofPanel.tsx),
 [`core/stats.py`](../core/stats.py)).
 
 ## The product: where this goes
