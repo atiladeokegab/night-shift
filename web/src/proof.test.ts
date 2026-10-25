@@ -128,9 +128,9 @@ test("Score check's row keeps its earlier version, where it was read, and its ex
 })
 
 test('the held-out row says Line check beside the rules in counts, never a percentage (#317)', () => {
-  // the shape eval/linecheck_eval.py --json writes; tests/test_linecheck_live.py serves the same file
-  const h: HeldOut = JSON.parse(readFileSync(new URL('../../tests/fixtures/linecheck_heldout.json', import.meta.url), 'utf8'))
-  assert.equal(heldoutRow(h), 'held-out: caught 3 of 5 wrong lines (rules: 1 of 5), 5 false alarms')
+  // the committed result /stats serves (core/stats.py HELDOUT), the README's source too: a rerun fails this
+  const h: HeldOut = JSON.parse(readFileSync(new URL('../../eval/linecheck_heldout.json', import.meta.url), 'utf8'))
+  assert.equal(heldoutRow(h), 'held-out: caught 3 of 5 wrong lines (rules: 2 of 5), 3 false alarms')
   assert.equal(heldoutRow({ ...h, line_check: { caught: 3, false_alarms: 1 } })?.endsWith('1 false alarm'), true)
   assert.equal(heldoutRow(null), null)
   assert.equal(heldoutRow(undefined), null)
@@ -144,9 +144,9 @@ test('the held-out row says Line check beside the rules in counts, never a perce
 test("the console row is the committed reading, dated and sourced, and claims no adapter serves (#317)", () => {
   const c: ConsoleReading = JSON.parse(readFileSync(new URL('../../data/mubit_console.json', import.meta.url), 'utf8'))
   const row = consoleRow(c) ?? ''
-  assert.equal(row, 'Mubit console, 24 Oct 19:15 UTC: 8 tasks, 7 adapters, 0 serving; best 58.3% of a 95% target')
+  assert.equal(row, 'Mubit console, 25 Oct 00:14 UTC: 11 tasks, 8 adapters, 0 serving; best 58.3% of a 95% target')
   assert.doesNotMatch(row, /pass/i)
-  assert.equal(consoleRow({ ...c, listed: {} }), 'Mubit console, 24 Oct 19:15 UTC: 8 tasks, 7 adapters, 0 serving')
+  assert.equal(consoleRow({ ...c, listed: {} }), 'Mubit console, 25 Oct 00:14 UTC: 11 tasks, 8 adapters, 0 serving')
   assert.equal(consoleRow(null), null)
   assert.equal(consoleRow(undefined), null)
 })
@@ -169,5 +169,5 @@ test('the panel shows the latest Score check adapter version, else that the trai
 
 test("the training panel's heading claims a send only once the fix's own receipt says so (#400)", () => {
   assert.equal(trainingHeading('sent'), 'Sent to training')
-  for (const s of ['pending', 'none', 'failed', 'unknown'] as const) assert.doesNotMatch(trainingHeading(s), /^Sent/)
+  for (const s of ['pending', 'none', 'held_out', 'failed', 'unknown'] as const) assert.doesNotMatch(trainingHeading(s), /^Sent/)
 })

@@ -185,3 +185,35 @@ def test_an_unfixed_line_has_no_fix(tmp_path):
     with client:
         store.append("lines", dict(LINE))
         assert "fix" not in client.get("/lines/f1-0").json()
+
+
+def stored(client):
+    replay = client.post("/replays", json={"match_id": "f1", "speed": 1e6}).json()
+    read_stream(client, replay["replay_id"])  # the replay has finished: its line is stored
+
+
+def test_fixes_are_limited_to_a_few_a_minute(tmp_path):
+    from core.app import FIX_PER_MIN
+
+    client, _ = setup(tmp_path, lambda line, text, **_: {"recorded": True})
+    with client:
+        stored(client)
+        codes = [
+            client.post("/lines/f1-0/fix", json={"corrected_text": f"Goal {i}!"}).status_code
+            for i in range(FIX_PER_MIN + 1)
+        ]
+        over = client.post("/lines/f1-0/fix", json={"corrected_text": "One more!"})
+    assert codes == [200] * FIX_PER_MIN + [429]
+    assert over.status_code == 429 and int(over.headers["Retry-After"]) >= 1
+
+
+def test_a_failed_correction_says_nothing_of_the_exception(tmp_path, caplog):
+    def boom(line, text, **_):
+        raise RuntimeError("secret sk-ant-123 upstream detail")
+
+    client, _ = setup(tmp_path, boom)
+    with client, caplog.at_level("WARNING"):
+        stored(client)
+        resp = client.post("/lines/f1-0/fix", json={"corrected_text": "Goal!"})
+    assert resp.status_code == 503 and resp.json() == {"detail": "correction not sent"}
+    assert "RuntimeError" in caplog.text

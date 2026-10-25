@@ -174,10 +174,11 @@ export interface ScoreCheckReceipt {
   fix_uid: string
   sent: number // the examples it wrote: 0 when each was already sent or can't be labelled
   failed: boolean // a Mubit call failed
+  held_out?: boolean // the match is held out of training (eval/linecheck.py HELD_OUT): nothing is sent
 }
 
 // A fix's Score check send as the review page knows it (#400): no receipt within the deadline is unknown
-export type TrainingState = 'pending' | 'sent' | 'none' | 'failed' | 'unknown'
+export type TrainingState = 'pending' | 'sent' | 'none' | 'held_out' | 'failed' | 'unknown'
 
 // The `linecheck` SSE event (#298): Line check's answer on one line. labels null: no canonical reply.
 export interface LineCheck {
@@ -227,7 +228,7 @@ export type AdapterState = 'collecting' | 'testing' | 'passed' // what the recor
 
 export interface Adapter {
   state: AdapterState
-  summary: string // e.g. "Testing: no version passed; best 55.8% of a 95% target, as of 24 Oct 2026 13:04 UTC."
+  summary: string // e.g. "Testing: no version passed; best 58.3% of a 95% target, as of 24 Oct 2026 19:15 UTC."
   kept: number | null // null until the lead records it from Mubit's console (#46); never guessed
   agree: number | null
   total: number | null
@@ -243,7 +244,8 @@ export interface ConsoleReading {
   adapters: number
   serving: number
   target: number
-  listed: Record<string, { status: string; examples: number; quality: number }> // by task name: no brackets in a `stats` event
+  // by task name: no brackets in a `stats` event; test_cases null where the console didn't show it
+  listed: Record<string, { status: string; version: number; quality: number; test_cases: number | null; note?: string }>
 }
 
 // One Mubit task's latest adapter record (#209), as the lead read it off Mubit's console; null where it didn't say.

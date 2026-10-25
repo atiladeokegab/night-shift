@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Deploy the committed HEAD to Cloud Run and prove it answers.
 #   PROJECT=<gcp-project-id> [REGION=europe-west1] [SERVICE=night-shift] \
-#     [STATE_BUCKET=<PROJECT>-state] [MIN_INSTANCES=0] [DEPLOY_AS_SELF=1] [PRODUCER_TOKEN=...] [CONVERSE_AGENT_ID=...] [DAILY_BUDGET_USD=50] scripts/deploy.sh
+#     [STATE_BUCKET=<PROJECT>-state] [MIN_INSTANCES=0] [DEPLOY_AS_SELF=1] [CONVERSE_AGENT_ID=...] [DAILY_BUDGET_USD=50] scripts/deploy.sh
 # A rehearsal deploys SERVICE=night-shift-staging, whose store sits under its own prefix.
 # One-time GCP setup: scripts/bootstrap.sh. Rollback: route traffic to the previous revision
 # (gcloud run services update-traffic SERVICE --to-revisions REV=100).
@@ -20,8 +20,10 @@ SERVICE="${SERVICE:-night-shift}"
 STATE_BUCKET="${STATE_BUCKET:-$PROJECT-state}"
 MIN_INSTANCES="${MIN_INSTANCES:-0}"  # set 1 for a demo: no cold start
 # Required secrets: each mounts as its upper-cased name (mubit-api-key is MUBIT_API_KEY),
-# and scripts/bootstrap.sh creates and grants exactly these.
-SECRETS="mubit-api-key elevenlabs-api-key"
+# and scripts/bootstrap.sh creates and grants exactly these. producer-token is PRODUCER_TOKEN,
+# which locks POST /lines/{id}/fix (#232): a secret, never a plain env var in the service config.
+# A PRODUCER_TOKEN in the deploy's own environment (sourced producer.env) is ignored.
+SECRETS="mubit-api-key elevenlabs-api-key producer-token"
 OPTIONAL_SECRETS="converse-llm-secret"
 
 check_secret_version() {
@@ -101,20 +103,12 @@ VOICE_ENV=""
 # key trains, from scripts/replay_matches.py. MUBIT_RECORD=on make deploy records live lines again.
 MUBIT_RECORD="${MUBIT_RECORD:-off}"
 [[ "$MUBIT_RECORD" =~ ^(on|off)$ ]] || { echo "deploy: MUBIT_RECORD must be on or off" >&2; exit 1; }
-# The producer token (#232) locks POST /lines/{id}/fix. --set-env-vars replaces every var, so a token
-# set on the service by hand would go at the next deploy: it comes from the deploy's environment
-# (never .env), and unset leaves fixes open. No "@", which would split the list.
-PRODUCER_TOKEN="${PRODUCER_TOKEN:-}"
 # Talk to the commentator (#380). The bearer is provisioned through Secret Manager by
 # scripts/bootstrap.sh; only its agent id is an ordinary environment variable. With no agent id,
 # the secret isn't mounted and the Talk button stays off.
 CONVERSE_AGENT_ID="${CONVERSE_AGENT_ID:-}"
 if [[ ! "$CONVERSE_AGENT_ID" =~ ^[A-Za-z0-9_.~+/=-]*$ ]]; then
   echo "deploy: CONVERSE_AGENT_ID may hold only letters, digits and _.~+/=-" >&2
-  exit 1
-fi
-if [[ -n "$PRODUCER_TOKEN" && ! "$PRODUCER_TOKEN" =~ ^[A-Za-z0-9_.~+/=-]+$ ]]; then
-  echo "deploy: PRODUCER_TOKEN may hold only letters, digits and _.~+/=-" >&2  # never echo the value
   exit 1
 fi
 for name in $( (compgen -e; [[ -f .env ]] && sed -n 's/^\(VOICE_[A-Z0-9_]*\)=.*/\1/p' .env) \
@@ -144,7 +138,7 @@ done
 gcloud run deploy "$SERVICE" --source . --region "$REGION" --project "$PROJECT" \
   --allow-unauthenticated \
   --set-secrets "${MOUNTS%,}" \
-  --set-env-vars "^@^MODE=cloud@STORE_URL=gs://$STATE_BUCKET/$SERVICE@MUBIT_RECORD=$MUBIT_RECORD$VOICE_ENV${PRODUCER_TOKEN:+@PRODUCER_TOKEN=$PRODUCER_TOKEN}${CONVERSE_AGENT_ID:+@CONVERSE_AGENT_ID=$CONVERSE_AGENT_ID}${DAILY_BUDGET_USD:+@DAILY_BUDGET_USD=$DAILY_BUDGET_USD}" \
+  --set-env-vars "^@^MODE=cloud@STORE_URL=gs://$STATE_BUCKET/$SERVICE@MUBIT_RECORD=$MUBIT_RECORD$VOICE_ENV${CONVERSE_AGENT_ID:+@CONVERSE_AGENT_ID=$CONVERSE_AGENT_ID}${DAILY_BUDGET_USD:+@DAILY_BUDGET_USD=$DAILY_BUDGET_USD}" \
   --labels "commit=$COMMIT" \
   --min-instances "$MIN_INSTANCES" \
   --max-instances 1 \

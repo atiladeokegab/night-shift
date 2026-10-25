@@ -1,16 +1,13 @@
 # The demo
 
-**Touchline: the describer that checks itself. For the match nobody described.** A film of **1:50,
-hard stop 1:58**, under the 2:00 limit. It is recorded on the live URL with the sound on and a narrator's voice laid over the
-screen; the cold open and the Ask shot carry the product's own voice. It shows three things and
-then who buys it: **live commentary that checks itself before air** (a club's weekly highlights with
-**Close your eyes**, a line it fixed itself, a whole match nobody described), **a producer's fix sent
-to training** (the fix, its request id, the example count going up on the "Sent to training" panel,
-the replay saying the fix, then Mubit's console with Score check's version), and **Ask**. It ends on the buyer and what a replay costs. Talk, Follow a player, Teams and the shot
-map stay in the product but are not in the film. Anything shown outside
-our product, such as Mubit's console, is said aloud as such. Every number spoken is read off the
-live [`/stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats) or the Proof card on the day;
-none is written here to be repeated. Time the finished cut before submitting.
+**Touchline: the describer that checks itself. For the match nobody described.** Planned cut: **1:50,
+hard stop 1:58**, under the 2:00 limit. Record it on the live URL with the sound on and a narrator's
+voice laid over the screen. It runs in the same order as the README's
+[On stage](../README.md#on-stage): a match described with the **Proof** card, a wrong line caught
+before air, a producer's fix that the next lines on that match carry, the fix sent to Score check
+training, Mubit's console, then who buys it. Ask, Talk, Follow a player, Teams and the shot map stay
+in the product but are not in the film. Anything shown outside our product, such as Mubit's
+console, is said aloud as such. Time the finished cut before submitting.
 
 Videos embed where YouTube allows it; otherwise the tile says so and links to YouTube, and the
 commentary still plays on the match's own clock.
@@ -25,15 +22,10 @@ commentary still plays on the match's own clock.
 - Warm the voices: with the ElevenLabs key in the environment, `uv run python -m core.voice` speaks a
   short line in every voice and prints FAILED for any that fail. A cold library voice can fail its
   first line.
-- Open **Review** once and find the line for shot 4: Chelsea v Tottenham Hotspur · 57:41, Cahill's
-  goal (`3754092`, moment 26). Of the Cahill cards, use the one (Ctrl+F "one-all") whose line reads
-  "Gary Cahill scores! Chelsea level it at one-all, but Tottenham still lead two to one.", with the
-  reasons "One-all is not the score (1-2)" and "The scores are not level after this goal". Not
-  Jordan's steal: Score check labels only the score, and that line's score was right, so its panel
-  would read "Line as said: ok".
-- The "Sent to training" panel (#411) must be live: a fix on Review shows it. It needs the owner's
-  Mubit key on the live service; with no recorder it says "No Score check example sent for this fix".
-  The Cahill fix is a real production fix: one take, no practice fixes on that card.
+- Both fixes in the film are already made on live, once each. **Do not fix either line again**:
+  Terland's 30:57 line at Brighton v Bristol City (`3913122`, moment 8), made by
+  [`scripts/fix_then_later.py`](../scripts/fix_then_later.py), and Cahill's goal at Chelsea v
+  Tottenham Hotspur (`3754092`, 57:41), whose **Sent to training** panel is shot from stills.
 - Have Mubit's console open on the **Score check** task, signed in. Its figures are only those in
   the evidence page's [correction loop](evidence.md#correction-loop-with-evidence) section; read
   them again on the day.
@@ -44,21 +36,21 @@ commentary still plays on the match's own clock.
 
 | # | Time | On screen | Say |
 |---|---|---|---|
-| 1 | 0:00–0:12 | **Brighton v Bristol City** (`/?match=3913122`) playing with video, ON AIR. Press **E** (**Close your eyes**): the picture goes black, only the line and the score stay, the voice carries on | "Every week a club's media team cuts highlights. A fan who can't see them gets nothing from the pictures. Close your eyes." Then let one line play. |
-| 2 | 0:12–0:24 | The **Proof** card's auto-fixed count, then one line it fixed | "Before it speaks, it checks the score, the leader and the numbers against the data. This line had the wrong score. It fixed itself before anyone heard it." |
-| 3 | 0:24–0:35 | **Orlando v North Carolina** (NWSL, 2018), on its "Whole match, every key moment" label | "Touchline describes the highlights for them, every week, from the match data. And not only the reel: this whole match had no described broadcast that we could find, and Touchline called every key moment." |
-| 4 | 0:35–1:10 | **Review**: Cahill's card and its two reasons (hold 3 s). **Fix this line**, type exactly `Gary Cahill scores! Chelsea pull one back, but Tottenham still lead two to one.`, **Send fix**. The **Sent to training** panel: the fix's request id, "Line as said: wrong", "Fixed text: ok", **Score check examples: N → N+2**, "Training run pending" (hold 5 s). Then `/?match=3754092&at=26`: about 25 s later Cahill's goal is said with the fixed line, tagged **Fixed by producer** (the edit cuts the wait) | "When a retry still fails, it doesn't guess. A producer gets the line and the reason, and fixes it in one go. The fix goes to Mubit as training data: this is its request, these are the two examples it made, and the count went up by two. The next replay says the fixed line." |
-| 5 | 1:10–1:30 | Mubit's console, the **Score check** task: its examples, then its version and test score | "This is Mubit's console, outside our app: the fix is a Score check example." Then say the console as it is: **training, not serving**. Call a version better only if the console marks it Passed, and never say the app uses it. |
-| 6 | 1:30–1:40 | The **World Cup final** (`/?match=3869685&at=45`); type "Where are we?" in **Ask** | "A fan can ask anything, any time, in the same voice." |
-| 7 | 1:40–1:52 | The **Proof** card: lines called, fixed by itself, sent to a person; the cost per full replay | "[called] called, [auto-fixed] fixed by itself, [to a person] sent to a person. Built for the streaming platforms that carry the WSL and NWSL. It costs about [the card's cost] a replay to run, voice included." Read each figure off the card at the take; say the cost as the card shows it, rounded to the cent. |
-| 8 | 1:52–1:58 | Logo, tagline, the live URL | "Touchline. The describer that checks itself." |
+| 1 | 0:00–0:23.6 | **Brighton v Bristol City** (`/?match=3913122`) playing with video, ON AIR. Press **E** (**Close your eyes**): the picture goes black, only the line and the score stay, the voice carries on. Then the **Proof** card: auto-fixed, this match and all matches, then the cost per full replay | "Every week a club's media team cuts highlights. A fan who can't see them gets nothing from the pictures. Close your eyes." Then let one line play. |
+| 2 | 0:23.6–0:35.3 | **Orlando v North Carolina** (NWSL, 2018): Denise O'Sullivan's 39:39 line, tagged **Auto-fixed** | "Before it speaks, it checks the score, the leader and the numbers against the data. This line was wrong. It fixed itself before anyone heard it." |
+| 3 | 0:35.3–1:00.3 | Three cards, word for word from the live run: 30:57, "Elisabeth Terland! Brighton take the lead, one nil!"; the producer's fix, "Elisabeth Terland scores! The Seagulls lead one-nil." ("Call Brighton the Seagulls"); 94:48, before "Elisabeth Terland! Brighton take the lead, 3-2!" and after "Elisabeth Terland! The Seagulls go three-two up with that left-footed half volley!" | "A producer fixes one line. The next lines on this match carry the producer's fix." |
+| 4 | 1:00.3–1:10.3 | Cahill's fix on **Review**: the **Sent to training** panel, "Line as said: wrong", "Fixed text: ok", **Score check examples: 2,161 → 2,163**, "Training run pending" | "The fix also goes to Mubit as training data: two Score check examples." |
+| 5 | 1:10.3–1:30.3 | Mubit's console, the **Score check** task: its examples, then its version and test score | "This is Mubit's console, outside our app: the fix is a Score check example." Then say the console as it is: **training, not serving**. Call a version better only if the console marks it Passed, and never say the app uses it. |
+| 6 | 1:30.3–1:42.3 | The buyer card | "Built for the streaming platforms that carry the WSL and NWSL. It costs about forty-five cents a replay to run, voice included." |
+| 7 | 1:42.3–1:50.3 | Logo, tagline, the live URL | "Touchline. The describer that checks itself." |
 
-The cost per match is the mean over full replays of these highlights, not the price of a whole
-90 minutes: never say it as one. It moves with every long replay, so no figure is written here:
-say the one the card shows, rounded to the cent.
+The cost is the README's figure, about $0.45 a replay with the voice included, from live `/stats` on
+24 Oct: the mean over full replays of these highlights, not a whole 90 minutes, and never a price
+for the buyer.
 
-Type the fix exactly: another wording can fail the label ("two goals to one" can't be labelled, so
-no example is sent) or the number check (then the replay calls a fresh line).
+Only moments 18, 34 and 35 of the Brighton run took up "the Seagulls". The run's other later lines
+changed through ordinary variation between generations: never claim every later line changed
+because of the fix.
 
 Brighton's ground has in-stadium description: say "no described broadcast that we could find",
 never "no description".
@@ -87,17 +79,16 @@ video maps (`data/video/`); check them with a stopwatch before going on.
 - **A tile says the video can't play here:** the commentary runs on the match's own clock without
   the picture. Carry on.
 - **The badge reads OFF AIR:** the model provider is out of credit, so no new lines come. Say so,
-  then show the Proof card's counts and go to shot 4.
-- **The Sent to training panel shows no example:** say "the fix is saved beside the original", skip
-  the count, and go on to the replay.
+  then show the Proof card's counts and go to shot 3: shots 3 and 4 are cards and stills.
 - **The console hasn't shown the fix yet:** show Score check's example count and version, and say
   the fix is on its way; never claim it arrived.
 
 ## Do not say
 
 "checks every fact" (it checks the score, the leader, the key numbers and events), "learns live",
-"the model updated", or anything implying the app uses a trained version. Also: "a million matches",
+"the model updated", anything implying the app uses a trained version, or that every later line
+changed because of the fix. Also: "a million matches",
 "lower leagues get none", "the law requires it", "$5 a match", "RNIB standard" or "RNIB approved",
-or any cost per match other than the one on the Proof card. The cost is what a replay costs to run,
+or any cost other than about $0.45 a replay, voice included. The cost is what a replay costs to run,
 never a price for the buyer. Name no streaming platform: "the
 streaming platforms that carry the WSL and NWSL", never a company.

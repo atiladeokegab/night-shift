@@ -41,21 +41,23 @@ The analyst's stat lines, the lead's replies to them and Ask answers get the sam
 against the stat and the match so far: a wrong number is tried once more, then the line is dropped
 and never said (an answer becomes the off-air line).
 
-**Mubit, exactly as its console shows it.** Mubit's console overview, read on 24 October 2026 at
-about 19:15 UTC, shows 8 tasks, 7 adapters and 0 serving. Mubit keys a task on its fingerprint: the
+**Mubit, exactly as its console shows it.** Mubit's console overview, read on 25 October 2026 at
+00:14 UTC, shows 11 tasks, 8 adapters and 0 serving. Mubit keys a task on its fingerprint: the
 system prompt, the tools, the output format and the model. Each prompt change started a new task, so
-our recorded commentary is split across six separate tasks rather than one. The overview lists these
-six, as they are; the other 2 tasks, Line check among them, aren't listed on it. None has passed
-Mubit's 95% target and no adapter serves.
+our recorded commentary is split across several tasks rather than one. The overview lists these
+eight adapters, as they are; it no longer reports examples per task. None is ready against Mubit's
+95% target and no adapter serves.
 
-| Task | Status | Examples | Quality |
-|---|---|---|---|
-| Live television commentator 5 (current) | Collecting examples | 269 | 14.3% |
-| Live sports commentator | Testing | 155 | 5.9% |
-| Live sports commentator 2 | Testing | 141 | 58.3% |
-| Live television commentator 3 | Testing | 132 | 55.8% |
-| Live television commentator | Collecting examples | 118 | 0.0% |
-| Live television commentator 2 | Testing | 111 | 25.0% |
+| Task | Version | Status | Quality | Test cases |
+|---|---|---|---|---|
+| Check one line of… (Score check; the console cuts the name short; created about 1 h before) | v1 | Not ready yet | 33.3% | 12 |
+| Live sports commentator | v2 | Not ready yet | 4.2% | 24 |
+| Live sports commentator 2 | v1 | Not ready yet | 58.3% | 24 |
+| Live television commentator | v2 | Not ready yet | 34.8% | 23 |
+| Live television commentator 2 | v2 | Not ready yet | 28.6% | 21 |
+| Live television commentator 3 | v1 | Training v2 | 55.8% | not shown |
+| Live television commentator 4 | v1 | Not ready yet | 30.0% | 30 |
+| Live television commentator 5 | v2 | Not ready yet | 28.6% | 21 |
 
 What we did about it: [Line check](#how-it-uses-mubit), one frozen task whose answer key comes from
 code, with its recorded checks and the producers' fixes. Beside the rules (#298), it checks each new lead
@@ -303,6 +305,10 @@ club does describe its matches, the effort can come from the fans: at Wrexham th
 association, with local sponsors, placed a £4,000 audio-description project with the club, four
 years of running it included, at no cost to the club
 ([Level Playing Field](https://www.levelplayingfield.org.uk/news-item/audio-description-commentary-at-wrexham-afc)).
+
+Touchline's own cost, beside those: about $0.45 a replay, voice included, over 84 replays of these
+highlights (live `/stats` `cost_per_match_usd` and `matches_measured`, saved on 24 Oct 2026 at 23:08 UTC
+as [`eval/live_stats_2026-10-24.json`](../eval/live_stats_2026-10-24.json)). It is a cost to run, not a price.
 
 A model can describe the rest, if it speaks while the moment is still on screen and costs little
 enough to run for every match. The live site's [`/stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats)

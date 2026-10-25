@@ -32,6 +32,11 @@ def test_the_side_by_side_panel_and_readme_match_the_console_read():
     assert f"{CONSOLE['adapters']} adapters" in text and f"{best}%" in text
     # no other adapter count or best score anywhere in the README
     assert set(re.findall(r"(\d+) adapters", text)) == {str(CONSOLE["adapters"])}
+    # Score check's adapter: the console cuts its name short ("Check one line of…")
+    (sc,) = (t for name, t in CONSOLE["listed"].items() if name.startswith("Check one line"))
+    flat = " ".join(text.split())
+    said = f"first Score check version scored {sc['quality']}% against a {CONSOLE['target']}%"
+    assert said in flat
 
 
 def test_the_readme_live_figures_are_the_saved_stats_read():
@@ -59,19 +64,19 @@ CALLS = {
     ("agent/linecheck.py", 106): "def live_check(",
     ("agent/linecheck.py", 88): "def check(",
     ("agent/linecheck.py", 94): "provider.call(",
-    ("core/app.py", 434): '@app.post("/lines/{line_id}/fix")',
+    ("core/app.py", 441): '@app.post("/lines/{line_id}/fix")',
     ("agent/commentator.py", 403): "def correct(",
-    ("core/app.py", 460): "d.correct,",
+    ("core/app.py", 476): "d.correct,",
     ("agent/commentator.py", 447): "ask(trainer)",
-    ("core/app.py", 473): '"mubit_request_id"',
-    ("core/app.py", 70): "match_fixes(",
-    ("core/app.py", 490): "score_teach(line",
-    ("core/app.py", 319): "async def score_teach(",
+    ("core/app.py", 490): '"mubit_request_id"',
+    ("core/app.py", 72): "match_fixes(",
+    ("core/app.py", 507): "score_teach(line",
+    ("core/app.py", 321): "async def score_teach(",
     ("eval/seed_scorecheck.py", 129): "def send_fix(",
     ("agent/scorecheck.py", 83): "def teach(",
     ("eval/seed_scorecheck.py", 82): "def send(",
     ("eval/seed_scorecheck.py", 143): '"scorecheck_examples"',
-    ("core/app.py", 644): '@app.get("/ledger")',
+    ("core/app.py", 661): '@app.get("/ledger")',
     ("core/ledger.py", 43): "def ledger(",
 }
 

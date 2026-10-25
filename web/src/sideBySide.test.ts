@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { viewOf, type Line, type Pair, type Report } from './sideBySide.ts'
+import data from '../../data/side_by_side.json' with { type: 'json' }
 
 const line = (cost_usd: number | null): Line => ({ text: 'Goal!', model: 'm', first_word_ms: 500, latency_ms: 800, cost_usd })
 const pair = (big: number, adapter: Line | null): Pair => ({
@@ -9,7 +10,7 @@ const pair = (big: number, adapter: Line | null): Pair => ({
 })
 const report = (pairs: Pair[]): Report => ({
   recorded_on: '2026-10-24', big_model: 'm', pairs,
-  adapter: { name: null, status: 'not ready', adapters: 6, best_match_pct: 55.8, callable: false, why: '' },
+  adapter: data.adapter, // the recorded file the panel reads, so the fixture can't go stale
 })
 
 test('no adapter line: the big model is the baseline, ours is not yet measured', () => {

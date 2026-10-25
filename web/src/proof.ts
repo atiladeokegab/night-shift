@@ -39,15 +39,15 @@ export function linecheckRow(s: LineCheckStats): string {
 }
 
 // Line check on held-out labelled lines beside the rules (#317), in counts, never a percentage, e.g.
-// "held-out: caught 3 of 5 wrong lines (rules: 1 of 5), 5 false alarms".
+// "held-out: caught 3 of 5 wrong lines (rules: 2 of 5), 3 false alarms" (eval/linecheck_heldout.json).
 export function heldoutRow(h: HeldOut | null | undefined): string | null {
   if (!h) return null
   const alarms = h.line_check.false_alarms
   return `held-out: caught ${h.line_check.caught} of ${h.wrong} wrong lines (rules: ${h.rules.caught} of ${h.wrong}), ${alarms} false alarm${alarms === 1 ? '' : 's'}`
 }
 
-// Mubit's console as read by hand (#317), with its source and time, e.g. "Mubit console, 24 Oct 19:15
-// UTC: 8 tasks, 7 adapters, 0 serving; best 58.3% of a 95% target". A dated reading, never live data.
+// Mubit's console as read by hand (#317), with its source and time, e.g. "Mubit console, 25 Oct 00:14
+// UTC: 11 tasks, 8 adapters, 0 serving; best 58.3% of a 95% target". A dated reading, never live data.
 export function consoleRow(c: ConsoleReading | null | undefined): string | null {
   if (!c) return null
   const day = new Date(c.read_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })
@@ -84,6 +84,7 @@ export function trainingHeading(state: TrainingState): string {
     pending: 'Score check: waiting for the receipt',
     sent: 'Sent to training',
     none: 'Not sent to training',
+    held_out: 'Not sent to training: this match is held out',
     failed: 'Not sent to training: a Mubit call failed',
     unknown: 'Training send not confirmed',
   }[state]

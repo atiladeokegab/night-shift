@@ -9,6 +9,7 @@ import os
 import re
 import time
 import uuid
+from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -34,6 +35,7 @@ from core.voice import Speaker, voice_of, voice_router
 
 log = logging.getLogger("touchline.app")
 REJOIN_S = 10.0  # a replay with no open stream this long is stopped: its lines cost model calls
+FIX_PER_MIN = 6  # fixes a minute, all producers: each is a paid, recorded call on the owner's key
 FORGET_S = 60.0  # a finished replay is forgotten once nobody streams or touches it this long
 
 WEB = Path(__file__).resolve().parent.parent / "web" / "dist"
@@ -319,6 +321,7 @@ def create_app(
     async def score_teach(line: dict, corrected: str, fix_uid: str) -> None:
         """A fix as Score check examples (#321): the line as said and the producer's text. Its
         receipt, written when the send ends, says how many went and whether a call failed (#400)."""
+        from eval.linecheck import HELD_OUT
         from eval.seed_scorecheck import send_fix
 
         tried: list[dict | None] = []
@@ -340,6 +343,8 @@ def create_app(
             "line_id": line["line_id"],
             "sent": len(rows),
             "failed": failed,
+            "held_out": line.get("match_id")
+            in HELD_OUT,  # never sent: kept out to keep the eval fair
         }
         await asyncio.to_thread(store.append, "scorecheck_receipts", {**receipt, "created_at": at})
 
@@ -431,6 +436,8 @@ def create_app(
             ],
         }
 
+    fix_times: deque[float] = deque()
+
     @app.post("/lines/{line_id}/fix")
     async def fix_line(line_id: str, req: FixRequest, x_producer_token: str = Header(default="")):
         # a fix trains Mubit and is spoken on later replays (#232): a producer's only, once the
@@ -451,6 +458,15 @@ def create_app(
         # a fix is spoken on the next replay (#232) and trains Mubit: never one the data contradicts
         if wrong := await asyncio.to_thread(review.wrong, line, req.corrected_text, d):
             raise HTTPException(422, {"wrong": wrong})
+        now = time.monotonic()
+        while fix_times and fix_times[0] <= now - 60:
+            fix_times.popleft()
+        if len(fix_times) >= FIX_PER_MIN:
+            wait = max(1, int(fix_times[0] + 60 - now) + 1)
+            raise HTTPException(
+                429, "Too many fixes. Try again shortly.", {"Retry-After": str(wait)}
+            )
+        fix_times.append(now)
         try:
             # an insight or reply goes back with its own Stat request, not its moment's
             over = insight.said_over(line, d.load_moments)
@@ -459,7 +475,8 @@ def create_app(
                 more["reason"] = req.reason
             sent = await asyncio.to_thread(d.correct, line, req.corrected_text, **more)
         except Exception as exc:  # nothing is stored, so the page can send the fix again
-            raise HTTPException(503, f"correction not sent: {exc}") from exc
+            log.warning("fix: correction not sent (%s)", type(exc).__name__, exc_info=True)
+            raise HTTPException(503, "correction not sent") from exc
         fix = await asyncio.to_thread(
             store.append,
             "fixes",

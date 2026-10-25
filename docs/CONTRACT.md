@@ -6,11 +6,11 @@ builds against it; only the lead changes it (anything else is a change-request, 
 ## Assignment
 
 "Build a product that routes its LLM calls through Mubit and turns your corrections into model
-updates for a recurring task." Track: Own your intelligence layer.
+updates for a recurring task." Track: Recurring tasks; Score check is the recurring task.
 
 Demo: Kobe Bryant's 81 against Toronto (2006) replays and Touchline calls it aloud, the first word of text in
 about 0.5 s (median), the producer fixes one wrong line, the big model's recorded lines are shown
-where our trained commentator's will go (7 adapters on Mubit's console, none has passed its test yet, best
+where our trained commentator's will go (8 adapters on Mubit's console, none ready yet, best
 58.3%, and the app does not call an adapter), then one tap switches to India v Pakistan 2022 and the same commentator calls cricket.
 
 ## Shared core
@@ -160,15 +160,16 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   (`{id, match_id, idx, text, kind, gold, mubit_request_id, line_id, source, created_at}`, oldest
   first; `[]` until one is sent, #392, #400). `text` is the line as said or the fixed text; `gold`
   its score label from the event data; `fix_uid` the Fix that sent it (rows since #400). It also
-  carries `scorecheck_receipts`: one `{fix_uid, line_id, sent, failed, created_at}` per Fix whose
-  Score check send has ended, `sent` the examples it wrote (0 when each was already sent or can't be
-  labelled) and `failed` true when a call failed. No receipt yet: the send is still going, or Score
-  check is off. Every Fix carries `fix_uid`, a fresh hex id (#400).
+  carries `scorecheck_receipts`: one `{fix_uid, line_id, sent, failed, held_out, created_at}` per Fix
+  whose Score check send has ended, `sent` the examples it wrote (0 when each was already sent, can't
+  be labelled or the match is held out), `failed` true when a call failed, and `held_out` true when
+  the line's match is in `HELD_OUT` (eval/linecheck.py: never sent, so the eval stays fair; receipts
+  before #506 have no `held_out`). No receipt yet: the send is still going, or Score check is off. Every Fix carries `fix_uid`, a fresh hex id (#400).
 - `POST /lines/{line_id}/fix {corrected_text, reason?}` → Fix (core). With env `PRODUCER_TOKEN` set,
   it needs header `X-Producer-Token` equal to it (constant-time compare), else 401 and nothing is
-  stored or sent to Mubit; unset (local, tests) the check is off (#232). `scripts/deploy.sh` sets it
-  on Cloud Run from the deploy's own environment, so every deploy keeps it; a deploy without it
-  leaves the check off (#255). It is a plain Cloud Run env var, not a secret: it is visible in the service config, in the deployer's gcloud logs and under `bash -x`. It stores the Fix in `fixes`
+  stored or sent to Mubit; unset (local, tests) the check is off (#232). `scripts/deploy.sh` mounts it
+  on Cloud Run from the Secret Manager secret `producer-token` (latest, checked ENABLED before the
+  build), so every deploy keeps it and it is never a plain env var in the service config. It stores the Fix in `fixes`
   beside the line, sends the correction turn (Agent below) and publishes `fixed` (the Fix), then
   `stats`, on the replay stream that carried the line; a late subscriber gets them too. 404 unknown
   line, 422 blank `corrected_text` (trimmed) or over 200 characters, 422 `{detail: {wrong: [...]}}`
@@ -349,9 +350,9 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
     commentary's, and another task's record leaves this key and `fixes_toward_next` alone.
     `console` (#317) is `data/mubit_console.json`, Mubit's console overview read by hand at
     `read_at`: `{source, read_at, how, tasks, adapters, serving, target, listed: {[name]: {status,
-    examples, quality}}}` (keyed by name: the `stats` event carries no brackets), or `null` without the file. It is a dated reading, never live data, and
+    version, quality, test_cases: int|null, note?}}}` (the console no longer reports examples per task) (keyed by name: the `stats` event carries no brackets), or `null` without the file. It is a dated reading, never live data, and
     changes only when someone reads the console again and commits it. The Proof card's Earlier tasks
-    line shows it as "Mubit console, 24 Oct 19:15 UTC: 8 tasks, 7 adapters, 0 serving; best 58.3% of a
+    line shows it as "Mubit console, 25 Oct 00:14 UTC: 11 tasks, 8 adapters, 0 serving; best 58.3% of a
     95% target".
   - `earlier_tasks.adapters: {[task]: {state, version: int|null, version_id: str|null, score: number|null,
     target: number|null, passed: bool|null, kept: int|null, recorded_at, source: str|null,
