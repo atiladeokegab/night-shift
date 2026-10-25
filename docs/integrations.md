@@ -113,8 +113,9 @@ the fix is sent to Mubit as a training example, and the fix is said on later rep
   live for them.
 
 **Where it stands.** Commentary runs on Claude. The app does not call an adapter. Mubit's "Check one
-line of 2" task (one of our two line-checking tasks; the console cuts the name short) shows 94.6%
-for its first version, testing v1, in testing (console read by hand, 25 Oct 06:27 UTC).
+line of 2" task (one of our two line-checking tasks, Line check or Score check; the console cuts the
+name short) shows 94.6% for its first version, testing v1, in testing (console read by hand, 25 Oct
+2026 06:27 UTC, recorded in `data/mubit_console.json`).
 
 **Environment.** `MUBIT_API_KEY` (the key every call uses), `MUBIT_FALLBACK_KEY` (the owner's key:
 the commentator moves to it if the first key runs out of credit, a 402, `agent/commentator.py:842`;
