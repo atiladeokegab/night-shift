@@ -41,21 +41,23 @@ The analyst's stat lines, the lead's replies to them and Ask answers get the sam
 against the stat and the match so far: a wrong number is tried once more, then the line is dropped
 and never said (an answer becomes the off-air line).
 
-**Mubit, exactly as its console shows it.** Mubit's console overview, read on 24 October 2026 at
-about 19:15 UTC, shows 8 tasks, 7 adapters and 0 serving. Mubit keys a task on its fingerprint: the
+**Mubit, exactly as its console shows it.** Mubit's console overview, read on 25 October 2026 at
+00:14 UTC, shows 11 tasks, 8 adapters and 0 serving. Mubit keys a task on its fingerprint: the
 system prompt, the tools, the output format and the model. Each prompt change started a new task, so
-our recorded commentary is split across six separate tasks rather than one. The overview lists these
-six, as they are; the other 2 tasks, Line check among them, aren't listed on it. None has passed
-Mubit's 95% target and no adapter serves.
+our recorded commentary is split across several tasks rather than one. The overview lists these
+eight adapters, as they are; it no longer reports examples per task. None is ready against Mubit's
+95% target and no adapter serves.
 
-| Task | Status | Examples | Quality |
-|---|---|---|---|
-| Live television commentator 5 (current) | Collecting examples | 269 | 14.3% |
-| Live sports commentator | Testing | 155 | 5.9% |
-| Live sports commentator 2 | Testing | 141 | 58.3% |
-| Live television commentator 3 | Testing | 132 | 55.8% |
-| Live television commentator | Collecting examples | 118 | 0.0% |
-| Live television commentator 2 | Testing | 111 | 25.0% |
+| Task | Version | Status | Quality | Test cases |
+|---|---|---|---|---|
+| Check one line of… (Score check; the console cuts the name short; created about 1 h before) | v1 | Not ready yet | 33.3% | 12 |
+| Live sports commentator | v2 | Not ready yet | 4.2% | 24 |
+| Live sports commentator 2 | v1 | Not ready yet | 58.3% | 24 |
+| Live television commentator | v2 | Not ready yet | 34.8% | 23 |
+| Live television commentator 2 | v2 | Not ready yet | 28.6% | 21 |
+| Live television commentator 3 | v1 | Training v2 | 55.8% | not shown |
+| Live television commentator 4 | v1 | Not ready yet | 30.0% | 30 |
+| Live television commentator 5 | v2 | Not ready yet | 28.6% | 21 |
 
 What we did about it: [Line check](#how-it-uses-mubit), one frozen task whose answer key comes from
 code, with its recorded checks and the producers' fixes. Beside the rules (#298), it checks each new lead
@@ -292,9 +294,9 @@ The tests are [`tests/test_readme_numbers.py`](../tests/test_readme_numbers.py) 
 | 2,161 examples sent to training, 60 from producer fixes | the same file, `scorecheck` | N, same test |
 | 46 matched, 5 corrected, 9 not corrected | the same file, `scorecheck.from_fixes_by_kind` (they add up to the 60) | C `test_the_fixes_breakdown_and_console_counts_are_the_saved_reads` |
 | 74 of 74 held-out lines agree | the same file, `scorecheck` | N `test_the_readme_live_figures_are_the_saved_stats_read` |
-| 8 tasks, 7 adapters, 0 serving, best 58.3% of a 95% target | [`data/mubit_console.json`](../data/mubit_console.json), read by hand | N `test_the_side_by_side_panel_and_readme_match_the_console_read`, C `test_the_fixes_breakdown_and_console_counts_are_the_saved_reads` |
+| 11 tasks, 8 adapters, 0 serving; Score check v1 33.3% on 12 test cases, best commentary 58.3%, of a 95% target (00:14 UTC, 25 Oct) | [`data/mubit_console.json`](../data/mubit_console.json), read by hand | N `test_the_side_by_side_panel_and_readme_match_the_console_read`, C `test_the_fixes_breakdown_and_console_counts_are_the_saved_reads` |
 | Ask: 32 of 33 right, 1 wrong, 0 refused; the wrong one is row 24 at Lakers 120-102 | [`eval/ask_eval_keyed_20261025.txt`](../eval/ask_eval_keyed_20261025.txt), the keyed run's output | C `test_the_ask_figures_are_the_saved_keyed_run` |
-| Terland: three of the six later lines say "the Seagulls"; 94:48 "The Seagulls go three-two up" | [`eval/fix_then_later_live_20261024.txt`](../eval/fix_then_later_live_20261024.txt), the live run in #501 | C `test_the_terland_run_has_three_of_six_later_lines_saying_the_seagulls` |
+| Terland: moments 18, 34 and 35 of the six later lines say "the Seagulls"; 94:48 "The Seagulls go three-two up" | [`eval/fix_then_later_live_20261024.txt`](../eval/fix_then_later_live_20261024.txt), the live run in #501 | C `test_the_terland_run_names_the_later_moments_saying_the_seagulls` |
 | The check table (held-out and first set) | [`eval/checker_eval.py`](../eval/checker_eval.py), [`eval/linecheck_heldout.json`](../eval/linecheck_heldout.json), written by [`eval/readme_numbers.py`](../eval/readme_numbers.py) | N `test_the_readme_check_table_is_todays_checker_eval_output`, `test_the_stored_held_out_rules_count_is_todays_rules` |
 | One more catch is about 17 points | 1 of the table's 6 held-out wrong lines | C `test_one_more_catch_is_about_seventeen_points_and_the_first_word_about_half_a_second` |
 | First word in about half a second | the saved `/stats`, `by_speaker.lead.first_word_ms_p50` (547 ms) | C, same test |
@@ -328,6 +330,10 @@ club does describe its matches, the effort can come from the fans: at Wrexham th
 association, with local sponsors, placed a £4,000 audio-description project with the club, four
 years of running it included, at no cost to the club
 ([Level Playing Field](https://www.levelplayingfield.org.uk/news-item/audio-description-commentary-at-wrexham-afc)).
+
+Touchline's own cost, beside those: about $0.45 a replay, voice included, over 84 replays of these
+highlights (live `/stats` `cost_per_match_usd` and `matches_measured`, saved on 24 Oct 2026 at 23:08 UTC
+as [`eval/live_stats_2026-10-24.json`](../eval/live_stats_2026-10-24.json)). It is a cost to run, not a price.
 
 A model can describe the rest, if it speaks while the moment is still on screen and costs little
 enough to run for every match. The live site's [`/stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats)

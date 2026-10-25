@@ -87,7 +87,11 @@ def test_the_fixes_breakdown_and_console_counts_are_the_saved_reads():
     assert sum(kinds.values()) == SNAPSHOT["scorecheck"]["by_source"]["human"]
     want = f"({kinds['matched']} the model already matched, {kinds['corrected']} corrected, "
     assert want + f"{kinds['uncorrected']} not corrected)" in text
-    assert f"{CONSOLE['tasks']} tasks" in text and f"{CONSOLE['serving']} serving" in text
+    c, check = CONSOLE, CONSOLE["listed"]["Check one line of…"]
+    assert f"{c['tasks']} tasks, {c['adapters']} adapters and {c['serving']} serving" in text
+    best = max(t["quality"] for n, t in c["listed"].items() if n != "Check one line of…")
+    assert f"scored {check['quality']}% against a {c['target']}% target" in text
+    assert f"on {check['test_cases']} test cases; the best commentary task scores {best}%" in text
 
 
 def test_the_ask_figures_are_the_saved_keyed_run():
@@ -103,13 +107,13 @@ def test_the_ask_figures_are_the_saved_keyed_run():
     assert 'row 24, "What just happened?" at Lakers 120-102' in text
 
 
-def test_the_terland_run_has_three_of_six_later_lines_saying_the_seagulls():
+def test_the_terland_run_names_the_later_moments_saying_the_seagulls():
     run = (ROOT / "eval" / "fix_then_later_live_20261024.txt").read_text()
     later = run[run.index("The next lines on this match") :].split("\nMoment ")[1:]
-    carried = [m for m in later if "Seagulls" in m.split("after the fix:")[1]]
-    words = {3: "Three", 6: "six"}
-    assert words[len(carried)] + f" of the {words[len(later)]} later lines" in readme()
-    assert "The Seagulls go three-two up" in carried[1]
+    carried = [m.split()[0] for m in later if "Seagulls" in m.split("after the fix:")[1]]
+    assert len(later) == 6 and carried == ["18", "34", "35"]
+    assert 'Moments 18, 34 and 35 took up "the Seagulls"; the other three' in readme()
+    assert "The Seagulls go three-two up" in run
 
 
 def test_one_more_catch_is_about_seventeen_points_and_the_first_word_about_half_a_second():
