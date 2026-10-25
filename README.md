@@ -307,7 +307,7 @@ commit names its source.
 - **More sports, then esports**, through the same agent, tools and Mubit task.
 - **Live streams, not just replays**, with the same producer fixes feeding the same training loop.
 
-The longer view: [where this goes](docs/features.md#the-product-where-this-goes).
+The longer view: [where this goes](docs/ARCHITECTURE.md#at-scale-a-plan-not-built).
 
 ## Team
 
