@@ -459,3 +459,18 @@ def test_a_cut_answer_still_counts_the_tokens_it_used(monkeypatch):
     asyncio.run(run())
     cut = made[0]
     assert (cut["tokens_in"], cut["tokens_out"]) == (500, 7) and cut["model"] and cut["created_at"]
+
+
+def test_a_fan_who_hangs_up_stops_the_model_writing_the_rest():
+    client = CountingClient([(0, "Player1 scored for the Reds. ")] + REST)
+
+    async def run():
+        ask, inner = partial(answer, header=HEADER), SimpleNamespace(client=client, call=None)
+        spoken = converse.speak(ask, inner, "Who scored?", MOMENTS[:2], [])
+        first = await anext(spoken)
+        await spoken.aclose()  # what the server does when the fan's connection drops
+        await asyncio.sleep(1)
+        return first, client.read
+
+    first, read = asyncio.run(run())
+    assert first == "Player1 scored for the Reds." and read < 4
