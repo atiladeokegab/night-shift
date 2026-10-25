@@ -7,22 +7,22 @@ complete. If your task doesn't fit this page, open a change-request (AGENTS.md Â
 
 ## Problem
 
-Most matches in most sports are played with nobody calling them: grassroots and lower-league football,
-most of the women's game, club and county cricket. Fans following a stream or a live score get silence or
-a bare ticker. A clever model could commentate them, but it is too slow to call a moment while it is
-still on screen, and too expensive to run for every moment of every match.
+Most matches are played with nobody describing them for a fan who can't see the screen. Sky
+describes about 109 of the Premier League's 380 games a season; outside those, live audio description
+is voluntary and patchy, run club by club at the ground, and at Wrexham the fans and local sponsors
+raised Â£4,000 for it themselves (sources: `docs/evidence.md`, The problem). A blind or low-vision fan
+following a stream of a match nobody describes gets the crowd and a bare ticker.
 
 ## The idea
 
-Touchline is the describer that checks itself, for the matches a platform streams with nobody
-describing them, in any sport with an event feed. Switch from a football match to a
+Touchline is the describer that checks itself: it describes matches aloud for blind and low-vision
+fans, for the matches a platform streams with nobody describing them, in any sport with an event feed. Switch from a football match to a
 cricket match and the same agent changes its context on the fly and calls the new sport. It watches the
 feed, looks up the facts it needs with tools (score, player, recent play) and calls each key moment in
 one short spoken line, with the model's first word in about half a second (median, `GET /stats`),
 over a replay of iconic real moments. It checks the numbers in each moment's line before it speaks. A producer fixes any line that's wrong, and the fix is sent back
-through Mubit, so the commentator is trained on corrected calls. Every call goes through Mubit, which
-trains a small commentator model on the recorded calls. The aim is one that gives the same calls as
-the big one at lower cost. Each prompt change started a new Mubit task: the console shows 8 tasks,
+through Mubit as a training example. Every call goes through Mubit: this is training, not serving.
+Each prompt change started a new Mubit task: the console shows 8 tasks,
 7 adapters and 0 serving, the best commentary task at 58.3% against a 95% target; none has passed,
 and the app calls no adapter.
 

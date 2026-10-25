@@ -304,6 +304,10 @@ association, with local sponsors, placed a £4,000 audio-description project wit
 years of running it included, at no cost to the club
 ([Level Playing Field](https://www.levelplayingfield.org.uk/news-item/audio-description-commentary-at-wrexham-afc)).
 
+Touchline's own cost, beside those: about $0.45 a replay, voice included, over 84 replays of these
+highlights (live `/stats` `cost_per_match_usd` and `matches_measured`, saved on 24 Oct 2026 at 23:08 UTC
+as [`eval/live_stats_2026-10-24.json`](../eval/live_stats_2026-10-24.json)). It is a cost to run, not a price.
+
 A model can describe the rest, if it speaks while the moment is still on screen and costs little
 enough to run for every match. The live site's [`/stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats)
 reports both as they stand: first word, cost per line and cost per replay.

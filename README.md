@@ -78,11 +78,17 @@ and is spoken. On a keyed run of 33 questions ([`eval/ask_eval.py`](eval/ask_eva
 
 ## Who pays
 
-Built for the streaming platforms that carry the WSL and NWSL. Nobody has agreed to pay yet and we
-have not set a price. What we know is our cost: **about $0.45 a replay, voice included**, over 84
-replays (live [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats), 24 Oct; saved at 23:08 UTC
-as [`eval/live_stats_2026-10-24.json`](eval/live_stats_2026-10-24.json): `cost_per_match_usd`, `matches_measured`).
-That is a highlights replay, not a whole 90 minutes. Why it matters: [the problem](docs/evidence.md#the-problem).
+The buyer is whoever streams a match with nobody describing it: the streaming platforms that carry
+the WSL and NWSL, and clubs' media teams. Nobody has agreed to pay yet and we have not set a price.
+The figures we have, side by side ([the problem](docs/evidence.md#the-problem)):
+
+- **Sky describes about 109 of the Premier League's 380 games** a season, one match a game week.
+- **At Wrexham, the disabled supporters' association and local sponsors raised £4,000** for four
+  years of human audio description at the ground.
+- **Touchline costs us about $0.45 a replay, voice included**, over 84 replays (live
+  [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats), 24 Oct; saved at 23:08 UTC as
+  [`eval/live_stats_2026-10-24.json`](eval/live_stats_2026-10-24.json): `cost_per_match_usd`,
+  `matches_measured`). That is a highlights replay, not a whole 90 minutes.
 
 ## For judges
 
@@ -105,18 +111,6 @@ card, each traced to its code and its test, or marked not tested:
 [the table](docs/evidence.md#keyboard-and-screen-reader).
 
 **Your check-in #2:** each point and where it landed: [docs/feedback.md](docs/feedback.md).
-
-### What's new tonight
-
-- **A graph of teams and players:** SurrealDB holds the seasons around our matches in football (612 matches), basketball and cricket, and answers only from matches before this one, so nothing later leaks.
-- **Talk:** press **Talk** and the match pauses while you speak with the commentator; each answer goes through Claude via Mubit and the same check as Ask. Escape, or 12 s of silence, resumes.
-- **One speaking queue:** ordinary commentary lines queue; a decisive moment can fade and interrupt
-  a spoken answer, and routine lines that have gone stale are dropped.
-- **Teams tab:** press **T** for each side's form, their last meetings and the squad, as they stood before the match.
-- **One broadcast pair:** the event call lifts for a big moment; stat interjections and comebacks stay
-  calm, and in quiet stretches the pair take turns on one player.
-
-Everything else, with its code and tests: [every feature](docs/features.md).
 
 ## Mubit: training, not serving
 
@@ -210,6 +204,18 @@ lines were picked and labelled, and what the check still misses: [the evidence](
   the commentary carries on without the picture.
 - **Two files break the repo's 1,000-line rule** ([AGENTS.md](AGENTS.md)): `core/insight.py` and
   `tests/test_core_voice.py`. Splitting them waits until after the event.
+
+## What's new tonight
+
+- **A graph of teams and players:** SurrealDB holds the seasons around our matches in football (612 matches), basketball and cricket, and answers only from matches before this one, so nothing later leaks.
+- **Talk:** press **Talk** and the match pauses while you speak with the commentator; each answer goes through Claude via Mubit and the same check as Ask. Escape, or 12 s of silence, resumes.
+- **One speaking queue:** ordinary commentary lines queue; a decisive moment can fade and interrupt
+  a spoken answer, and routine lines that have gone stale are dropped.
+- **Teams tab:** press **T** for each side's form, their last meetings and the squad, as they stood before the match.
+- **One broadcast pair:** the event call lifts for a big moment; stat interjections and comebacks stay
+  calm, and in quiet stretches the pair take turns on one player.
+
+Everything else, with its code and tests: [every feature](docs/features.md).
 
 ## Run it
 
