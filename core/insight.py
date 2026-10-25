@@ -1915,6 +1915,26 @@ def _named_before(named: list[tuple[int, str]], at: int) -> str | None:
     return next((name for start, name in reversed(named) if start < at), None)
 
 
+def _wrong_minute(text: str, m: dict) -> list[str]:
+    """An unqualified sentence-initial elapsed minute refers to this moment's football clock."""
+    clock = re.fullmatch(r"(\d+):[0-5]\d", str(m.get("clock")))
+    if not clock:
+        return []
+    minute, wrong = int(clock[1]), []
+    for hit in re.finditer(
+        r"(?:^|(?<=[.!?])\s+)"
+        r"(?:(?:we['’]re|we are|it['’]s|it is)\s+(?:now\s+)?)?"
+        r"([\w -]+?)\s+minutes?\s+(?:gone|played|elapsed)\b"
+        r"(?!\s*\?|[, ]*\s(?:earlier|ago|before|then|when|at)\b)",
+        text,
+        re.I,
+    ):
+        words = [1.0] if hit[1].strip().lower() in ("one", "a") else said(hit[1])
+        if len(words) == 1 and isinstance(words[0], float) and words[0] not in (minute, minute + 1):
+            wrong.append(f"{words[0]:g} minutes is not the current clock ({m['clock']})")
+    return wrong
+
+
 def wrong_claims(text: str, past: list[dict], question: str = "") -> list[str]:
     """What a football answer says that the numbers check can't see: a player's goals so far, each
     claim tied to the player named last before it ("he" to the last named in the answer, else in
@@ -1926,7 +1946,7 @@ def wrong_claims(text: str, past: list[dict], question: str = "") -> list[str]:
     m = past[-1]
     if m.get("sport") != "football":
         return []
-    wrong = [
+    wrong = _wrong_minute(text, m) + [
         f"the match has not reached the {part}"
         for part, period in HALVES_SAID.items()
         if period > m.get("period", period) and re.search(rf"{NOW_IN}{part}\b", text, re.I)
