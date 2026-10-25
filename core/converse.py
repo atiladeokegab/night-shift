@@ -11,8 +11,10 @@ import logging
 import os
 import re
 import secrets
+import threading
 import time
 import uuid
+from datetime import UTC, datetime
 
 import httpx
 from fastapi import APIRouter, HTTPException, Request
@@ -60,13 +62,23 @@ def question_of(messages: list[dict]) -> str:
     return f"{question} (you had just said: {before[:BEFORE_CHARS]})" if before else question
 
 
+class Stopped(Exception):
+    """The answer was cut while the model was still writing it, after using `tokens` (in, out)."""
+
+    def __init__(self, tokens: tuple[int, int]):
+        super().__init__("answer cut")
+        self.tokens = tokens
+
+
 class Tap:
     """A provider that hands each piece of text to `on_text` as the model writes it, and `on_tool`
     when it asks for a tool, then returns the whole reply as the Ask path expects. One without a
-    streaming client (the offline FakeProvider) gives its text in one piece when done."""
+    streaming client (the offline FakeProvider) gives its text in one piece when done. Setting
+    `stop` ends the stream at its next event, with Stopped."""
 
     def __init__(self, inner, on_text, on_tool, on_tools=lambda outputs: None):
         self.inner, self.on_text, self.on_tool, self.on_tools = inner, on_text, on_tool, on_tools
+        self.stop, self.tokens = threading.Event(), (0, 0)  # the finished rounds' (in, out)
 
     def call(self, request: dict) -> dict:
         msgs = request.get("messages") or []
@@ -84,11 +96,26 @@ class Tap:
             return reply
         with client.messages.stream(**request) as stream:
             for event in stream:
+                if self.stop.is_set():  # leaving the block closes the stream: no more tokens
+                    # shortcut: output tokens are the snapshot's, set at the round's start and end,
+                    # so a cut round's few output tokens go uncounted; its input tokens count
+                    now = getattr(stream, "current_message_snapshot", None)
+                    used = getattr(now, "usage", None)
+                    raise Stopped(
+                        (
+                            self.tokens[0] + getattr(used, "input_tokens", 0),
+                            self.tokens[1] + getattr(used, "output_tokens", 0),
+                        )
+                    )
                 if event.type == "text":
                     self.on_text(event.text)
                 elif event.type == "content_block_start" and event.content_block.type == "tool_use":
                     self.on_tool()
             msg = stream.get_final_message()
+            self.tokens = (
+                self.tokens[0] + msg.usage.input_tokens,
+                self.tokens[1] + msg.usage.output_tokens,
+            )
             headers = getattr(getattr(stream, "response", None), "headers", {})
         request_id = next(
             (value for key, value in headers.items() if key.lower() == "x-middleware-request-id"),
@@ -137,10 +164,24 @@ def safe_line(past: list[dict]) -> str:
 
 
 def counted(ask, record):
-    """`ask` that hands each answer it makes (a model call's cost) to `record`."""
+    """`ask` that hands each answer it makes (a model call's cost) to `record`, and the cost of one
+    cut while the model was writing it."""
 
     def call(*args, **kwargs):
-        made = ask(*args, **kwargs)
+        try:
+            made = ask(*args, **kwargs)
+        except Stopped as cut:
+            tokens_in, tokens_out = cut.tokens
+            record(
+                {
+                    "model": commentator.MODEL,
+                    "tokens_in": tokens_in,
+                    "tokens_out": tokens_out,
+                    "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
+                    "cut": True,
+                }
+            )
+            raise
         if made:
             record(made)
         return made
@@ -151,7 +192,8 @@ def counted(ask, record):
 async def speak(ask, inner, question: str, past: list[dict], lines: list[dict]):
     """The answer's sentences, each as soon as the model has written it and Ask's checks pass it.
     A sentence that fails stops the answer there; if nothing was said yet (or a tool was used, so
-    the checks need its output) the whole answer goes through `insight.checked_answer`."""
+    the checks need its output) the whole answer goes through `insight.checked_answer`. A cut
+    answer stops the model writing the rest."""
     loop = asyncio.get_running_loop()
     pieces = asyncio.Queue()
 
@@ -168,7 +210,12 @@ async def speak(ask, inner, question: str, past: list[dict], lines: list[dict]):
 
     task = asyncio.create_task(asyncio.to_thread(work))
     task.add_done_callback(
-        lambda t: t.cancelled() or t.exception() and fail("model call", t.exception())
+        lambda t: (
+            t.cancelled()
+            or t.exception()
+            and not isinstance(t.exception(), Stopped)
+            and fail("model call", t.exception())
+        )
     )
     buf, said, words_left, tooled, failed = "", [], commentator.ANSWER_WORDS, False, False
     outputs: list = []
@@ -202,6 +249,8 @@ async def speak(ask, inner, question: str, past: list[dict], lines: list[dict]):
                 break
         if kind == "end":
             break
+    if failed:
+        tap.stop.set()
     if said:
         return
     # nothing was said. A tool round held its sentences back (the checks need the tool's output):
