@@ -24,12 +24,14 @@ curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/stats        # the live Proo
 | [ARCHITECTURE.md](ARCHITECTURE.md) | How Touchline is built, from the code: one replayed line end to end, C4 levels 1 to 4, the module map, Mubit and Claude, deploy and ops, and the scale plan, which is not built | judge, developer, agent |
 | [CONTRACT.md](CONTRACT.md) | The shared shapes, HTTP endpoints, agent tools and check every area builds against | developer, agent |
 | [PRD.md](PRD.md) | The requirements (PRD v6); each has an ID such as A-6.4 that the tests checking it name | judge, developer, agent |
+| [build-log.md](build-log.md) | How much the team shipped during the event, in what order and how each piece was checked; every number comes with the command that reproduces it | judge, agent |
+| [decisions.md](decisions.md) | Each design decision: what we decided, the problem it answered, the reasoning with its evidence, what we rejected, what it costs, and where it lives in the code | judge, developer, agent |
 | [demo.md](demo.md) | The demo film's script, timings, the jump to each big moment and what to do if something fails | judge |
 | [design.md](design.md) | The page's design spec: look, layout, components, flow, states and copy (as of PRD v2) | developer |
 | [evidence.md](evidence.md) | The correction loop with real examples, how Mubit is used, how the check was measured, keyboard and screen reader support, and the source of every README figure | judge, agent |
 | [expo.md](expo.md) | The live demo on the deployed site, step by step in the film's order | judge |
 | [features.md](features.md) | Every feature with its code and tests, and where the product goes next | judge, fan, developer |
-| [feedback.md](feedback.md) | Each point from the judges' second check-in and the PR or file where it landed | judge |
+| [feedback.md](feedback.md) | Each point from the judge's second check-in and the PR or file where it landed | judge |
 | [integrations.md](integrations.md) | Every outside service, library and data source: its role, entry point, environment variable names, what happens when it fails, its test, and how to run with no keys | judge, developer, agent |
 | [stack.md](stack.md) | Each technology choice and why: FastAPI, JSON-lines store, SSE, Claude models, ElevenLabs | developer |
 | [voice.md](voice.md) | The commentator's voice: ElevenLabs models, audio tags, timing, voices per role and sport | fan, developer |
@@ -48,6 +50,7 @@ curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/stats        # the live Proo
 | [img/fix.png](img/fix.png) | Screenshot: the producer's Fix this line sheet | judge, fan |
 | [img/follow.png](img/follow.png) | Screenshot: following a player on the live page | judge, fan |
 | [img/live.png](img/live.png) | Screenshot: the live match page | judge, fan |
+| [img/prs-per-hour.svg](img/prs-per-hour.svg) | Chart for the build log: merged pull requests per hour, UTC | judge |
 | [img/shotmap.png](img/shotmap.png) | Screenshot: a player's shot map sheet | judge, fan |
 | [img/side-by-side.png](img/side-by-side.png) | Screenshot from earlier in the event: the big model's recorded lines beside a commentator version still in training | judge |
 | [img/wall.png](img/wall.png) | Screenshot: the home page's wall of matches | judge, fan |

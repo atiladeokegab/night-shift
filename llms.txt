@@ -1,6 +1,6 @@
 # Touchline
 
-> Touchline describes sports matches aloud for blind and low-vision fans, for the matches nobody describes. A commentator agent with tools turns a real match event feed into one spoken line per key moment, and a number check compares the score, who leads and the key numbers in each lead line with the match data before it is said. Producers fix wrong lines from the page. Commentary runs on Claude, and every model call goes through Mubit; producer fixes are sent to Mubit as training examples. Mubit console, read by hand on 25 October 2026: at 00:14 UTC the first Score check version scored 33.3% and the best commentary task 58.3% ([data/mubit_console.json](data/mubit_console.json)); at 06:27 UTC the line check's testing v1 shows 94.6%, in testing. The app does not call an adapter. Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026, track Recurring tasks.
+> Touchline describes sports matches aloud for blind and low-vision fans, for the matches nobody describes. A commentator agent with tools turns a real match event feed into one spoken line per key moment, and a number check compares the score, who leads and the key numbers in each lead line with the match data before it is said. Producers fix wrong lines from the page. Commentary runs on Claude, and every model call goes through Mubit; producer fixes are sent to Mubit as training examples. Mubit console, read by hand on 25 October 2026: at 00:14 UTC the first Score check version scored 33.3% and the best commentary task 58.3% ([data/mubit_console.json](data/mubit_console.json)); Mubit's 'Check one line of 2' task (one of our two line-checking tasks; the console cuts the name short) shows 94.6% for its first version, testing v1, in testing (console read by hand, 25 Oct 06:27 UTC). The app does not call an adapter. Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026, track Recurring tasks.
 
 Python 3.12 (FastAPI, uv) server in `core/` and `agent/`, React page in `web/`, one Cloud Run instance. `make smoke` runs offline with no keys. Branches: `integration` takes pull requests; `main` is what ships.
 
@@ -17,7 +17,8 @@ Python 3.12 (FastAPI, uv) server in `core/` and `agent/`, React page in `web/`, 
 - [docs/features.md](docs/features.md): every feature, each with its code and tests, and where the product goes next
 - [docs/evidence.md](docs/evidence.md): the correction loop with real examples, how Mubit is used, how the check was measured, and the source of every README figure
 - [docs/PRD.md](docs/PRD.md): the requirements (PRD v6); each has an ID such as A-6.4 that the tests checking it name
-- [docs/feedback.md](docs/feedback.md): each point from the judges' second check-in and the PR or file where it landed
+- [docs/feedback.md](docs/feedback.md): each point from the judge's second check-in and the PR or file where it landed
+- [docs/build-log.md](docs/build-log.md): how much the team shipped during the event, in what order and how each piece was checked, every number with the command that reproduces it
 - [docs/demo.md](docs/demo.md): the demo film's script, timings and fallbacks
 - [docs/expo.md](docs/expo.md): the live demo on the deployed site, step by step
 - [data/mubit_console.json](data/mubit_console.json): Mubit's console as read by hand at 00:14 UTC on 25 October 2026: tasks, adapters and each version's test score
@@ -27,6 +28,7 @@ Python 3.12 (FastAPI, uv) server in `core/` and `agent/`, React page in `web/`, 
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): how Touchline is built, from the code: one replayed line end to end, C4 levels 1 to 4, the module map, Mubit and Claude, deploy and ops, and the scale plan (not built)
 - [docs/CONTRACT.md](docs/CONTRACT.md): the shared shapes, HTTP endpoints, agent tools and check every area builds against
+- [docs/decisions.md](docs/decisions.md): each design decision: the problem it answered, the reasoning and evidence, what was rejected, its cost, and where it lives in the code
 - [docs/stack.md](docs/stack.md): each technology choice and why: FastAPI, JSON-lines store, SSE, Claude models, ElevenLabs
 - [docs/architecture/](docs/architecture/): the four C4 diagrams as PNG (context, container, component, code), drawn from the code by `c4.py`
 
