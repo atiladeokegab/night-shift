@@ -1,0 +1,82 @@
+# Touchline
+
+> Touchline describes sports matches aloud for blind and low-vision fans, for the matches nobody describes. A commentator agent with tools turns a real match event feed into one spoken line per key moment, and a number check compares the score, who leads and the key numbers in each lead line with the match data before it is said. Producers fix wrong lines from the page. Commentary runs on Claude, and every model call goes through Mubit; producer fixes are sent to Mubit as training examples. Mubit console, read by hand on 25 October 2026 ([data/mubit_console.json](data/mubit_console.json)): at 00:14 UTC the first Score check version scored 33.3% and the best commentary task 58.3%; at 06:27 UTC Mubit's 'Check one line of 2' task (one of our two line-checking tasks; the console cuts the name short) shows 94.6% for its first version, testing v1, in testing. The app does not call an adapter. Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026, track Recurring tasks.
+
+Python 3.12 (FastAPI, uv) server in `core/` and `agent/`, React page in `web/`, one Cloud Run instance. `make smoke` runs offline with no keys. Branches: `integration` takes pull requests; `main` is what ships.
+
+## Start here
+
+- [README.md](README.md): what Touchline is, the stage demo in order, where Mubit is called by function and line, how well the check works, known limitations
+- [docs/README.md](docs/README.md): index of every file in docs/ with its audience, and five no-key commands that verify the main claims
+- [AGENTS.md](AGENTS.md): rules for any AI agent working in this repo: areas, branches, commits, what never to commit
+- [IDEA.md](IDEA.md): the problem, what is built and not built, and who owns which area
+- [HACKATHON.md](HACKATHON.md): the event, its deadlines in UTC, judging criteria and the smoke command
+
+## Product and evidence
+
+- [docs/features.md](docs/features.md): every feature for the fan, the producer and engineering, each with its live link, code and test, plus screenshots and the numbers
+- [docs/evidence.md](docs/evidence.md): the correction loop with real examples, how Mubit is used, how the check was measured, and the source of every README figure
+- [docs/PRD.md](docs/PRD.md): the requirements (PRD v6); each has an ID such as A-6.4 that the tests checking it name
+- [docs/feedback.md](docs/feedback.md): each point from the judge's second check-in and the PR or file where it landed
+- [docs/build-log.md](docs/build-log.md): how much the team shipped during the event, in what order and how each piece was checked, every number with the command that reproduces it
+- [docs/demo.md](docs/demo.md): the demo film's script, timings and fallbacks
+- [docs/expo.md](docs/expo.md): the live demo on the deployed site, step by step
+- [data/mubit_console.json](data/mubit_console.json): Mubit's console as read by hand on 25 October 2026: the 06:27 UTC reading, with the 00:14 UTC reading under `earlier`; tasks, adapters and each version's test score
+- [eval/live_stats_2026-10-24.json](eval/live_stats_2026-10-24.json): a saved copy of the live /stats behind the README's cost and Score check figures
+
+## Architecture
+
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): how Touchline is built, from the code: one replayed line end to end, C4 levels 1 to 4, the module map, Mubit and Claude, deploy and ops, and the scale plan (not built)
+- [docs/CONTRACT.md](docs/CONTRACT.md): the shared shapes, HTTP endpoints, agent tools and check every area builds against
+- [docs/decisions.md](docs/decisions.md): each design decision: the problem it answered, the reasoning and evidence, what was rejected, its cost, and where it lives in the code
+- [docs/stack.md](docs/stack.md): each technology choice and why: FastAPI, JSON-lines store, SSE, Claude models, ElevenLabs
+- [docs/architecture/](docs/architecture/): the four C4 diagrams as PNG (context, container, component, code), drawn from the code by `c4.py`
+
+## Integrations
+
+- [docs/integrations.md](docs/integrations.md): every outside service, library and data source: its role, entry point, environment variable names, what happens when it fails, its test, and how to run with no keys
+- [agent/commentator.py](agent/commentator.py): `MubitProvider`, the Anthropic client pointed at Mubit; every commentary, check and correction call goes through it
+- [agent/scorecheck.py](agent/scorecheck.py): the Score check task as Mubit sees it; `teach` labels a producer's fix by code
+- [agent/linecheck.py](agent/linecheck.py): the Line check task, a second model reading each lead line after it is said
+- [eval/seed_scorecheck.py](eval/seed_scorecheck.py): sends labelled Score check examples to Mubit, including each producer's fix
+- [core/voice.py](core/voice.py): ElevenLabs text to speech for each line; the key stays on the server
+- [docs/voice.md](docs/voice.md): the voice models, audio tags and voices per role and sport
+- [core/converse.py](core/converse.py): Talk, a spoken conversation through an ElevenLabs agent whose answers come from the Ask path
+- [core/graph.py](core/graph.py): SurrealDB, embedded, holding players, teams, matches and seasons behind Follow a player
+
+## Code map
+
+- [core/app.py](core/app.py): the FastAPI app and every route: replays, SSE stream, Ask, Fix, /review, /ledger, /stats, /health
+- [core/replay.py](core/replay.py): plays a match's moments in time and asks the commentator for a line per moment
+- [core/insight.py](core/insight.py): stat lines between big moments, and `wrong_numbers`, the number check run before a line is said
+- [core/review.py](core/review.py): the producer's queue of stored lines the number check flags
+- [core/ledger.py](core/ledger.py): every example sent to Score check, with its Mubit session and request id
+- [core/stats.py](core/stats.py): the Proof card's numbers, computed from the store
+- [core/store.py](core/store.py): JSON-lines store of lines and fixes; local files or Cloud Storage
+- [core/guard.py](core/guard.py): the live site's budget guard: replays at once, per-hour limits, daily spend
+- [agent/prompt.md](agent/prompt.md): the commentator's fixed prompt; [agent/tools.json](agent/tools.json) holds its tools
+- [agent/feed.py](agent/feed.py): StatsBomb, Cricsheet, NBA and OpenF1 feeds turned into moments
+- [agent/packs.py](agent/packs.py): builds the pre-match player packs in data/packs
+- [data/](data/): sample match feeds, packs, the graph, video maps and the console snapshot
+- [eval/](eval/): checker, Ask and Line check evaluations with their labels and saved runs
+- [scripts/](scripts/): deploy, load check, demo check, precompute and the fix-then-later live run
+- [web/](web/): the React and Vite live page, with Playwright tests in web/e2e
+
+## Tests and how to verify
+
+- [docs/README.md#verify-our-claims-in-5-commands](docs/README.md#verify-our-claims-in-5-commands): five commands, no keys needed
+- [Makefile](Makefile): `make smoke` (lint, tests, every sample match replayed offline with a fake model), `make check`, `make load`, `make demo-check`
+- [tests/](tests/): the pytest suite; tests checking a requirement name its PRD ID
+- [tests/test_readme_numbers.py](tests/test_readme_numbers.py): fails if the README's check table or Mubit code links drift from their source
+- [tests/test_readme_claims.py](tests/test_readme_claims.py): traces each other README claim and known limitation to its code or saved run
+- [eval/checker_eval.py](eval/checker_eval.py): precision and recall of the number check on labelled lines, tuned-on and held-out
+- [web/e2e/](web/e2e/): browser tests for the page, run by CI on every pull request into integration
+
+## Live site
+
+- [Touchline live](https://night-shift-5zvig7nbvq-ew.a.run.app): the deployed app on Cloud Run, sound on
+- [/health](https://night-shift-5zvig7nbvq-ew.a.run.app/health): service and Mubit status as JSON
+- [/stats](https://night-shift-5zvig7nbvq-ew.a.run.app/stats): the Proof card's figures as JSON: lines, fixes, latency, cost, Score check counts
+- [/ledger](https://night-shift-5zvig7nbvq-ew.a.run.app/ledger): the newest examples sent to Mubit, with session and request ids
+- [/review](https://night-shift-5zvig7nbvq-ew.a.run.app/review): the producer's queue of flagged lines as JSON
+- [/stage](https://night-shift-5zvig7nbvq-ew.a.run.app/stage): the backup demo page, one static file

@@ -1,5 +1,7 @@
 # Touchline: the evidence
 
+**Mubit, step by step:** a producer's fix to a Score check example to a tested version, with ledger rows and request ids: [docs/mubit.md](mubit.md).
+
 The detail behind the [README](../README.md): the correction loop, how Touchline uses Mubit, how the check was measured, and the problem it answers.
 
 ## Correction loop, with evidence
