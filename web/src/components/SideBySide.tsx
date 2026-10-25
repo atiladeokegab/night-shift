@@ -23,10 +23,8 @@ export function SideBySide() {
       )}
       <p className="hint">
         <strong>Our commentator: {view.ours}.</strong> {adapter.adapters}{' '}
-        adapters on Mubit's console so far, best {adapter.best_match_pct}% on its test
-        {view.paired
-          ? ` (${adapter.status}).`
-          : "; not yet passing it, so it isn't served. Lines appear here beside the big model's once a version passes."}
+        adapters on Mubit's console at 00:14 UTC on 25 Oct, best commentary task {adapter.best_match_pct}% on its
+        test{view.paired ? ` (${adapter.status}).` : '; the app does not call an adapter.'}
       </p>
       <Costs big={view.bigCost} ours={view.oursCost} />
       <p className="small" style={{ margin: '16px 0 0' }}>
