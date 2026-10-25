@@ -62,18 +62,20 @@ broadcast highlights, each line called at its moment, in four sports.
 
 ## What the demo shows
 
-Touchline is a web app that calls a sports match aloud, line by line, for a fan who can't see it,
-and checks each line's numbers against the match data before it is said. The demo film is a screen
-recording of the live site with title cards, and it shows:
+Touchline is live sport for people who are blind or have low vision: it calls a match aloud, line
+by line, and checks each line's numbers against the match data before it is said. The film is a
+narrated screen recording of the live site, and runs in this order:
 
-- **Brighton v Bristol City** (WSL) on air: the opening lines arrive, each tagged **Checked**, and
-  **Close your eyes** puts the line itself in large text where the picture was.
-- **A wrong line fixed before anyone heard it.** On Orlando v North Carolina, Denise O'Sullivan's
-  39:39 line carries the **Auto-fixed** tag: its first draft failed the number check, and the retry passed.
-- **The Proof card**: how many calls this match and across all matches passed first time, were
-  auto-fixed or went to a person, and the cost per full replay.
-- **Who it is for**: WSL and NWSL streaming platforms, at about 45 cents a replay to us, voice
-  included ([who pays](#who-pays)).
+1. **What Touchline is**: live sport for a fan who can't see it.
+2. **Close your eyes** on **Utah Jazz v Chicago Bulls**, the 1998 NBA Finals (Jordan's last shot as
+   a Bull): the picture goes and two voices carry the match, a play-by-play commentator and an analyst
+   who adds the stats ("Jordan came in at 47% from the field"; "Kukoc from downtown, fed by
+   Buechler... Bulls level it up 70 to 70").
+3. **Ask by voice.** The narrator turns on the mic and asks, "Who is the best player on the pitch
+   currently?", while the commentary carries on, the analyst's tally included ("Kukoc is up to 15
+   points tonight...").
+4. **Women's sport, which gets little coverage**: **Brighton v Bristol City**, Women's Super League.
+5. **End card**: Touchline, "Live audio description, checked before air", and the live URL.
 
 Every match in the film is a replay of a real, recorded match.
 
