@@ -442,3 +442,20 @@ def test_text_before_a_tool_call_needs_numbers_the_tools_output_cannot_vouch_for
     monkeypatch.setattr(converse.commentator, "unrecorded_provider", FakeProvider)
     said = asyncio.run(sentences(SimpleNamespace(client=PreToolClient(), call=None)))
     assert "Reds 7, Blues 0." not in said
+
+
+def test_a_cut_answer_still_counts_the_tokens_it_used(monkeypatch):
+    monkeypatch.setattr(converse.commentator, "unrecorded_provider", FakeProvider)
+    client = CountingClient([(0, "The Reds lead 9-0. ")] + REST)
+    usage = SimpleNamespace(input_tokens=500, output_tokens=7)
+    client.current_message_snapshot = SimpleNamespace(usage=usage)
+    made = []
+    ask = converse.counted(partial(answer, header=HEADER), made.append)
+
+    async def run():
+        inner = SimpleNamespace(client=client, call=None)
+        return [s async for s in converse.speak(ask, inner, "Who scored?", MOMENTS[:2], [])]
+
+    asyncio.run(run())
+    cut = made[0]
+    assert (cut["tokens_in"], cut["tokens_out"]) == (500, 7) and cut["model"] and cut["created_at"]
