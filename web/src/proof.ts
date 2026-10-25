@@ -84,6 +84,7 @@ export function trainingHeading(state: TrainingState): string {
     pending: 'Score check: waiting for the receipt',
     sent: 'Sent to training',
     none: 'Not sent to training',
+    held_out: 'Not sent to training: this match is held out',
     failed: 'Not sent to training: a Mubit call failed',
     unknown: 'Training send not confirmed',
   }[state]
