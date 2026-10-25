@@ -263,24 +263,49 @@ that covers it. Paths are under `web/`.
 
 | Claim | Code | Test |
 |---|---|---|
-| **E** closes your eyes, but not while typing or with Ctrl, Cmd or Alt | [`src/eyes.ts:2`](../web/src/eyes.ts#L2), [`src/components/Live.tsx:209`](../web/src/components/Live.tsx#L209) | [`src/live.test.ts:251`](../web/src/live.test.ts#L251) (the key rule; no browser test presses E) |
+| **E** closes your eyes, but not while typing or with Ctrl, Cmd or Alt | [`src/eyes.ts:2`](../web/src/eyes.ts#L2), [`src/components/Live.tsx:211`](../web/src/components/Live.tsx#L211) | [`src/live.test.ts:251`](../web/src/live.test.ts#L251) (the key rule; no browser test presses E) |
 | Close your eyes is a toggle button with its key named (`aria-pressed`, `aria-keyshortcuts="E"`); the cover keeps the line and the score, and the player runs on | [`src/components/Controls.tsx:63`](../web/src/components/Controls.tsx#L63), [`src/components/Live.tsx:256`](../web/src/components/Live.tsx#L256) | [`src/live.test.ts:215`](../web/src/live.test.ts#L215), [`:231`](../web/src/live.test.ts#L231) |
 | **T** opens the Teams tab and moves focus to its heading | [`src/components/Live.tsx:198`](../web/src/components/Live.tsx#L198), [`:322`](../web/src/components/Live.tsx#L322) | [`e2e/teams.spec.ts:61`](../web/e2e/teams.spec.ts#L61), [`e2e/a11y.spec.ts:107`](../web/e2e/a11y.spec.ts#L107) |
-| **W** asks "Where are we?" (the button's title says so) | [`src/components/LineLog.tsx:171`](../web/src/components/LineLog.tsx#L171), [`:183`](../web/src/components/LineLog.tsx#L183) | not tested |
+| **W** asks "Where are we?" (the button's title says so) | [`src/components/LineLog.tsx:175`](../web/src/components/LineLog.tsx#L175), [`:185`](../web/src/components/LineLog.tsx#L185) | [`e2e/keyboard.spec.ts:41`](../web/e2e/keyboard.spec.ts#L41) |
 | **Talk** pauses the match; Enter starts it, Escape ends it and resumes, also while connecting | [`src/components/Converse.tsx:45`](../web/src/components/Converse.tsx#L45), [`:82`](../web/src/components/Converse.tsx#L82) | [`e2e/talk.spec.ts:49`](../web/e2e/talk.spec.ts#L49), [`:77`](../web/e2e/talk.spec.ts#L77), [`:118`](../web/e2e/talk.spec.ts#L118) |
 | 12 s of silence after the commentator ends Talk | [`src/converse.ts:11`](../web/src/converse.ts#L11), [`src/components/Converse.tsx:62`](../web/src/components/Converse.tsx#L62) | [`e2e/converse-lifecycle.spec.ts:105`](../web/e2e/converse-lifecycle.spec.ts#L105) (fake clock) |
-| The caption is a live region only while the voice is silent, so a screen reader never reads over it | [`src/components/Caption.tsx:22`](../web/src/components/Caption.tsx#L22), [`src/components/Live.tsx:222`](../web/src/components/Live.tsx#L222) | [`e2e/a11y.spec.ts:155`](../web/e2e/a11y.spec.ts#L155) (off while voiced; the silent case is not tested) |
-| An answer is announced: "Answer ready" while voiced, its text when silent | [`src/components/LineLog.tsx:65`](../web/src/components/LineLog.tsx#L65) | [`e2e/a11y.spec.ts:164`](../web/e2e/a11y.spec.ts#L164) (voiced case) |
-| State changes are announced: playing, paused, screen covered, off air, voice off | [`src/components/Live.tsx:244`](../web/src/components/Live.tsx#L244), [`:416`](../web/src/components/Live.tsx#L416) | [`e2e/a11y.spec.ts:153`](../web/e2e/a11y.spec.ts#L153), [`src/live.test.ts:142`](../web/src/live.test.ts#L142) |
-| Keyboard only, in order: Tab to a match, Enter, it is called aloud; Tab to Ask, type, Enter | [`src/components/Wall.tsx:132`](../web/src/components/Wall.tsx#L132), [`src/components/LineLog.tsx:192`](../web/src/components/LineLog.tsx#L192) | [`e2e/a11y.spec.ts:130`](../web/e2e/a11y.spec.ts#L130) |
-| A visible focus ring; Tab never enters the video embed | [`src/App.css:20`](../web/src/App.css#L20), [`src/player.ts:125`](../web/src/player.ts#L125) | [`e2e/a11y.spec.ts:149`](../web/e2e/a11y.spec.ts#L149), [`src/player.test.ts:61`](../web/src/player.test.ts#L61) |
+| The caption is a live region only while the voice is silent, so a screen reader never reads over it | [`src/components/Caption.tsx:22`](../web/src/components/Caption.tsx#L22), [`src/components/Live.tsx:222`](../web/src/components/Live.tsx#L222) | [`e2e/a11y.spec.ts:155`](../web/e2e/a11y.spec.ts#L155) (off while voiced), [`e2e/keyboard.spec.ts:89`](../web/e2e/keyboard.spec.ts#L89) (on while silent) |
+| An answer is announced: "Answer ready" while voiced, its text when silent | [`src/components/LineLog.tsx:67`](../web/src/components/LineLog.tsx#L67) | [`e2e/a11y.spec.ts:164`](../web/e2e/a11y.spec.ts#L164) (voiced), [`e2e/keyboard.spec.ts:89`](../web/e2e/keyboard.spec.ts#L89) (silent) |
+| State changes are announced: playing, paused, screen covered, off air, voice off | [`src/components/Live.tsx:244`](../web/src/components/Live.tsx#L244), [`:415`](../web/src/components/Live.tsx#L415) | [`e2e/a11y.spec.ts:153`](../web/e2e/a11y.spec.ts#L153), [`src/live.test.ts:142`](../web/src/live.test.ts#L142) |
+| Keyboard only, in order: Tab to a match, Enter, it is called aloud; Tab to Ask, type, Enter | [`src/components/Wall.tsx:141`](../web/src/components/Wall.tsx#L141), [`src/components/LineLog.tsx:192`](../web/src/components/LineLog.tsx#L192) | [`e2e/a11y.spec.ts:130`](../web/e2e/a11y.spec.ts#L130) |
+| A visible focus ring; Tab never enters the video embed | [`src/App.css:21`](../web/src/App.css#L21), [`src/player.ts:125`](../web/src/player.ts#L125) | [`e2e/a11y.spec.ts:149`](../web/e2e/a11y.spec.ts#L149), [`src/player.test.ts:61`](../web/src/player.test.ts#L61) |
 | A sheet (voice, fix, shot map) takes the focus, Escape closes it, and focus returns | [`src/focus.ts:5`](../web/src/focus.ts#L5) | [`e2e/a11y.spec.ts:168`](../web/e2e/a11y.spec.ts#L168) (the voice sheet) |
 | One h1 per live page, then an h2 per panel | [`src/components/Live.tsx:247`](../web/src/components/Live.tsx#L247) | [`src/live.test.ts:317`](../web/src/live.test.ts#L317), [`:333`](../web/src/live.test.ts#L333) |
-| Follow: a labelled search box (combobox, Escape closes the list); the card is a region named "Following <player>" | [`src/components/FollowPicker.tsx:39`](../web/src/components/FollowPicker.tsx#L39), [`src/components/ProfileCard.tsx:28`](../web/src/components/ProfileCard.tsx#L28) | not tested |
+| Follow: a labelled search box (combobox, Escape closes the list); the card is a region named "Following <player>" | [`src/components/FollowPicker.tsx:39`](../web/src/components/FollowPicker.tsx#L39), [`src/components/ProfileCard.tsx:28`](../web/src/components/ProfileCard.tsx#L28) | [`e2e/keyboard.spec.ts:59`](../web/e2e/keyboard.spec.ts#L59) (at 390 and 1280 px) |
 | No serious or critical axe finding on the wall, the live page and the review queue, at 390 and 1280 px, also with the fallback font and 200% text | the pages above | [`e2e/a11y.spec.ts:90`](../web/e2e/a11y.spec.ts#L90), [`:116`](../web/e2e/a11y.spec.ts#L116) |
 
-Not tested yet: the W key, the Follow box and card by keyboard, and the silent-voice branches of the caption
-and the answer. The code for each is linked above.
+Every claim here has a test. [`tests/test_readme_claims.py`](../tests/test_readme_claims.py) fails if a link
+above stops pointing at its code or its test.
+
+## README figures
+
+Each figure the README states, where it comes from, and the test that fails if the two drift apart.
+The tests are [`tests/test_readme_numbers.py`](../tests/test_readme_numbers.py) (N) and
+[`tests/test_readme_claims.py`](../tests/test_readme_claims.py) (C).
+
+| Figure | Source | Test |
+|---|---|---|
+| About $0.45 a replay, voice included, over 84 replays | [`eval/live_stats_2026-10-24.json`](../eval/live_stats_2026-10-24.json) `cost_per_match_usd`, `matches_measured` (live `GET /stats`, saved 23:08 UTC, 24 Oct) | N `test_the_readme_live_figures_are_the_saved_stats_read` |
+| 2,161 examples sent to training, 60 from producer fixes | the same file, `scorecheck` | N, same test |
+| 46 matched, 5 corrected, 9 not corrected | the same file, `scorecheck.from_fixes_by_kind` (they add up to the 60) | C `test_the_fixes_breakdown_and_console_counts_are_the_saved_reads` |
+| 74 of 74 held-out lines agree | the same file, `scorecheck` | N `test_the_readme_live_figures_are_the_saved_stats_read` |
+| 11 tasks, 8 adapters, 0 serving; Score check v1 33.3% on 12 test cases, best commentary 58.3%, of a 95% target (00:14 UTC, 25 Oct) | [`data/mubit_console.json`](../data/mubit_console.json), read by hand | N `test_the_side_by_side_panel_and_readme_match_the_console_read`, C `test_the_fixes_breakdown_and_console_counts_are_the_saved_reads` |
+| Ask: 32 of 33 right, 1 wrong, 0 refused; the wrong one is row 24 at Lakers 120-102 | [`eval/ask_eval_keyed_20261025.txt`](../eval/ask_eval_keyed_20261025.txt), the keyed run's output | C `test_the_ask_figures_are_the_saved_keyed_run` |
+| Terland: moments 18, 34 and 35 of the six later lines say "the Seagulls"; 94:48 "The Seagulls go three-two up" | [`eval/fix_then_later_live_20261024.txt`](../eval/fix_then_later_live_20261024.txt), the live run in #501 | C `test_the_terland_run_names_the_later_moments_saying_the_seagulls` |
+| The check table (held-out and first set) | [`eval/checker_eval.py`](../eval/checker_eval.py), [`eval/linecheck_heldout.json`](../eval/linecheck_heldout.json), written by [`eval/readme_numbers.py`](../eval/readme_numbers.py) | N `test_the_readme_check_table_is_todays_checker_eval_output`, `test_the_stored_held_out_rules_count_is_todays_rules` |
+| One more catch is about 17 points | 1 of the table's 6 held-out wrong lines | C `test_one_more_catch_is_about_seventeen_points_and_the_first_word_about_half_a_second` |
+| First word in about half a second | the saved `/stats`, `by_speaker.lead.first_word_ms_p50` (547 ms) | C, same test |
+| 620 football matches in the graph | the shipped store in [`data/graph/`](../data/graph): 612 from StatsBomb in four competition-seasons and 8 NWSL 2018 results from [`data/results/`](../data/results) | C `test_the_graph_holds_the_football_matches_the_readme_counts` |
+| The budget guard's defaults: 4, 10, 20, 50 | [`core/guard.py`](../core/guard.py) `Guard` | C `test_the_budget_table_is_the_guards_defaults`; what each limit does: [`tests/test_guard.py`](../tests/test_guard.py) |
+| Two files over the 1,000-line rule | the repo's files | C `test_the_files_over_the_line_rule_are_the_two_the_readme_names` |
+| A fix without the producer token gets 401; one the data contradicts gets 422 and never reaches Mubit | [`core/app.py`](../core/app.py) `fix_line` | [`tests/test_fix_heard.py`](../tests/test_fix_heard.py) `test_a_fix_needs_the_producer_token_once_the_deploy_sets_one`, `test_a_fix_the_data_contradicts_or_over_200_characters_gets_422_and_stores_nothing` |
+| Talk ends after 12 s of silence | [`web/src/converse.ts`](../web/src/converse.ts) `SILENT_MS` | [`web/e2e/converse-lifecycle.spec.ts`](../web/e2e/converse-lifecycle.spec.ts) (fake clock), and the keyboard table above |
+| Every Mubit call site | the "Where Mubit is called" list | N `test_the_readme_mubit_call_sites_point_at_the_calls` |
 
 ## The problem
 

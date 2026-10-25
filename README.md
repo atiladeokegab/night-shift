@@ -58,8 +58,8 @@ The planned film and the stage run in this order.
    the lead, 3-2!" before the fix to "Elisabeth Terland! The Seagulls go three-two up with that
    left-footed half volley!" after it. Moments 18, 34 and 35 took up "the Seagulls"; the other three
    later lines changed only as any new generation does. Made once on live by
-   [`scripts/fix_then_later.py`](scripts/fix_then_later.py), output in
-   [its PR](https://github.com/atiladeokegab/night-shift/pull/501).
+   [`scripts/fix_then_later.py`](scripts/fix_then_later.py), output saved as
+   [the run](eval/fix_then_later_live_20261024.txt) from [#501](https://github.com/atiladeokegab/night-shift/pull/501).
 4. **The fix sent to Score check training.** On Cahill's goal at Chelsea v Spurs the line said
    "level it at one-all, but Tottenham still lead two to one". A producer fixed it on the review page,
    and the line as said and the fixed text went to Mubit as two recorded Score check examples,
@@ -111,8 +111,9 @@ Score check's training on Mubit as a labelled example. Training, not serving.
 4. Check the Proof card's figures: `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/stats`.
 
 **Keyboard and screen reader:** E, T, W, Talk with Escape, focus order, live captions and the Follow
-card, each traced to its code and its test, or marked not tested:
-[the table](docs/evidence.md#keyboard-and-screen-reader).
+card, each traced to its code and its test:
+[the table](docs/evidence.md#keyboard-and-screen-reader). Every figure in this README, its source
+and its test: [the figures](docs/evidence.md#readme-figures).
 
 **Your check-in #2:** each point and where it landed: [docs/feedback.md](docs/feedback.md).
 
@@ -215,7 +216,7 @@ lines were picked and labelled, and what the check still misses: [the evidence](
 
 ## What's new tonight
 
-- **A graph of teams and players:** SurrealDB holds the seasons around our matches in football (612 matches), basketball and cricket, and answers only from matches before this one, so nothing later leaks.
+- **A graph of teams and players:** SurrealDB holds the seasons around our matches in football (620 matches), basketball and cricket, and answers only from matches before this one, so nothing later leaks.
 - **Talk:** press **Talk** and the match pauses while you speak with the commentator; each answer goes through Claude via Mubit and the same check as Ask. Escape, or 12 s of silence, resumes.
 - **One speaking queue:** ordinary commentary lines queue; a decisive moment can fade and interrupt
   a spoken answer, and routine lines that have gone stale are dropped.
@@ -243,8 +244,8 @@ The live site's budget guard; `0` turns one off.
 
 | Setting | Default | What it limits |
 |---|---|---|
-| `MAX_LIVE_REPLAYS` | 4 | Replays making new lines at once; past it, stored lines play in browser speech |
-| `REPLAYS_PER_HOUR` | 10 | Replay starts per visitor per hour; then 429 |
+| `MAX_LIVE_REPLAYS` | 4 | Replays making new lines at once; past it, the match's stored lines play with no model call, or 429 if it has none |
+| `REPLAYS_PER_HOUR` | 10 | Replay starts per visitor per hour; past it, stored lines play the same way, or 429 |
 | `ASKS_PER_HOUR` | 20 | Asks per visitor per hour; then 429 |
 | `DAILY_BUDGET_USD` | 50 | Today's model and voice spend (UTC); past it, stored lines only and Ask is off air |
 
