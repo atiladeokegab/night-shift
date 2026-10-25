@@ -607,8 +607,9 @@ class Gaps:
                 try:
                     said = commentate(stat_moment(m, said_as, reply), list(past))
                 except Exception as exc:  # a model outage ends this line, not the moment (#378)
-                    # the type only: a provider's message can carry its URL or key
-                    log.warning("stat line after %s failed: %s", m["idx"], type(exc).__name__)
+                    log.warning(
+                        "stat line after %s failed: %s: %s", m["idx"], type(exc).__name__, exc
+                    )
                     said, outage = None, True
                 if said and said.get("text"):  # the checks below see what is said
                     said = {

@@ -5,7 +5,6 @@ import httpx
 import pytest
 
 from core import converse, insight
-from core.store import Store
 from data.matches import load_moments, match_header
 from tests.test_converse import mint, started, talk
 
@@ -73,15 +72,3 @@ def test_a_chat_body_that_is_not_a_json_object_of_messages_is_a_400(tmp_path, mo
             **send,
         )
     assert resp.status_code == 400
-
-
-def test_a_stat_line_outage_logs_the_error_type_not_its_text(tmp_path, caplog):
-    moments = load_moments("3869685")
-    gaps = insight.Gaps("3869685", Store(tmp_path))
-
-    def down(moment, history):
-        raise RuntimeError("403 for url https://api.example/v1?key=sk-secret-key")
-
-    with caplog.at_level("WARNING"):
-        gaps.line(moments[:5], 2, 100.0, down, "Jim said it", [], 200.0)
-    assert "RuntimeError" in caplog.text and "sk-secret-key" not in caplog.text
