@@ -1,9 +1,9 @@
 /* Ported from docs/mockup/index.html (docs/design.md); the real YouTube player stands in for its SVG video. The look:
    a commentary booth at a floodlit night match: pitch-dark ground, floodlight type, hairlines, one radius, amber = called/live. */
 :root {
-  --bg: #060B0B; --panel: #0C1414; --panel-hi: #132020; --fg: #F2F6F4; --muted: rgba(242, 246, 244, .72); --faint: rgba(242, 246, 244, .6);
-  --glass: var(--panel); --line: rgba(214, 236, 228, .13); --line-hi: rgba(214, 236, 228, .26);
-  --amber: #FFB547; --amber-deep: #F5A524; --on-amber: #1B1203; --r: 6px;
+  --bg: #050707; --panel: #0C1012; --panel-hi: #161B1E; --fg: #F2F6F4; --muted: rgba(242, 246, 244, .72); --faint: rgba(242, 246, 244, .6);
+  --glass: rgba(12, 14, 16, .55); --line: rgba(255, 255, 255, .12); --line-hi: rgba(214, 236, 228, .26);
+  --amber: #FFB547; --amber-deep: #F5A524; --on-amber: #1B1203; --r: 12px;
   --air: #FF4D4F; --live: #3DDC84; --fix: #7CD4FF; --err: #FF6B6B;
   --display: 'Barlow Condensed', 'Outfit', 'Arial Narrow', ui-sans-serif, system-ui, sans-serif;
   --body: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -21,17 +21,19 @@ button[aria-busy="true"]:disabled { cursor: progress; opacity: 1; } /* busy, not
 :focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; border-radius: 6px; }
 .num { font-variant-numeric: tabular-nums; }
 .label { font: 600 .72rem/1 var(--body); letter-spacing: .14em; text-transform: uppercase; color: var(--faint); }
-/* Solid booth panels on hairlines: no blur, no sheen. */
-.glass { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); }
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; height: 44px; padding: 0 18px; border-radius: var(--r);
+/* Frosted glass over the dark ground; a solid panel where the browser can't blur. */
+.glass { background: var(--glass); -webkit-backdrop-filter: blur(16px) saturate(140%); backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid var(--line); border-radius: var(--r); }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .glass { background: var(--panel); } }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; height: 44px; padding: 0 20px; border-radius: 999px;
   border: 1px solid var(--line); background: var(--panel-hi); font: 500 .95rem/1 var(--body); transition: background .2s, border-color .2s, transform .2s; }
 .btn:hover:not(:disabled) { background: rgba(255, 255, 255, .09); border-color: var(--line-hi); }
 .btn.primary { background: var(--amber); color: var(--on-amber); border-color: transparent; font-weight: 600; }
 .btn.primary:hover:not(:disabled) { background: #FFC56B; }
 .btn .arr { transition: transform .25s var(--ease); }
 .btn:hover .arr { transform: translateX(3px); }
-.btn.sm { height: 30px; padding: 0 12px; font-size: .8rem; border-radius: var(--r); }
-.badge { font: 600 .65rem/1 var(--body); letter-spacing: .16em; text-transform: uppercase; color: var(--amber); border: 1px solid rgba(255, 181, 71, .4); border-radius: 6px; padding: 5px 7px; }
+.btn.sm { height: 30px; padding: 0 14px; font-size: .8rem; border-radius: 999px; }
+.badge { font: 600 .65rem/1 var(--body); letter-spacing: .16em; text-transform: uppercase; color: var(--amber); border: 1px solid rgba(255, 181, 71, .5); border-radius: 999px; padding: 5px 9px; }
 
 /* Top nav */
 .nav { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px var(--gut); }
@@ -46,8 +48,8 @@ button[aria-busy="true"]:disabled { cursor: progress; opacity: 1; } /* busy, not
 /* Picker and About */
 .page { position: relative; min-height: 100svh; overflow: hidden; display: flex; flex-direction: column; }
 .page .nav { width: 100%; max-width: 1240px; margin: 0 auto; }
-.page::before { content: ""; position: absolute; inset: 0; pointer-events: none; /* one floodlight over the pitch */
-  background: radial-gradient(70% 55% at 50% -18%, rgba(205, 235, 222, .09), transparent 70%); }
+.page::before { content: ""; position: absolute; inset: 0; pointer-events: none; /* one floodlight, the left in shadow */
+  background: radial-gradient(70% 60% at 70% -20%, rgba(205, 235, 222, .10), transparent 70%); }
 .page > * { position: relative; }
 .wrap { width: 100%; max-width: 1240px; margin: 0 auto; padding: 32px var(--gut) 32px; flex: 1; display: flex; flex-direction: column; }
 .eyebrow { margin: 0; color: var(--muted); font-size: 1.05rem; }
@@ -127,7 +129,7 @@ h1 { font: 600 clamp(2.6rem, 4.6vw, 3.9rem)/1 var(--display); letter-spacing: -.
 /* The pill is under 44px tall; an invisible hit area, growing down into the picture so the frame never clips it, makes the target 44px. */
 .bug button.onair::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: max(100%, 44px); }
 .onair .st { display: contents; }
-.bug .scorebar { padding: 7px 12px; gap: 6px 10px; font-size: 1rem; border-radius: var(--r); min-width: 0; background: rgba(4, 8, 8, .9); border-color: var(--line-hi); }
+.bug .scorebar { padding: 7px 12px; gap: 6px 10px; font-size: 1rem; border-radius: var(--r); min-width: 0; background: rgba(12, 14, 16, .72); }
 .bug .score { font-size: 1.3rem; }
 .bug .clock { font-size: 1.1rem; }
 .bug .team i { height: 16px; }
@@ -143,7 +145,7 @@ h1 { font: 600 clamp(2.6rem, 4.6vw, 3.9rem)/1 var(--display); letter-spacing: -.
 .period { color: var(--muted); font: 500 .85rem/1 var(--body); }
 .need { color: var(--fg); font: 600 .85rem/1 var(--body); padding: 6px 10px; border-radius: 8px; background: rgba(255, 181, 71, .14); border: 1px solid rgba(255, 181, 71, .3); }
 .replay { font: 600 .65rem/1 var(--body); letter-spacing: .18em; color: var(--muted); border: 1px solid var(--line-hi); border-radius: 6px; padding: 5px 7px; }
-.onair { display: inline-flex; align-items: center; gap: 10px; padding: 9px 14px 9px 12px; border-radius: var(--r); font: 600 .7rem/1 var(--body); letter-spacing: .16em; }
+.onair { display: inline-flex; align-items: center; gap: 10px; padding: 9px 14px 9px 12px; border-radius: 999px; font: 600 .7rem/1 var(--body); letter-spacing: .16em; }
 .onair .rec { width: 8px; height: 8px; border-radius: 50%; background: rgba(255, 255, 255, .3); }
 .onair.on .rec { background: var(--air); animation: rec 1.4s ease-out infinite; }
 .onair.off { color: var(--muted); }
@@ -218,7 +220,7 @@ h1 { font: 600 clamp(2.6rem, 4.6vw, 3.9rem)/1 var(--display); letter-spacing: -.
 .chip { font: 600 .65rem/1 var(--body); letter-spacing: .14em; text-transform: uppercase; padding: 5px 8px; border-radius: 6px; color: var(--fg); background: rgba(255, 255, 255, .1); }
 .chip.analyst { color: var(--fix); background: rgba(124, 212, 255, .12); }
 .chip.viewer { color: var(--muted); }
-.caption .tag { min-width: 0; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 600 .7rem/1 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--amber); padding: 5px 9px; border-radius: var(--r);
+.caption .tag { min-width: 0; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font: 600 .7rem/1 var(--body); letter-spacing: .12em; text-transform: uppercase; color: var(--amber); padding: 5px 10px; border-radius: 999px;
   background: rgba(255, 181, 71, .1); border: 1px solid rgba(255, 181, 71, .28); }
 .caption .tag.fixed { color: var(--fix); background: rgba(124, 212, 255, .1); border-color: rgba(124, 212, 255, .3); }
 .caption p { margin: 0; overflow-wrap: anywhere; }
@@ -303,7 +305,7 @@ h1 { font: 600 clamp(2.6rem, 4.6vw, 3.9rem)/1 var(--display); letter-spacing: -.
 .scrim { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 16px; background: rgba(2, 5, 5, .78); animation: fade .2s ease-out; }
 @keyframes fade { from { opacity: 0; } }
 /* A sheet taller than the screen scrolls inside the scrim's padding (the voice sheet lists every sport's voices). */
-.sheet { --pad: 28px; width: min(580px, 100%); max-height: calc(100svh - 32px); overflow-y: auto; overscroll-behavior: contain; padding: var(--pad); border-radius: var(--r); display: grid; gap: 16px; animation: lift .32s var(--ease); background: var(--panel); border-color: var(--line-hi); }
+.sheet { --pad: 28px; width: min(580px, 100%); max-height: calc(100svh - 32px); overflow-y: auto; overscroll-behavior: contain; padding: var(--pad); border-radius: 16px; display: grid; gap: 16px; animation: lift .32s var(--ease); background: rgba(12, 14, 16, .82); }
 @keyframes lift { from { opacity: 0; transform: translateY(16px) scale(.98); } }
 .sheet h2 { margin: 0; font: 600 2rem/1.05 var(--display); letter-spacing: .005em; }
 .sheet .lede { margin: -6px 0 0; color: var(--muted); font-size: .92rem; }
@@ -580,3 +582,12 @@ h1 { font: 600 clamp(2.6rem, 4.6vw, 3.9rem)/1 var(--display); letter-spacing: -.
 .training { margin: 0 0 24px; }
 .training h2 { margin: 0; }
 .training ol { margin: 0; padding-left: 20px; display: grid; gap: 8px; color: var(--muted); }
+
+/* Live QA (look pass): one-line kickers and tabs, readable review titles, the disabled play key, the footer, the log's chips. */
+.tile-body > * { min-width: 0; }
+.tile .label:not(.tile-cta) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.flag > .label { text-transform: none; letter-spacing: 0; font-size: .9rem; color: var(--muted); }
+.tabs button { white-space: nowrap; }
+.ctl:disabled { opacity: 1; color: var(--muted); }
+.foot { color: var(--muted); font-size: .875rem; }
+.log .meta-l > * { white-space: nowrap; }
