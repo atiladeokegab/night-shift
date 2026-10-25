@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { FAKE_YT } from './fakeYT'
+import { ARGENTINA_FIRST, FAKE_YT, KOBE_FIRST, toFirstEvent } from './fakeYT'
 
 const KOBE = /^Basketball ?Kobe's 81/
 const ARGENTINA = /Argentina v France/
@@ -55,6 +55,7 @@ async function openKobe(page: Page) {
   await page.goto('/')
   await page.getByRole('button', { name: KOBE }).click()
   await expect(page.locator('.caption .cap-text')).toBeVisible({ timeout: 45_000 })
+  await toFirstEvent(page, KOBE_FIRST)
   await expect(page.locator('#ask-q')).toBeEnabled()
 }
 
@@ -68,6 +69,7 @@ async function nextMatch(page: Page) {
   await page.getByRole('button', { name: /Back to all matches/ }).click()
   await page.getByRole('button', { name: ARGENTINA }).click()
   await expect(page.locator('.vcard')).toHaveAttribute('aria-label', /Argentina v France/)
+  await toFirstEvent(page, ARGENTINA_FIRST)
   await expect(page.locator('#ask-q')).toBeEnabled()
 }
 

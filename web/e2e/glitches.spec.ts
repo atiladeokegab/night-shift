@@ -70,7 +70,7 @@ test('the cricket Follow card keeps its table and Unfollow inside its padding at
 test('Talk reads "Connecting" at full strength while its session starts', async ({ page }) => {
   const moment = {
     sport: 'basketball', match_id: '0020500591', idx: 0, period: 1, clock: '10:35', type: 'Field goal',
-    team: 'Toronto Raptors', players: { shooter: 'Morris Peterson' }, outcome: '2 points', score: { home: 2, away: 2 }, detail: {},
+    team: 'Toronto Raptors', players: { shooter: 'Morris Peterson' }, outcome: '2 points', score: { home: 2, away: 2 }, detail: {}, video_t: 478,
   }
   await replay(page, [['moment', moment]])
   await page.route('**/converse/*/*/token*', () => new Promise(() => {})) // the token never comes: Connecting stays

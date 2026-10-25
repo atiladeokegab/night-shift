@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { FAKE_YT, KOBE_FIRST, toFirstEvent } from './fakeYT'
 
 // Mic on (#286) in a real browser, with a fake recognizer standing in for the browser's: the toggle and what it
 // says, hold-to-talk standing down while it is on, and the viewer's voice hushing the line on air (barge-in).
@@ -41,10 +42,13 @@ async function fakeMic(page: Page, available: boolean) {
 }
 
 async function openKobe(page: Page) {
+  await page.route('https://www.youtube.com/iframe_api', (r) => r.fulfill({ contentType: 'text/javascript', body: FAKE_YT }))
+  await page.route(/ytimg\.com|youtube(-nocookie)?\.com\/(?!iframe_api)/, (r) => r.abort())
   await page.setViewportSize({ width: 1280, height: 900 })
   await page.goto('/')
   await page.getByRole('button', { name: KOBE }).click()
   await expect(page.locator('.caption .cap-text')).toBeVisible({ timeout: 45_000 })
+  await toFirstEvent(page, KOBE_FIRST)
   await expect(page.locator('#ask-q')).toBeEnabled()
 }
 const blur = (page: Page) => page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())

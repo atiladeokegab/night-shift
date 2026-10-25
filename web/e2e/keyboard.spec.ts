@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
+import { FAKE_YT, KOBE_FIRST, toFirstEvent } from './fakeYT'
 
 // #170's last untested claims: the W key, the Follow box and card by keyboard alone, and what a screen reader
 // hears while the voice is silent (the caption becomes a live region, an answer is read out in full).
@@ -8,6 +9,8 @@ const KOBE = /^Basketball ?Kobe's 81/ // the tile, never its Jump pill
 const ANSWER = 'Kobe has 26 points, Toronto lead by 14.'
 
 async function openLive(page: Page, width = 1280) {
+  await page.route('https://www.youtube.com/iframe_api', (r) => r.fulfill({ contentType: 'text/javascript', body: FAKE_YT }))
+  await page.route(/ytimg\.com|youtube(-nocookie)?\.com\/(?!iframe_api)/, (r) => r.abort())
   const asked: string[] = []
   await page.route(/\/replays\/[^/]+\/ask$/, async (r) => {
     const { question, moment_idx } = r.request().postDataJSON()
@@ -26,6 +29,8 @@ async function openLive(page: Page, width = 1280) {
   await page.goto('/')
   await page.getByRole('button', { name: KOBE }).click()
   await expect(page.locator('.caption .cap-text')).toBeVisible({ timeout: 45_000 })
+  await toFirstEvent(page, KOBE_FIRST)
+  await expect(page.locator('#ask-q')).toBeEnabled()
   return asked
 }
 

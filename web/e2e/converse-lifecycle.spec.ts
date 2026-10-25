@@ -5,7 +5,7 @@ const KOBE = /^Basketball ?Kobe's 81/
 const FIRST = {
   sport: 'basketball', match_id: '0020500591', idx: 0, period: 1, clock: '10:35', type: 'Field goal',
   team: 'Toronto Raptors', players: { shooter: 'Morris Peterson', assist: 'Mike James' }, outcome: '2 points',
-  score: { home: 2, away: 2 },
+  score: { home: 2, away: 2 }, video_t: 478,
   detail: { play: "Peterson 17' Jump Shot (2 PTS) (James 1 AST)", player_points: 2, tied: true },
 }
 

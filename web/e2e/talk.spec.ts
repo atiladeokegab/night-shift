@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { FAKE_YT } from './fakeYT'
+import { FAKE_YT, KOBE_FIRST, toFirstEvent } from './fakeYT'
 
 // Talk to the commentator (#380) in a real browser: the token route and the ElevenLabs session are faked, so
 // no key and no microphone. A fake YouTube player shows whether the match pauses and where it resumes.
@@ -37,6 +37,7 @@ async function openKobe(page: Page, token: { status: number; json?: object }) {
   await page.getByRole('button', { name: KOBE }).click()
   await expect(page.locator('.caption .cap-text')).toBeVisible({ timeout: 45_000 })
   await expect.poll(() => state(page)).toBe(PLAYING)
+  await toFirstEvent(page, KOBE_FIRST)
   return asked
 }
 const player = (page: Page) => page.evaluate(() => {
