@@ -10,7 +10,7 @@ export function autonomyRows(stats: Pick<Stats, 'autonomy' | 'autonomy_by_match'
   return [...rows, ['All matches', stats.autonomy]]
 }
 
-// A checked line's chip (#298): "Checker model: all ok" or the fields it calls wrong; none without a
+// A checked line's verdict (#298), the chip's title and screen-reader text: "Checker model: all ok" or the fields it calls wrong; none without a
 // canonical reply, so a chip never claims a check that didn't happen.
 export function checkText(c: LineCheck | undefined): string | null {
   if (!c?.labels) return null

@@ -121,8 +121,8 @@ export function LineLog({ action, lines, late, fixes, checks = {}, examples = {}
                   {l.served_by && <span className="pill served" title={`Served by ${l.served_by}, the model Mubit's reply said answered`}>Via Mubit</span>}
                   {mine && <span className="pill follow">{shortName(followed!)}</span>}
                   {fix && <span className="pill fixed">Fixed</span>}
-                  {check && <span className={`pill check${checks[l.line_id].wrong.length ? ' flagged' : ''}`}
-                    title="A second model checks each line's score, leader, player total and event">{check}</span>}
+                  {check && <span className={`pill check${checks[l.line_id].wrong.length ? ' flagged' : ''}`} title={`${check}. A second model checks each line's score, leader, player total and event`}>
+                    <span aria-hidden>{checks[l.line_id].wrong.length ? 'May be wrong' : 'Checked'}</span><span className="sr-only">{check}</span></span>}
                   {example && <span className="pill check" title={examples[l.line_id].mubit_request_id ?? undefined}>{example}</span>}
                   {l.fixed && !fix && <span className="pill fixed producer">Fixed by producer</span>}
                   {l.retried && !fix && !l.fixed && (
