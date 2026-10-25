@@ -339,8 +339,8 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
     total: int|null, cost_measurable: bool, console}`. `state` is what the record shows:
     `passed` only when Mubit's gate was recorded as passed, `testing` once a version, score or failed
     gate is recorded, else `collecting`; never inferred from the record's `status` or a count of fixes. `summary`
-    says it in words, as of the record's time, e.g. "Testing: no version passed; best 55.8% of a 95%
-    target, as of 24 Oct 2026 13:04 UTC." Nothing enforces a number of fixes before a version, so
+    says it in words, as of the record's time, e.g. "Testing: no version passed; best 58.3% of a 95%
+    target, as of 25 Oct 2026 00:14 UTC." Nothing enforces a number of fixes before a version, so
     none is reported. The record's own `status` (the console's word, e.g. "training") is not
     reported: beside `state` it read as a contradiction. `kept`, `agree` and `total`
     come from the latest `adapter` record in the store, which `python -m eval.record_adapter` appends
