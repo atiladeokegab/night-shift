@@ -219,37 +219,39 @@ async def speak(ask, inner, question: str, past: list[dict], lines: list[dict]):
     )
     buf, said, words_left, tooled, failed = "", [], commentator.ANSWER_WORDS, False, False
     outputs: list = []
-    while not failed:
-        kind, value = await pieces.get()
-        if kind == "tool":
-            tooled = True  # a tool round: nothing is said until its outputs are known
-        elif kind == "tools":
-            tooled, outputs, buf = False, value, ""  # the final round streams, checked against them
-        elif kind == "text":
-            buf += value
-        ready = SENTENCE.split(buf)
-        if kind == "end":
-            ready, buf = [r for r in ready if r.strip()], ""
-        else:
-            buf = ready.pop()  # the sentence still being written
-        for sentence in ready if not tooled else []:
-            heard = commentator.spoken(sentence, words_left, ask=True)
-            if not heard or ABOUT_VIEWER.match(heard):
-                continue
-            one = {"text": heard, "tool_calls": [{"output": o} for o in outputs]}
-            if not checked(one, question, past, lines):
-                log.warning("converse: a sentence failed the number check")
-                failed = True
+    try:  # a cut answer, a failed check or a fan who hung up: the model stops writing
+        while not failed:
+            kind, value = await pieces.get()
+            if kind == "tool":
+                tooled = True  # a tool round: nothing is said until its outputs are known
+            elif kind == "tools":
+                # the final round streams, checked against them
+                tooled, outputs, buf = False, value, ""
+            elif kind == "text":
+                buf += value
+            ready = SENTENCE.split(buf)
+            if kind == "end":
+                ready, buf = [r for r in ready if r.strip()], ""
+            else:
+                buf = ready.pop()  # the sentence still being written
+            for sentence in ready if not tooled else []:
+                heard = commentator.spoken(sentence, words_left, ask=True)
+                if not heard or ABOUT_VIEWER.match(heard):
+                    continue
+                one = {"text": heard, "tool_calls": [{"output": o} for o in outputs]}
+                if not checked(one, question, past, lines):
+                    log.warning("converse: a sentence failed the number check")
+                    failed = True
+                    break
+                words_left -= len(heard.split())
+                said.append(heard)
+                yield heard
+                if words_left <= 0:
+                    failed = True  # the answer's length: the rest is not said
+                    break
+            if kind == "end":
                 break
-            words_left -= len(heard.split())
-            said.append(heard)
-            yield heard
-            if words_left <= 0:
-                failed = True  # the answer's length: the rest is not said
-                break
-        if kind == "end":
-            break
-    if failed:
+    finally:
         tap.stop.set()
     if said:
         return
