@@ -1,0 +1,43 @@
+# scripts/fix_then_later.py, run once on live by the lead: revision night-shift-00168 at 5b30afb, about 23:41 UTC, 24 Oct 2026.
+# Its output as posted in PR #501, unchanged. A line marked CHANGED differs in text; only those saying "the Seagulls" carry the fix.
+
+Moment 8, said: Elisabeth Terland! Brighton take the lead, one nil!
+  line 9917c94ed45a42b2965837305c003157
+Producer's fix: Elisabeth Terland scores! The Seagulls lead one-nil.
+  correction request mreq_01a1704964d17871ad3cfb65b246c535, recorded True
+
+Every later request on this match carries, in its user message:
+  Producer fixes earlier in this match, to follow from now on:
+  - period 1, 30:57: you said "Elisabeth Terland! Brighton take the lead, one nil!" ("Call Brighton the Seagulls"); the producer's line: "Elisabeth Terland scores! The Seagulls lead one-nil."
+
+The next lines on this match carry the producer's fix:
+
+Moment 15 (53:39)  CHANGED
+  before the fix: Harrison from 21 yards, half volley... it's hit the post!
+  after the fix:  Abigail Harrison strikes it, hits the post! Brighton still lead one nil.
+  requests: mreq_01a170496ee87b01878eab54fe6e5c04
+
+Moment 18 (54:22)  CHANGED
+  before the fix: HARRISON! Level it is! One-one!
+  after the fix:  Abigail Harrison! Level at one-all, the Seagulls and Bristol City all square!
+  requests: mreq_01a1704975497312b9077eb96cb28c7c
+
+Moment 19 (56:02)  CHANGED
+  before the fix: Katie Robinson! Brighton take the lead, two to one!
+  after the fix:  Katie Robinson! Brighton take the lead, two-one!
+  requests: mreq_01a1704979d67193b6b9c48fd4bd87da
+
+Moment 33 (82:34)  CHANGED
+  before the fix: Carrie Jones! Brighton and Albion two, Bristol City two!
+  after the fix:  Carrie Jones! Bristol City level it, two all!
+  requests: mreq_01a1704980c77911a483892b9a97564d
+
+Moment 34 (94:48)  CHANGED
+  before the fix: Elisabeth Terland! Brighton take the lead, 3-2!
+  after the fix:  Elisabeth Terland! The Seagulls go three-two up with that left-footed half volley!
+  requests: mreq_01a1704984c879d3b9414227b557a9bb
+
+Moment 35 (97:15)  CHANGED
+  before the fix: Full time at Brighton & Hove Albion, three two over Bristol City. What a match that was.
+  after the fix:  Full time! Brighton & Hove Albion hold on, three two, the Seagulls win it.
+  requests: mreq_01a170498c2e7de092744229556916ea
