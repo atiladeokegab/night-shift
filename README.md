@@ -46,8 +46,8 @@ The planned film and the stage run in this order.
    who leads, the margin, the players' counts ([`core/insight.py`](core/insight.py) `wrong_numbers`).
    A failed line gets one retry: if the retry passes, that is said, tagged **Auto-fixed**; if it
    fails too, a line built from the data is said instead and the wrong one goes to the producer's fix
-   queue. On stage it is Denise O'Sullivan's shot at 39:39 in **Orlando v North Carolina** (NWSL,
-   2018), a match with no video at all, tagged Auto-fixed. Another catch: in Jordan's last game as a Bull the model wrote "Chicago Bulls take the lead,
+   queue. On stage it is Kobe Bryant's line at 00:43 in the fourth quarter in **Lakers v Raptors** (NBA, 2006), tagged
+   Auto-fixed: the replay from that moment is `/?match=0020500591&at=22`. Another catch: in Jordan's last game as a Bull the model wrote "Chicago Bulls take the lead,
    85-86!" when Utah led 86-85; the check's reason was "Chicago Bulls do not lead", so that line was
    never said. (Score check, the Mubit task in step 4, judges only the score's numbers, not
    who leads: its key for this line is ok, since 85 and 86 are the score.)

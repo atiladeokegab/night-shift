@@ -62,7 +62,7 @@ Track: Recurring tasks. Score check is the recurring task: does this line's scor
 ## The demo, in one line
 
 Brighton v Bristol City plays and Touchline calls each moment aloud, with the Proof card beside it; a
-wrong line is caught before air and auto-fixed (Denise O'Sullivan, 39:39, Orlando v North Carolina); a
+wrong line is caught before air and auto-fixed (Kobe Bryant, 00:43 in the fourth quarter, Lakers v Raptors); a
 producer fixes Terland's 30:57 line to "the Seagulls" and the next lines on that match carry the fix
 (94:48: "Brighton take the lead, 3-2!" becomes "The Seagulls go three-two up";
 `scripts/fix_then_later.py`); the fix goes to Score check training (Cahill, examples 2,161 → 2,163);
