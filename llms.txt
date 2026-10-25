@@ -1,6 +1,6 @@
 # Touchline
 
-> Touchline describes sports matches aloud for blind and low-vision fans, for the matches nobody describes. A commentator agent with tools turns a real match event feed into one spoken line per key moment, and a number check compares the score, who leads and the key numbers in each lead line with the match data before it is said. Producers fix wrong lines from the page. Commentary runs on Claude, and every model call goes through Mubit; producer fixes are sent to Mubit as training examples. Mubit console, read by hand on 25 October 2026: at 00:14 UTC the first Score check version scored 33.3% and the best commentary task 58.3% ([data/mubit_console.json](data/mubit_console.json)); Mubit's 'Check one line of 2' task (one of our two line-checking tasks; the console cuts the name short) shows 94.6% for its first version, testing v1, in testing (console read by hand, 25 Oct 06:27 UTC). The app does not call an adapter. Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026, track Recurring tasks.
+> Touchline describes sports matches aloud for blind and low-vision fans, for the matches nobody describes. A commentator agent with tools turns a real match event feed into one spoken line per key moment, and a number check compares the score, who leads and the key numbers in each lead line with the match data before it is said. Producers fix wrong lines from the page. Commentary runs on Claude, and every model call goes through Mubit; producer fixes are sent to Mubit as training examples. Mubit console, read by hand on 25 October 2026 ([data/mubit_console.json](data/mubit_console.json)): at 00:14 UTC the first Score check version scored 33.3% and the best commentary task 58.3%; at 06:27 UTC Mubit's 'Check one line of 2' task (one of our two line-checking tasks; the console cuts the name short) shows 94.6% for its first version, testing v1, in testing. The app does not call an adapter. Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026, track Recurring tasks.
 
 Python 3.12 (FastAPI, uv) server in `core/` and `agent/`, React page in `web/`, one Cloud Run instance. `make smoke` runs offline with no keys. Branches: `integration` takes pull requests; `main` is what ships.
 
@@ -21,7 +21,7 @@ Python 3.12 (FastAPI, uv) server in `core/` and `agent/`, React page in `web/`, 
 - [docs/build-log.md](docs/build-log.md): how much the team shipped during the event, in what order and how each piece was checked, every number with the command that reproduces it
 - [docs/demo.md](docs/demo.md): the demo film's script, timings and fallbacks
 - [docs/expo.md](docs/expo.md): the live demo on the deployed site, step by step
-- [data/mubit_console.json](data/mubit_console.json): Mubit's console as read by hand at 00:14 UTC on 25 October 2026: tasks, adapters and each version's test score
+- [data/mubit_console.json](data/mubit_console.json): Mubit's console as read by hand on 25 October 2026: the 06:27 UTC reading, with the 00:14 UTC reading under `earlier`; tasks, adapters and each version's test score
 - [eval/live_stats_2026-10-24.json](eval/live_stats_2026-10-24.json): a saved copy of the live /stats behind the README's cost and Score check figures
 
 ## Architecture
