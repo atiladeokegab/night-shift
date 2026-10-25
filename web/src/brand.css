@@ -3,6 +3,8 @@
 .brand .wordmark.lockup { display: inline-flex; align-items: center; gap: 10px; color: var(--fg, #F6F4EF);
   font: 600 1.6rem/1 var(--display-cond, 'Barlow Condensed'), var(--display, 'Outfit'), ui-sans-serif, system-ui, sans-serif;
   letter-spacing: .14em; text-transform: uppercase; }
-.lockup .mark { width: 1.1em; height: 1.1em; flex: none; shape-rendering: crispEdges; }
+.lockup .mark { width: 1.5em; height: 1.1em; flex: none; shape-rendering: crispEdges; }
 .lockup .mark .bars { fill: var(--amber, #FFB547); }
-@media (max-width: 640px) { .brand .wordmark.lockup { font-size: 1.3rem; gap: 8px; letter-spacing: .12em; } }
+@media (max-width: 640px) { .brand .wordmark.lockup { font-size: .88rem; gap: 6px; letter-spacing: .05em; } }
+/* Below 375px the caps would push the links off screen: the mark alone, named by the button's aria-label. */
+@media (max-width: 374px) { .lockup .name { display: none; } .lockup .mark { font-size: 1.2rem; } }
