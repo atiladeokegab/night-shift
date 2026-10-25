@@ -209,6 +209,7 @@ def create_app(
 
     @app.get("/health")
     def health():
+        need_deps()  # never "ok" while agent/ or data/ failed to import and replays say 503
         from agent.commentator import mubit_status
 
         return {"status": "ok", **mubit_status()}
@@ -239,8 +240,8 @@ def create_app(
         if jump is not None and not any(m["idx"] == jump for m in moments):
             raise HTTPException(422, f"no moment {jump} in {req.match_id!r}")
         commentate, speak, correct = d.commentate, speaker.prepare, d.correct
-        # the deploy's live smoke stays cheap: no second opinion
-        linecheck = checked_under_cap(d.linecheck) if d.linecheck and not req.smoke else None
+        smoke = req.smoke and producer(x_producer_token)  # the deploy's smoke: no second opinion
+        linecheck = checked_under_cap(d.linecheck) if d.linecheck and not smoke else None
         if d.fixes:  # a fix applies to the next lines straight away, this replay's too
             commentate = with_fixes(d.commentate, store)
         # shortcut: the cap is checked only as a replay starts, so a running replay can overshoot
@@ -253,9 +254,8 @@ def create_app(
             m for m in moments if m["idx"] >= (jump or 0) and (mapped is None or m["idx"] in mapped)
         ]
         # a match already called in full is said again from its stored lines unless a fix is newer
-        # than them; the deploy's smoke always makes its lines, so it still exercises the model
-        # both make paid lines, so a producer's only: a bare flag plays the stored lines
-        made = (req.smoke or req.fresh) and producer(x_producer_token)
+        # than them; the producer's smoke and `fresh` always make paid lines (a bare flag: stored)
+        made = smoke or (req.fresh and producer(x_producer_token))
         stored = None if made else await asyncio.to_thread(current_lines, store, req.match_id, due)
         cached = bool(stored) or off_air or guard.busy(len(live))
         # only a replay that makes new lines counts against the client's hourly starts; over them,
@@ -275,14 +275,14 @@ def create_app(
             if commentate is None:
                 raise too_many(60, "Lots of people are watching. Try again in a minute.")
         record = None  # a checked line sent again, recorded: never a cached one, nor the smoke's
-        if d.record and not cached and not req.smoke:
+        if d.record and not cached and not smoke:
             fixed = commentate  # before the screen note: a line made from it is never recorded
 
             def record(moment: dict, history: list[dict]) -> dict | None:
                 return fixed(moment, history, record=True)
 
         # a cached replay cost nothing: never a match for cost per full replay
-        replay = Replay(req.match_id, req.speed, req.smoke or cached)
+        replay = Replay(req.match_id, req.speed, smoke or cached)
         replays[replay.id] = replay
         said_to = SayOnly(store) if cached else store
         if d.look and not cached and video:  # a frame's note goes in the next line (#291)
