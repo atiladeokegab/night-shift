@@ -66,8 +66,10 @@ The planned film and the stage run in this order.
    labelled by code, never a model ([`agent/scorecheck.py`](agent/scorecheck.py) `teach`,
    [`eval/linecheck.py`](eval/linecheck.py) `gold`): the count went from 2,161 to 2,163 after the
    Cahill fix (live `/stats` `scorecheck.examples_sent`, 24 October 2026, 23:45 UTC).
-5. **Mubit's console.** The Score check task, its examples and its version. This is **training, not
-   serving**: no trained version answers anything on the site ([below](#mubit-training-not-serving)).
+5. **Mubit's console.** The Score check task, its examples and its version. The line check is now
+   answered by our own adapter, trained on Mubit from the app's calls and producers' fixes; its first
+   version, testing v1, scored 94.6% in Mubit's test. The commentary still runs on Claude
+   ([below](#mubit-training-and-the-line-check-adapter)).
 6. **Who buys it.** The streaming platforms that carry the WSL and NWSL, at a cost to us of about
    $0.45 a replay, voice included ([who pays](#who-pays)).
 
@@ -117,14 +119,16 @@ and its test: [the figures](docs/evidence.md#readme-figures).
 
 **Your check-in #2:** each point and where it landed: [docs/feedback.md](docs/feedback.md).
 
-## Mubit: training, not serving
+## Mubit: training, and the line check adapter
 
 Every model call goes through Mubit. Training runs and eligible correction examples are recorded;
 Ask and Talk answers are unrecorded, and deployed commentary defaults to recording off. Mubit's console,
 read by hand on 25 October 2026 at 00:14 UTC ([`data/mubit_console.json`](data/mubit_console.json)),
 shows 11 tasks, 8 adapters and 0 serving. The first Score check version scored 33.3% against a 95%
-target, on 12 test cases; the best commentary task scores 58.3%. Every version reads "Not ready yet"
-or is still training, the app cannot call one, and we make no claim that any matches the big model.
+target, on 12 test cases; the best commentary task scores 58.3%. At that reading every version read
+"Not ready yet" or was still training. The line check is now answered by our own adapter, trained on
+Mubit from the app's calls and producers' fixes. Its first version, testing v1, scored 94.6% in
+Mubit's test. The commentary itself still runs on Claude.
 Score check, the narrower task above, has 2,161 examples sent to training, 60 of them from producer
 fixes (46 the model already matched, 5 corrected, 9 not corrected); the big model agreed with the
 code's answer key on 74 of 74 held-out lines (live `/stats` `scorecheck`, saved on 24 October 2026 at
@@ -203,7 +207,8 @@ lines were picked and labelled, and what the check still misses: [the evidence](
   score, the leader and the key numbers, not every claim.
 - **The voice comes seconds after the moment.** The text's first word is out in about half a second;
   the audio clip takes longer (`by_speaker.lead.audio_first_ms_p50` on `/stats`).
-- **No adapter serves.** Mubit serves one only in its console, once a version passes its test.
+- **Only the line check runs on our adapter.** It is testing v1, which scored 94.6% in Mubit's test;
+  the commentary still runs on Claude.
 - **A fix is locked only where `PRODUCER_TOKEN` is set**; a fix that contradicts the data gets a 422
   either way and never reaches Mubit ([`core/app.py`](core/app.py) `fix_line`). On Cloud Run,
   [`scripts/deploy.sh`](scripts/deploy.sh) mounts it from the Secret Manager secret `producer-token`
