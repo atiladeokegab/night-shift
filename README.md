@@ -35,40 +35,61 @@ broadcast highlights, each line called at its moment, in four sports.
 
 ## On stage
 
-1. **Live commentary that checks itself before air.** Every lead line goes through a number check
-   first: the score, who leads, the margin, the players' counts
-   ([`core/insight.py`](core/insight.py) `wrong_numbers`). In Jordan's last game as a Bull the model
-   wrote "Chicago Bulls take the lead, 85-86!" when Utah led 86-85; the check's reason was "Chicago
-   Bulls do not lead", so that line was never said. (Score check, the Mubit task in step 2, judges only
-   the score's numbers, not who leads: its key for this line is ok, since 85 and 86 are the score.) A failed line gets one retry, then a line built
-   from the data is said instead and the wrong one goes to the producer's fix queue. Press **E** to
-   **Close your eyes**: the picture goes black, only the line and the score stay, and the commentary
-   carries on. **Orlando v North Carolina** (NWSL, 2018) has no video at all: the whole match, every
-   key moment, called from the event data.
-2. **A producer's fix sent to Score check training.** On Cahill's goal at Chelsea v Spurs the line
-   said "level it at one-all, but Tottenham still lead two to one". A producer fixes it on the review
-   page, and the line as said goes to Mubit as a recorded Score check example, labelled by code, never
-   a model ([`agent/scorecheck.py`](agent/scorecheck.py) `teach`, [`eval/linecheck.py`](eval/linecheck.py)
-   `gold`). This is **training, not serving**: no trained version answers anything on the site.
-   Separately, the fix goes with the request for every later line of that match. On live, after a
-   producer's fix on Terland's opener at Brighton v Bristol City ("Call Brighton the Seagulls"),
-   Terland's 94:48 winner came out as "The Seagulls go three-two up", where the run before the fix said
-   "Brighton take the lead, 3-2!". Three of the six later lines took up "the Seagulls"; the other
-   three changed only as any new generation does
-   ([the run](https://github.com/atiladeokegab/night-shift/pull/501)).
-3. **Ask.** Type a question mid-match, such as "Where are we?" in the World Cup final. The answer
-   uses only what has happened up to the moment on screen, is checked the same way, and is spoken.
-   On a keyed run of 33 questions ([`eval/ask_eval.py`](eval/ask_eval.py), 25 Oct), 32 of 33 answers
-   were right, 1 wrong and 0 refused; the output is saved as
-   [`eval/ask_eval_keyed_20261025.txt`](eval/ask_eval_keyed_20261025.txt).
+The planned film and the stage run in this order.
+
+1. **A match nobody described, described.** **Brighton v Bristol City** (WSL, 2024) plays with its
+   highlights, and Touchline calls each moment aloud. Press **E** to **Close your eyes**: the picture
+   goes black, only the line and the score stay, and the commentary carries on. The **Proof** card
+   counts the lines that passed first time, were auto-fixed or went to a person, and shows the cost per
+   full replay.
+2. **A wrong line caught before air.** Every lead line goes through a number check first: the score,
+   who leads, the margin, the players' counts ([`core/insight.py`](core/insight.py) `wrong_numbers`).
+   A failed line gets one retry: if the retry passes, that is said, tagged **Auto-fixed**; if it
+   fails too, a line built from the data is said instead and the wrong one goes to the producer's fix
+   queue. On stage it is Denise O'Sullivan's shot at 39:39 in **Orlando v North Carolina** (NWSL,
+   2018), a match with no video at all, tagged Auto-fixed. Another catch: in Jordan's last game as a Bull the model wrote "Chicago Bulls take the lead,
+   85-86!" when Utah led 86-85; the check's reason was "Chicago Bulls do not lead", so that line was
+   never said. (Score check, the Mubit task in step 4, judges only the score's numbers, not
+   who leads: its key for this line is ok, since 85 and 86 are the score.)
+3. **A producer's fix, and the next lines on this match carry it.** At 30:57 Touchline said
+   "Elisabeth Terland! Brighton take the lead, one nil!". A producer fixed it to "Elisabeth Terland
+   scores! The Seagulls lead one-nil." ("Call Brighton the Seagulls"), and the fix goes with the request
+   for every later line of that match. At 94:48 the line went from "Elisabeth Terland! Brighton take
+   the lead, 3-2!" before the fix to "Elisabeth Terland! The Seagulls go three-two up with that
+   left-footed half volley!" after it. Moments 18, 34 and 35 took up "the Seagulls"; the other three
+   later lines changed only as any new generation does. Made once on live by
+   [`scripts/fix_then_later.py`](scripts/fix_then_later.py), output in
+   [its PR](https://github.com/atiladeokegab/night-shift/pull/501).
+4. **The fix sent to Score check training.** On Cahill's goal at Chelsea v Spurs the line said
+   "level it at one-all, but Tottenham still lead two to one". A producer fixed it on the review page,
+   and the line as said and the fixed text went to Mubit as two recorded Score check examples,
+   labelled by code, never a model ([`agent/scorecheck.py`](agent/scorecheck.py) `teach`,
+   [`eval/linecheck.py`](eval/linecheck.py) `gold`): the count went from 2,161 to 2,163 (live `/stats`
+   `scorecheck.examples_sent`).
+5. **Mubit's console.** The Score check task, its examples and its version. This is **training, not
+   serving**: no trained version answers anything on the site ([below](#mubit-training-not-serving)).
+6. **Who buys it.** The streaming platforms that carry the WSL and NWSL, at a cost to us of about
+   $0.45 a replay, voice included ([who pays](#who-pays)).
+
+**Also in the product: Ask.** Type a question mid-match, such as "Where are we?" in the World Cup
+final. The answer uses only what has happened up to the moment on screen, is checked the same way,
+and is spoken. On a keyed run of 33 questions ([`eval/ask_eval.py`](eval/ask_eval.py), 25 Oct), 32 of
+33 answers were right, 1 wrong and 0 refused; the output is saved as
+[`eval/ask_eval_keyed_20261025.txt`](eval/ask_eval_keyed_20261025.txt).
 
 ## Who pays
 
-Built for the streaming platforms that carry the WSL and NWSL. Nobody has agreed to pay yet and we
-have not set a price. What we know is our cost: **about $0.45 a replay, voice included**, over 84
-replays (live [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats), 24 Oct; saved at 23:08 UTC
-as [`eval/live_stats_2026-10-24.json`](eval/live_stats_2026-10-24.json): `cost_per_match_usd`, `matches_measured`).
-That is a highlights replay, not a whole 90 minutes. Why it matters: [the problem](docs/evidence.md#the-problem).
+The buyer is whoever streams a match with nobody describing it: the streaming platforms that carry
+the WSL and NWSL, and clubs' media teams. Nobody has agreed to pay yet and we have not set a price.
+The figures we have, side by side ([the problem](docs/evidence.md#the-problem)):
+
+- **Sky describes about 109 of the Premier League's 380 games** a season, one match a game week.
+- **At Wrexham, the disabled supporters' association and local sponsors raised £4,000** for four
+  years of human audio description at the ground.
+- **Touchline costs us about $0.45 a replay, voice included**, over 84 replays (live
+  [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats), 24 Oct; saved at 23:08 UTC as
+  [`eval/live_stats_2026-10-24.json`](eval/live_stats_2026-10-24.json): `cost_per_match_usd`,
+  `matches_measured`). That is a highlights replay, not a whole 90 minutes.
 
 ## For judges
 
@@ -77,32 +98,20 @@ Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026. Track: Own
 
 ### The 60-second path
 
-1. Tap **Brighton v Bristol City**, a Women's Super League match from the long tail, and press
-   **E** to close your eyes.
-2. Tap **Kobe's 81 v Toronto** and ask the commentator "How many points does Kobe have?", or press
+1. Tap **Brighton v Bristol City**, a Women's Super League match from the long tail, press **E** to
+   close your eyes, then open the **Proof** card.
+2. Tap **Fix** on any line to see the producer's form. Sending a fix needs the producer token, so
+   without it the live site asks for one and refuses the fix (401). The real fix on Brighton v
+   Bristol City and the later lines that carried it: [On stage](#on-stage), step 3.
+3. Tap **Kobe's 81 v Toronto** and ask the commentator "How many points does Kobe have?", or press
    **Talk** and ask out loud.
-3. Tap **Fix** on any line to see the producer's form. Sending a fix needs the producer token, so
-   without it the live site asks for one and refuses the fix (401). A real fix, step by step:
-   [the evidence](docs/evidence.md).
-4. Read the **Proof** card, then check it: `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/stats`.
+4. Check the Proof card's figures: `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/stats`.
 
 **Keyboard and screen reader:** E, T, W, Talk with Escape, focus order, live captions and the Follow
 card, each traced to its code and its test, or marked not tested:
 [the table](docs/evidence.md#keyboard-and-screen-reader).
 
 **Your check-in #2:** each point and where it landed: [docs/feedback.md](docs/feedback.md).
-
-### What's new tonight
-
-- **A graph of teams and players:** SurrealDB holds the seasons around our matches in football (612 matches), basketball and cricket, and answers only from matches before this one, so nothing later leaks.
-- **Talk:** press **Talk** and the match pauses while you speak with the commentator; each answer goes through Claude via Mubit and the same check as Ask. Escape, or 12 s of silence, resumes.
-- **One speaking queue:** ordinary commentary lines queue; a decisive moment can fade and interrupt
-  a spoken answer, and routine lines that have gone stale are dropped.
-- **Teams tab:** press **T** for each side's form, their last meetings and the squad, as they stood before the match.
-- **One broadcast pair:** the event call lifts for a big moment; stat interjections and comebacks stay
-  calm, and in quiet stretches the pair take turns on one player.
-
-Everything else, with its code and tests: [every feature](docs/features.md).
 
 ## Mubit: training, not serving
 
@@ -199,6 +208,18 @@ lines were picked and labelled, and what the check still misses: [the evidence](
   the commentary carries on without the picture.
 - **Two files break the repo's 1,000-line rule** ([AGENTS.md](AGENTS.md)): `core/insight.py` and
   `tests/test_core_voice.py`. Splitting them waits until after the event.
+
+## What's new tonight
+
+- **A graph of teams and players:** SurrealDB holds the seasons around our matches in football (612 matches), basketball and cricket, and answers only from matches before this one, so nothing later leaks.
+- **Talk:** press **Talk** and the match pauses while you speak with the commentator; each answer goes through Claude via Mubit and the same check as Ask. Escape, or 12 s of silence, resumes.
+- **One speaking queue:** ordinary commentary lines queue; a decisive moment can fade and interrupt
+  a spoken answer, and routine lines that have gone stale are dropped.
+- **Teams tab:** press **T** for each side's form, their last meetings and the squad, as they stood before the match.
+- **One broadcast pair:** the event call lifts for a big moment; stat interjections and comebacks stay
+  calm, and in quiet stretches the pair take turns on one player.
+
+Everything else, with its code and tests: [every feature](docs/features.md).
 
 ## Run it
 
