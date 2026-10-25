@@ -45,6 +45,22 @@ def test_true_scores_and_noncurrent_scores_are_not_rejected(text):
     assert insight.wrong_numbers(text, MOMENT, HEADER, PAST) == []
 
 
+def test_a_spaced_em_dash_does_not_join_a_minute_to_a_count():
+    assert insight._wrong_score("It is minute ten — one more chance for Chelsea.", MOMENT) == []
+    minute = int(MOMENT["clock"].split(":")[0])
+    text = f"It is minute {minute} — one more chance for Chelsea."
+    assert insight.wrong_numbers(text, MOMENT, HEADER, PAST) == []
+
+
+@pytest.mark.parametrize(
+    "need",
+    ["need", "will need", "would need", "could get", "must get", "want", "hope for", "are chasing"],
+)
+def test_a_future_score_stays_hypothetical_after_and(need):
+    text = f"Chelsea {need} two more goals and they lead three-two."
+    assert insight._wrong_score(text, MOMENT) == []
+
+
 def test_a_missed_current_score_uses_the_existing_retry_and_fallback():
     calls = []
 
