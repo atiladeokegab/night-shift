@@ -14,7 +14,7 @@ Read every figure off the screen at the time; the one written here (step 5) is d
    the queue, and each Score check example is sent only once, so the count would not move. Fix a fresh
    lead line instead, from any match but Brighton & Hove Albion WFC v Bristol City WFC or the São Paulo
    Grand Prix: those two are held out of training (`HELD_OUT` in
-   [`eval/linecheck.py`](../eval/linecheck.py)). At 05:20 UTC on 25 Oct the queue held, for one, the card
+   [`eval/linecheck.py`](../eval/linecheck.py)). At 05:15 UTC on 25 Oct the queue held, for one, the card
    Chelsea v Tottenham Hotspur · 57:41, "Gary Cahill with the half volley! Chelsea are back in it, but
    Tottenham lead one-nil— two-one!". **Fix this line**: enter the **Producer token**, type
    `Gary Cahill with the half volley! Chelsea are back in it, but Tottenham still lead two-one.` (it
