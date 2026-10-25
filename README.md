@@ -208,6 +208,21 @@ lines were picked and labelled, and what the check still misses: [the evidence](
   the deploy's own environment is ignored.
 - **One instance, and every viewer starts their own replay** ([`scripts/deploy.sh`](scripts/deploy.sh),
   [`core/replay.py`](core/replay.py)).
+- **Two stored analyst lines on Lakers v Raptors admit what they lack** ("season numbers I can't give
+  you here", "Smush I can't speak to"). A stored line replays unless a check drops it, and `admits` in
+  [`core/insight.py`](core/insight.py) misses these words; a producer's fix is heard on later replays
+  only for a lead line ([`core/replay.py`](core/replay.py) `run_replay`). The cause is the analyst's
+  prompt, [`agent/analyst.md`](agent/analyst.md), frozen for the event.
+- **Ask and Talk at the cold open can be given the first event before it is on screen.** The server
+  cuts the match by moment index, and the cold open shares its index with the first mapped event
+  ([`core/app.py`](core/app.py) `asked_so_far`, [#520](https://github.com/atiladeokegab/night-shift/issues/520)). [#519](https://github.com/atiladeokegab/night-shift/pull/519) gates
+  both in the page only, so a direct API caller can bypass it.
+- **Talk can say a sentence the model wrote before it called a tool**, checked against the match data
+  only, not the tool's output ([`core/converse.py`](core/converse.py) `speak`).
+- **No headless test holds a real Talk conversation.** The server side is tested headless
+  ([`tests/test_converse.py`](tests/test_converse.py)) and the page with a faked ElevenLabs session
+  ([`web/e2e/talk.spec.ts`](web/e2e/talk.spec.ts)); a real one needs a browser, a microphone and the
+  ElevenLabs agent.
 - **Cricket has no ball timestamps** in Cricsheet, so a ball counts as 30 seconds.
 - **The highlights are re-uploads** for four of the seven matches with video; if one is taken down,
   the commentary carries on without the picture.

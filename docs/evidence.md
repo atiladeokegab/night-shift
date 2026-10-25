@@ -306,6 +306,10 @@ The tests are [`tests/test_readme_numbers.py`](../tests/test_readme_numbers.py) 
 | A fix without the producer token gets 401; one the data contradicts gets 422 and never reaches Mubit | [`core/app.py`](../core/app.py) `fix_line` | [`tests/test_fix_heard.py`](../tests/test_fix_heard.py) `test_a_fix_needs_the_producer_token_once_the_deploy_sets_one`, `test_a_fix_the_data_contradicts_or_over_200_characters_gets_422_and_stores_nothing` |
 | Talk ends after 12 s of silence | [`web/src/converse.ts`](../web/src/converse.ts) `SILENT_MS` | [`web/e2e/converse-lifecycle.spec.ts`](../web/e2e/converse-lifecycle.spec.ts) (fake clock), and the keyboard table above |
 | Every Mubit call site | the "Where Mubit is called" list | N `test_the_readme_mubit_call_sites_point_at_the_calls` |
+| Known limitation: two stored analyst admissions replay, and a fix to an analyst line is not heard | [`core/insight.py`](../core/insight.py) `admits`, [`core/replay.py`](../core/replay.py) `run_replay`; the cause in [`agent/analyst.md`](../agent/analyst.md) | C `test_two_stored_analyst_admissions_pass_the_check_and_a_fix_to_one_is_not_heard` |
+| Known limitation: at the cold open the server already gives the first mapped event | [`core/app.py`](../core/app.py) `asked_so_far`, #520; the page-only gate is #519 | C `test_at_the_cold_open_the_server_already_gives_the_first_mapped_event` |
+| Known limitation: Talk says a sentence written before a tool call | [`core/converse.py`](../core/converse.py) `speak` | C `test_talk_says_a_sentence_written_before_a_tool_call` |
+| Known limitation: no headless test holds a real Talk conversation | [`tests/test_converse.py`](../tests/test_converse.py) (server, headless), [`web/e2e/talk.spec.ts`](../web/e2e/talk.spec.ts) (faked session) | not testable headless: a browser, a microphone and the ElevenLabs agent |
 
 ## The problem
 
