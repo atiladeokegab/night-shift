@@ -1,6 +1,8 @@
 """GET /teams/{sport}/{match_id} (#375): both sides' form, head-to-head and squad from the graph,
 cut at the match's start, empty when the graph has nothing, cached for a minute."""
 
+import threading
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -117,3 +119,48 @@ def test_orlando_has_form_and_a_squad_before_its_first_statsbomb_match():
     assert len(orlando["form"]) >= 1 and len(orlando["squad"]) >= 1 and orlando["note"] is None
     assert orlando["form"][0]["date"] == "2018-05-12" and orlando["form"][0]["score"] == "2-1"
     assert len(courage["form"]) == 4 and all(g["date"] < "2018-05-24" for g in orlando["form"])
+
+
+def not_loaded(monkeypatch):
+    """A process whose graph hasn't loaded yet."""
+    teams._cache.clear()
+    monkeypatch.setattr(graph, "_db", None)
+    monkeypatch.setattr(graph, "_kv", None)
+
+
+def test_the_app_answers_while_the_graph_loads_and_a_teams_request_waits_for_it(
+    tmp_path, monkeypatch
+):
+    not_loaded(monkeypatch)
+    real, loading, go = graph.load, threading.Event(), threading.Event()
+
+    def slow(*args, **kw):
+        loading.set()
+        go.wait(5)
+        return real(*args, **kw)
+
+    monkeypatch.setattr(graph, "load", slow)
+    made = []
+    boot = threading.Thread(target=lambda: made.append(create_app(store=Store(tmp_path))))
+    boot.start()
+    boot.join(2)
+    assert made, "create_app waited for the graph"  # before: boot paid the whole load
+    assert loading.wait(2)
+    with TestClient(made[0]) as client:
+        assert client.get("/health").status_code == 200  # answered mid-load
+        got = []
+        ask = threading.Thread(target=lambda: got.append(client.get("/teams/football/7457")))
+        ask.start()
+        ask.join(0.3)
+        assert not got  # waits for the load in progress, not the packs
+        go.set()
+        ask.join(10)
+    orlando = got[0].json()["teams"][0]
+    assert orlando["form"] and orlando["form"][0]["date"] == "2018-05-12"  # the graph's
+
+
+def test_a_teams_request_before_the_graph_loads_reads_the_pack(client, monkeypatch):
+    not_loaded(monkeypatch)
+    lakers = client.get("/teams/basketball/0020500591").json()["teams"][0]
+    assert lakers["form"] == [] and lakers["squad"]
+    assert all("baskets from" in p["headline"] for p in lakers["squad"])  # the pack's squad
