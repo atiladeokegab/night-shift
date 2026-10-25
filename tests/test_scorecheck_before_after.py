@@ -77,5 +77,6 @@ def test_not_said_is_a_valid_canonical_label(monkeypatch):
 
     assert len(provider.calls) == 1
     assert result["key"] == "not_said"
+    assert result["key_judges"] == "Score check judges only the score's numbers, not who leads"
     assert result["label_parsed"] == "not_said"
     assert result["matches_key"] is True
