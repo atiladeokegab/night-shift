@@ -11,7 +11,7 @@ change (see [Diagrams](#diagrams)).
 3. It runs on Cloud Run as one instance, kept warm ([`scripts/deploy.sh`](../scripts/deploy.sh):21, :144).
 4. Matches are bundled JSON: moments in `data/sample`, player records in `data/packs`, YouTube maps in `data/video`.
 5. Commentary runs on Claude. Every model call goes through Mubit's Anthropic endpoint ([`agent/commentator.py`](../agent/commentator.py):36).
-6. Each moment's line has its numbers compared with that moment's event data; a wrong one is retried once, then replaced by a line built from the data ([`core/insight.py`](../core/insight.py):1768).
+6. Each moment's line has its numbers compared with that moment's event data; a wrong one is retried once, then replaced by a line built from the data ([`core/insight.py`](../core/insight.py):1781).
 7. Lines, fixes, answers and voice clips are stored as JSON lines on Cloud Storage ([`core/store.py`](../core/store.py)).
 8. A match already called is played again from the store: no model call, saved clips ([`core/app.py`](../core/app.py):259).
 9. Producers fix lines with a token; each fix is sent to Mubit as a training example.
@@ -36,7 +36,7 @@ Related: [stack](stack.md), [evidence](evidence.md), [features](features.md), [v
    builds one request from the fixed prompt, the moments so far and any producer fixes
    (`build_request`, :191) and sends it through `MubitProvider` (:806) with at most one tool round.
    The lead's model is `claude-haiku-4-5` (:31), or `LEAD_MODEL` when set (:199).
-5. `checked` ([`core/insight.py`](../core/insight.py):1768) runs `wrong_numbers` on the line against
+5. `checked` ([`core/insight.py`](../core/insight.py):1781) runs `wrong_numbers` on the line against
    the moment's data. Numbers that match: the line is marked `checked`. Numbers that don't: one more
    call. Still wrong: `fallback_text` ([`core/fallback.py`](../core/fallback.py):186) builds the line
    from the data, and the failed try is kept for the producer's review queue.
@@ -118,7 +118,7 @@ bundled files.
   example (`scorecheck.teach`, [`agent/scorecheck.py`](../agent/scorecheck.py):83). The next replay
   of that match says the fix.
 - **Ask.** `POST /replays/{id}/ask` ([`core/app.py`](../core/app.py):574): `checked_answer`
-  ([`core/insight.py`](../core/insight.py):2017) answers from the moments so far, through Mubit
+  ([`core/insight.py`](../core/insight.py):2050) answers from the moments so far, through Mubit
   unrecorded, and an answer with a number nothing it was given supports is dropped. "Where are we?"
   goes to [`agent/status.py`](../agent/status.py).
 - **`/stats`.** [`core/stats.py`](../core/stats.py):299 computes cost, latency, check and fix counts
@@ -133,7 +133,7 @@ bundled files.
 | `start_replay` | [`core/app.py`](../core/app.py):230 | Validates the match, picks live or cached, starts `run_replay` |
 | `Replay` | [`core/replay.py`](../core/replay.py):45 | One replay's events and SSE subscribers |
 | `run_replay` | [`core/replay.py`](../core/replay.py):148 | The moment loop, quiet stretches, background tasks |
-| `checked` | [`core/insight.py`](../core/insight.py):1768 | Number check, one retry, data fallback |
+| `checked` | [`core/insight.py`](../core/insight.py):1781 | Number check, one retry, data fallback |
 | `line_for`, `build_request` | [`agent/commentator.py`](../agent/commentator.py):522, :191 | One request, at most one tool round, word limit |
 | `MubitProvider` | [`agent/commentator.py`](../agent/commentator.py):806 | HTTPS to Mubit; recording on or off; the owner's key after a 402 |
 | `FakeProvider` | [`agent/commentator.py`](../agent/commentator.py):879 | No keys, no network: tests and `make smoke` |
