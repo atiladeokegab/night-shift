@@ -96,7 +96,7 @@ The planned film and the stage run in this order.
 5. **Mubit's console.** The Score check task, its examples and its version. This is **training, not
    serving**: no trained version answers anything on the site ([below](#mubit-training-not-serving)).
 6. **Who buys it.** The streaming platforms that carry the WSL and NWSL, at a cost to us of about
-   $0.45 a replay, voice included ([who pays](#who-pays)).
+   $0.41 a replay, voice included ([who pays](#who-pays)).
 
 **Also in the product: Ask.** Type a question mid-match, such as "Where are we?" in the World Cup
 final. The answer uses only what has happened up to the moment on screen, is checked the same way,
@@ -114,9 +114,9 @@ The figures we have, side by side ([the problem](docs/evidence.md#the-problem)):
 - **At Wrexham, the disabled supporters' association and local sponsors funded a £4,000
   audio-description project**, including four years of management and maintenance, at no cost to
   the club.
-- **Touchline costs us about $0.45 a replay, voice included**, over 84 replays (live
-  [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats), 24 Oct; saved at 23:08 UTC as
-  [`eval/live_stats_2026-10-24.json`](eval/live_stats_2026-10-24.json): `cost_per_match_usd`,
+- **Touchline costs us about $0.41 a replay, voice included**, a running mean over 133 replays (live
+  [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats), 25 Oct; saved at 08:24 UTC as
+  [`eval/live_stats_2026-10-25.json`](eval/live_stats_2026-10-25.json): `cost_per_match_usd`,
   `matches_measured`). That is a highlights replay, not a whole 90 minutes.
 
 [Usefulness: primary evidence and capability receipts](docs/usefulness.md)

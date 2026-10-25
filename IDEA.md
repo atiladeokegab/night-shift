@@ -68,7 +68,7 @@ producer fixes Terland's 30:57 line to "the Seagulls" and the next lines on that
 (94:48: "Brighton take the lead, 3-2!" becomes "The Seagulls go three-two up";
 `scripts/fix_then_later.py`); the fix goes to Score check training (Cahill, examples 2,161 → 2,163);
 Mubit's console shows it as training, not serving; and it ends on the buyer, the streaming platforms
-that carry the WSL and NWSL, at about $0.45 a replay with the voice included.
+that carry the WSL and NWSL, at about $0.41 a replay with the voice included.
 
 ## Areas and owners
 

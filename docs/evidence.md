@@ -299,10 +299,10 @@ The tests are [`tests/test_readme_numbers.py`](../tests/test_readme_numbers.py) 
 
 | Figure | Source | Test |
 |---|---|---|
-| About $0.45 a replay, voice included, over 84 replays | [`eval/live_stats_2026-10-24.json`](../eval/live_stats_2026-10-24.json) `cost_per_match_usd`, `matches_measured` (live `GET /stats`, saved 23:08 UTC, 24 Oct) | N `test_the_readme_live_figures_are_the_saved_stats_read` |
-| 2,161 examples sent to training, 60 from producer fixes | the same file, `scorecheck` | N, same test |
-| 46 matched, 5 corrected, 9 not corrected | the same file, `scorecheck.from_fixes_by_kind` (they add up to the 60) | C `test_the_fixes_breakdown_and_console_counts_are_the_saved_reads` |
-| 74 of 74 held-out lines agree | the same file, `scorecheck` | N `test_the_readme_live_figures_are_the_saved_stats_read` |
+| About $0.41 a replay, voice included, a running mean over 133 replays | [`eval/live_stats_2026-10-25.json`](../eval/live_stats_2026-10-25.json) `cost_per_match_usd`, `matches_measured` (live `GET /stats`, saved 08:24 UTC, 25 Oct) | N `test_the_readme_live_figures_are_the_saved_stats_read` |
+| 2,161 examples sent to training, 60 from producer fixes | [`eval/live_stats_2026-10-24.json`](../eval/live_stats_2026-10-24.json) `scorecheck` | N, same test |
+| 46 matched, 5 corrected, 9 not corrected | [`eval/live_stats_2026-10-24.json`](../eval/live_stats_2026-10-24.json) `scorecheck.from_fixes_by_kind` (they add up to the 60) | C `test_the_fixes_breakdown_and_console_counts_are_the_saved_reads` |
+| 74 of 74 held-out lines agree | [`eval/live_stats_2026-10-24.json`](../eval/live_stats_2026-10-24.json) `scorecheck` | N `test_the_readme_live_figures_are_the_saved_stats_read` |
 | 11 tasks, 8 adapters, 0 serving; Score check v1 33.3% on 12 test cases, best commentary 58.3%, of a 95% target (00:14 UTC, 25 Oct) | [`data/mubit_console.json`](../data/mubit_console.json) `earlier`, read by hand | N `test_the_side_by_side_panel_and_readme_match_the_console_read`, C `test_the_fixes_breakdown_and_console_counts_are_the_saved_reads` |
 | 12 tasks, 9 adapters; "Check one line of 2" (Line check or Score check; the console cuts the name short, so which is not confirmed) has 2,235 calls and 192 kept examples, and its first version, testing v1, shows 94.6%, status Testing, not live (06:27 UTC, 25 Oct) | [`data/mubit_console.json`](../data/mubit_console.json), read by hand | C `test_the_console_reading_is_dated_sourced_and_claims_no_adapter` |
 | Ask: 32 of 33 right, 1 wrong, 0 refused; the wrong one is row 24 at Lakers 120-102 | [`eval/ask_eval_keyed_20261025.txt`](../eval/ask_eval_keyed_20261025.txt), the keyed run's output | C `test_the_ask_figures_are_the_saved_keyed_run` |
@@ -345,9 +345,9 @@ association, with local sponsors, placed a £4,000 audio-description project wit
 years of running it included, at no cost to the club
 ([Level Playing Field](https://www.levelplayingfield.org.uk/news-item/audio-description-commentary-at-wrexham-afc)).
 
-Touchline's own cost, beside those: about $0.45 a replay, voice included, over 84 replays of these
-highlights (live `/stats` `cost_per_match_usd` and `matches_measured`, saved on 24 Oct 2026 at 23:08 UTC
-as [`eval/live_stats_2026-10-24.json`](../eval/live_stats_2026-10-24.json)). It is a cost to run, not a price.
+Touchline's own cost, beside those: about $0.41 a replay, voice included, over 133 replays of these
+highlights (live `/stats` `cost_per_match_usd` and `matches_measured`, saved on 25 Oct 2026 at 08:24 UTC
+as [`eval/live_stats_2026-10-25.json`](../eval/live_stats_2026-10-25.json)). It is a cost to run, not a price.
 
 A model can describe the rest, if it speaks while the moment is still on screen and costs little
 enough to run for every match. The live site's [`/stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats)

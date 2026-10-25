@@ -132,8 +132,8 @@ the fix examples make no call offline.
 (`MAX_LIVE_REPLAYS`), replay starts and Asks per visitor an hour (`REPLAYS_PER_HOUR`,
 `ASKS_PER_HOUR`), and the day's model and voice spend (`DAILY_BUDGET_USD`). Past a limit a replay
 plays the lines already stored, with no model call, or the route answers 429. The README states the
-cost as about $0.45 a replay, voice included, over 84 replays
-(`eval/live_stats_2026-10-24.json`).
+cost as about $0.41 a replay, voice included, a running mean over 133 replays
+(`eval/live_stats_2026-10-25.json`).
 
 **Tests.** `tests/test_commentator.py` (provider, `MUBIT_RECORD`, the 402 move),
 `tests/test_mubit_status.py`, `tests/test_linecheck.py`, `tests/test_linecheck_live.py`,

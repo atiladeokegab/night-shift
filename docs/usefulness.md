@@ -45,8 +45,8 @@ accessibility sponsor. The proposed purchase is match coverage for their fans; t
 shows those kinds of organizations already support description. No organization has agreed to
 pay us, and we have not set a price.
 
-Our [saved statistics](../eval/live_stats_2026-10-24.json) report about **$0.45 per highlights replay
-over 84 replays**, including voice ([measurement explanation](evidence.md#the-problem)). That is a
+Our [saved statistics](../eval/live_stats_2026-10-25.json) report about **$0.41 per highlights replay
+over 133 replays**, including voice ([measurement explanation](evidence.md#the-problem)). That is a
 measured operating cost on this demo workload. It is not a full-match cost, a commercial price,
 a profit margin or a saving against a human describer. Feed licensing, rights, hosting, support
 and producer review would also enter a commercial cost model.

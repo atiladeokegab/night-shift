@@ -47,8 +47,9 @@ def test_the_readme_live_figures_are_the_saved_stats_read():
     snap = json.loads((ROOT / "eval" / "live_stats_2026-10-24.json").read_text())
     sc, text = snap["scorecheck"], " ".join(readme_numbers.README.read_text().split())
     (held,) = sc["held_out"].values()
-    assert f"${snap['cost_per_match_usd']:.2f} a replay" in text
-    assert f"over {snap['matches_measured']} replays" in text
+    cost = json.loads((ROOT / "eval" / "live_stats_2026-10-25.json").read_text())
+    assert f"${cost['cost_per_match_usd']:.2f} a replay" in text
+    assert f"over {cost['matches_measured']} replays" in text
     sent, fixes = sc["examples_sent"], sc["by_source"]["human"]
     assert f"{sent:,} examples sent to training, {fixes} of them from producer" in text
     assert f"{held['agree']} of {held['scored']} held-out" in text
