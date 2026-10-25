@@ -56,14 +56,42 @@ def test_a_fix_older_than_the_match_lines_keeps_them_cached(tmp_path):
     assert said == ["Stored 0", "Stored 1", "Stored 2"] and calls == []
 
 
-def test_the_deploy_smoke_is_always_made_fresh(tmp_path):
+def smoke(client, token=None):
+    headers = {"x-producer-token": token} if token else {}
+    body = {"match_id": "7", "speed": 1e6, "smoke": True}
+    return texts(client, client.post("/replays", json=body, headers=headers).json()["replay_id"])
+
+
+def test_the_deploy_smoke_with_the_producer_token_is_made_fresh(tmp_path, monkeypatch):
+    monkeypatch.setenv("PRODUCER_TOKEN", "secret")
     store = Store(tmp_path)
     stored(store)
     client, calls = app(store, {})
     with client:
-        rid = client.post("/replays", json={"match_id": "7", "speed": 1e6, "smoke": True})
-        texts(client, rid.json()["replay_id"])
+        smoke(client, "secret")
     assert calls == [0, 1, 2]
+
+
+def test_a_smoke_flag_without_the_producer_token_plays_the_stored_lines(tmp_path, monkeypatch):
+    monkeypatch.setenv("PRODUCER_TOKEN", "secret")
+    store = Store(tmp_path)
+    stored(store)
+    client, calls = app(store, {})
+    with client:
+        assert smoke(client) == ["Stored 0", "Stored 1", "Stored 2"]
+    assert calls == []
+
+
+def test_a_saved_clip_is_served_off_air_and_a_new_one_is_not(tmp_path, monkeypatch):
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "test")
+    store, voiced = Store(tmp_path), []
+    stored(store, model="claude-haiku-4-5", tokens_in=1000)  # $0.003 today: past the cap
+    store.save_clip("old0", voice_of({})["id"], b"saved", "audio/mpeg")
+    client, _ = app(store, {"DAILY_BUDGET_USD": "0.001"}, tts=tts_counting(voiced))
+    with client:
+        saved, new = client.get("/lines/old0/audio"), client.get("/lines/old1/audio")
+    assert saved.status_code == 200 and saved.content == b"saved"
+    assert new.status_code == 503 and voiced == []
 
 
 def tts_counting(voiced):
