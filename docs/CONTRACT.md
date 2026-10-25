@@ -6,11 +6,11 @@ builds against it; only the lead changes it (anything else is a change-request, 
 ## Assignment
 
 "Build a product that routes its LLM calls through Mubit and turns your corrections into model
-updates for a recurring task." Track: Own your intelligence layer.
+updates for a recurring task." Track: Recurring tasks; Score check is the recurring task.
 
 Demo: Kobe Bryant's 81 against Toronto (2006) replays and Touchline calls it aloud, the first word of text in
 about 0.5 s (median), the producer fixes one wrong line, the big model's recorded lines are shown
-where our trained commentator's will go (7 adapters on Mubit's console, none has passed its test yet, best
+where our trained commentator's will go (8 adapters on Mubit's console, none ready yet, best
 58.3%, and the app does not call an adapter), then one tap switches to India v Pakistan 2022 and the same commentator calls cricket.
 
 ## Shared core
@@ -350,9 +350,9 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
     commentary's, and another task's record leaves this key and `fixes_toward_next` alone.
     `console` (#317) is `data/mubit_console.json`, Mubit's console overview read by hand at
     `read_at`: `{source, read_at, how, tasks, adapters, serving, target, listed: {[name]: {status,
-    examples, quality}}}` (keyed by name: the `stats` event carries no brackets), or `null` without the file. It is a dated reading, never live data, and
+    version, quality, test_cases: int|null, note?}}}` (the console no longer reports examples per task) (keyed by name: the `stats` event carries no brackets), or `null` without the file. It is a dated reading, never live data, and
     changes only when someone reads the console again and commits it. The Proof card's Earlier tasks
-    line shows it as "Mubit console, 24 Oct 19:15 UTC: 8 tasks, 7 adapters, 0 serving; best 58.3% of a
+    line shows it as "Mubit console, 25 Oct 00:14 UTC: 11 tasks, 8 adapters, 0 serving; best 58.3% of a
     95% target".
   - `earlier_tasks.adapters: {[task]: {state, version: int|null, version_id: str|null, score: number|null,
     target: number|null, passed: bool|null, kept: int|null, recorded_at, source: str|null,

@@ -22,9 +22,11 @@ feed, looks up the facts it needs with tools (score, player, recent play) and ca
 one short spoken line, with the model's first word in about half a second (median, `GET /stats`),
 over a replay of iconic real moments. It checks the numbers in each moment's line before it speaks. A producer fixes any line that's wrong, and the fix is sent back
 through Mubit as a training example. Every call goes through Mubit: this is training, not serving.
-Each prompt change started a new Mubit task: the console shows 8 tasks,
-7 adapters and 0 serving, the best commentary task at 58.3% against a 95% target; none has passed,
-and the app calls no adapter.
+Each prompt change started a new Mubit task: the console (25 Oct, 00:14 UTC) shows 11 tasks,
+8 adapters and 0 serving; the first Score check version scored 33.3% and the best commentary task
+58.3%, against a 95% target; none is ready, and the app calls no adapter.
+
+Track: Recurring tasks. Score check is the recurring task: does this line's score match the match data? The number check answers it in code for every lead line on every match before air, and every producer's fix goes to Score check's training on Mubit as a labelled example. Training, not serving.
 
 ## What we build
 
