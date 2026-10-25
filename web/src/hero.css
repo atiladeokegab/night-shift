@@ -42,3 +42,15 @@
   .hero { min-height: 0; padding-top: 48px; padding-bottom: 80px; }
   .hero::before { background: linear-gradient(0deg, var(--bg) 0%, rgba(0, 0, 0, .78) 45%, rgba(0, 0, 0, .55) 100%); }
 }
+
+/* Taller rail cards, so the bottom-anchored label sits below the Jump pill instead of under it */
+.rail .tile { aspect-ratio: 4 / 3; }
+
+/* Frosted glass over the match still: the rail cards and the hero's note pill */
+.rail .tile:not(.ghost), .hero-badge {
+  background: rgba(12, 14, 16, .55); border: 1px solid rgba(255, 255, 255, .12);
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .rail .tile:not(.ghost), .hero-badge { background: rgba(12, 14, 16, .88); }
+}
