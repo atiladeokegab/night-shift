@@ -190,7 +190,7 @@ function AskBox({ onAsk, mic }: { onAsk: Props['onAsk']; mic?: Mic }) {
         <label className="sr-only" htmlFor="ask-q">Ask the commentator</label>
         {/* A one-row box that grows, so a long question reads from its start (#153); Enter sends, as the input did. */}
         <textarea id="ask-q" rows={1} value={question} maxLength={200} readOnly={asking} disabled={!onAsk} autoComplete="off" enterKeyHint="send"
-          placeholder={!onAsk ? 'Ask once play starts' : hint || 'Ask the commentator…'} onChange={(e) => setQuestion(e.target.value.replace(/\n/g, ' '))}
+          placeholder={!onAsk ? CLOSED : hint || 'Ask the commentator…'} onChange={(e) => setQuestion(e.target.value.replace(/\n/g, ' '))}
           onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && (e.preventDefault(), e.currentTarget.form?.requestSubmit())} />
         <MicButton disabled={!onAsk || asking || handsFree} {...voice} />
         <button className="btn sm primary" disabled={!onAsk || asking || !question.trim()}>
@@ -198,6 +198,10 @@ function AskBox({ onAsk, mic }: { onAsk: Props['onAsk']; mic?: Mic }) {
         </button>
       </form>
       <MicOn on={handsFree} onToggle={setHandsFree} ready={!!onAsk} mic={mic} disabled={!onAsk || asking} {...voice} />
+      {/* Said once while Ask waits for play (#514): always mounted, so the reader hears the change */}
+      <span className="sr-only" aria-live="polite">{onAsk ? '' : CLOSED}</span>
     </>
   )
 }
+
+const CLOSED = 'Ask opens when play starts'
