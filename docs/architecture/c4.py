@@ -63,7 +63,7 @@ def context() -> graphviz.Digraph:
         "tl",
         "Touchline",
         "Software system",
-        "Replays a real match as|spoken commentary, every number|compared with the event data",
+        "Replays a real match as|spoken commentary, each line's|numbers compared with event data",
         SYSTEM,
     )
     box(
@@ -220,6 +220,7 @@ def containers() -> graphviz.Digraph:
 
 def components() -> graphviz.Digraph:
     g = graph("c4_component", "Level 3: Components of the API server - the replay pipeline")
+    g.attr(rankdir="TB")
     box(
         g,
         "route",
@@ -292,7 +293,7 @@ def components() -> graphviz.Digraph:
         g,
         "train",
         "Training examples",
-        "commentator.correct,|linecheck.teach, scorecheck.teach",
+        "commentator.correct, linecheck.teach, scorecheck.teach",
         "sent to Mubit on the|owner's key, recorded",
         COMPONENT,
     )
@@ -365,7 +366,7 @@ def code() -> graphviz.Digraph:
             "mp",
             "MubitProvider",
             "agent/commentator.py",
-            "POST api.mubit.ai/anthropic/v1/messages;|record on/off; owner-key fallback on 402",
+            "Anthropic SDK at api.mubit.ai/anthropic;|record on/off; owner-key fallback on 402",
         ),
         (
             "fb",

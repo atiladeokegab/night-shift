@@ -175,18 +175,18 @@ bundled files.
 
 - Commentary runs on Claude. Every model call goes through Mubit's Anthropic endpoint
   (`MUBIT_URL`, [`agent/commentator.py`](../agent/commentator.py):36).
-- Three providers ([`agent/commentator.py`](../agent/commentator.py):480-519): `default_provider`
-  for the lines, recorded as `MUBIT_RECORD` says; `correction_provider` on the owner's key, always
-  recorded, for producer fixes; `unrecorded_provider` for Ask and the analyst's stat lines, which
-  have their own prompts and would split the lines' task.
+- Three providers ([`agent/commentator.py`](../agent/commentator.py):480-519): `unrecorded_provider`
+  makes every line, Ask answer and stat line; `default_provider` sends a line the number check
+  accepted again, recorded as `MUBIT_RECORD` says (`recorded`, :458); `correction_provider` sends
+  producer fixes on the owner's key, always recorded.
 - The live site runs with `MUBIT_RECORD=off` ([`scripts/deploy.sh`](../scripts/deploy.sh):104).
   Training examples come from producer fixes, auto-fixes, checked lines sent by `record_line`,
   [`scripts/replay_matches.py`](../scripts/replay_matches.py) and the seeding scripts in
   [`eval/`](../eval).
-- Producer fixes are sent to Mubit as training examples. The Line check task's first adapter version
-  (testing v1) shows 94.6% in Mubit's test and is in testing, as read by hand off Mubit's console
-  at 06:27 UTC on 25 October 2026 and recorded in
-  [`data/mubit_console.json`](../data/mubit_console.json). The app does not call any adapter:
+- Producer fixes are sent to Mubit as training examples. Mubit's 'Check one line of 2' task (one of
+  our two line-checking tasks; the console cuts the name short) shows 94.6% for its first version,
+  testing v1, in testing (console read by hand, 25 Oct 06:27 UTC; recorded in
+  [`data/mubit_console.json`](../data/mubit_console.json)). The app does not call any adapter:
   every line and check is made by the Claude models named above.
 
 ## Deploy and ops
@@ -235,8 +235,8 @@ second viewing free. To reach thousands of matches and viewers:
 - **SurrealDB as a service** shared by every instance, in place of the embedded engine in
   [`core/graph.py`](../core/graph.py), with the commentator's tools and the shot maps reading it.
 - **More Cloud Run instances**, once replay state lives in Redis rather than in one process.
-- **Mubit stays the only way to the model.** Moving lines to a trained adapter would be a change to
-  the provider, made only once the adapter's test results justify it.
+- **Mubit stays the only way to the model.** A trained adapter would answer behind the same call,
+  switched in Mubit's console, and only once its test results justify it.
 
 ## Diagrams
 
