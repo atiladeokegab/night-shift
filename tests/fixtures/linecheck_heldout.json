@@ -3,12 +3,12 @@
  "lines": 288,
  "wrong": 5,
  "rules": {
-  "caught": 1,
+  "caught": 2,
   "false_alarms": 0
  },
  "line_check": {
   "caught": 3,
-  "false_alarms": 5
+  "false_alarms": 3
  },
  "errors": 0
 }

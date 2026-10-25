@@ -141,11 +141,13 @@ every live page.
 
 ### The Proof panel
 
-<img src="img/proof.png" alt="The Proof card as it read on 24 Oct at 16:04 UTC, before the card stopped showing a fix threshold or saying the adapter is training (#281), on the Brighton v Bristol City replay with the live /stats of that time. Calls checked: this match 21 (20 first time, 1 auto-fixed, 0 to a human); all matches 342 (324, 14, 4). Per full replay, over 23 measured: $0.37, model $0.09 and voice $0.28. Lead: 5,850 lines, first word median 0.54 s and p95 0.92 s, $0.0018 a line. Analyst: 924 lines, 0.90 s and 3.62 s, $0.0025 a line. Training: 66 fixes recorded, 25 needed, enough for the next adapter; Fixes 66; To review: 25 flagged lines; Next adapter: Ready to train; Adapter: Training, Mubit is building the adapter. Under it, a note on what first time, auto-fixed and to a human mean, what first word measures, and that the adapter's cost is not measurable because Mubit doesn't report it to the app." width="50%">
+The screenshot that stood here (24 Oct, 16:04 UTC) showed a fix threshold and an adapter "Training" that the card no longer shows (#281), so it is removed; the live page shows the current card.
 
-Live latency, cost per line and lines called, split by lead and analyst (#166); the fixes recorded in Mubit
-as training data and how many count toward the next adapter; Line check's row (#298); and the adapter's state. All computed from the store,
-the same numbers as `GET /stats` (its `by_speaker`) ([`web/src/components/ProofPanel.tsx`](../web/src/components/ProofPanel.tsx),
+Calls checked, this match and all matches (#204); cost per full replay; live latency, cost per line and lines
+called, split by lead and analyst (#166); the fixes that passed the check, recorded in Mubit as training data, and
+how many have been heard since; Line check's row and its held-out result (#298, #317); and Score check's version,
+examples and held-out score, with the earlier commentary tasks folded away (#321, #363). All from `GET /stats`
+(its `by_speaker` for the split); the console reading under Earlier tasks is dated and read by hand, never live ([`web/src/components/ProofPanel.tsx`](../web/src/components/ProofPanel.tsx),
 [`core/stats.py`](../core/stats.py)).
 
 ## The product: where this goes

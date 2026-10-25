@@ -228,7 +228,7 @@ export type AdapterState = 'collecting' | 'testing' | 'passed' // what the recor
 
 export interface Adapter {
   state: AdapterState
-  summary: string // e.g. "Testing: no version passed; best 55.8% of a 95% target, as of 24 Oct 2026 13:04 UTC."
+  summary: string // e.g. "Testing: no version passed; best 58.3% of a 95% target, as of 24 Oct 2026 19:15 UTC."
   kept: number | null // null until the lead records it from Mubit's console (#46); never guessed
   agree: number | null
   total: number | null

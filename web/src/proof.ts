@@ -39,7 +39,7 @@ export function linecheckRow(s: LineCheckStats): string {
 }
 
 // Line check on held-out labelled lines beside the rules (#317), in counts, never a percentage, e.g.
-// "held-out: caught 3 of 5 wrong lines (rules: 1 of 5), 5 false alarms".
+// "held-out: caught 3 of 5 wrong lines (rules: 2 of 5), 3 false alarms" (eval/linecheck_heldout.json).
 export function heldoutRow(h: HeldOut | null | undefined): string | null {
   if (!h) return null
   const alarms = h.line_check.false_alarms
