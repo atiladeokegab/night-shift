@@ -4,6 +4,7 @@ STORE_URL=gs://bucket/prefix."""
 
 import json
 import os
+import re
 import threading
 import time
 from pathlib import Path
@@ -23,6 +24,13 @@ KINDS = (
     "scorecheck_receipts",  # one per fix once its Score check send ends: how many went (#400)
     "looks",  # frame calls and screen-note lines: that viewer's only (#291)
 )
+
+
+def clip_name(line_id: str, voice_id: str) -> str:
+    """Where a line's finished clip in one voice is kept: ids only, never a path."""
+    if not re.fullmatch(r"[\w-]+", line_id) or not re.fullmatch(r"[\w-]+", voice_id):
+        raise ValueError(f"no clip name for {line_id!r} {voice_id!r}")
+    return f"clips/{line_id}.{voice_id}"
 
 
 class Store:
@@ -75,6 +83,20 @@ class Store:
             else:
                 self._cache.pop(kind, None)
         return record
+
+    def save_clip(self, line_id: str, voice_id: str, data: bytes, content_type: str) -> None:
+        path = self.root / clip_name(line_id, voice_id)
+        path.parent.mkdir(exist_ok=True)
+        Path(f"{path}.type").write_text(content_type)
+        part = Path(f"{path}.part")  # renamed whole: a reader never sees half a clip
+        part.write_bytes(data)
+        part.replace(path)
+
+    def clip(self, line_id: str, voice_id: str) -> tuple[bytes, str] | None:
+        path = self.root / clip_name(line_id, voice_id)
+        if not path.exists():
+            return None
+        return path.read_bytes(), Path(f"{path}.type").read_text()
 
 
 class GcsStore(Store):
@@ -154,6 +176,18 @@ class GcsStore(Store):
                     self._cache.pop(kind, None)
                 return record
         raise RuntimeError(f"store: {kind} kept changing under the append")
+
+    def _clip_blob_name(self, line_id: str, voice_id: str) -> str:
+        name = clip_name(line_id, voice_id)
+        return f"{self.prefix}/{name}" if self.prefix else name
+
+    def save_clip(self, line_id: str, voice_id: str, data: bytes, content_type: str) -> None:
+        blob = self.bucket.blob(self._clip_blob_name(line_id, voice_id))
+        blob.upload_from_string(data, content_type=content_type)
+
+    def clip(self, line_id: str, voice_id: str) -> tuple[bytes, str] | None:
+        blob = self.bucket.get_blob(self._clip_blob_name(line_id, voice_id))
+        return None if blob is None else (blob.download_as_bytes(), blob.content_type)
 
 
 def open_store(env=os.environ) -> Store:

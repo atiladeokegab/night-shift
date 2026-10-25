@@ -58,9 +58,11 @@ def test_the_voice_records_the_characters_of_each_call_that_spoke(monkeypatch, t
     speaker = Speaker(httpx.MockTransport(handle), store)
     line = {"line_id": "x", "sport": "football", "text": "Goal!", "replay_id": "r1"}
     assert asyncio.run(speaker.audio(line, VOICES[1])) == (b"mp3", "eleven_flash_v2_5")
-    assert store.all("voice") == [
+    voice = store.all("voice")
+    assert [{k: v for k, v in row.items() if k != "created_at"} for row in voice] == [
         {"line_id": "x", "replay_id": "r1", "model": "eleven_flash_v2_5", "chars": 5}
     ]
+    assert voice[0]["created_at"]  # the daily cap counts voice by when it was made
 
 
 def seeded(tmp_path):

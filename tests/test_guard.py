@@ -237,6 +237,9 @@ def test_beyond_max_live_a_replay_plays_stored_lines_or_429(tmp_path, monkeypatc
     tts = httpx.MockTransport(lambda req: voiced.append(req) or httpx.Response(200, content=b"mp3"))
     store, gate, calls = Store(tmp_path), threading.Event(), []
     stored(store)
+    # a fix newer than the stored lines: the match's next replay makes them again
+    fix = {"line_id": "old1", "corrected_text": "Fixed", "created_at": "2026-10-24T10:00:00+00:00"}
+    store.append("fixes", fix)
 
     def slow(m, history):  # the first replay holds its live slot until the gate opens
         calls.append(m["idx"])
@@ -250,9 +253,10 @@ def test_beyond_max_live_a_replay_plays_stored_lines_or_429(tmp_path, monkeypatc
         second = start(client).json()["replay_id"]
         cached = texts(client, second)
         audio = [client.get(f"/lines/old{i}/audio") for i in range(3)]
-        # old0's saved audio plays again; the others get browser speech: no new ElevenLabs call
-        assert [a.status_code for a in audio] == [200, 503, 503] and audio[0].content == b"mp3"
-        assert len(voiced) == 1
+        again = [client.get(f"/lines/old{i}/audio") for i in range(3)]
+        # old0's saved clip plays again; the others are made once each, then saved
+        assert [a.status_code for a in audio + again] == [200] * 6
+        assert {a.content for a in audio + again} == {b"mp3"} and len(voiced) == 3
         unknown = start(client, match_id="8")  # nothing stored for it
         gate.set()
         read_stream(client, first)
@@ -389,13 +393,13 @@ def test_a_replay_of_stored_lines_never_counts_against_the_hourly_starts(tmp_pat
 
     client, _ = app(store, {"MAX_LIVE_REPLAYS": "1", "REPLAYS_PER_HOUR": "2"}, commentate=slow)
     with client:
-        first = start(client).json()["replay_id"]
-        busy = [start(client) for _ in range(3)]  # the live slot is taken: stored lines, uncounted
+        first = start(client, match_id="8").json()["replay_id"]  # nothing stored for it: fresh
+        busy = [start(client) for _ in range(3)]  # stored lines, uncounted
         for r in busy:
             read_stream(client, r.json()["replay_id"])
         gate.set()
         read_stream(client, first)
-        second = start(client)  # the client's second fresh start of two
+        second = start(client, match_id="8")  # the client's second fresh start of two
         read_stream(client, second.json()["replay_id"])
     assert [r.status_code for r in busy] == [200, 200, 200] and second.status_code == 200
     assert calls == [

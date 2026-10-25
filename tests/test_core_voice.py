@@ -268,7 +268,7 @@ def test_v3_retries_once_then_falls_back_to_flash_without_the_tag(tmp_path, monk
     monkeypatch.setenv("ELEVENLABS_API_KEY", KEY)
     caplog.set_level(logging.DEBUG)
     seen = []
-    client, _ = replay_wicket(tmp_path, by_model(seen, fail={"eleven_v3"}))
+    client, store = replay_wicket(tmp_path, by_model(seen, fail={"eleven_v3"}))
     with client:
         from core.smoke import read_stream
 
@@ -277,7 +277,9 @@ def test_v3_retries_once_then_falls_back_to_flash_without_the_tag(tmp_path, monk
     assert resp.status_code == 200
     assert [m for m, _ in seen] == ["eleven_v3", "eleven_v3", "eleven_flash_v2_5"]
     assert seen[-1][1] == "Gone! Kohli's out!"
-    assert "model=eleven_flash_v2_5" in caplog.text and KEY not in caplog.text
+    # made ahead and saved, so the page's request is served the saved clip
+    assert [v["model"] for v in store.all("voice")] == ["eleven_flash_v2_5"]
+    assert "voice line=w1 saved" in caplog.text and KEY not in caplog.text
 
 
 def test_v3_for_a_moment_a_second_away_is_still_tried(monkeypatch):

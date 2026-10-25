@@ -116,16 +116,23 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   sides' recent games (`{date, opponent, home, score, result}`), the squad's headline numbers
   (`{name, matches, headline}`) and the head-to-head, all before the match's date, from the graph.
   A section the graph can't give is `[]`; cached 60 s; 404 for an unknown match.
-- `POST /replays {match_id, speed>0, start_idx?, smoke?}` → `{replay_id}` (core); `smoke: true` (the
+- `POST /replays {match_id, speed>0, start_idx?, smoke?, fresh?}` → `{replay_id}` (core); `smoke: true` (the
   deploy's live smoke) is never counted as a full replay; `start_idx` (#163) starts the stream at
   that moment: earlier moments are never called. They are sent first, untimed (no `video_t`), so the score
   and clock are already there, each followed by the last line stored for it with `history: true`
   (shown, never spoken), then that line's latest `fixed` if it has one. 422 if no such moment.
   The budget guard (#244, core/guard.py): 429 with `Retry-After` past `REPLAYS_PER_HOUR` starts
-  from one client (the first `X-Forwarded-For` hop) in an hour. With `MAX_LIVE_REPLAYS` replays
-  already making lines, or today's spend past `DAILY_BUDGET_USD` (default 50), the replay plays each moment's
-  stored line again as it was stored (its own `line_id`, `cached: true`), with no model or voice call, nothing
-  stored and never counted as a full replay; 429 `{detail}` if the match has no stored lines. A 429's
+  from one client (the first `X-Forwarded-For` hop) in an hour. Cached first: a match with stored
+  lead lines, and no producer fix newer than its newest line, plays each moment's stored line again
+  as it was stored (its own `line_id`, `cached: true`), with no model call, nothing stored, never
+  counted as a full replay nor against the hourly starts; a moment with no stored line stays
+  silent. Its voice is each line's saved clip (`GET /lines/{line_id}/audio`). Lines are made
+  fresh when the match has none stored, when a fix is newer than them, for `smoke`, and for
+  `fresh: true` with a valid `X-Producer-Token` (checked as the fix route checks it; without one,
+  `fresh` is ignored). The analyst's stored lines between moments are said again the same way. With
+  `MAX_LIVE_REPLAYS` replays already making lines, or today's spend past `DAILY_BUDGET_USD`
+  (default 50), a replay that would make lines plays the stored ones instead; 429 `{detail}` if
+  the match has none. A 429's
   `detail` is viewer-safe: the page shows it.
 - `GET /replays/{id}/stream` → SSE: per moment `moment`, `line`, `stats` in that order; a failed
   call skips only its line with `moment_off_air` `{code: "moment_off_air", idx}` (the page may
@@ -232,10 +239,12 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   in the chosen voice, or by default the voice for the line's sport. `eleven_v3` with an audio tag
   for the moment's kind (in the TTS text only, never the stored line); one retry, then
   `eleven_flash_v2_5` without the tag; `VOICE_MODEL_<SPORT>` overrides the model. The audio is
-  made when the replay stores the line and cached, due before the video reaches its moment.
-  404 for an unknown line or voice; 503 with no `ELEVENLABS_API_KEY`, every attempt failed,
-  today's spend past `DAILY_BUDGET_USD` or a line a cached replay (#244) is saying with no audio
-  saved (saved audio is played again), and the page then uses browser speech. The key never reaches the browser; each call logs
+  made when the replay stores the line, due before the video reaches its moment. Each finished
+  clip is saved in the store per line and voice (`clips/<line_id>.<voice_id>`, with its content
+  type) and served from there on any later request, a cached replay's included, with no
+  ElevenLabs call; a line with no saved clip is made once, then saved.
+  404 for an unknown line or voice; 503 with no `ELEVENLABS_API_KEY` and no saved clip, every
+  attempt failed, or today's spend past `DAILY_BUDGET_USD`, and the page then uses browser speech. The key never reaches the browser; each call logs
   `voice line=<id> first_byte_ms=<n> model=<model>`. (core)
 - `GET /review` → `[{line_id, match_id, match, sport, moment_idx, clock, period, score, play, text,
   wrong, later_check, lines, others}]`, newest first: the producer's fix queue, one entry per
