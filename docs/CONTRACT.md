@@ -160,10 +160,11 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   (`{id, match_id, idx, text, kind, gold, mubit_request_id, line_id, source, created_at}`, oldest
   first; `[]` until one is sent, #392, #400). `text` is the line as said or the fixed text; `gold`
   its score label from the event data; `fix_uid` the Fix that sent it (rows since #400). It also
-  carries `scorecheck_receipts`: one `{fix_uid, line_id, sent, failed, created_at}` per Fix whose
-  Score check send has ended, `sent` the examples it wrote (0 when each was already sent or can't be
-  labelled) and `failed` true when a call failed. No receipt yet: the send is still going, or Score
-  check is off. Every Fix carries `fix_uid`, a fresh hex id (#400).
+  carries `scorecheck_receipts`: one `{fix_uid, line_id, sent, failed, held_out, created_at}` per Fix
+  whose Score check send has ended, `sent` the examples it wrote (0 when each was already sent, can't
+  be labelled or the match is held out), `failed` true when a call failed, and `held_out` true when
+  the line's match is in `HELD_OUT` (eval/linecheck.py: never sent, so the eval stays fair; receipts
+  before #506 have no `held_out`). No receipt yet: the send is still going, or Score check is off. Every Fix carries `fix_uid`, a fresh hex id (#400).
 - `POST /lines/{line_id}/fix {corrected_text, reason?}` → Fix (core). With env `PRODUCER_TOKEN` set,
   it needs header `X-Producer-Token` equal to it (constant-time compare), else 401 and nothing is
   stored or sent to Mubit; unset (local, tests) the check is off (#232). `scripts/deploy.sh` sets it
