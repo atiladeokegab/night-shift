@@ -196,7 +196,7 @@ def build_request(header: dict, past: list[dict], fixes=(), seen: str | None = N
     prompt, so the Mubit task stays the same; none leaves the request as it was. `seen`, a note of
     the viewer's shared screen (#291), goes there too, after them."""
     request = {
-        "model": MODEL,
+        "model": os.environ.get("LEAD_MODEL") or MODEL,
         "max_tokens": MAX_TOKENS,
         "system": SYSTEM,
         "tools": TOOLS,
@@ -213,9 +213,9 @@ def build_request(header: dict, past: list[dict], fixes=(), seen: str | None = N
         # unrecorded, so its model is free to differ from the lines' (one Mubit task)
         request["model"] = os.environ.get("ANALYST_MODEL") or ANALYST_MODEL
         del request["tools"], request["tool_choice"]
-        if request["model"] == "claude-sonnet-5-5":
-            # its lowest thinking setting, so thinking can't eat MAX_TOKENS; other models 400 on it
-            request["thinking"] = {"type": "between_tools"}
+    if request["model"] == "claude-sonnet-5-5":
+        # its lowest thinking setting, so thinking can't eat MAX_TOKENS; other models 400 on it
+        request["thinking"] = {"type": "between_tools"}
     return request
 
 
@@ -737,7 +737,7 @@ def answer(
         "moment_idx": past[-1]["idx"],
         "question": question,
         "text": text,
-        "model": MODEL,
+        "model": request["model"],
         "latency_ms": round((time.monotonic() - start) * 1000),
         "tokens_in": sum(r["usage"]["input_tokens"] for r in replies),
         "tokens_out": sum(r["usage"]["output_tokens"] for r in replies),

@@ -49,7 +49,16 @@ def deploy(tmp_path, dotenv="", **env):
         k: v
         for k, v in os.environ.items()
         if not k.startswith(
-            ("VOICE_", "GIT_", "PRODUCER_", "CONVERSE_", "MUBIT_", "ELEVENLABS_", "DAILY_BUDGET_")
+            (
+                "VOICE_",
+                "GIT_",
+                "PRODUCER_",
+                "CONVERSE_",
+                "MUBIT_",
+                "ELEVENLABS_",
+                "DAILY_BUDGET_",
+                "LEAD_",
+            )
         )
     }
     run_env = {**base, "PATH": f"{bin_}{os.pathsep}{os.environ['PATH']}", "CALLS": str(calls)}
@@ -89,7 +98,16 @@ exit 0
         k: v
         for k, v in os.environ.items()
         if not k.startswith(
-            ("VOICE_", "GIT_", "PRODUCER_", "CONVERSE_", "MUBIT_", "ELEVENLABS_", "DAILY_BUDGET_")
+            (
+                "VOICE_",
+                "GIT_",
+                "PRODUCER_",
+                "CONVERSE_",
+                "MUBIT_",
+                "ELEVENLABS_",
+                "DAILY_BUDGET_",
+                "LEAD_",
+            )
         )
     }
     run_env = {
@@ -341,6 +359,14 @@ def test_a_daily_budget_rides_along_only_when_set(tmp_path):
     assert "DAILY_BUDGET_USD=80" in env_vars(deployed)
     done, deployed = deploy(tmp_path / "unset")
     assert not [v for v in env_vars(deployed) if v.startswith("DAILY_BUDGET_USD")]
+
+
+def test_a_lead_model_rides_along_only_when_set(tmp_path):
+    done, deployed = deploy(tmp_path, LEAD_MODEL="claude-sonnet-5-5")
+    assert done.returncode == 0, done.stderr
+    assert "LEAD_MODEL=claude-sonnet-5-5" in env_vars(deployed)
+    done, deployed = deploy(tmp_path / "unset")
+    assert not [v for v in env_vars(deployed) if v.startswith("LEAD_MODEL")]
 
 
 @pytest.mark.parametrize(
