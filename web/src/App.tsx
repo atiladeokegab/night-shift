@@ -234,6 +234,7 @@ export default function App() {
   // A decisive moment may cut an answer off: the Lines card marks it, with "Hear it again".
   // A new ask (no `again`) is sent once: the quiet-spell ask and a press at the same moment are one row.
   const askCommentator = async (question: string, momentIdx: number, viewer = true, again?: () => Promise<Answer>) => {
+    if (current?.match.youtube_id && !onScreen(replay.state).moments.some((m) => m.video_t !== undefined)) return
     if (!again && isRepeat(replay.state.answers, inFlight.current, question, momentIdx)) return
     const askedMoment = onScreen(replay.state).moments.filter((m) => m.idx === momentIdx).at(-1)
     const key = again ? null : (inFlight.current = askKey(question, momentIdx))
@@ -328,7 +329,7 @@ export default function App() {
           onNext={(matches?.length ?? 0) > 1 ? next : null}
           onVoiceSheet={() => setVoiceSheet(true)}
           onFix={(line) => setFixing({ line, phase: 'edit' })}
-          onAsk={askCommentator}
+          onAsk={!current.match.youtube_id || shown.moments.some((m) => m.video_t !== undefined) ? askCommentator : null}
           onLook={replay.look}
           mic={{ airing: speech.airing, duck: speech.duck }}
           interrupted={interrupted}
