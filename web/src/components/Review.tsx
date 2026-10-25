@@ -152,10 +152,10 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
   )
 }
 
-// "25 mistakes to fix · 87 lines": each card is one mistake, maybe said in several wordings (#227).
+// "Producer queue: 87 lines flagged": every flagged wording counts, though a card holds one mistake (#227).
 function queueTitle(items: ReviewItem[]): string {
   const lines = items.reduce((n, x) => n + x.lines, 0)
-  return `${items.length} mistake${items.length === 1 ? '' : 's'} to fix · ${lines} line${lines === 1 ? '' : 's'}`
+  return `Producer queue: ${lines} line${lines === 1 ? '' : 's'} flagged`
 }
 
 // "Q3 06:22", "Over 19.6", "Lap 28", "41:02": where in the match the moment is.

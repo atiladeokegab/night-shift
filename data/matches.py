@@ -46,15 +46,19 @@ def _read(match_id: str) -> dict:
     return json.loads(_path(str(match_id)).read_text(encoding="utf-8"))
 
 
+def title(h: dict) -> str:
+    """A match's title from its header, "Home v Away, Competition Stage"; hidden ones too."""
+    sides = f"{h['home']} v {h['away']}, " if "home" in h else ""  # a race has no sides
+    return f"{sides}{h['competition']} {h['stage']}".strip()
+
+
 def list_matches() -> list[dict]:
     out = []
     for path in sorted(SAMPLE.glob("*.json")):
         h = json.loads(path.read_text(encoding="utf-8"))["header"]
         if h["match_id"] in HIDDEN:
             continue
-        sides = f"{h['home']} v {h['away']}, " if "home" in h else ""  # a race has no sides
-        title = f"{sides}{h['competition']} {h['stage']}".strip()
-        match = {"match_id": h["match_id"], "sport": h["sport"], "title": title, "sample": True}
+        match = {"match_id": h["match_id"], "sport": h["sport"], "title": title(h), "sample": True}
         peak = PEAKS.get(h["match_id"])
         if peak is not None:
             match["peak_idx"] = peak

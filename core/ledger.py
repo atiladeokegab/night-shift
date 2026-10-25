@@ -60,6 +60,17 @@ def ledger(store, deps) -> dict:
     titles = {m["match_id"]: m["title"] for m in deps.list_matches()}
     matches: dict = {}
 
+    def name(mid) -> str | None:
+        """The match's title; one off the picker is named from its header, else by its id."""
+        if mid and mid not in titles:
+            from data.matches import match_header, title
+
+            try:
+                titles[mid] = title(match_header(mid))
+            except (KeyError, FileNotFoundError):  # a match no longer bundled
+                titles[mid] = mid
+        return titles.get(mid, mid)
+
     def facts(mid, idx, text) -> dict:
         """The data's score at the moment and what the check finds wrong in the line."""
         if mid not in matches:
@@ -87,7 +98,7 @@ def ledger(store, deps) -> dict:
         return {
             "at": r.get("created_at"),
             "match_id": mid,
-            "match": titles.get(mid, mid),
+            "match": name(mid),
             "idx": idx,
             "text": text,
             "request_id": r.get("mubit_request_id"),

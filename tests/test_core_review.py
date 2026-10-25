@@ -170,3 +170,11 @@ def test_one_fix_clears_the_whole_card_once_and_a_later_repeat_comes_back(client
     later = line("again", WRONG, speaker="lead", created_at="2999-01-01T00:00:00+00:00")
     client.store.append("lines", later)  # said again after the fix: a new card
     assert [q["line_id"] for q in client.get("/review").json()] == ["again"]
+
+
+def test_a_match_off_the_picker_keeps_its_title_on_its_card(tmp_path):
+    store = Store(tmp_path)
+    store.append("lines", line("old", WRONG, speaker="lead"))
+    hidden = Deps(lambda: [], load_moments, lambda m, h: None)  # the picker lists no match at all
+    (q,) = review.queue(store, hidden)
+    assert q["match"] == "Los Angeles Lakers v Toronto Raptors, NBA Regular season"

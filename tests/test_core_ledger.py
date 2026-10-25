@@ -134,3 +134,10 @@ def test_only_the_newest_rows_are_returned_with_every_example_counted(client, mo
     monkeypatch.setattr(ledger, "SHOWN", 2)
     got = client.get("/ledger").json()
     assert got["sent"] == 3 and [r["request_id"] for r in got["rows"]] == ["sc-2", "cm-1"]
+
+
+def test_a_match_off_the_picker_keeps_its_title_and_planted_rows_stay_unnamed(client):
+    rows = ledger.ledger(client.store, Deps(lambda: [], load_moments, lambda m, h: None))["rows"]
+    named = {r["request_id"]: r["match"] for r in rows}
+    assert named["sc-2"] == "Los Angeles Lakers v Toronto Raptors, NBA Regular season"
+    assert named["sc-3"] is None
