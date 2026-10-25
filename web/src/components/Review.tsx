@@ -82,7 +82,7 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
         {items.map((item) => (
           <li key={item.line_id} className="flag glass">
             <p className="label">
-              {item.match} · {when(item)}
+              {item.match.split(',')[0]} · {when(item)}
             </p>
             <p className="moment">
               {item.play}. <span>{item.score}.</span>
