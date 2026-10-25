@@ -27,9 +27,10 @@
 }
 @media (prefers-reduced-motion: reduce) { .l3 { animation-name: l3-fade; } }
 
-/* Phone: the score bug moves to the top edge and ON AIR to the bottom right, so the graphic takes the bottom left. */
+/* Phone: still above the score bug (bottom left), on the top edge with eyes closed. */
 @media (max-width: 760px) {
-  .l3, .frame[data-eyes] .l3 { left: 6px; top: auto; bottom: 6px; max-width: 64%; }
+  .l3 { left: 6px; bottom: 44px; max-width: 64%; }
+  .frame[data-eyes] .l3 { top: 6px; }
   .l3-min { padding: 0 8px; font-size: .8rem; }
   .l3-body { padding: 4px 10px 4px 8px; gap: 0; }
   .l3-name { font-size: 1rem; }
