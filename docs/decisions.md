@@ -112,7 +112,7 @@ against its moment's facts and answer JSON (`ok`, `wrong`, `not_said`). The answ
 code, never a model; a line code can't label is never sent.
 
 **Context.** Commentary has no single right answer, so a trained commentator is hard to grade.
-Each commentary task's best version reached 58.3% of Mubit's 95% target (evidence.md).
+The best commentary version scored 58.3% against Mubit's 95% target (evidence.md).
 
 **Why.** A check has exact answers the data settles, so Mubit's test means something. Score check
 was split off because Claude repeated its own Line check answer only 95% of the time on a 60-line
@@ -137,7 +137,8 @@ only sends a line to the fix queue; it never stops it being said.
 
 **Decision.** Every Claude call goes to Mubit's Anthropic endpoint. Lines are made unrecorded; a
 lead line that clears the number check is sent again, off the viewer's path, on a recording key.
-The live site's key records nothing (`MUBIT_RECORD=off`).
+The live site's main key records nothing (`MUBIT_RECORD=off`); a producer's fix is recorded on
+the owner's key (`correction_provider`, decision 6).
 
 **Context.** Mubit trains on the calls it records. Recording the first call meant recording lines
 the check later rejected (#399).
@@ -192,8 +193,9 @@ matches are never sent through the training runner.
 
 **Context.** An adapter scored on matches it trained on would look better than it is.
 
-**Why.** A hash is stable, needs no list to maintain and can't be tuned by hand. 74 of 74 held-out
-lines agree in Score check's held-out comparison (evidence.md, README figures).
+**Why.** A hash is stable, needs no list to maintain and can't be tuned by hand. On held-out
+lines, Claude agreed with the code's Score check answer key on 74 of 74 (evidence.md, README
+figures).
 
 **Alternatives rejected.** A hand-picked test list: easy to leak. A random split per run: changes
 between runs.
@@ -413,7 +415,7 @@ and a test (evidence.md, Keyboard and screen reader). No serious or critical axe
 **Decision.** `make smoke` runs lint, the full test suite and a replay of each sample match with a
 fake provider, with every API key blanked. CI runs it on every PR into `integration`.
 
-**Context.** CI and builders have no Mubit or ElevenLabs key, and a flaky gate stalls a team.
+**Context.** CI and a fresh clone have no Mubit or ElevenLabs key, and a flaky gate stalls a team.
 
 **Why.** A fake provider gives the same lines every run, so a red smoke is a real regression
 (PRD v6 limit: offline from a fresh clone in under 2 minutes). Live behaviour is checked separately
