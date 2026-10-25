@@ -1783,7 +1783,11 @@ def checked(commentate, moment: dict, history: list[dict]) -> dict | None:
         return line
     if not (first := wrong_numbers(line["text"], moment, header, history)):
         return {**line, "checked": True}
-    again = commentate(moment, history)
+    try:
+        again = commentate(moment, history)
+    except Exception as exc:  # a provider error on the retry: the data's line, as for a wrong one
+        log.warning("retry of %s failed: %s", moment.get("idx"), type(exc).__name__)
+        again = None
     if again and again.get("text"):
         if not (wrong := wrong_numbers(again["text"], moment, header, history)):
             # the replay corrects the recorded first try with it
@@ -2025,9 +2029,17 @@ def checked_answer(ask, question: str, past: list[dict], lines: list[dict]) -> d
 
     wrong: list[str] = []
     for retry in (False, True):
-        answer = ask(question, past, lines, **({"wrong": wrong} if retry else {}))
-        if answer is None:
+        try:
+            again = ask(question, past, lines, **({"wrong": wrong} if retry else {}))
+        except Exception as exc:
+            if not retry:
+                raise
+            # a provider error on the retry: the status line, as for a second wrong answer
+            log.warning("ask retry failed: %s", type(exc).__name__)
+            break
+        if again is None:
             return None
+        answer = again
         wrong = (
             wrong_answer(answer, question, past, lines)
             + wrong_claims(answer["text"], past, question)
