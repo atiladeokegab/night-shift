@@ -11,10 +11,10 @@ Counts on this page were measured from the files in the repo on 25 Oct 2026.
 
 | Sport | Source | Licence or terms, as the source states them | What we take | Loader | Rebuild | Bundled |
 |---|---|---|---|---|---|---|
-| Football | [StatsBomb open data](https://github.com/statsbomb/open-data) | StatsBomb's user agreement; it asks anyone who publishes work from the data to name StatsBomb as the source and use its logo | Match records; events (shots with xG, own goals, fouls and cards, substitutions, injury stoppages, full time) with pitch x/y; lineups (player nicknames) | `agent/feed.py:78` `statsbomb_matches`, `agent/feed.py:84` `statsbomb_events`, `agent/feed.py:92` `statsbomb_nicknames` | `uv run python -m data.matches` | 4 matches, 196 moments |
-| Basketball | stats.nba.com play-by-play (`playbyplayv2`) and shot charts, through the mirror [shufinskiy/nba_data](https://github.com/shufinskiy/nba_data) | The mirror repo is Apache-2.0. The data itself comes from stats.nba.com, which is governed by the [NBA.com terms of use](https://www.nba.com/termsofuse) | Play-by-play rows (made shots, free throws, steals, end of game, score), shot-chart rows for packs | `agent/feed.py:373` `nba_rows`, `agent/packs.py:88` `nba_shots` | `uv run python -m data.matches` | 2 matches, 60 moments |
-| Cricket | [Cricsheet](https://cricsheet.org) T20 internationals (`t20s_json.zip`) | [Cricsheet licensing](https://cricsheet.org/licensing/): most data under the Open Data Commons Attribution License | Ball-by-ball deliveries (batter, bowler, runs, extras, wickets), match info, target | `agent/feed.py:248` `cricsheet_zip`, `agent/feed.py:253` `cricsheet_match` | `uv run python -m data.matches` | 2 matches, 120 moments |
-| F1 | [OpenF1](https://openf1.org) REST API | The [OpenF1 repo](https://github.com/br-g/openf1) LICENSE file is CC BY-NC-SA 4.0. OpenF1 states it is unofficial and not affiliated with Formula 1 companies | `drivers`, `position`, `intervals`, `pit`, `stints`, `laps`, `race_control` for one session | `agent/feed.py:509` `openf1` | `uv run python -m data.matches` | 1 race, 15 moments |
+| Football | [StatsBomb open data](https://github.com/statsbomb/open-data) | StatsBomb's user agreement; it asks anyone who publishes work from the data to name StatsBomb as the source and use its logo | Match records; events (shots with xG, own goals, fouls and cards, substitutions, injury stoppages, full time) with pitch x/y; lineups (player nicknames) | `agent/feed.py:95` `statsbomb_matches`, `agent/feed.py:101` `statsbomb_events`, `agent/feed.py:109` `statsbomb_nicknames` | `uv run python -m data.matches` | 4 matches, 196 moments |
+| Basketball | stats.nba.com play-by-play (`playbyplayv2`) and shot charts, through the mirror [shufinskiy/nba_data](https://github.com/shufinskiy/nba_data) | The mirror repo is Apache-2.0. The data itself comes from stats.nba.com, which is governed by the [NBA.com terms of use](https://www.nba.com/termsofuse) | Play-by-play rows (made shots, free throws, steals, end of game, score), shot-chart rows for packs | `agent/feed.py:398` `nba_rows`, `agent/packs.py:88` `nba_shots` | `uv run python -m data.matches` | 2 matches, 60 moments |
+| Cricket | [Cricsheet](https://cricsheet.org) T20 internationals (`t20s_json.zip`) | [Cricsheet licensing](https://cricsheet.org/licensing/): most data under the Open Data Commons Attribution License | Ball-by-ball deliveries (batter, bowler, runs, extras, wickets), match info, target | `agent/feed.py:267` `cricsheet_zip`, `agent/feed.py:272` `cricsheet_match` | `uv run python -m data.matches` | 2 matches, 120 moments |
+| F1 | [OpenF1](https://openf1.org) REST API | The [OpenF1 repo](https://github.com/br-g/openf1) LICENSE file is CC BY-NC-SA 4.0. OpenF1 states it is unofficial and not affiliated with Formula 1 companies | `drivers`, `position`, `intervals`, `pit`, `stints`, `laps`, `race_control` for one session | `agent/feed.py:533` `openf1` | `uv run python -m data.matches` | 1 race, 15 moments |
 
 Two smaller stores sit beside these. Neither comes from an API.
 
@@ -74,7 +74,7 @@ Where each arrow is in the code:
 | Arrow | Code |
 |---|---|
 | Source to cache | `agent/feed.py:57` `_fetch`: downloads once, `raise_for_status`, writes `data/cache/<name>` |
-| Cache to moments | `agent/feed.py:729` `load`: one branch per sport |
+| Cache to moments | `agent/feed.py:753` `load`: one branch per sport |
 | Moments to `data/sample` | `data/matches.py:202` `_bundle`, driven by the `__main__` block at `data/matches.py:217` |
 | To `data/packs` | `agent/packs.py:442` `build`: reads the sample file plus the feed's caches |
 | To `data/graph` | `scripts/build_graph.py:355` `write`; builders for football, basketball and cricket at `scripts/build_graph.py:318`. F1 has no graph builder |
@@ -88,7 +88,7 @@ Where each arrow is in the code:
 ### `data/sample/<sport>-<match_id>.json`: the match feed
 
 What: one file per match. `header` names the sides, competition, stage and date, never the
-result (`agent/feed.py:105`). `moments` is the list of events the commentator may speak about,
+result (`agent/feed.py:122`). `moments` is the list of events the commentator may speak about,
 one per line of the file. Football files also carry `balls`: who has the ball a beat after a
 moment, kept apart so a moment never carries play from after it (`data/matches.py:133`).
 
@@ -257,7 +257,7 @@ What `load_moments` adds before the commentator sees it:
 "milestone": "Kobe Bryant has 80 points tonight"
 ```
 
-The source: `agent/feed.py:373` `nba_rows` turns game id `0020500591` into the 2005-06 regular
+The source: `agent/feed.py:398` `nba_rows` turns game id `0020500591` into the 2005-06 regular
 season archive, `https://github.com/shufinskiy/nba_data/raw/main/datasets/nbastats_2005.tar.xz`,
 and keeps rows whose `GAME_ID` is `20500591` (the archive drops the leading zeros). The row,
 re-downloaded on 25 Oct 2026:
@@ -266,7 +266,7 @@ re-downloaded on 25 Oct 2026:
 |---|---|---|---|---|---|---|---|
 | 20500591 | 481 | 3 (free throw) | 4 | 0:43 | Bryant Free Throw 1 of 2 (80 PTS) | 102 - 121 | Kobe Bryant |
 
-How each field maps (`agent/feed.py:416` `basketball_moments`): `EVENTMSGTYPE` 3 with no "MISS"
+How each field maps (`agent/feed.py:440` `basketball_moments`): `EVENTMSGTYPE` 3 with no "MISS"
 makes a made free throw worth 1; `PERIOD` and `PCTIMESTRING` become `period` and `clock`;
 `HOMEDESCRIPTION` becomes `detail.play`; `PLAYER1_NAME` becomes the shooter. The score is not
 copied from the row. The loader adds up every made shot itself, and its 121-102 agrees with the
@@ -286,12 +286,12 @@ unique in this example but is a lookup, not a key.
 | What | Where |
 |---|---|
 | A match id from a request reaches a file glob only if it is plain letters and digits; anything else is a 404 | `data/matches.py:39`, `data/matches.py:189` |
-| The NBA loader accepts only a 10-digit game id of a regular-season or playoff game | `agent/feed.py:376`; test `tests/test_feed.py:254` |
-| The OpenF1 loader accepts only a numeric session key | `agent/feed.py:510`; test `tests/test_feed.py:442` |
+| The NBA loader accepts only a 10-digit game id of a regular-season or playoff game | `agent/feed.py:401`; test `tests/test_feed.py:254` |
+| The OpenF1 loader accepts only a numeric session key | `agent/feed.py:534`; test `tests/test_feed.py:442` |
 | Downloads are untrusted: every field that reaches a moment is cut to a short single-line string or a real number | `agent/feed.py:49` `_s`, `agent/feed.py:53` `_num` |
-| A match header never carries the result | `agent/feed.py:105` |
-| A failed download stops the build instead of writing a half file | `agent/feed.py:61` `raise_for_status` |
-| OpenF1's rate limit is respected when not cached | `agent/feed.py:514` |
+| A match header never carries the result | `agent/feed.py:122` |
+| A failed download stops the build instead of writing a half file | `agent/feed.py:63` `raise_for_status` |
+| OpenF1's rate limit is respected when not cached | `agent/feed.py:538` |
 | No network while a match plays: matches, packs and the store are committed or shipped in the image; the download cache is kept out of the image | `data/matches.py:1`, `agent/packs.py:8`, `.dockerignore:7` |
 | Nothing from later in the match reaches a moment: derived words use only earlier moments, and who has the ball is kept apart | `data/matches.py:81`, `data/matches.py:133`; test `tests/test_feed.py:430` |
 | Pre-match records stop the day before the match; graph reads stop at kick-off, compared in UTC | `agent/packs.py:72`, `tests/test_packs.py:33`, `tests/test_graph_store.py:64`, `tests/test_graph_store.py:261` |
