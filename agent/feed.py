@@ -57,10 +57,19 @@ def _num(value) -> float | int | None:
 def _fetch(url: str, name: str, timeout=TIMEOUT) -> bytes:
     path = CACHE / name
     if not path.exists():
-        resp = httpx.get(url, timeout=timeout, follow_redirects=True)
-        resp.raise_for_status()
+        for attempt in range(4):  # a dropped connection or a 5xx is retried, as build_graph does
+            try:
+                resp = httpx.get(url, timeout=timeout, follow_redirects=True)
+                resp.raise_for_status()
+                break
+            except httpx.HTTPError:
+                if attempt == 3:
+                    raise
+                time.sleep(2**attempt)
         CACHE.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(resp.content)
+        part = path.with_name(path.name + ".part")  # renamed only once whole: never a cut cache
+        part.write_bytes(resp.content)
+        part.replace(path)
     return path.read_bytes()
 
 
@@ -119,6 +128,7 @@ def football_moments(
     header: dict, events: list[dict], nicknames: dict[int, str] | None = None
 ) -> list[dict]:
     nicknames = nicknames or {}
+    events = [ev for ev in events if isinstance(ev, dict)]  # a junk record is skipped, not fatal
 
     def who(obj) -> str:  # the nickname when StatsBomb has one, else the full name
         return nicknames.get(obj.get("id"), _name(obj)) if isinstance(obj, dict) else ""
@@ -187,12 +197,13 @@ def football_moments(
         if period == 5:
             detail["shootout"] = dict(shootout)
         loc = ev.get("location") if isinstance(ev.get("location"), list) else []
+        mm, ss = (int(_num(ev.get(k)) or 0) for k in ("minute", "second"))  # 10.0 is 10, no crash
         moment = {
             "sport": "football",
             "match_id": header["match_id"],
             "idx": len(moments),
             "period": period,
-            "clock": f"{_num(ev.get('minute')) or 0:02d}:{_num(ev.get('second')) or 0:02d}",
+            "clock": f"{mm:02d}:{ss:02d}",
             "type": kind,
             "team": team,
             "players": {k: v for k, v in players.items() if v},
@@ -221,7 +232,7 @@ BALL_AFTER_S = 20
 
 def _at(ev: dict) -> tuple[int, int]:
     """(period, seconds on the match clock) of an event."""
-    minute, second = _num(ev.get("minute")) or 0, _num(ev.get("second")) or 0
+    minute, second = int(_num(ev.get("minute")) or 0), int(_num(ev.get("second")) or 0)
     return _num(ev.get("period")) or 0, minute * 60 + second
 
 
