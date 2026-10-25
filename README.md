@@ -187,7 +187,10 @@ lines were picked and labelled, and what the check still misses: [the evidence](
   the audio clip takes longer (`by_speaker.lead.audio_first_ms_p50` on `/stats`).
 - **No adapter serves.** Mubit serves one only in its console, once a version passes its test.
 - **A fix is locked only where `PRODUCER_TOKEN` is set**; a fix that contradicts the data gets a 422
-  either way and never reaches Mubit ([`core/app.py`](core/app.py) `fix_line`).
+  either way and never reaches Mubit ([`core/app.py`](core/app.py) `fix_line`). On Cloud Run,
+  [`scripts/deploy.sh`](scripts/deploy.sh) mounts it from the Secret Manager secret `producer-token`
+  (latest version, checked ENABLED before the build), never as a plain env var; a `PRODUCER_TOKEN` in
+  the deploy's own environment is ignored.
 - **One instance, and every viewer starts their own replay** ([`scripts/deploy.sh`](scripts/deploy.sh),
   [`core/replay.py`](core/replay.py)).
 - **Cricket has no ball timestamps** in Cricsheet, so a ball counts as 30 seconds.

@@ -166,9 +166,9 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   check is off. Every Fix carries `fix_uid`, a fresh hex id (#400).
 - `POST /lines/{line_id}/fix {corrected_text, reason?}` → Fix (core). With env `PRODUCER_TOKEN` set,
   it needs header `X-Producer-Token` equal to it (constant-time compare), else 401 and nothing is
-  stored or sent to Mubit; unset (local, tests) the check is off (#232). `scripts/deploy.sh` sets it
-  on Cloud Run from the deploy's own environment, so every deploy keeps it; a deploy without it
-  leaves the check off (#255). It is a plain Cloud Run env var, not a secret: it is visible in the service config, in the deployer's gcloud logs and under `bash -x`. It stores the Fix in `fixes`
+  stored or sent to Mubit; unset (local, tests) the check is off (#232). `scripts/deploy.sh` mounts it
+  on Cloud Run from the Secret Manager secret `producer-token` (latest, checked ENABLED before the
+  build), so every deploy keeps it and it is never a plain env var in the service config. It stores the Fix in `fixes`
   beside the line, sends the correction turn (Agent below) and publishes `fixed` (the Fix), then
   `stats`, on the replay stream that carried the line; a late subscriber gets them too. 404 unknown
   line, 422 blank `corrected_text` (trimmed) or over 200 characters, 422 `{detail: {wrong: [...]}}`
