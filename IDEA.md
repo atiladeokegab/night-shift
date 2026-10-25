@@ -59,9 +59,13 @@ and the app calls no adapter.
 
 ## The demo, in one line
 
-Kobe Bryant's 81-point game plays and Touchline calls each moment aloud, like a TV commentator, the
-producer fixes one wrong line on stage, the proof panel shows our own commentator's training (the aim
-is to call moments beside the big model; no version has passed Mubit's test yet), then one tap switches to Kohli's last overs against Pakistan in 2022 and the same commentator calls cricket.
+Brighton v Bristol City plays and Touchline calls each moment aloud, with the Proof card beside it; a
+wrong line is caught before air and auto-fixed (Denise O'Sullivan, 39:39, Orlando v North Carolina); a
+producer fixes Terland's 30:57 line to "the Seagulls" and the next lines on that match carry the fix
+(94:48: "Brighton take the lead, 3-2!" becomes "The Seagulls go three-two up";
+`scripts/fix_then_later.py`); the fix goes to Score check training (Cahill, examples 2,161 → 2,163);
+Mubit's console shows it as training, not serving; and it ends on the buyer, the streaming platforms
+that carry the WSL and NWSL, at about $0.45 a replay with the voice included.
 
 ## Areas and owners
 
