@@ -129,7 +129,7 @@ export function Review({ onGo }: { onGo: (screen: Screen) => void }) {
           {items?.length ? queueTitle(items) : 'Lines to fix'}
         </h1>
         <p className="lede">
-          The number check found these stored lines saying a number their moment's data doesn't. Fix each by hand: a
+          These lines were flagged by the number check or the checker model for producer review. Fix each by hand: a
           fix that passes the number check goes back through Mubit, which records it as training data.
         </p>
         {degraded && <p className="hint" role="status">Mubit unavailable: lines use the fallback</p>}
