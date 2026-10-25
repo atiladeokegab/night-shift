@@ -53,7 +53,8 @@ test("the commentary tasks fold into one earlier-tasks list, still in their own 
     'where are we: v1, 55.8%, below 95% target',
   ])
   const c: ConsoleReading = JSON.parse(readFileSync(new URL('../../data/mubit_console.json', import.meta.url), 'utf8'))
-  assert.equal(earlierRows({ ...earlier, adapter: { ...earlier.adapter, console: c } })[1], consoleRow(c))
+  const rows = earlierRows({ ...earlier, adapter: { ...earlier.adapter, console: c } })
+  assert.deepEqual(rows.slice(1, 3), [consoleRow(c), consoleRow(c.earlier)])
   assert.deepEqual(earlierRows(undefined), [])
 })
 
@@ -141,11 +142,13 @@ test('the held-out row says Line check beside the rules in counts, never a perce
   assert.match(FLAG_NOTE, /never unsays/)
 })
 
-test("the console row is the committed reading, dated and sourced, and claims no adapter serves (#317)", () => {
-  const c: ConsoleReading = JSON.parse(readFileSync(new URL('../../data/mubit_console.json', import.meta.url), 'utf8'))
+test("the console rows are the committed readings, dated and sourced, and claim no adapter serves (#317)", () => {
+  const latest: ConsoleReading = JSON.parse(readFileSync(new URL('../../data/mubit_console.json', import.meta.url), 'utf8'))
+  assert.equal(consoleRow(latest), 'Mubit console, 25 Oct 06:27 UTC: 12 tasks, 9 adapters; best 94.6%, Testing')
+  const c = latest.earlier!
   const row = consoleRow(c) ?? ''
-  assert.equal(row, 'Mubit console, 25 Oct 00:14 UTC: 11 tasks, 8 adapters, 0 serving; best 58.3% of a 95% target')
-  assert.doesNotMatch(row, /pass/i)
+  assert.equal(row, 'Mubit console, 25 Oct 00:14 UTC: 11 tasks, 8 adapters, 0 serving; best 58.3% of a 95% target, Not ready yet')
+  for (const r of [row, consoleRow(latest) ?? '']) assert.doesNotMatch(r, /pass|live|serv(es|ing [1-9])/i)
   assert.equal(consoleRow({ ...c, listed: {} }), 'Mubit console, 25 Oct 00:14 UTC: 11 tasks, 8 adapters, 0 serving')
   assert.equal(consoleRow(null), null)
   assert.equal(consoleRow(undefined), null)

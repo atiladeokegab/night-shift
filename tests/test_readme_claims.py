@@ -19,7 +19,8 @@ from tests.test_converse import ToolClient, sentences
 ROOT = Path(__file__).parent.parent
 README = ROOT / "README.md"
 SNAPSHOT = json.loads((ROOT / "eval" / "live_stats_2026-10-24.json").read_text())
-CONSOLE = json.loads((ROOT / "data" / "mubit_console.json").read_text())
+# the README quotes the 00:14 reading, kept in the file as `earlier`
+CONSOLE = json.loads((ROOT / "data" / "mubit_console.json").read_text())["earlier"]
 
 
 def readme() -> str:
