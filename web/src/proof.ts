@@ -32,7 +32,7 @@ export function voiceRow(v: VoiceHealth | undefined, fellBack: boolean): string 
 // The Proof card's Line check row (#298), straight from /stats, with the training examples fixes sent
 // today (#305), e.g. "· 3 examples from fixes today (2 corrected, 1 matched)".
 export function linecheckRow(s: LineCheckStats): string {
-  const row = `${s.checked} checked · ${s.flags} flagged (${s.rules_missed} the rules missed) · ${s.fixes_sent} fixes sent to it`
+  const row = `${s.checked} checked · ${s.flags} flagged (${s.rules_missed} the rules missed) · ${s.fixes_sent} fix${s.fixes_sent === 1 ? '' : 'es'} sent to it`
   if (s.examples_today === undefined) return row
   const kinds = Object.entries(s.examples_today_by_kind ?? {}).map(([kind, n]) => `${n} ${kind.replace('_', ' ')}`)
   return `${row} · ${s.examples_today} examples from fixes today${kinds.length ? ` (${kinds.join(', ')})` : ''}`
