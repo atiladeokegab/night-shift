@@ -128,9 +128,9 @@ test("Score check's row keeps its earlier version, where it was read, and its ex
 })
 
 test('the held-out row says Line check beside the rules in counts, never a percentage (#317)', () => {
-  // the shape eval/linecheck_eval.py --json writes; tests/test_linecheck_live.py serves the same file
-  const h: HeldOut = JSON.parse(readFileSync(new URL('../../tests/fixtures/linecheck_heldout.json', import.meta.url), 'utf8'))
-  assert.equal(heldoutRow(h), 'held-out: caught 3 of 5 wrong lines (rules: 1 of 5), 5 false alarms')
+  // the committed result /stats serves (core/stats.py HELDOUT), the README's source too: a rerun fails this
+  const h: HeldOut = JSON.parse(readFileSync(new URL('../../eval/linecheck_heldout.json', import.meta.url), 'utf8'))
+  assert.equal(heldoutRow(h), 'held-out: caught 3 of 5 wrong lines (rules: 2 of 5), 3 false alarms')
   assert.equal(heldoutRow({ ...h, line_check: { caught: 3, false_alarms: 1 } })?.endsWith('1 false alarm'), true)
   assert.equal(heldoutRow(null), null)
   assert.equal(heldoutRow(undefined), null)
