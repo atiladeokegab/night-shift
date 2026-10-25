@@ -1,0 +1,16 @@
+{
+  "line_id": "e2e-fix-sheet",
+  "match_id": "3754092",
+  "match": "Chelsea v Tottenham Hotspur",
+  "sport": "football",
+  "moment_idx": 28,
+  "clock": "57:41",
+  "period": 2,
+  "score": "Chelsea 1, Tottenham 2",
+  "play": "Gary Cahill scores",
+  "text": "Gary Cahill with the half volley! Chelsea are back in it, but Tottenham lead one-nil.",
+  "wrong": ["one-nil is not the score (1-2)"],
+  "lines": 1,
+  "others": [],
+  "later_check": false
+}
