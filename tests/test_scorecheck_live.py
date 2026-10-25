@@ -134,3 +134,21 @@ def test_no_line_check_call_no_score_check(tmp_path, monkeypatch):
     with client:
         _play(client)
     assert fake.requests == [] and store.all("scorechecks") == []
+
+
+def test_a_non_canonical_reply_is_stored_with_its_tokens(tmp_path, monkeypatch):
+    class Rambles(Says):
+        def call(self, req):
+            reply = super().call(req)
+            return {**reply, "content": [{"type": "text", "text": "The score looks fine."}]}
+
+    _providers(monkeypatch, Rambles())
+    client, store = _app(tmp_path)
+    with client:
+        _play(client)
+        queued = client.get("/review").json()
+        live = client.get("/stats").json()["scorecheck_live"]
+    (row,) = store.all("scorechecks")
+    assert row["label"] is None and (row["tokens_in"], row["tokens_out"]) == (200, 10)
+    assert not any(SCORE_WRONG in q["wrong"] for q in queued)
+    assert (live["calls"], live["agreed"]) == (1, 0)

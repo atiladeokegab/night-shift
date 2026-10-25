@@ -409,8 +409,8 @@ def live_score_check(line: dict, m: dict, past: list[dict]) -> dict | None:
     if isinstance(provider, FakeProvider):
         return None
     header = match_header(line["match_id"])
+    key = gold(header, m, past, line["text"])  # first: a failure here never loses a paid call
     reply = provider.call(scorecheck.build_request(header, m, line["text"]))
-    key = gold(header, m, past, line["text"])
     return {
         "label": scorecheck.parse(
             "".join(b.get("text", "") for b in reply["content"] if b["type"] == "text")
@@ -426,8 +426,8 @@ def live_score_check(line: dict, m: dict, past: list[dict]) -> dict | None:
 
 async def score_opinion(store, scorecheck, line: dict, moment, history) -> None:
     """Score check on a published line, beside Line check's second opinion: "wrong" queues the
-    line for the producer (core/review.py SCORE_WRONG), never unsays it. A failed call, no call
-    (over the cap, offline) or a reply that isn't the canonical line is dropped."""
+    line for the producer (core/review.py SCORE_WRONG), never unsays it. A failed call or no call
+    (over the cap, offline) is dropped; a reply not canonical is stored, unlabelled."""
     try:
         got = await asyncio.to_thread(scorecheck, line, moment, history)
     except Exception as exc:  # the line is already said; only this check is lost
@@ -435,9 +435,8 @@ async def score_opinion(store, scorecheck, line: dict, moment, history) -> None:
         return
     if got is None:
         return
-    if got["label"] is None:
+    if got["label"] is None:  # still stored: the call was paid for (core/guard.py spent)
         log.warning("score check for %s: not a canonical reply", line["line_id"])
-        return
     row = {
         "line_id": line["line_id"],
         "match_id": line["match_id"],
