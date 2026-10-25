@@ -19,7 +19,8 @@ numbers in each line against the match data before it goes on air.**
 
 **Why a fan comes back every match day:** for a blind or low-vision fan whose team's match has no
 described broadcast, Touchline calls that match aloud moment by moment, answers their questions
-about it at any point, and a producer's fix to one line carries into every later line of that match.
+about it at any point, and a producer's fix to one line goes with the request for every later line
+of that match.
 
 <img src="docs/media/demo.gif" alt="A 9-second screen recording of the live Touchline page: lines are called one after another and stack in the Lines card as the match goes on, and one of them carries an auto-fixed tag." width="100%">
 
@@ -48,10 +49,17 @@ broadcast highlights, each line called at its moment, in four sports.
    page, and the line as said goes to Mubit as a recorded Score check example, labelled by code, never
    a model ([`agent/scorecheck.py`](agent/scorecheck.py) `teach`, [`eval/linecheck.py`](eval/linecheck.py)
    `gold`). This is **training, not serving**: no trained version answers anything on the site.
+   Separately, the fix goes with the request for every later line of that match. On live, after a
+   producer's fix on Terland's opener at Brighton v Bristol City ("Call Brighton the Seagulls"),
+   Terland's 94:48 winner came out as "The Seagulls go three-two up", where the run before the fix said
+   "Brighton take the lead, 3-2!". Three of the six later lines took up "the Seagulls"; the other
+   three changed only as any new generation does
+   ([the run](https://github.com/atiladeokegab/night-shift/pull/501)).
 3. **Ask.** Type a question mid-match, such as "Where are we?" in the World Cup final. The answer
    uses only what has happened up to the moment on screen, is checked the same way, and is spoken.
-   On a keyed run of 33 questions (24 Oct, [`eval/ask_eval.py`](eval/ask_eval.py)), 32 answers were
-   right, 1 wrong and 0 refused.
+   On a keyed run of 33 questions ([`eval/ask_eval.py`](eval/ask_eval.py), 25 Oct), 32 of 33 answers
+   were right, 1 wrong and 0 refused; the output is saved as
+   [`eval/ask_eval_keyed_20261025.txt`](eval/ask_eval_keyed_20261025.txt).
 
 ## Who pays
 
@@ -72,7 +80,9 @@ Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026. Track: Own
    **E** to close your eyes.
 2. Tap **Kobe's 81 v Toronto** and ask the commentator "How many points does Kobe have?", or press
    **Talk** and ask out loud.
-3. Tap **Fix** on any line: a producer corrects it, and the fix goes back through Mubit.
+3. Tap **Fix** on any line to see the producer's form. Sending a fix needs the producer token, so
+   without it the live site asks for one and refuses the fix (401). A real fix, step by step:
+   [the evidence](docs/evidence.md).
 4. Read the **Proof** card, then check it: `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/stats`.
 
 **Keyboard and screen reader:** E, T, W, Talk with Escape, focus order, live captions and the Follow
@@ -105,9 +115,10 @@ fixes (46 the model already matched, 5 corrected, 9 not corrected); the big mode
 code's answer key on 74 of 74 held-out lines (live `/stats` `scorecheck`, saved on 24 October 2026 at
 23:08 UTC as [`eval/live_stats_2026-10-24.json`](eval/live_stats_2026-10-24.json)).
 
-The Ask run (`eval.ask_eval --provider mubit`, recording off): the one wrong answer, "What just
-happened?" at Lakers 120-102, had an invented lead change; the check caught it and the safe answer
-was said.
+The Ask run (`eval.ask_eval --provider mubit`, recording off): the one wrong answer is row 24,
+"What just happened?" at Lakers 120-102. The model named Vujacic's steal but said the Lakers "extend
+their lead" on a play that scored nothing; the check stopped that answer and the safe line from the
+data was said instead. That line doesn't name the steal, so the eval counts it wrong.
 
 ### Where Mubit is called
 
@@ -173,7 +184,7 @@ lines were picked and labelled, and what the check still misses: [the evidence](
 - **The checks miss most wrong lines they were not tuned on** (the table above). They check the
   score, the leader and the key numbers, not every claim.
 - **The voice comes seconds after the moment.** The text's first word is out in about half a second;
-  the audio clip takes longer (`audio_first_ms_p50` on `/stats`).
+  the audio clip takes longer (`by_speaker.lead.audio_first_ms_p50` on `/stats`).
 - **No adapter serves.** Mubit serves one only in its console, once a version passes its test.
 - **A fix is locked only where `PRODUCER_TOKEN` is set**; a fix that contradicts the data gets a 422
   either way and never reaches Mubit ([`core/app.py`](core/app.py) `fix_line`).
