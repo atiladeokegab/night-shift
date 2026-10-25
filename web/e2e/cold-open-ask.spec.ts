@@ -1,6 +1,16 @@
 import { expect, test } from '@playwright/test'
 import { FAKE_YT } from './fakeYT'
 
+const FAKE_CLIENT = `
+export class Conversation {
+  static async startSession(opts) {
+    const talk = (window.talk = { opts, ended: 0 })
+    setTimeout(() => opts.onConnect?.({ conversationId: 'fake' }), 10)
+    return { endSession: async () => { talk.ended++; opts.onDisconnect?.() } }
+  }
+}
+`
+
 const videoMatch = {
   match_id: 'cold-open-ask-video', sport: 'cricket', title: 'India v Pakistan', sample: true,
   home: 'India', away: 'Pakistan', youtube_id: 'fake-video', video_start: 0, embed: true,
@@ -31,6 +41,7 @@ const firstGoal = {
 test('video cold open disables Ask until the same-index mapped event is visible', async ({ page }) => {
   await page.route('https://www.youtube.com/iframe_api', (r) => r.fulfill({ contentType: 'text/javascript', body: FAKE_YT }))
   await page.route(/ytimg\.com|youtube(-nocookie)?\.com\/(?!iframe_api)/, (r) => r.abort())
+  await page.route(/elevenlabs_client\.js/, (r) => r.fulfill({ contentType: 'application/javascript', body: FAKE_CLIENT }))
   await page.route('**/matches', (r) => r.fulfill({ json: [videoMatch] }))
   await page.route('**/voices', (r) => r.fulfill({ json: [] }))
   await page.route('**/replays', (r) => r.fulfill({ json: { replay_id: 'cold-open-ask-video-replay' } }))
@@ -49,6 +60,11 @@ test('video cold open disables Ask until the same-index mapped event is visible'
     const { question, moment_idx } = r.request().postDataJSON()
     await r.fulfill({ json: { line_id: 'cold-open-answer', moment_idx, question, text: 'The first ball takes a wicket.', off_air: true } })
   })
+  let tokenPosts = 0
+  await page.route('**/converse/*/*/token?*', async (r) => {
+    tokenPosts += 1
+    await r.fulfill({ json: { signed_url: 'wss://fake.example/talk', ctx: 'cold-open-test' } })
+  })
 
   await page.goto('/')
   await page.getByRole('button', { name: /India v Pakistan/ }).click()
@@ -58,6 +74,8 @@ test('video cold open disables Ask until the same-index mapped event is visible'
   await page.waitForFunction(() => Boolean((window as unknown as { fakePlayer?: { getPlayerState(): number } }).fakePlayer?.getPlayerState() === 1))
   await page.waitForTimeout(15_500) // Let the quiet-spell Ask fire while the first mapped moment is still ahead.
   expect(askPosts).toBe(0)
+  expect(tokenPosts).toBe(0)
+  await expect(page.getByRole('button', { name: 'Talk' })).toHaveCount(0)
 
   await page.waitForFunction(() => Boolean((window as unknown as { fakePlayer?: unknown }).fakePlayer))
   await page.evaluate(() => {
@@ -70,9 +88,20 @@ test('video cold open disables Ask until the same-index mapped event is visible'
   await page.locator('#ask-q').fill('What happened on the first ball?')
   await page.getByRole('button', { name: 'Ask', exact: true }).click()
   await expect.poll(() => askPosts).toBe(1)
+  await expect(page.getByRole('button', { name: 'Talk' })).toBeVisible()
+  await page.getByRole('button', { name: 'Talk' }).click()
+  await expect(page.getByRole('button', { name: 'Resume' })).toBeVisible()
+  await expect.poll(() => tokenPosts).toBe(1)
+  await page.evaluate(() => {
+    const player = (window as unknown as { fakePlayer: { seekTo(t: number): void } }).fakePlayer
+    player.seekTo(0)
+  })
+  await expect(page.getByRole('button', { name: 'Talk' })).toHaveCount(0)
+  await expect.poll(() => page.evaluate(() => (window as unknown as { talk?: { ended: number } }).talk?.ended)).toBe(1)
 })
 
 test('a match without video can be asked about from its first real moment', async ({ page }) => {
+  await page.route(/elevenlabs_client\.js/, (r) => r.fulfill({ contentType: 'application/javascript', body: FAKE_CLIENT }))
   await page.route('**/matches', (r) => r.fulfill({ json: [noVideoMatch] }))
   await page.route('**/voices', (r) => r.fulfill({ json: [] }))
   await page.route('**/replays', (r) => r.fulfill({ json: { replay_id: 'cold-open-ask-no-video-replay' } }))
@@ -86,6 +115,11 @@ test('a match without video can be asked about from its first real moment', asyn
     const { question, moment_idx } = r.request().postDataJSON()
     await r.fulfill({ json: { line_id: 'no-video-answer', moment_idx, question, text: 'Rovers lead one nil.', off_air: true } })
   })
+  let tokenPosts = 0
+  await page.route('**/converse/*/*/token?*', async (r) => {
+    tokenPosts += 1
+    await r.fulfill({ json: { signed_url: 'wss://fake.example/talk', ctx: 'no-video-test' } })
+  })
 
   await page.goto('/')
   await page.getByRole('button', { name: /Rovers v Harbour/ }).click()
@@ -93,4 +127,8 @@ test('a match without video can be asked about from its first real moment', asyn
   await page.locator('#ask-q').fill('Who scored?')
   await page.getByRole('button', { name: 'Ask', exact: true }).click()
   await expect.poll(() => askPosts).toBe(1)
+  await expect(page.getByRole('button', { name: 'Talk' })).toBeVisible()
+  await page.getByRole('button', { name: 'Talk' }).click()
+  await expect(page.getByRole('button', { name: 'Resume' })).toBeVisible()
+  await expect.poll(() => tokenPosts).toBe(1)
 })

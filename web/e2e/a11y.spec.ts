@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
+import { FAKE_YT } from './fakeYT'
 
 // #170: the page works for a fan who cannot see it. axe finds no serious or critical violation on the wall
 // or the live screen, every control is a 44 px target, and a keyboard alone starts a match and asks a question.
@@ -130,6 +131,8 @@ test('axe on the review queue: each Fix button says its visible words first', as
 test('keyboard only: Tab to Kobe, Enter, it is called aloud; Tab to Ask, Enter, the answer is spoken', async ({ page }) => {
   await listen(page)
   await page.setViewportSize({ width: 1280, height: 900 })
+  await page.route('https://www.youtube.com/iframe_api', (r) => r.fulfill({ contentType: 'text/javascript', body: FAKE_YT }))
+  await page.route(/ytimg\.com|youtube(-nocookie)?\.com\/(?!iframe_api)/, (r) => r.abort())
   await page.goto('/')
   await expect(page.getByRole('button', { name: KOBE })).toBeVisible()
   const focused = () => page.evaluate(() => {
@@ -154,6 +157,7 @@ test('keyboard only: Tab to Kobe, Enter, it is called aloud; Tab to Ask, Enter, 
   // A line on the caption is heard, never announced over the voice.
   await expect(page.getByRole('region', { name: 'Caption' })).toHaveAttribute('aria-live', 'off')
 
+  await expect(page.locator('#ask-q')).toBeEnabled({ timeout: 45_000 }) // the first mapped video moment is on screen
   await tabTo(/^ask-q\b/)
   const before = (await said(page)).length
   await page.keyboard.type('How many points has Kobe got?')
