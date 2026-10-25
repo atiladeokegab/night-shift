@@ -1,0 +1,8 @@
+/* The Touchline lockup: the mark (a side line breaking into sound bars) and the caps wordmark.
+   Fallbacks keep it right whether or not the night-match tokens have landed. */
+.brand .wordmark.lockup { display: inline-flex; align-items: center; gap: 10px; color: var(--fg, #F6F4EF);
+  font: 600 1.6rem/1 var(--display-cond, 'Barlow Condensed'), var(--display, 'Outfit'), ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: .14em; text-transform: uppercase; }
+.lockup .mark { width: 1.1em; height: 1.1em; flex: none; shape-rendering: crispEdges; }
+.lockup .mark .bars { fill: var(--amber, #FFB547); }
+@media (max-width: 640px) { .brand .wordmark.lockup { font-size: 1.3rem; gap: 8px; letter-spacing: .12em; } }
