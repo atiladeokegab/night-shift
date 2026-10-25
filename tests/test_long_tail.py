@@ -101,8 +101,8 @@ def test_the_nwsl_match_is_whole_seven_goals_and_a_late_own_goal_winner():
         if m["outcome"] in ("Goal", "Own goal")
     ]
     assert goals[-2:] == [(38, "82:12", 3, 3), (41, "89:13", 3, 4)] and len(goals) == 7
-    match = next(m for m in list_matches() if m["match_id"] == NWSL)
-    assert "youtube_id" not in match and video_map(NWSL) is None  # no highlights limit the calls
+    assert NWSL not in {m["match_id"] for m in list_matches()}  # hidden from the picker
+    assert video_map(NWSL) is None  # no highlights limit the calls
     assert ("football", NWSL) in feed.DEMO and load_pack("football", NWSL)["players"]
 
 

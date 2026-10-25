@@ -29,7 +29,7 @@ from collections import Counter
 from pathlib import Path
 
 from core import insight
-from data.matches import list_matches, load_moments, match_header
+from data.matches import SAMPLE, load_moments, match_header
 
 LABELS = Path(__file__).with_name("checker_labels.jsonl")
 SIZE, FLOOR, SEED = 300, 30, 219
@@ -57,7 +57,9 @@ moments before it (for a reply, also what the analyst just said).
 
 
 def bundled() -> dict[str, dict]:
-    return {m["match_id"]: m for m in list_matches()}
+    """Every sample's header, hidden ones too: the held-out set was drawn from all of them."""
+    ids = [p.stem.split("-", 1)[1] for p in sorted(SAMPLE.glob("*.json"))]
+    return {mid: match_header(mid) for mid in ids}
 
 
 def sample(
