@@ -64,8 +64,8 @@ The planned film and the stage run in this order.
    "level it at one-all, but Tottenham still lead two to one". A producer fixed it on the review page,
    and the line as said and the fixed text went to Mubit as two recorded Score check examples,
    labelled by code, never a model ([`agent/scorecheck.py`](agent/scorecheck.py) `teach`,
-   [`eval/linecheck.py`](eval/linecheck.py) `gold`): the count went from 2,161 to 2,163 (live `/stats`
-   `scorecheck.examples_sent`).
+   [`eval/linecheck.py`](eval/linecheck.py) `gold`): the count went from 2,161 to 2,163 after the
+   Cahill fix (live `/stats` `scorecheck.examples_sent`, 24 October 2026, 23:45 UTC).
 5. **Mubit's console.** The Score check task, its examples and its version. This is **training, not
    serving**: no trained version answers anything on the site ([below](#mubit-training-not-serving)).
 6. **Who buys it.** The streaming platforms that carry the WSL and NWSL, at a cost to us of about
@@ -171,6 +171,9 @@ The console, the correction loop and a real fix step by step:
 [the evidence](docs/evidence.md).
 
 ## How well the check works
+
+The tagline's "checks itself" has this scope: the check covers the score, who leads and the key
+numbers, not every claim a line makes. The table shows how many wrong lines that catches.
 
 Two sets of 300 lines the live site had said, labelled right or wrong by a separate model before the
 checker ran on them. The rules were written against the first set, so its score is tuned-on; the
