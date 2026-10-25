@@ -30,7 +30,7 @@ curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/stats        # the live Proo
 | [expo.md](expo.md) | The live demo on the deployed site, step by step in the film's order | judge |
 | [features.md](features.md) | Every feature with its code and tests, and where the product goes next | judge, fan, developer |
 | [feedback.md](feedback.md) | Each point from the judges' second check-in and the PR or file where it landed | judge |
-| [integrations.md](integrations.md) | Each external service, what it does here and where it is called | judge, developer, agent |
+| [integrations.md](integrations.md) | Every outside service, library and data source: its role, entry point, environment variable names, what happens when it fails, its test, and how to run with no keys | judge, developer, agent |
 | [stack.md](stack.md) | Each technology choice and why: FastAPI, JSON-lines store, SSE, Claude models, ElevenLabs | developer |
 | [voice.md](voice.md) | The commentator's voice: ElevenLabs models, audio tags, timing, voices per role and sport | fan, developer |
 
