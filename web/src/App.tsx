@@ -233,7 +233,9 @@ export default function App() {
   // while it is spoken. #139: the analyst answers at a gap, never with a big moment due in the next 3 s.
   // A decisive moment may cut an answer off: the Lines card marks it, with "Hear it again".
   // A new ask (no `again`) is sent once: the quiet-spell ask and a press at the same moment are one row.
-  const askReady = !current?.match.youtube_id || onScreen(replay.state).moments.some(
+  // A player that gave up (an error, or never playing: venue Wi-Fi, blocked autoplay) plays no cold open, so
+  // Ask and Talk open on the replay's own clock rather than waiting for a picture that never comes.
+  const askReady = !current?.match.youtube_id || video === 'unavailable' || onScreen(replay.state).moments.some(
     (m) => m.video_t !== undefined && m.type !== 'Stat',
   )
   const askCommentator = async (question: string, momentIdx: number, viewer = true, again?: () => Promise<Answer>) => {
