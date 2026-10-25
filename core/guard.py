@@ -46,7 +46,7 @@ class Limiter:
 
 
 def spent(store, day: str) -> float:
-    """Model + voice USD of the lines, answers, Line checks (#298) and looks (#291: frame calls, and
+    """Model + voice USD of the lines, answers, Line and Score checks (#298) and looks (#291: frame calls, and
     lines made with a screen note) created on `day` (UTC, YYYY-MM-DD), priced as /stats prices them.
     A voice record has no time: it counts on its line's day."""
     said = [
@@ -54,6 +54,7 @@ def spent(store, day: str) -> float:
         for x in store.all("lines")
         + store.all("answers")
         + store.all("linechecks")
+        + store.all("scorechecks")
         + store.all("looks")
         if x.get("created_at", "")[:10] == day
     ]

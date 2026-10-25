@@ -59,6 +59,8 @@ class Deps:
     # a producer's fix as a Score check example (#321): (line, ids already sent) -> sent or None
     score_teach: Callable[[dict, set[str]], dict | None] | None = None
     record: bool = False  # commentate takes `record=`: a checked line sent again, recorded (#399)
+    # Score check asked live on a fresh line, so a served version answers it
+    scorecheck: Callable[[dict, dict, list[dict]], dict | None] | None = None
 
 
 def producer(sent: str) -> bool:
@@ -105,6 +107,7 @@ def default_deps() -> Deps:
         from agent.look import see
         from agent.scorecheck import teach as score_teach
         from agent.status import status
+        from core.replay import live_score_check
         from data.matches import list_matches, load_moments, video_map
     except ImportError:
         return None
@@ -122,6 +125,7 @@ def default_deps() -> Deps:
         see,
         score_teach,
         record=True,
+        scorecheck=live_score_check,
     )
 
 
@@ -241,6 +245,7 @@ def create_app(
         commentate, speak, correct = d.commentate, speaker.prepare, d.correct
         # the deploy's live smoke stays cheap: no second opinion
         linecheck = checked_under_cap(d.linecheck) if d.linecheck and not req.smoke else None
+        scorecheck = checked_under_cap(d.scorecheck) if d.scorecheck and not req.smoke else None
         if d.fixes:  # a fix applies to the next lines straight away, this replay's too
             commentate = with_fixes(d.commentate, store)
         # shortcut: the cap is checked only as a replay starts, so a running replay can overshoot
@@ -265,7 +270,7 @@ def create_app(
         if cached:  # the lines already stored, said again: no model call, nothing stored
             commentate = stored or cached_commentator(store, req.match_id)
             speak, correct = None, None  # each line's voice is its saved clip, made once on request
-            linecheck = None  # cached playback must not make a paid provider call
+            linecheck = scorecheck = None  # cached playback must not make a paid provider call
             if commentate is None and off_air:
                 raise too_many(guard.until_tomorrow(), f"{OFF_TODAY}. Try again tomorrow.")
             if commentate is None and capped:
@@ -301,6 +306,7 @@ def create_app(
                 correct,
                 linecheck,
                 record,
+                scorecheck,
             )
         )
         if not cached:

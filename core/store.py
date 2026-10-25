@@ -18,6 +18,7 @@ KINDS = (
     "voice",
     "replays",
     "linechecks",  # Line check's second opinion on a live line (#298)
+    "scorechecks",  # Score check asked live about a fresh line: its label, code's, served_by
     "linecheck_fixes",  # producer fixes sent to Line check as examples (#298)
     "scorecheck_examples",  # every Score check example sent, seeded or from a fix (#321)
     "scorecheck_evals",  # a model's score on Score check's held-out lines (#321)
