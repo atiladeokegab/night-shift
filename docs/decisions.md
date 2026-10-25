@@ -118,9 +118,10 @@ Each commentary task's best version reached 58.3% of Mubit's 95% target (evidenc
 was split off because Claude repeated its own Line check answer only 95% of the time on a 60-line
 pilot: an adapter would have had to beat Claude's own consistency (#333). Line check runs on Sonnet
 because Haiku agreed with the code's answer on 25% of a 40-line pilot, Sonnet on 90%
-(`agent/linecheck.py:13`). Mubit's console shows the Line check adapter in testing: v1 at 94.6% on
-Mubit's test, against a 95% target (read from the console on 25 October; not yet in
-`data/mubit_console.json`). The app does not call any adapter.
+(`agent/linecheck.py:13`). Mubit's 'Check one line of 2' task (one of our two line-checking
+tasks; the console cuts the name short) shows 94.6% for its first version, testing v1, in testing
+(console read by hand, 25 Oct 06:27 UTC; `data/mubit_console.json`, #560). The app does not call an
+adapter.
 
 **Alternatives rejected.** Training only the commentator: no stable target. Labels from a model:
 the answer key would inherit the errors it is meant to catch.
