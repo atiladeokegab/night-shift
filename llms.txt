@@ -25,10 +25,10 @@ Python 3.12 (FastAPI, uv) server in `core/` and `agent/`, React page in `web/`, 
 
 ## Architecture
 
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): what runs today on Cloud Run as a C4 container diagram, and the scale plan (not built)
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): how Touchline is built, from the code: one replayed line end to end, C4 levels 1 to 4, the module map, Mubit and Claude, deploy and ops, and the scale plan (not built)
 - [docs/CONTRACT.md](docs/CONTRACT.md): the shared shapes, HTTP endpoints, agent tools and check every area builds against
 - [docs/stack.md](docs/stack.md): each technology choice and why: FastAPI, JSON-lines store, SSE, Claude models, ElevenLabs
-- [docs/architecture/](docs/architecture/): C4 context, container and component diagrams drawn at planning time, as PNG
+- [docs/architecture/](docs/architecture/): the four C4 diagrams as PNG (context, container, component, code), drawn from the code by `c4.py`
 
 ## Integrations
 

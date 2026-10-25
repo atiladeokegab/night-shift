@@ -21,7 +21,7 @@ curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/stats        # the live Proo
 
 | File | What it is | For |
 |---|---|---|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | What runs today on Cloud Run as a C4 container diagram, and the scale plan, which is not built | judge, developer, agent |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | How Touchline is built, from the code: one replayed line end to end, C4 levels 1 to 4, the module map, Mubit and Claude, deploy and ops, and the scale plan, which is not built | judge, developer, agent |
 | [CONTRACT.md](CONTRACT.md) | The shared shapes, HTTP endpoints, agent tools and check every area builds against | developer, agent |
 | [PRD.md](PRD.md) | The requirements (PRD v6); each has an ID such as A-6.4 that the tests checking it name | judge, developer, agent |
 | [demo.md](demo.md) | The demo film's script, timings, the jump to each big moment and what to do if something fails | judge |
@@ -39,9 +39,11 @@ curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/stats        # the live Proo
 | File | What it is | For |
 |---|---|---|
 | [banner.svg](banner.svg) | The repo README's banner | judge, fan |
-| [architecture/c4_context.png](architecture/c4_context.png) | C4 context diagram drawn at planning time: Touchline, its users and external services | judge, developer |
-| [architecture/c4_container.png](architecture/c4_container.png) | C4 container diagram drawn at planning time; the current one is in ARCHITECTURE.md | judge, developer |
-| [architecture/c4_component.png](architecture/c4_component.png) | C4 component diagram drawn at planning time: the match server's planned modules | developer |
+| [architecture/c4.py](architecture/c4.py) | The script that draws the four C4 diagrams below; the command to rerun it is at the end of ARCHITECTURE.md | developer, agent |
+| [architecture/c4_context.png](architecture/c4_context.png) | C4 level 1: Touchline, its users and the services it calls | judge, developer, agent |
+| [architecture/c4_container.png](architecture/c4_container.png) | C4 level 2: the Cloud Run service, its store and the build | judge, developer, agent |
+| [architecture/c4_component.png](architecture/c4_component.png) | C4 level 3: the replay pipeline's components, from moments to the number check, voice, Line check, fix, Ask and stats | developer, agent |
+| [architecture/c4_code.png](architecture/c4_code.png) | C4 level 4: the classes and functions one replayed line passes through | developer, agent |
 | [img/ask.png](img/ask.png) | Screenshot: an Ask question and its answer during Kobe's 81 | judge, fan |
 | [img/fix.png](img/fix.png) | Screenshot: the producer's Fix this line sheet | judge, fan |
 | [img/follow.png](img/follow.png) | Screenshot: following a player on the live page | judge, fan |
