@@ -55,8 +55,8 @@ export async function createReplay(matchId: string, speed: number, startIdx?: nu
 // The video's start for a replay that jumps to moment `at` (#188); null without a video.
 export async function videoStartAt(matchId: string, at: number): Promise<number | null> {
   if (isDemo) return null
-  const res = await fetch(`/matches/${encodeURIComponent(matchId)}/start?at=${at}`)
-  return res.ok ? ((await res.json()) as { video_start: number | null }).video_start : null
+  const res = await fetch(`/matches/${encodeURIComponent(matchId)}/start?at=${at}`).catch(() => null)
+  return res?.ok ? ((await res.json().catch(() => ({ video_start: null }))) as { video_start: number | null }).video_start : null
 }
 
 // Every mapped moment's video time, so the timeline marks them all at load; null without a server answer.
@@ -72,6 +72,15 @@ export async function videoMarks(matchId: string): Promise<Match['marks'] | null
 // paused viewer can still ask about the moment on screen (#156). It stops when the page leaves the replay.
 const SEEN_MS = 20_000
 
+function parsed<T>(data: string): T | undefined {
+  try {
+    return JSON.parse(data) as T
+  } catch {
+    console.error('malformed stream event', data)
+    return undefined
+  }
+}
+
 export function followReplay(
   replayId: string,
   onEvent: (e: StreamEvent) => void,
@@ -85,18 +94,23 @@ export function followReplay(
     if (tries > 0) onStatus('ok')
     tries = 0
   })
-  source.addEventListener('moment', (e) => onEvent({ type: 'moment', moment: JSON.parse(e.data) as Moment }))
-  source.addEventListener('line', (e) => onEvent({ type: 'line', line: JSON.parse(e.data) as Line }))
-  source.addEventListener('stats', (e) => onEvent({ type: 'stats', stats: JSON.parse(e.data) as Stats }))
-  source.addEventListener('fixed', (e) => onEvent({ type: 'fixed', fix: JSON.parse(e.data) as Fix }))
-  source.addEventListener('linecheck', (e) => onEvent({ type: 'linecheck', check: JSON.parse(e.data) as LineCheck }))
-  source.addEventListener('answer', (e) => onEvent({ type: 'answer', answer: JSON.parse(e.data) as Answer }))
+  // A malformed event is dropped, never thrown: the stream and the events after it carry on.
+  const on = <T>(type: string, emit: (data: T) => void) => source.addEventListener(type, (e) => {
+    const data = parsed<T>((e as MessageEvent).data)
+    if (data !== undefined) emit(data)
+  })
+  on<Moment>('moment', (moment) => onEvent({ type: 'moment', moment }))
+  on<Line>('line', (line) => onEvent({ type: 'line', line }))
+  on<Stats>('stats', (stats) => onEvent({ type: 'stats', stats }))
+  on<Fix>('fixed', (fix) => onEvent({ type: 'fixed', fix }))
+  on<LineCheck>('linecheck', (check) => onEvent({ type: 'linecheck', check }))
+  on<Answer>('answer', (answer) => onEvent({ type: 'answer', answer }))
   source.addEventListener('error', (e) => {
     // A server `error` event carries {detail}; a dropped connection is a plain Event with no data.
     const data = (e as MessageEvent).data
     if (data) {
       console.error('commentator error', data)
-      return onEvent({ type: 'error', detail: (JSON.parse(data) as { detail: string }).detail })
+      return onEvent({ type: 'error', detail: parsed<{ detail?: string }>(data)?.detail ?? String(data) })
     }
     tries += 1
     if (tries >= MAX_TRIES || source.readyState === EventSource.CLOSED) {
