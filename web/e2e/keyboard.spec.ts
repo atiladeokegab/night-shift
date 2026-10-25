@@ -101,6 +101,20 @@ for (const width of [390, 1280]) {
 }
 
 test('voice silent: the caption is a live region and an answer is read out in full; voiced again, neither', async ({ page }) => {
+  const moment = {
+    sport: 'basketball', match_id: '0020500591', idx: 0, period: 1, clock: '10:35', type: 'Field goal',
+    team: 'Toronto Raptors', players: { shooter: 'Morris Peterson', assist: 'Mike James' }, outcome: '2 points',
+    score: { home: 2, away: 2 }, detail: { play: "Peterson 17' Jump Shot (2 PTS) (James 1 AST)", player_points: 2, tied: true },
+  }
+  const line = {
+    line_id: 'keyboard-silent-line', match_id: moment.match_id, moment_idx: 0, speaker: 'lead',
+    text: 'Peterson ties the game with a jumper.',
+  }
+  await page.route('**/replays', (r) => r.fulfill({ json: { replay_id: 'keyboard-silent-replay' } }))
+  await page.route('**/replays/keyboard-silent-replay/stream', (r) => r.fulfill({
+    contentType: 'text/event-stream',
+    body: `event: moment\ndata: ${JSON.stringify(moment)}\n\nevent: line\ndata: ${JSON.stringify(line)}\n\n`,
+  }))
   await openLive(page)
   const caption = page.getByRole('region', { name: 'Caption' })
   const announced = page.locator('.lines p.sr-only[aria-live="polite"]')
