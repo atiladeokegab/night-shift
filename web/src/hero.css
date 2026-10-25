@@ -10,7 +10,7 @@
 }
 /* the header paints over the hero's top edge, so its 44 px tap targets stay its own */
 .page:has(.hero) > .nav { z-index: 2; }
-.hero-still { position: absolute; inset: 0; z-index: -2; pointer-events: none; width: 100%; height: 100%; object-fit: cover; object-position: 30% center; /* away from the broadcast's ad boards on the right */ }
+.hero-still { position: absolute; inset: 0 auto 0 0; z-index: -2; pointer-events: none; width: 118%; /* the ad boards in its right sixth fall off the edge */ height: 100%; object-fit: cover; object-position: 30% center; }
 /* the black vignette from the left, then a fade into the page below */
 .hero::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
   background:
