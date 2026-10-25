@@ -148,7 +148,7 @@ def _entry(line: dict, matches: dict, deps, flags: list[str] = ()) -> dict | Non
     return {
         "line_id": line["line_id"],
         "match_id": mid,
-        "match": matches["titles"].get(mid) or title(header),  # a match off the picker keeps its name
+        "match": matches["titles"].get(mid) or title(header),  # a hidden match keeps its name
         "sport": m["sport"],
         "moment_idx": m["idx"],
         "clock": m.get("clock"),

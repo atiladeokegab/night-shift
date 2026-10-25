@@ -47,7 +47,7 @@ def _read(match_id: str) -> dict:
 
 
 def title(h: dict) -> str:
-    """A match's title from its header, "Home v Away, Competition Stage": hidden matches have one too."""
+    """A match's title from its header, "Home v Away, Competition Stage"; hidden ones too."""
     sides = f"{h['home']} v {h['away']}, " if "home" in h else ""  # a race has no sides
     return f"{sides}{h['competition']} {h['stage']}".strip()
 
