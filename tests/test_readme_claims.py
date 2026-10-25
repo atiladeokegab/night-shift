@@ -60,7 +60,7 @@ KEYBOARD = {
     ("web/src/components/Live.tsx", 415): 'role="status"',
     ("web/e2e/a11y.spec.ts", 156): "getByRole('status')",
     ("web/src/live.test.ts", 142): "announces OFF AIR",
-    ("web/src/components/Wall.tsx", 118): 'className="tile"',
+    ("web/src/components/Wall.tsx", 141): 'className="tile"',
     ("web/src/components/LineLog.tsx", 192): 'id="ask-q"',
     ("web/e2e/a11y.spec.ts", 131): "keyboard only: Tab to Kobe",
     ("web/src/App.css", 21): ":focus-visible { outline",

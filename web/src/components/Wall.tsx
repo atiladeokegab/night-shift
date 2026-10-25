@@ -4,6 +4,8 @@ import { CARD_COPY, coverage, matchTeams } from '../teams'
 import { SPORT_NAMES, type Match } from '../types'
 import { Nav, type Screen } from './Nav'
 import { embeds, loadYouTube, mountPlayer, posterUrl, watchUrl } from '../player'
+import '@fontsource/barlow-condensed/700.css'
+import '../hero.css'
 
 const TILE_START_MS = 8_000 // a tile clip has this long to start playing before the tile settles on its poster
 
@@ -45,22 +47,35 @@ export function Wall({ matches, error, onRetry, onOpen, onJump, onGo }: Props) {
     <div className="page">
       <Nav current="wall" onGo={onGo} />
       <main className="wrap">
-        <h1>Every match deserves to be described.</h1>
-        {/* #246: the pitch the film makes, audio description for blind and low-vision fans */}
-        <p className="status-line" style={{ maxWidth: '65ch', color: 'var(--fg)', fontSize: '1.15rem' }}>
-          Most matches have no audio description. Touchline calls them aloud, checking the score and key numbers before it speaks.
-        </p>
-        {/* the loading placeholder keeps the height the real button takes, so the page below doesn't jump */}
-        {matches === null && !error && (
-          <p className="hero-go" aria-hidden style={{ visibility: 'hidden' }}><button className="btn primary" tabIndex={-1}>▶ Hear a match called</button></p>
-        )}
-        {first && (
-          <p className="hero-go">
-            <button className="btn primary" onClick={() => onOpen(first)}>▶ Hear a match called</button>
-            <span>Sound on.</span>
-          </p>
-        )}
-        {body}
+        {/* The featured match, full bleed: its still behind a vignette, the pitch, and the two ways in */}
+        <section className="hero">
+          {first?.youtube_id && <img className="hero-still" alt="" onError={(e) => { e.currentTarget.hidden = true }} src={posterUrl(first.youtube_id, 'maxresdefault')} />}
+          <div className="hero-copy">
+            <h1 className="hero-title">Every match deserves to be described.</h1>
+            {first && (
+              <p className="hero-meta">
+                <span>{[SPORT_NAMES[first.sport], cardText(first).detail].filter(Boolean).join(' · ')}</span>
+                {cardText(first).note && <span className="hero-badge">{cardText(first).note}</span>}
+              </p>
+            )}
+            {/* #246: the pitch the film makes, audio description for blind and low-vision fans */}
+            <p className="hero-line">
+              Most matches have no audio description. Touchline calls them aloud, checking the score and key numbers before it speaks.
+            </p>
+            {/* the loading placeholder keeps the height the real button takes, so the page below doesn't jump */}
+            {matches === null && !error && (
+              <p className="hero-go" aria-hidden style={{ visibility: 'hidden' }}><button className="btn primary" tabIndex={-1}>▶ Hear a match called</button></p>
+            )}
+            {first && (
+              <p className="hero-go">
+                <button className="btn primary" onClick={() => onOpen(first)}>▶ Hear a match called</button>
+                {first.peak_idx !== undefined && <button className="btn hero-ghost" onClick={() => onJump(first)}>Jump to the big moment</button>}
+                <span>Sound on.</span>
+              </p>
+            )}
+          </div>
+        </section>
+        <div className="rail">{body}</div>
         {/* --muted: .foot's --faint is 3.77:1 at 13 px, under WCAG AA (#154); App.css is #153's until it merges */}
         <p className="foot" style={{ color: 'var(--muted)' }}>
           Match data: StatsBomb open data, Cricsheet, NBA play-by-play and OpenF1. Highlights: broadcast highlights on
@@ -72,6 +87,16 @@ export function Wall({ matches, error, onRetry, onOpen, onJump, onGo }: Props) {
 }
 
 // "18 Dec 2022" or "Tap for commentary" never breaks across lines on a phone; the line breaks at a " · ".
+// A card's title, its "competition · date" line and its long-tail note, from CARD_COPY or the data's title.
+function cardText(match: Match) {
+  const copy = CARD_COPY[match.match_id]
+  return {
+    title: copy?.title ?? match.title?.split(',')[0] ?? match.match_id,
+    detail: copy?.detail ?? match.title?.split(',').slice(1).join(',').trim(),
+    note: copy?.note,
+  }
+}
+
 const phrases = (text: string) =>
   text.split(' · ').map((part, i) => <span key={i}>{i > 0 && ' · '}<span className="nw">{part}</span></span>)
 
@@ -81,9 +106,7 @@ function Tile({ match, onOpen, onJump }: { match: Match; onOpen: (m: Match) => v
   const plays = embeds(match)
   const blocked = !!match.youtube_id && !plays // the owner blocks embedding: the poster stays, with a YouTube link
   const [broken, setBroken] = useState(!plays)
-  const title = CARD_COPY[match.match_id]?.title ?? match.title?.split(',')[0] ?? match.match_id
-  const detail = CARD_COPY[match.match_id]?.detail ?? match.title?.split(',').slice(1).join(',').trim()
-  const note = CARD_COPY[match.match_id]?.note
+  const { title, detail, note } = cardText(match)
 
   // Muted, looping, without controls or captions: the tile is a moving picture, never a second commentary.
   // The clip shows only once it is really playing; a clip that errors or isn't playing in TILE_START_MS
