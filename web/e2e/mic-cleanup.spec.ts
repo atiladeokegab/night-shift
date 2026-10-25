@@ -1,5 +1,4 @@
 import { expect, test, type Page } from '@playwright/test'
-import { FAKE_YT } from './fakeYT'
 
 const KOBE = /^Basketball ?Kobe's 81/
 const ARGENTINA = /Argentina v France/
@@ -43,15 +42,21 @@ async function fakeMic(page: Page) {
   })
 }
 
-async function fakeVideo(page: Page) {
-  await page.route('https://www.youtube.com/iframe_api', (route) =>
-    route.fulfill({ contentType: 'text/javascript', body: FAKE_YT }),
-  )
-  await page.route(/ytimg\.com|youtube(-nocookie)?\.com\/(?!iframe_api)/, (route) => route.abort())
+// These tests cover recognizer lifecycle, not video playback; use an explicit no-video match.
+async function noVideoMatch(page: Page) {
+  await page.route('**/matches', async (route) => {
+    const response = await route.fetch()
+    const matches = await response.json()
+    await route.fulfill({
+      response,
+      json: matches.map(({ youtube_id, video_start, peak_video_start, ...match }: Record<string, unknown>) => match),
+    })
+  })
 }
 
 async function openKobe(page: Page) {
   await page.setViewportSize({ width: 1280, height: 900 })
+  await noVideoMatch(page)
   await page.goto('/')
   await page.getByRole('button', { name: KOBE }).click()
   await expect(page.locator('.caption .cap-text')).toBeVisible({ timeout: 45_000 })
@@ -81,7 +86,6 @@ function watchAsks(page: Page) {
 
 test('an old recognizer ending after a new match opens cannot ask its old transcript', async ({ page }) => {
   await fakeMic(page)
-  await fakeVideo(page)
   const asks = watchAsks(page)
   await openKobe(page)
   await holdMic(page)
@@ -98,7 +102,6 @@ test('an old recognizer ending after a new match opens cannot ask its old transc
 
 test('normal hold and release still sends the recognized question once', async ({ page }) => {
   await fakeMic(page)
-  await fakeVideo(page)
   const asks = watchAsks(page)
   await openKobe(page)
   await holdMic(page)
