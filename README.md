@@ -111,8 +111,9 @@ the WSL and NWSL, and clubs' media teams. Nobody has agreed to pay yet and we ha
 The figures we have, side by side ([the problem](docs/evidence.md#the-problem)):
 
 - **Sky describes about 109 of the Premier League's 380 games** a season, one match a game week.
-- **At Wrexham, the disabled supporters' association and local sponsors raised £4,000** for four
-  years of human audio description at the ground.
+- **At Wrexham, the disabled supporters' association and local sponsors funded a £4,000
+  audio-description project**, including four years of management and maintenance, at no cost to
+  the club.
 - **Touchline costs us about $0.45 a replay, voice included**, over 84 replays (live
   [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats), 24 Oct; saved at 23:08 UTC as
   [`eval/live_stats_2026-10-24.json`](eval/live_stats_2026-10-24.json): `cost_per_match_usd`,
