@@ -1,6 +1,6 @@
 import { Component, lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { answeredAt, isStale } from '../ask'
-import { clockText, momentOf, momentTag } from '../moment'
+import { calledPlayer, clockText, momentOf, momentTag } from '../moment'
 import { eyesKey } from '../eyes'
 import { embeds, posterUrl, setPlaying, showNoVideoCaption, shownCaption, watchUrl, type Transport } from '../player'
 import type { Caption as CaptionData } from '../turns'
@@ -13,6 +13,7 @@ import { Caption } from './Caption'
 import { Controls } from './Controls'
 import { FollowPicker } from './FollowPicker'
 import { LineLog } from './LineLog'
+import { LowerThird } from './LowerThird'
 import type { Mic } from './MicButton'
 import { Nav, type Screen } from './Nav'
 import { ProfileCard } from './ProfileCard'
@@ -195,6 +196,8 @@ export function Live(props: Props) {
   const canPlay = !!transport && video === 'ok' && !busy
   const noVideo = !gated || blocked || video === 'unavailable'
   const covered = closed // with no picture too: the page blacks out to its line and score (#338)
+  // The lower third: the moment the caption's line calls, over a playing video (a cold open has no video time).
+  const called = !noVideo && line && tagged?.video_t !== undefined && calledPlayer(tagged) ? tagged : undefined
   // T opens the Teams panel and moves the screen reader's focus to its heading (#375)
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -258,6 +261,7 @@ export function Live(props: Props) {
                 <ScoreBar match={match} moment={moment} moments={shown.moments} />
                 <OnAir voice={voice} label={onAirLabel} offAir={!!replay.error} onOpen={busy ? undefined : onVoiceSheet} />
               </div>
+              {called && <LowerThird key={`${replayKey}-${called.idx}-${called.video_t}`} match={match} moment={called} moments={shown.moments} />}
               {/* A whole match has no video by design; only a video that should play and can't says so (#284).
                   Eyes closed, no note: the cover shows only the line and the score. */}
               {covered ? null : !gated && replay.phase === 'live' && replay.stream === 'ok' && !replay.error ? (

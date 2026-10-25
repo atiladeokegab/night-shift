@@ -62,6 +62,9 @@ export function momentName(m: Moment): string {
   return sentence(m.type.toLowerCase())
 }
 
+// The lower third's name: the moment's first named player (shooter, batter, offender); a stat or the final whistle has none.
+export const calledPlayer = (m: Moment): string | undefined => Object.values(m.players ?? {})[0] || undefined
+
 // The tag above the subtitle: "28:29 · Goal", "Over 19.4 · No-ball · Six".
 export function momentTag(m: Moment): string {
   return `${clockText(m)} · ${momentName(m)}`
