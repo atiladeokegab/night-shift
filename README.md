@@ -43,6 +43,17 @@ of that match.
 
 </div>
 
+**New here? Welcome.** Read [what the demo shows](#what-the-demo-shows), then [try it live](https://night-shift-5zvig7nbvq-ew.a.run.app) with
+the sound on. Where to find the proof:
+
+| To | Go to |
+|---|---|
+| See it working | [The live site](https://night-shift-5zvig7nbvq-ew.a.run.app) · [What the demo shows](#what-the-demo-shows) · [The 60-second path](#the-60-second-path) |
+| Check a claim | [The evidence](docs/evidence.md) · [Every README figure, its source and its test](docs/evidence.md#readme-figures) |
+| See how well it works | [How well the check works](#how-well-the-check-works) ([`eval/checker_eval.py`](eval/checker_eval.py)) · [The Ask eval](eval/ask_eval_keyed_20261025.txt) ([`eval/ask_eval.py`](eval/ask_eval.py)) |
+| See what it does | [Every feature](docs/features.md), with its code and tests |
+| See how it's built | [Architecture](docs/ARCHITECTURE.md) · [Integrations](docs/integrations.md) · [Where Mubit is called](#where-mubit-is-called) · [Decisions](docs/decisions.md) · [Build log](docs/build-log.md) |
+
 > **The Mubit loop, in four steps** ([the evidence, step by step](docs/mubit.md))
 >
 > 1. A producer fixes a line.
@@ -57,8 +68,6 @@ of that match.
 
 What you hear are **replays, as if live**: real matches' event data played back over their
 broadcast highlights, each line called at its moment, in four sports.
-
-**For agents and reviewers:** [Architecture](docs/ARCHITECTURE.md) · [Integrations](docs/integrations.md) · [Every feature](docs/features.md) · [Decisions](docs/decisions.md) · [Build log](docs/build-log.md)
 
 ## What the demo shows
 
