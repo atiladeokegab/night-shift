@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/banner.svg" alt="Banner: the word Touchline. in amber over a drawn night stadium with floodlights and a green pitch, the tagline The describer that checks itself, and an amber ON AIR pill." width="100%">
+<img src="docs/banner.svg" alt="Banner: the word Touchline. in amber over a drawn night stadium with floodlights and a green pitch, the tagline The describer that checks itself, and an ON AIR pill with an amber dot." width="100%">
 
 <sub><b>Touchline: the describer that checks itself.</b> For the match nobody described.</sub>
 
@@ -22,7 +22,7 @@ described broadcast, Touchline calls that match aloud moment by moment, answers 
 about it at any point, and a producer's fix to one line goes with the request for every later line
 of that match.
 
-<img src="docs/media/demo.gif" alt="An 11-second screen recording of the live Touchline site. It opens on the home page, Every match deserves to be described, with the match cards. Then Lakers v Raptors plays from Kobe Bryant's 80th point: the score bar reads LAK 121-102 RAP at 00:43 in the fourth quarter, the caption card shows the called line, and the line lands at the top of the Lines card tagged Checked, Via Mubit and Auto-fixed. The video area shows the highlight's still image." width="100%">
+<img src="docs/media/demo.gif" alt="An 11-second screen recording of the live Touchline site. It opens on the home page, Every match deserves to be described, with the match cards. Then Lakers v Raptors plays from Kobe Bryant's 79th point to his 80th: the score bar reads LAK 121-102 RAP at 00:43 in the fourth quarter, the caption card shows the called line, and the line lands at the top of the Lines card tagged Checked, Via Mubit and Auto-fixed. The video area shows the highlight's still image." width="100%">
 
 <sub>Touchline calls match moments as spoken lines. Each line is checked against the match data, and one is marked auto-fixed.</sub>
 
