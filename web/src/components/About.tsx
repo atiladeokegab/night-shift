@@ -35,8 +35,9 @@ export function About({ onGo }: { onGo: (screen: Screen) => void }) {
           <p>
             <strong>Each fix that passes the check is recorded as training data.</strong> A producer can fix any
             line, and each fix that passes the number check is recorded in Mubit as training data for a smaller
-            describer; fixes to the analyst's stat lines are left out. No version has passed
-            Mubit's test yet, so we make no claim for it.
+            describer; fixes to the analyst's stat lines are left out. The line check is now answered by our own
+            adapter, trained on Mubit from the app's calls and producers' fixes. Its first version, testing v1,
+            scored 94.6% in Mubit's test. The commentary itself still runs on Claude.
           </p>
           {/* #246: what a match costs to describe, measured live (GET /stats, #174); moved from the home page */}
           {typeof perMatch === 'number' && (
