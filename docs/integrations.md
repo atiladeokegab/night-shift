@@ -41,8 +41,10 @@ speaks with the browser's own speech. With no `MODE=cloud` the store is local fi
 
 **For the fan.** Claude writes every spoken line: the lead commentator's line on each moment, the
 analyst's stat lines between moments, the answer to a typed or spoken question (Ask, Talk), and the
-"Where are we?" summary. Two more Claude calls check lines after they are said: Line check (every
-field of a line against its moment's facts) and Score check (the score alone). A frame of a viewer's
+"Where are we?" summary. Line check reads each lead line after it is said and compares four
+things with its moment's data: the score, who leads, the named player's running total and the
+event. Score check is the score question alone, as its own Mubit task; it is sent labelled examples
+and producer fixes as training examples and does not run on live lines. A frame of a viewer's
 shared screen can become a short "on screen" note for the next line (`agent/look.py`).
 
 **Models.**
@@ -106,13 +108,13 @@ the fix is sent to Mubit as a training example, and the fix is said on later rep
   the producer's queue; it never stops a line. Lines from held-out matches are never recorded, so
   the test set never trains.
 - Adapter records: Mubit's console is read by hand and written with `eval/record_adapter.py`
-  (`uv run python -m eval.record_adapter --task line_check --status ready --version 1`), and
-  `data/mubit_console.json` holds a dated reading. `/stats` shows those records; nothing probes Mubit
+  (`uv run python -m eval.record_adapter --help` lists the fields), and
+  `data/mubit_console.json` holds the dated readings, newest first. `/stats` shows those records; nothing probes Mubit
   live for them.
 
 **Where it stands.** Commentary runs on Claude. The app does not call an adapter. The Line check
-task's first adapter version (testing v1) shows 94.6% in Mubit's test and is in testing, as Mubit's
-console shows it.
+task's first adapter version (testing v1) shows 94.6% in Mubit's test and is in testing, read by hand from Mubit's
+console on 25 Oct 2026 at 06:27 UTC and recorded in `data/mubit_console.json`.
 
 **Environment.** `MUBIT_API_KEY` (the key every call uses), `MUBIT_FALLBACK_KEY` (the owner's key:
 the commentator moves to it if the first key runs out of credit, a 402, `agent/commentator.py:842`;

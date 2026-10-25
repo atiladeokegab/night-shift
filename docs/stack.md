@@ -6,7 +6,7 @@
 | Server | FastAPI + uvicorn, one process | Decided | IDEA.md ceiling: one server process |
 | Store | JSON-lines files of lines, fixes and saved voice clips; GCS objects (`google-cloud-storage`) under `STORE_URL` in cloud mode | Decided | IDEA.md ceiling; a database if two producers edit at once |
 | Live stream | Server-sent events (`text/event-stream`) | Decided | one-way server push, no client library |
-| Model | `claude-haiku-4-5` through Mubit's Anthropic endpoint, for the moment lines and Ask; `LEAD_MODEL` overrides it; recorded only once the number check accepts a line, and off by default on the live site (`MUBIT_RECORD=off`) | Decided | fastest measured first word; one Mubit task |
+| Model | `claude-haiku-4-5` through Mubit's Anthropic endpoint, for the moment lines and Ask; `LEAD_MODEL` overrides it; recorded only once the number check accepts a line (Ask is never recorded), and off by default on the live site (`MUBIT_RECORD=off`) | Decided | fastest measured first word; one Mubit task |
 | Analyst model | `claude-sonnet-5-5` through Mubit, unrecorded; `ANALYST_MODEL` overrides it | Decided | Haiku slipped on the stat lines' facts; unrecorded, so the moment lines stay one Mubit task |
 | Line check, Score check | `claude-sonnet-5-5` through Mubit, each a frozen recorded task; a producer's fix is sent to them as a training example | Decided | Haiku agreed with the answer key on 25% of a 40-line pilot, Sonnet 90%; the request is pinned by hash in its test |
 | Look | `claude-haiku-4-5` through Mubit, unrecorded; `LOOK_MODEL` overrides it, `LOOKS_PER_REPLAY` caps it | Decided | one short note of a shared screen for the next line |
