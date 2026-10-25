@@ -3,12 +3,14 @@
 /* Full bleed out of .wrap; the copy lines up with .wrap's content edge */
 .hero {
   position: relative; isolation: isolate; overflow: hidden; background: #000;
-  margin: 0 calc(50% - 50vw); /* starts below .wrap's top padding, clear of the nav's 44 px targets */
+  margin: -32px calc(50% - 50vw) 0; /* flush under the header: no band of .wrap's top padding */
   min-height: min(640px, 78svh);
   padding: 72px max(var(--gut), calc(50vw - 620px + var(--gut))) 96px;
   display: flex; align-items: flex-end;
 }
-.hero-still { position: absolute; inset: 0; z-index: -2; pointer-events: none; width: 100%; height: 100%; object-fit: cover; object-position: 70% 30%; }
+/* the header paints over the hero's top edge, so its 44 px tap targets stay its own */
+.page:has(.hero) > .nav { z-index: 2; }
+.hero-still { position: absolute; inset: 0 auto 0 0; z-index: -2; pointer-events: none; width: 118%; /* the ad boards in its right sixth fall off the edge */ height: 100%; object-fit: cover; object-position: 30% center; }
 /* the black vignette from the left, then a fade into the page below */
 .hero::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
   background:
@@ -32,7 +34,11 @@
 /* The picker: a numbered rail of cards that scrolls sideways, overlapping the hero's foot */
 .rail { margin-top: -56px; position: relative; z-index: 1; }
 .rail .wall { display: flex; overflow-x: auto; gap: 16px; margin: 0 calc(-1 * var(--gut)) 32px; padding: 6px var(--gut) 14px;
-  scroll-snap-type: x proximity; scroll-padding-inline: var(--gut); counter-reset: card; }
+  scroll-snap-type: x mandatory; scroll-padding-inline: var(--gut); counter-reset: card;
+  /* reads as a rail that scrolls: a thin visible scrollbar, and the cut-off card fades out at the right edge */
+  scrollbar-width: thin; scrollbar-color: rgba(246, 244, 239, .4) transparent;
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 72px), transparent);
+  mask-image: linear-gradient(90deg, #000 calc(100% - 72px), transparent); }
 .rail .wall > :is(.tile-wrap, .tile) { flex: 0 0 min(400px, 86vw); scroll-snap-align: start; }
 .rail .tile-wrap { counter-increment: card; }
 .rail .tile-wrap::before { content: counter(card, decimal-leading-zero); position: absolute; right: 18px; bottom: 14px; z-index: 1; pointer-events: none; /* clear of the label and the Jump pill up top */
@@ -40,7 +46,8 @@
 
 @media (max-width: 760px) {
   .hero { min-height: 0; padding-top: 48px; padding-bottom: 80px; }
-  .hero::before { background: linear-gradient(0deg, var(--bg) 0%, rgba(0, 0, 0, .78) 45%, rgba(0, 0, 0, .55) 100%); }
+  /* opaque at the top too: the still's broadcast graphic left a dark wedge in the top-left corner */
+  .hero::before { background: linear-gradient(0deg, var(--bg) 0%, rgba(0, 0, 0, .78) 45%, rgba(0, 0, 0, .7) 85%, #000 100%); }
 }
 
 /* Taller rail cards, so the bottom-anchored label sits below the Jump pill instead of under it */
