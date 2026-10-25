@@ -186,7 +186,7 @@ bundled files.
 - Producer fixes are sent to Mubit as training examples. Mubit's 'Check one line of 2' task (one of
   our two line-checking tasks; the console cuts the name short) shows 94.6% for its first version,
   testing v1, in testing (console read by hand, 25 Oct 06:27 UTC; recorded in
-  [`data/mubit_console.json`](../data/mubit_console.json)). The app does not call any adapter:
+  [`data/mubit_console.json`](../data/mubit_console.json)). The app does not call an adapter:
   every line and check is made by the Claude models named above.
 
 ## Deploy and ops
