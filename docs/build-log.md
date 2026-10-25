@@ -20,7 +20,7 @@ Read at 2026-10-25 06:55 UTC, on `integration` at `2ddf784` (after #554).
 | Sports | **4**: football, basketball, cricket, Formula 1 | `ls data/sample` |
 | Matches | **9** matches bundled, 7 listed on the site (2 hidden) | `ls data/sample`; `HIDDEN` in `data/matches.py` |
 | Commentary lines made | **10,393** | `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/stats` → `lines` |
-| Calls recorded through Mubit | **10,414** | `/stats` → `mubit_requests` |
+| Mubit requests behind those lines | **10,414** | `/stats` → `mubit_requests` |
 | Lead lines heard as timed ElevenLabs audio | **3,552** | `/stats` → `by_speaker.lead.audio_lines` |
 | Characters voiced by ElevenLabs | **639,578** | `/stats` → `voice_chars` |
 | Full match replays measured | **123**, at $0.43 each (model $0.17, voice $0.27) | `/stats` → `matches_measured`, `cost_per_match_usd` |
@@ -90,12 +90,12 @@ The chart counts the 369 merged PRs by the UTC hour they merged. It was made onc
 | 17:02 to 17:03 | Budget guard on the live site; web checks and a browser test that the voice is heard join CI | [#251](https://github.com/atiladeokegab/night-shift/pull/251), [#262](https://github.com/atiladeokegab/night-shift/pull/262) |
 | 17:33 to 18:08 | "Close your eyes" mode; hands-free Ask by voice | [#282](https://github.com/atiladeokegab/night-shift/pull/282), [#289](https://github.com/atiladeokegab/night-shift/pull/289) |
 | 18:58 to 19:06 | Line check on every live line; six kinds of miss measured on a held-out set | [#302](https://github.com/atiladeokegab/night-shift/pull/302), [#301](https://github.com/atiladeokegab/night-shift/pull/301) |
-| 19:32 to 21:36 | A SurrealDB graph of teams and players behind Follow a player and the Teams panel | [#304](https://github.com/atiladeokegab/night-shift/pull/304), [#377](https://github.com/atiladeokegab/night-shift/pull/377), [#382](https://github.com/atiladeokegab/night-shift/pull/382) |
+| 19:32 to 21:22 | A SurrealDB graph of teams and players behind Follow a player and the Teams panel | [#304](https://github.com/atiladeokegab/night-shift/pull/304), [#377](https://github.com/atiladeokegab/night-shift/pull/377), [#382](https://github.com/atiladeokegab/night-shift/pull/382) |
 | 19:49 | README claims checked against the code, tests and live `/stats` | [#325](https://github.com/atiladeokegab/night-shift/pull/325) |
 | 20:24 to 21:41 | Score check as one Mubit task; every producer fix reaches it; a line is recorded only after the number check accepts it | [#333](https://github.com/atiladeokegab/night-shift/pull/333), [#392](https://github.com/atiladeokegab/night-shift/pull/392), [#413](https://github.com/atiladeokegab/night-shift/pull/413) |
 | 21:16 | Talk to the commentator, live | [#387](https://github.com/atiladeokegab/night-shift/pull/387) |
 | 23:32 to Sun 25 Oct 00:31 | Score check before-and-after script, held-out receipts, every README claim traced to its code and test | [#489](https://github.com/atiladeokegab/night-shift/pull/489), [#518](https://github.com/atiladeokegab/night-shift/pull/518), [#527](https://github.com/atiladeokegab/night-shift/pull/527) |
-| 05:40 to 06:38 | Every match's lines and audio made ahead and replayed from the store; the Touchline mark, home hero and broadcast lower third | [#537](https://github.com/atiladeokegab/night-shift/pull/537), [#539](https://github.com/atiladeokegab/night-shift/pull/539), [#543](https://github.com/atiladeokegab/night-shift/pull/543), [#551](https://github.com/atiladeokegab/night-shift/pull/551) |
+| 05:40 to 06:33 | Every match's lines and audio made ahead and replayed from the store; the Touchline mark, home hero and broadcast lower third | [#537](https://github.com/atiladeokegab/night-shift/pull/537), [#539](https://github.com/atiladeokegab/night-shift/pull/539), [#543](https://github.com/atiladeokegab/night-shift/pull/543), [#551](https://github.com/atiladeokegab/night-shift/pull/551) |
 
 ## How the work was verified
 
