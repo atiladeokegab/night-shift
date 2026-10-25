@@ -358,11 +358,13 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
     the app can't call the adapter. These are the commentary task's: a record with no `task` is
     commentary's, and another task's record leaves this key and `fixes_toward_next` alone.
     `console` (#317) is `data/mubit_console.json`, Mubit's console overview read by hand at
-    `read_at`: `{source, read_at, how, tasks, adapters, serving, target, listed: {[name]: {status,
-    version, quality, test_cases: int|null, note?}}}` (the console no longer reports examples per task) (keyed by name: the `stats` event carries no brackets), or `null` without the file. It is a dated reading, never live data, and
+    `read_at`: `{source, read_at, how, tasks, adapters, serving: int|null, target: int|null, listed: {[name]: {status,
+    version, quality, test_cases: int|null, calls?, kept?, note?}}, earlier?}`, where `earlier` is the
+    reading before it, in the same shape and kept as dated (null fields are ones that reading didn't record) (the console no longer reports examples per task) (keyed by name: the `stats` event carries no brackets), or `null` without the file. It is a dated reading, never live data, and
     changes only when someone reads the console again and commits it. The Proof card's Earlier tasks
-    line shows it as "Mubit console, 25 Oct 00:14 UTC: 11 tasks, 8 adapters, 0 serving; best 58.3% of a
-    95% target".
+    line shows each reading, newest first: "Mubit console, 25 Oct 06:27 UTC: 12 tasks, 9 adapters; best
+    94.6%, Testing", then "Mubit console, 25 Oct 00:14 UTC: 11 tasks, 8 adapters, 0 serving; best 58.3% of a
+    95% target, Not ready yet".
   - `earlier_tasks.adapters: {[task]: {state, version: int|null, version_id: str|null, score: number|null,
     target: number|null, passed: bool|null, kept: int|null, recorded_at, source: str|null,
     versions: [{version, version_id, score, target, passed, recorded_at, source}]}}`: each Mubit

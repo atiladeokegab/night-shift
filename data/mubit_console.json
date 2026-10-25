@@ -1,19 +1,80 @@
 {
  "source": "Mubit console",
- "read_at": "2026-10-25T00:14:00Z",
- "how": "read by hand off the console overview, as README.md's table; not live data",
- "tasks": 11,
- "adapters": 8,
- "serving": 0,
- "target": 95,
+ "read_at": "2026-10-25T06:27:00Z",
+ "how": "read by hand off the console overview; not live data. One task was read; serving and target were not read",
+ "tasks": 12,
+ "adapters": 9,
+ "serving": null,
+ "target": null,
  "listed": {
-  "Check one line of…": {"status": "Not ready yet", "version": 1, "quality": 33.3, "test_cases": 12, "note": "Score check; the console cuts the name short; created about 1 h before this reading"},
-  "Live sports commentator": {"status": "Not ready yet", "version": 2, "quality": 4.2, "test_cases": 24},
-  "Live sports commentator 2": {"status": "Not ready yet", "version": 1, "quality": 58.3, "test_cases": 24},
-  "Live television commentator": {"status": "Not ready yet", "version": 2, "quality": 34.8, "test_cases": 23},
-  "Live television commentator 2": {"status": "Not ready yet", "version": 2, "quality": 28.6, "test_cases": 21},
-  "Live television commentator 3": {"status": "Training v2", "version": 1, "quality": 55.8, "test_cases": null},
-  "Live television commentator 4": {"status": "Not ready yet", "version": 1, "quality": 30.0, "test_cases": 30},
-  "Live television commentator 5": {"status": "Not ready yet", "version": 2, "quality": 28.6, "test_cases": 21}
+  "Check one line of 2": {
+   "status": "Testing",
+   "version": 1,
+   "quality": 94.6,
+   "test_cases": null,
+   "calls": 2235,
+   "kept": 192,
+   "note": "one of the two Mubit tasks whose prompt starts 'You check one line…' (Line check or Score check); the console cuts the name short, so which one is not confirmed. testing v1, not live"
+  }
+ },
+ "earlier": {
+  "source": "Mubit console",
+  "read_at": "2026-10-25T00:14:00Z",
+  "how": "read by hand off the console overview, as README.md's table; not live data",
+  "tasks": 11,
+  "adapters": 8,
+  "serving": 0,
+  "target": 95,
+  "listed": {
+   "Check one line of…": {
+    "status": "Not ready yet",
+    "version": 1,
+    "quality": 33.3,
+    "test_cases": 12,
+    "note": "Score check; the console cuts the name short; created about 1 h before this reading"
+   },
+   "Live sports commentator": {
+    "status": "Not ready yet",
+    "version": 2,
+    "quality": 4.2,
+    "test_cases": 24
+   },
+   "Live sports commentator 2": {
+    "status": "Not ready yet",
+    "version": 1,
+    "quality": 58.3,
+    "test_cases": 24
+   },
+   "Live television commentator": {
+    "status": "Not ready yet",
+    "version": 2,
+    "quality": 34.8,
+    "test_cases": 23
+   },
+   "Live television commentator 2": {
+    "status": "Not ready yet",
+    "version": 2,
+    "quality": 28.6,
+    "test_cases": 21
+   },
+   "Live television commentator 3": {
+    "status": "Training v2",
+    "version": 1,
+    "quality": 55.8,
+    "test_cases": null
+   },
+   "Live television commentator 4": {
+    "status": "Not ready yet",
+    "version": 1,
+    "quality": 30.0,
+    "test_cases": 30
+   },
+   "Live television commentator 5": {
+    "status": "Not ready yet",
+    "version": 2,
+    "quality": 28.6,
+    "test_cases": 21
+   }
+  }
  }
 }
