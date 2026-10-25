@@ -91,3 +91,9 @@ def test_the_readme_mubit_call_sites_point_at_the_calls():
     assert links == set(CALLS)
     for (f, n), want in CALLS.items():
         assert want in (ROOT / f).read_text().splitlines()[n - 1], (f, n)
+
+
+def test_the_readme_code_links_say_the_line_they_link():
+    text = readme_numbers.README.read_text()
+    pairs = re.findall(r"`[\w/.]*:(\d+)(?:-\d+)?`\]\([\w/.]+#L(\d+)\)", text)
+    assert pairs and all(said == linked for said, linked in pairs), pairs
