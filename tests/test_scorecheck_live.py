@@ -68,13 +68,17 @@ def test_a_held_out_match_uses_the_unrecorded_provider(monkeypatch):
     assert (len(recorded.requests), len(unrecorded.requests)) == (0, 1)
 
 
-def _app(tmp_path, check):
+def _line_check(line, m, past):  # Line check's call was made: Score check follows it
+    return {"labels": None, "wrong": []}
+
+
+def _app(tmp_path, check=_line_check):
     def commentate(m, history):  # moment 6's line only; the rest say nothing
         if m["idx"] == 6:
             return {"line_id": "k6", "match_id": KOBE, "moment_idx": 6, "text": RIGHT}
 
     store = Store(tmp_path)
-    deps = Deps(list_matches, load_moments, commentate, scorecheck=check)
+    deps = Deps(list_matches, load_moments, commentate, linecheck=check)
     return TestClient(create_app(store=store, deps=deps)), store
 
 
@@ -86,7 +90,7 @@ def _play(client, **kw):
 def test_a_fresh_line_is_asked_and_wrong_is_queued_and_counted(tmp_path, monkeypatch):
     fake = Says("wrong")
     _providers(monkeypatch, fake)
-    client, store = _app(tmp_path, live_score_check)
+    client, store = _app(tmp_path)
     with client:
         events = _play(client)
         for m in load_moments(KOBE)[7:]:  # every moment said, so the next replay plays them back
@@ -116,8 +120,17 @@ def test_a_fresh_line_is_asked_and_wrong_is_queued_and_counted(tmp_path, monkeyp
 
 def test_a_failed_call_is_dropped_and_the_line_airs(tmp_path, monkeypatch):
     _providers(monkeypatch, Says(ConnectionError("mubit down")))
-    client, store = _app(tmp_path, live_score_check)
+    client, store = _app(tmp_path)
     with client:
         events = _play(client)
     assert any(n == "line" for n, _ in events) and "error" not in [n for n, _ in events]
     assert store.all("scorechecks") == []
+
+
+def test_no_line_check_call_no_score_check(tmp_path, monkeypatch):
+    fake = Says("ok")
+    _providers(monkeypatch, fake)
+    client, store = _app(tmp_path, lambda *a: None)  # over the cap, or offline
+    with client:
+        _play(client)
+    assert fake.requests == [] and store.all("scorechecks") == []

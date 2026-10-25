@@ -145,61 +145,6 @@ async def second_opinion(replay: Replay, store, linecheck, line: dict, moment, h
     await replay.publish("linecheck", await asyncio.to_thread(store.append, "linechecks", row))
 
 
-def live_score_check(line: dict, m: dict, past: list[dict]) -> dict | None:
-    """Score check (#321) asked live about a said line, so a version the console serves answers
-    it: the seeded request as is (agent/scorecheck.py), on the provider Line check's live call
-    uses. `code` is the answer key its examples are taught with. None, and no call, offline or for
-    a sport it leaves out."""
-    from agent import scorecheck
-    from agent.commentator import FakeProvider, default_provider, unrecorded_provider
-    from data.matches import match_header
-    from eval.linecheck import HELD_OUT, gold
-
-    if m.get("sport") not in scorecheck.SPORTS:
-        return None
-    provider = unrecorded_provider() if line["match_id"] in HELD_OUT else default_provider()
-    if isinstance(provider, FakeProvider):
-        return None
-    header = match_header(line["match_id"])
-    reply = provider.call(scorecheck.build_request(header, m, line["text"]))
-    key = gold(header, m, past, line["text"])
-    return {
-        "label": scorecheck.parse(
-            "".join(b.get("text", "") for b in reply["content"] if b["type"] == "text")
-        ),
-        "code": key["score"] if key else None,
-        "served_by": reply.get("served_by"),
-        "mubit_request_id": reply.get("request_id"),
-        "model": scorecheck.MODEL,
-        "tokens_in": reply["usage"]["input_tokens"],
-        "tokens_out": reply["usage"]["output_tokens"],
-    }
-
-
-async def score_opinion(store, scorecheck, line: dict, moment, history) -> None:
-    """Score check on a published line, beside Line check's second opinion: "wrong" queues the
-    line for the producer (core/review.py SCORE_WRONG), never unsays it. A failed call, no call
-    (over the cap, offline) or a reply that isn't the canonical line is dropped."""
-    try:
-        got = await asyncio.to_thread(scorecheck, line, moment, history)
-    except Exception as exc:  # the line is already said; only this check is lost
-        log.warning("score check for %s not run: %s", line["line_id"], str(exc)[:300])
-        return
-    if got is None:
-        return
-    if got["label"] is None:
-        log.warning("score check for %s: not a canonical reply", line["line_id"])
-        return
-    row = {
-        "line_id": line["line_id"],
-        "match_id": line["match_id"],
-        "moment_idx": line["moment_idx"],
-        **got,
-        "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
-    }
-    await asyncio.to_thread(store.append, "scorechecks", row)
-
-
 async def run_replay(
     replay: Replay,
     moments: list[dict],
@@ -211,7 +156,6 @@ async def run_replay(
     correct: Callable[[dict, str], dict] | None = None,
     linecheck: Callable[[dict, dict, list[dict]], dict | None] | None = None,
     record: Callable[[dict, list[dict]], dict | None] | None = None,
-    scorecheck: Callable[[dict, dict, list[dict]], dict | None] | None = None,
 ) -> None:
     # `record`: a line that passed the number check, sent again to be recorded (#399)
     # A video map: only mapped moments are called, each tagged with its video time and sent as
@@ -422,10 +366,7 @@ async def run_replay(
                 passed = line.get("checked") and not line.get("fallback") and not screen
                 if linecheck and passed:
                     args = (replay, store, linecheck, said_line, moment, history[:-1])
-                    fixes.append(asyncio.create_task(second_opinion(*args)))
-                if scorecheck and passed:
-                    args = (store, scorecheck, said_line, moment, history[:-1])
-                    fixes.append(asyncio.create_task(score_opinion(*args)))
+                    fixes.append(asyncio.create_task(opinions(*args)))
                 if record and passed:  # recorded only once checked, off the line's path
                     args = (record, moment, history[:-1], said_line["line_id"])
                     fixes.append(asyncio.create_task(record_line(*args)))
@@ -450,3 +391,73 @@ async def run_replay(
     finally:
         await asyncio.gather(*fixes, return_exceptions=True)
         await replay.finish()
+
+
+def live_score_check(line: dict, m: dict, past: list[dict]) -> dict | None:
+    """Score check (#321) asked live about a said line, so a version the console serves answers
+    it: the seeded request as is (agent/scorecheck.py), on the provider Line check's live call
+    uses. `code` is the answer key its examples are taught with. None, and no call, offline or for
+    a sport it leaves out."""
+    from agent import scorecheck
+    from agent.commentator import FakeProvider, default_provider, unrecorded_provider
+    from data.matches import match_header
+    from eval.linecheck import HELD_OUT, gold
+
+    if m.get("sport") not in scorecheck.SPORTS:
+        return None
+    provider = unrecorded_provider() if line["match_id"] in HELD_OUT else default_provider()
+    if isinstance(provider, FakeProvider):
+        return None
+    header = match_header(line["match_id"])
+    reply = provider.call(scorecheck.build_request(header, m, line["text"]))
+    key = gold(header, m, past, line["text"])
+    return {
+        "label": scorecheck.parse(
+            "".join(b.get("text", "") for b in reply["content"] if b["type"] == "text")
+        ),
+        "code": key["score"] if key else None,
+        "served_by": reply.get("served_by"),
+        "mubit_request_id": reply.get("request_id"),
+        "model": scorecheck.MODEL,
+        "tokens_in": reply["usage"]["input_tokens"],
+        "tokens_out": reply["usage"]["output_tokens"],
+    }
+
+
+async def score_opinion(store, scorecheck, line: dict, moment, history) -> None:
+    """Score check on a published line, beside Line check's second opinion: "wrong" queues the
+    line for the producer (core/review.py SCORE_WRONG), never unsays it. A failed call, no call
+    (over the cap, offline) or a reply that isn't the canonical line is dropped."""
+    try:
+        got = await asyncio.to_thread(scorecheck, line, moment, history)
+    except Exception as exc:  # the line is already said; only this check is lost
+        log.warning("score check for %s not run: %s", line["line_id"], str(exc)[:300])
+        return
+    if got is None:
+        return
+    if got["label"] is None:
+        log.warning("score check for %s: not a canonical reply", line["line_id"])
+        return
+    row = {
+        "line_id": line["line_id"],
+        "match_id": line["match_id"],
+        "moment_idx": line["moment_idx"],
+        **got,
+        "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
+    }
+    await asyncio.to_thread(store.append, "scorechecks", row)
+
+
+async def opinions(replay: Replay, store, linecheck, line: dict, moment, history) -> None:
+    """Line check's second opinion, then Score check's on the same fresh line: only when Line
+    check's call was made, so never on cached playback, the smoke, over the cap or offline."""
+    made = []
+
+    def counted(*args):
+        got = linecheck(*args)
+        made.append(got is not None)
+        return got
+
+    await second_opinion(replay, store, counted, line, moment, history)
+    if made and made[0]:
+        await score_opinion(store, live_score_check, line, moment, history)
