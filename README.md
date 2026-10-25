@@ -72,7 +72,7 @@ recording of the live site with title cards, and it shows:
   39:39 line carries the **Auto-fixed** tag: its first draft failed the number check, and the retry passed.
 - **The Proof card**: how many calls this match and across all matches passed first time, were
   auto-fixed or went to a person, and the cost per full replay.
-- **Who it is for**: WSL and NWSL streaming platforms, at about 45 cents a replay to us, voice
+- **Who it is for**: WSL and NWSL streaming platforms, at about 41 cents a replay to us, voice
   included ([who pays](#who-pays)).
 
 Every match in the film is a replay of a real, recorded match.
