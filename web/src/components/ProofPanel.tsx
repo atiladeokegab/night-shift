@@ -20,7 +20,8 @@ export function ProofPanel({ live, matchId, fellBack = false }: Props) {
 
   useEffect(() => {
     getStats().then(setFetched, () => setFailed(true))
-    getReview().then((xs) => setFlagged(xs.length), () => {}) // no count is shown rather than a wrong one
+    // every flagged wording, as Review's "Producer queue: N lines flagged" counts it; a card can hold several
+    getReview().then((xs) => setFlagged(xs.reduce((n, x) => n + x.lines, 0)), () => {}) // no count is shown rather than a wrong one
   }, [])
   useEffect(() => {
     if (fellBack) getStats().then(setFetched, () => {}) // why it fell back: only GET /stats says

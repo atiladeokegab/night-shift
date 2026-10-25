@@ -84,7 +84,7 @@ test("a checked line's chip says all ok or the fields the checker model flags, a
   assert.equal(checkText({ line_id: 'a', labels, wrong: ['player_total'] }), 'Checker model: player total may be wrong')
   assert.equal(checkText({ line_id: 'a', labels: null, wrong: [] }), null)
   assert.equal(checkText(undefined), null)
-  assert.equal(linecheckRow({ checked: 9, flags: 2, rules_missed: 2, fixes_sent: 1 }), '9 checked · 2 flagged (2 the rules missed) · 1 fixes sent to it')
+  assert.equal(linecheckRow({ checked: 9, flags: 2, rules_missed: 2, fixes_sent: 1 }), '9 checked · 2 flagged (2 the rules missed) · 1 fix sent to it')
 })
 
 test("the voice row says when browser speech reads the lines, and why; nothing while ElevenLabs does", () => {
