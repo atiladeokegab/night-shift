@@ -5,6 +5,7 @@ import { fresh, release, replayClock } from './gate'
 import { ENDED, gone } from './ended'
 import { TEACHES } from './proof'
 import type { Answer, Fix, Line, LineCheck, LineCheckExample, Moment, Stats } from './types'
+import { sameMoment } from './moment'
 
 export interface ReplayState {
   phase: 'idle' | 'starting' | 'live' | 'failed'
@@ -58,7 +59,7 @@ function reduce(s: ReplayState, a: Action): ReplayState {
     case 'started': return { ...s, phase: 'live' }
     case 'failed': return { ...s, phase: 'failed', refused: a.refused }
     case 'moment': {
-      const seen = (m: Moment) => m.idx === a.moment.idx
+      const seen = (m: Moment) => sameMoment(m, a.moment)
       if (s.moments.some(seen) || s.queuedMoments.some(seen)) return s
       return waits(s, a.moment)
         ? { ...s, queuedMoments: [...s.queuedMoments, a.moment] }
