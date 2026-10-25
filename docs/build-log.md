@@ -57,10 +57,10 @@ git ls-files | grep -vE '\.(png|jpg|jpeg|gif|mp3|mp4|webm|woff2?|ico|lock|pdf)$|
 
 Every model call goes through Mubit: 10,414 Mubit requests for 10,393 lines. Producer fixes are
 sent to Mubit as training examples (2,163 examples to Score check so far, 62 of them from
-producers). The Line check adapter, version 1, shows 94.6% in Mubit's test and is in testing (Mubit
-console, read 25 Oct 06:27 UTC, recorded in `data/mubit_console.json` by
-[#560](https://github.com/atiladeokegab/night-shift/pull/560)). The
-app does not call an adapter.
+producers). Mubit's 'Check one line of 2' task (one of our two line-checking tasks; the console cuts the
+name short) shows 94.6% for its first version, testing v1, in testing (console read by hand,
+25 Oct 06:27 UTC, recorded in `data/mubit_console.json` by
+[#560](https://github.com/atiladeokegab/night-shift/pull/560)). The app does not call an adapter.
 
 ## Timeline
 
