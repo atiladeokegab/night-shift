@@ -112,9 +112,9 @@ the fix is sent to Mubit as a training example, and the fix is said on later rep
   `data/mubit_console.json` holds the dated readings, newest first. `/stats` shows those records; nothing probes Mubit
   live for them.
 
-**Where it stands.** Commentary runs on Claude. The app does not call an adapter. The Line check
-task's first adapter version (testing v1) shows 94.6% in Mubit's test and is in testing, read by hand from Mubit's
-console on 25 Oct 2026 at 06:27 UTC and recorded in `data/mubit_console.json`.
+**Where it stands.** Commentary runs on Claude. The app does not call an adapter. Mubit's "Check one
+line of 2" task (one of our two line-checking tasks; the console cuts the name short) shows 94.6%
+for its first version, testing v1, in testing (console read by hand, 25 Oct 06:27 UTC).
 
 **Environment.** `MUBIT_API_KEY` (the key every call uses), `MUBIT_FALLBACK_KEY` (the owner's key:
 the commentator moves to it if the first key runs out of credit, a 402, `agent/commentator.py:842`;
