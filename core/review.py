@@ -104,7 +104,7 @@ def _entry(line: dict, matches: dict, deps, flags: list[str] = ()) -> dict | Non
     """The line's queue entry, or None when its numbers match its moment and `flags` (Line
     check's, #298) is empty."""
     from agent.commentator import _score
-    from data.matches import match_header
+    from data.matches import match_header, title
 
     if "titles" not in matches:
         matches["titles"] = {m["match_id"]: m["title"] for m in deps.list_matches()}
@@ -148,7 +148,7 @@ def _entry(line: dict, matches: dict, deps, flags: list[str] = ()) -> dict | Non
     return {
         "line_id": line["line_id"],
         "match_id": mid,
-        "match": matches["titles"].get(mid, mid),
+        "match": matches["titles"].get(mid) or title(header),  # a match off the picker keeps its name
         "sport": m["sport"],
         "moment_idx": m["idx"],
         "clock": m.get("clock"),
