@@ -92,13 +92,16 @@ h1 { font: 600 clamp(2.6rem, 4.6vw, 3.9rem)/1 var(--display); letter-spacing: -.
 /* Live page (#132): a bounded 16:9 video card, the caption card docked under it and the sport bar above it;
    Lines and Proof in a scrollable sidebar. Only the score bug and the ON AIR pill sit on the picture. */
 .live { min-height: 100svh; --nav-h: 78px; }
-/* The sport and match bar sits in the nav's row (#153), so the picture gets the height. */
-.live .nav { padding-block: 14px; }
+/* The header keeps the wordmark and the links on one row, as on home; the sport and match bar sits on
+   its own row below the header's glass bar, which ::before draws behind the first row only. */
+.live .nav { padding-block: 14px; position: relative; isolation: isolate; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; border-bottom: 0; }
+.live .nav::before { content: ""; position: absolute; z-index: -1; inset: 0 0 auto; height: var(--bar-h, 72px); pointer-events: none;
+  background: rgba(12, 14, 16, .55); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(255, 255, 255, .12); }
 .nav .pickbar { flex: 0 1 auto; min-width: 0; }
 .live-body { display: grid; grid-template-columns: minmax(0, 1fr) var(--side-w); gap: 24px; align-items: start; padding: 0 var(--gut) 24px; }
 /* The column is as tall as the sidebar beside it; the caption card takes the slack so both end together. */
 .live-main { display: flex; flex-direction: column; gap: 12px; align-items: center; min-width: 0; min-height: calc(100svh - var(--nav-h) - 24px); }
-.live-main > .caption { flex: 1 0 auto; }
+.live-main > .caption { flex: 1 0 auto; align-content: start; } /* the line sits under its header, the slack below it */
 /* The card is as wide as the column allows while the nav, the bar, the card, its controls and a two-line
    caption fit the screen's height, so the column ends where the sidebar does; never under 480px on a desktop. */
 .live-main > * { width: min(100%, max(480px, calc((100svh - var(--nav-h) - 200px) * 16 / 9))); }
@@ -345,15 +348,15 @@ h1 { font: 600 clamp(2.6rem, 4.6vw, 3.9rem)/1 var(--display); letter-spacing: -.
 .switch[aria-checked="true"]::after { transform: translateX(18px); }
 .toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 30; padding: 12px 18px; border-radius: var(--r); font-weight: 500; font-size: .92rem; animation: lift .3s var(--ease); }
 
-/* Below 1200px the bar takes its own row under the wordmark and the links. */
+/* The bar takes its own row under the wordmark and the links, at every width. */
 /* Large text or a wider fallback font wraps the bars rather than overlap them; 10 px between rows keeps
    each 44 px target clear of the next row's. */
-.live .nav { flex-wrap: wrap; row-gap: 10px; }
-@media (max-width: 1199px) {
-  .live { --nav-h: 140px; }
-  .nav .pickbar { order: 3; flex: 1 1 100%; }
-  .pickbar .voice { margin-left: auto; }
-}
+.live .nav { flex-wrap: wrap; row-gap: 26px; --bar-h: 60px; }
+/* A phone wraps the links under the wordmark too: there the glass covers the whole header, as before. */
+@media (max-width: 760px) { .live .nav { row-gap: 10px; --bar-h: 100%; } }
+.live { --nav-h: 140px; }
+.nav .pickbar { order: 3; flex: 1 1 100%; }
+.pickbar .voice { margin-left: auto; }
 /* Below 900px one column: the video card, the caption card, then a tab bar for Lines and Proof. The card
    keeps its picture and controls inside the screen's height, so a phone on its side still sees all of it. */
 @media (max-width: 899px) {
@@ -434,6 +437,7 @@ h1 { font: 600 clamp(2.6rem, 4.6vw, 3.9rem)/1 var(--display); letter-spacing: -.
    back arrow stays, in the corner beside the picture (#153). */
 @media (orientation: landscape) and (max-height: 500px) {
   .live .nav { position: fixed; top: 8px; left: 8px; z-index: 5; padding: 0; }
+  .live .nav::before { display: none; }
   .live .nav > :not(.pickbar), .live .pickbar > :not(.back) { display: none; }
   .live .nav .pickbar { flex: none; padding: 0; }
   .live-body { padding-top: 8px; }
