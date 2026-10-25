@@ -1,0 +1,37 @@
+/* The lower third (LowerThird.tsx): .glass gives the frosted panel and its no-blur fallback. It sits above the
+   score bug, slides in, holds about 5 s and fades; never over the caption card (under the picture) or the
+   eyes-closed line (centred, with 64 px clear above and below). */
+.l3 { position: absolute; left: 10px; bottom: 62px; z-index: 2; display: flex; align-items: stretch; max-width: min(62%, 460px);
+  padding: 0; overflow: hidden; pointer-events: none; opacity: 0; animation: l3-show 5.2s var(--ease) forwards; }
+.l3::before { content: ""; flex: none; width: 4px; background: var(--amber); }
+.l3-min { flex: none; display: grid; place-items: center; padding: 0 12px; border-right: 1px solid var(--line); color: var(--amber);
+  font: 600 1.05rem/1 var(--body); }
+.l3-body { display: flex; flex-direction: column; justify-content: center; gap: 2px; min-width: 0; padding: 6px 14px 6px 12px; }
+.l3-name { font: 600 1.35rem/1.05 var(--display); letter-spacing: .03em; text-transform: uppercase; color: var(--fg);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.l3-sub { display: flex; font: 500 .82rem/1.2 var(--body); color: var(--muted); white-space: pre; }
+.l3-ev { min-width: 0; overflow: hidden; text-overflow: ellipsis; } /* a long event gives way; the score never does */
+.l3-sub .num { flex: none; color: var(--fg); }
+/* Eyes closed hides the ON AIR pill, so the graphic takes the top edge, clear of the centred line. */
+.frame[data-eyes] .l3 { top: 10px; bottom: auto; }
+
+@keyframes l3-show {
+  0% { opacity: 0; transform: translateX(-24px); }
+  8%, 90% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: none; visibility: hidden; }
+}
+@keyframes l3-fade {
+  0% { opacity: 0; }
+  4%, 94% { opacity: 1; }
+  100% { opacity: 0; visibility: hidden; }
+}
+@media (prefers-reduced-motion: reduce) { .l3 { animation-name: l3-fade; } }
+
+/* Phone: the score bug moves to the top edge and ON AIR to the bottom right, so the graphic takes the bottom left. */
+@media (max-width: 760px) {
+  .l3, .frame[data-eyes] .l3 { left: 6px; top: auto; bottom: 6px; max-width: 64%; }
+  .l3-min { padding: 0 8px; font-size: .8rem; }
+  .l3-body { padding: 4px 10px 4px 8px; gap: 0; }
+  .l3-name { font-size: 1rem; }
+  .l3-sub { font-size: .68rem; }
+}
