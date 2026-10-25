@@ -18,7 +18,7 @@ Read at 2026-10-25 06:55 UTC, on `integration` at `2ddf784` (after #554).
 | Browser (Playwright) tests | **55** in 21 spec files | `cd web && npx playwright test --list \| tail -1` |
 | CI checks on every PR | **4**: `freeze-gate`, `smoke`, `image`, `web` | `.github/workflows/freeze-gate.yml`, `.github/workflows/smoke.yml`; `gh pr checks 554` |
 | Sports | **4**: football, basketball, cricket, Formula 1 | `ls data/sample` |
-| Bundled matches | **9** real matches (7 on the match picker, 2 kept for tests and direct replays) | `ls data/sample`; `HIDDEN` in `data/matches.py` |
+| Matches | **9** matches bundled, 7 listed on the site (2 hidden) | `ls data/sample`; `HIDDEN` in `data/matches.py` |
 | Commentary lines made | **10,393** | `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/stats` → `lines` |
 | Calls recorded through Mubit | **10,414** | `/stats` → `mubit_requests` |
 | Lead lines heard as timed ElevenLabs audio | **3,552** | `/stats` → `by_speaker.lead.audio_lines` |
@@ -57,7 +57,9 @@ git ls-files | grep -vE '\.(png|jpg|jpeg|gif|mp3|mp4|webm|woff2?|ico|lock|pdf)$|
 
 Every model call goes through Mubit: 10,414 Mubit requests for 10,393 lines. Producer fixes are
 sent to Mubit as training examples (2,163 examples to Score check so far, 62 of them from
-producers). The Line check adapter, version 1, shows 94.6% in Mubit's test and is in testing. The
+producers). The Line check adapter, version 1, shows 94.6% in Mubit's test and is in testing (Mubit
+console, read 25 Oct 06:27 UTC, recorded in `data/mubit_console.json` by
+[#560](https://github.com/atiladeokegab/night-shift/pull/560)). The
 app does not call an adapter.
 
 ## Timeline
