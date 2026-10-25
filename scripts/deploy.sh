@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Deploy the committed HEAD to Cloud Run and prove it answers.
 #   PROJECT=<gcp-project-id> [REGION=europe-west1] [SERVICE=night-shift] \
-#     [STATE_BUCKET=<PROJECT>-state] [MIN_INSTANCES=0] [DEPLOY_AS_SELF=1] [CONVERSE_AGENT_ID=...] [DAILY_BUDGET_USD=50] scripts/deploy.sh
+#     [STATE_BUCKET=<PROJECT>-state] [MIN_INSTANCES=1] [DEPLOY_AS_SELF=1] [CONVERSE_AGENT_ID=...] [DAILY_BUDGET_USD=50] [LEAD_MODEL=claude-sonnet-5-5] scripts/deploy.sh
 # A rehearsal deploys SERVICE=night-shift-staging, whose store sits under its own prefix.
 # One-time GCP setup: scripts/bootstrap.sh. Rollback: route traffic to the previous revision
 # (gcloud run services update-traffic SERVICE --to-revisions REV=100).
@@ -18,7 +18,7 @@ fi
 REGION="${REGION:-europe-west1}"
 SERVICE="${SERVICE:-night-shift}"
 STATE_BUCKET="${STATE_BUCKET:-$PROJECT-state}"
-MIN_INSTANCES="${MIN_INSTANCES:-0}"  # set 1 for a demo: no cold start
+MIN_INSTANCES="${MIN_INSTANCES:-1}"  # shortcut: one warm instance until judging ends (25 Oct 2026); set back to 0 after
 # Required secrets: each mounts as its upper-cased name (mubit-api-key is MUBIT_API_KEY),
 # and scripts/bootstrap.sh creates and grants exactly these. producer-token is PRODUCER_TOKEN,
 # which locks POST /lines/{id}/fix (#232): a secret, never a plain env var in the service config.
@@ -138,7 +138,7 @@ done
 gcloud run deploy "$SERVICE" --source . --region "$REGION" --project "$PROJECT" \
   --allow-unauthenticated \
   --set-secrets "${MOUNTS%,}" \
-  --set-env-vars "^@^MODE=cloud@STORE_URL=gs://$STATE_BUCKET/$SERVICE@MUBIT_RECORD=$MUBIT_RECORD$VOICE_ENV${CONVERSE_AGENT_ID:+@CONVERSE_AGENT_ID=$CONVERSE_AGENT_ID}${DAILY_BUDGET_USD:+@DAILY_BUDGET_USD=$DAILY_BUDGET_USD}" \
+  --set-env-vars "^@^MODE=cloud@STORE_URL=gs://$STATE_BUCKET/$SERVICE@MUBIT_RECORD=$MUBIT_RECORD$VOICE_ENV${CONVERSE_AGENT_ID:+@CONVERSE_AGENT_ID=$CONVERSE_AGENT_ID}${DAILY_BUDGET_USD:+@DAILY_BUDGET_USD=$DAILY_BUDGET_USD}${LEAD_MODEL:+@LEAD_MODEL=$LEAD_MODEL}" \
   --labels "commit=$COMMIT" \
   --min-instances "$MIN_INSTANCES" \
   --max-instances 1 \
