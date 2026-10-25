@@ -46,14 +46,16 @@ export function heldoutRow(h: HeldOut | null | undefined): string | null {
   return `held-out: caught ${h.line_check.caught} of ${h.wrong} wrong lines (rules: ${h.rules.caught} of ${h.wrong}), ${alarms} false alarm${alarms === 1 ? '' : 's'}`
 }
 
-// Mubit's console as read by hand (#317), with its source and time, e.g. "Mubit console, 25 Oct 00:14
-// UTC: 11 tasks, 8 adapters, 0 serving; best 58.3% of a 95% target, Not ready yet". A dated reading, never live data.
+// Mubit's console as read by hand (#317), with its source and time, e.g. "Mubit console, 25 Oct 06:27
+// UTC: 12 tasks, 9 adapters", then "Mubit console, 25 Oct 00:14 UTC: 11 tasks, 8 adapters, 0 serving; best
+// 58.3% of a 95% target, Not ready yet". "Best" only with a read target: without one, one read task
+// can't rank the rest. A dated reading, never live data.
 export function consoleRow(c: ConsoleReading | null | undefined): string | null {
   if (!c) return null
   const day = new Date(c.read_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })
   const top = Object.values(c.listed).sort((a, b) => b.quality - a.quality)[0]
   const target = c.target === null ? '' : ` of a ${c.target}% target`
-  const best = top ? `; best ${top.quality}%${target}, ${top.status}` : ''
+  const best = top && c.target !== null ? `; best ${top.quality}%${target}, ${top.status}` : ''
   const serving = c.serving === null ? '' : `, ${c.serving} serving`
   return `${c.source}, ${day} ${c.read_at.slice(11, 16)} UTC: ${c.tasks} tasks, ${c.adapters} adapters${serving}${best}`
 }
