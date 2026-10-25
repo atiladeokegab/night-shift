@@ -45,8 +45,10 @@ and never said (an answer becomes the off-air line).
 00:14 UTC, shows 11 tasks, 8 adapters and 0 serving. Mubit keys a task on its fingerprint: the
 system prompt, the tools, the output format and the model. Each prompt change started a new task, so
 our recorded commentary is split across several tasks rather than one. The overview lists these
-eight adapters, as they are; it no longer reports examples per task. None is ready against Mubit's
-95% target and no adapter serves.
+eight adapters as they stood at 00:14 UTC; it no longer reports examples per task. At that reading
+none was ready against Mubit's 95% target, and the console counted 0 serving. A later read, at
+06:27 UTC on 25 October, shows 12 tasks and 9 adapters; its serving count and target were not read
+([README figures](#readme-figures)).
 
 | Task | Version | Status | Quality | Test cases |
 |---|---|---|---|---|
@@ -108,7 +110,7 @@ Read 24 Oct 2026 from one real fix (Bulls v Jazz 1998, the Jordan layup).
 Every LLM call goes through Mubit. Calls with recording enabled supply training data for a small
 commentator model; eligible producer fixes go into the original task as corrections. A version is
 used only once it passes
-Mubit's test, and none has yet ([as its console shows it](#correction-loop-with-evidence)). That smaller model is what would make a commentator for every match affordable.
+Mubit's test, and none had at the 00:14 UTC console reading ([as its console shows it](#correction-loop-with-evidence)). That smaller model is what would make a commentator for every match affordable.
 
 1. **Every call goes through Mubit.** Each moment line is one call to Mubit's Anthropic endpoint
    (`claude-haiku-4-5`, recorded for training runs; unrecorded on the default live key), or two when
@@ -119,9 +121,12 @@ Mubit's test, and none has yet ([as its console shows it](#correction-loop-with-
 2. **One task for every sport.** The system prompt, message template, tools and model are the same,
    byte for byte, for football, cricket, basketball and F1; the sport goes in the message. Mubit sees
    one task to learn from ([`agent/prompt.md`](../agent/prompt.md), [`agent/tools.json`](../agent/tools.json)).
-3. **Real traffic only.** [`scripts/replay_matches.py`](../scripts/replay_matches.py) replays distinct
+3. **Real matches only for commentary.** [`scripts/replay_matches.py`](../scripts/replay_matches.py) replays distinct
    real football and cricket matches, never padded or repeated calls. Held-out matches and the demo
-   matches are never replayed, so the trained model is judged only on matches it never saw.
+   matches are never replayed, so the trained model is judged only on matches it never saw. Score
+   check's examples are not all real lines: of the 2,161 sent (`/stats` saved 23:08 UTC, 24 Oct),
+   2,101 come from the code's answer key, and these include planted copies of real lines with one
+   score number changed, labelled wrong by that answer key ([`eval/seed_scorecheck.py`](../eval/seed_scorecheck.py)).
 4. **The demo key trains nothing.** The live site runs on a separate demo Mubit key with recording
    off (`MUBIT_RECORD=off` in [`scripts/deploy.sh`](../scripts/deploy.sh)); training traffic comes from
    the replay script on the owner's key. If the demo key runs out, the commentator moves to the
@@ -134,9 +139,11 @@ Mubit's test, and none has yet ([as its console shows it](#correction-loop-with-
    adapter (`fixes_toward_next` on `/stats`). No adapter version trained on them is recorded yet.
 6. **Mubit request ids we stored.** Each line stores the Mubit request id of every call it made,
    and `GET /stats` counts calls from those ids; nothing checks them against Mubit's console.
-7. **The trained model is measured, not assumed.** Each prompt change started a new task: 7
-   adapters, best 58.3% against a 95% target, 0 serving, and the app does not
-   call an adapter ([the console read](#correction-loop-with-evidence)). The
+7. **The trained model is measured, not assumed.** Each prompt change started a new task. Mubit's
+   console at 00:14 UTC on 25 October showed 11 tasks and 8 adapters (seven commentary tasks and
+   Score check), the best commentary task at 58.3% against a 95% target, and 0 serving; at 06:27 UTC
+   it showed 12 tasks and 9 adapters ([`data/mubit_console.json`](../data/mubit_console.json)). The app
+   does not call an adapter ([the console read](#correction-loop-with-evidence)). The
    aim is that one matches the big model at lower cost; we make no claim that any does.
 8. **Line check, a task with exact answers.** A separate, frozen recorded task checks a stored line against
    its moment's facts and answers one JSON object: score, leader, player total and event, each
