@@ -62,7 +62,8 @@ def spent(store, day: str) -> float:
     voice = sum(
         v.get("chars", 0) * VOICE_PRICES.get(v.get("model"), 0.0) / 1000
         for v in store.all("voice")
-        if v.get("line_id") in ids
+        # made today, or unstamped (stored before voice rows had a time) for a line said today
+        if v.get("created_at", "")[:10] == day or "created_at" not in v and v.get("line_id") in ids
     )
     return model + voice
 
@@ -102,7 +103,10 @@ def current_lines(store, match_id: str, due: list[dict]):
     (stat moments aside) and are its newest word, or None: one missing, so the replay makes them
     all and fills the gap, or a producer's fix newer than its newest line."""
     said = said_lines(store, match_id)
-    if not said or any(m["idx"] not in said for m in due if m.get("type") != "Stat"):
+    missing = [m["idx"] for m in due if m.get("type") != "Stat" and m["idx"] not in said]
+    if missing:
+        log.info("match %s: no stored line for moments %s, made fresh", match_id, missing[:10])
+    if not said or missing:
         return None
     lines = [ln for ln in store.all("lines") if ln.get("match_id") == match_id]
     ids = {ln.get("line_id") for ln in lines}

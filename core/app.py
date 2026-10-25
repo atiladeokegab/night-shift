@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
@@ -254,7 +254,8 @@ def create_app(
         ]
         # a match already called in full is said again from its stored lines unless a fix is newer
         # than them; the deploy's smoke always makes its lines, so it still exercises the model
-        made = req.smoke or req.fresh and producer(x_producer_token)
+        # both make paid lines, so a producer's only: a bare flag plays the stored lines
+        made = (req.smoke or req.fresh) and producer(x_producer_token)
         stored = None if made else await asyncio.to_thread(current_lines, store, req.match_id, due)
         cached = bool(stored) or off_air or guard.busy(len(live))
         # only a replay that makes new lines counts against the client's hourly starts; over them,
@@ -692,15 +693,8 @@ def create_app(
         """The backup demo page: one static file, so the demo runs even without web/."""
         return FileResponse(Path(__file__).with_name("stage.html"), media_type="text/html")
 
-    async def voice_on(request: Request) -> None:
-        """No new voice over the daily cap: 503, and the page uses browser speech."""
-        if not request.url.path.endswith("/audio"):
-            return
-        if await asyncio.to_thread(guard.off_air, store):
-            raise HTTPException(503, "voice off air for today")
-
     app.include_router(teams_router)
-    app.include_router(voice_router(store, speaker), dependencies=[Depends(voice_on)])
+    app.include_router(voice_router(store, speaker, lambda: guard.off_air(store)))
     app.include_router(
         converse_router(
             need_deps=need_deps, viewed=viewed, asked_so_far=asked_so_far, guard=guard, store=store

@@ -493,7 +493,14 @@ class Speaker:
             if line.get("moment_at") is not None:
                 said["audio_first_ms"] = round((clip.first_at - line["moment_at"]) * 1000)
             await asyncio.to_thread(
-                self.store.append, "voice", {**said, "model": model, "chars": len(text)}
+                self.store.append,
+                "voice",
+                {
+                    **said,
+                    "model": model,
+                    "chars": len(text),
+                    "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
+                },
             )
             try:  # kept, so a replay of the line plays this clip and never pays for it again
                 await asyncio.to_thread(
@@ -688,7 +695,7 @@ def safari(user_agent: str | None) -> bool:
     )
 
 
-def voice_router(store, speaker: Speaker) -> APIRouter:
+def voice_router(store, speaker: Speaker, off_air=lambda: False) -> APIRouter:
     router = APIRouter()
 
     @router.get("/voices")
@@ -729,6 +736,8 @@ def voice_router(store, speaker: Speaker) -> APIRouter:
         if saved := await asyncio.to_thread(store.clip, line_id, chosen["id"]):
             log.info("voice line=%s saved", line_id)
             return Response(saved[0], media_type=saved[1])
+        if await asyncio.to_thread(off_air):  # no new voice over the daily cap: browser speech
+            raise HTTPException(503, "voice off air for today")
         if not os.environ.get("ELEVENLABS_API_KEY"):
             raise HTTPException(503, "voice not configured")
         started = time.perf_counter()
