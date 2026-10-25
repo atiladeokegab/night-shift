@@ -3,10 +3,10 @@ import { FAKE_YT } from './fakeYT'
 
 const KOBE = /^Basketball ?Kobe's 81/
 const FIRST = {
-  sport: 'basketball', match_id: '0020500591', idx: 0, period: 1, clock: '10:35', type: 'Field goal',
-  team: 'Toronto Raptors', players: { shooter: 'Morris Peterson', assist: 'Mike James' }, outcome: '2 points',
-  score: { home: 2, away: 2 },
-  detail: { play: "Peterson 17' Jump Shot (2 PTS) (James 1 AST)", player_points: 2, tied: true },
+  sport: 'basketball', match_id: '0020500591', idx: 3, video_t: 490.5, period: 3, clock: '09:36', type: 'Field goal',
+  team: 'Los Angeles Lakers', players: { shooter: 'Kobe Bryant' }, outcome: '2 points',
+  score: { home: 53, away: 69 },
+  detail: { play: "Bryant 10' Running Jump Shot (30 PTS)", player_points: 30 },
 }
 
 type Session = { endSession: () => Promise<void> }
@@ -20,6 +20,15 @@ type Options = {
 type Probe = { options: Options[]; resolve: ((session: Session) => void)[]; ended: number }
 
 async function fixtures(page: Page) {
+  await page.route('**/matches', async (r) => {
+    const response = await r.fetch()
+    const matches = await response.json()
+    for (const match of matches) {
+      if (match.match_id === '0020500591') match.video_start = FIRST.video_t
+      else delete match.youtube_id // Sport-switch lifecycle assertions do not test its player.
+    }
+    await r.fulfill({ response, json: matches })
+  })
   await page.route('https://www.youtube.com/iframe_api', (r) => r.fulfill({ contentType: 'text/javascript', body: FAKE_YT }))
   await page.route(/ytimg\.com|youtube(-nocookie)?\.com\/(?!iframe_api)/, (r) => r.abort())
   let replay = 0
