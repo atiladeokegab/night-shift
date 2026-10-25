@@ -116,7 +116,7 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   sides' recent games (`{date, opponent, home, score, result}`), the squad's headline numbers
   (`{name, matches, headline}`) and the head-to-head, all before the match's date, from the graph.
   A section the graph can't give is `[]`; cached 60 s; 404 for an unknown match.
-- `POST /replays {match_id, speed>0, start_idx?, smoke?}` → `{replay_id}` (core); `smoke: true` (the
+- `POST /replays {match_id, speed>0, start_idx?, smoke?, fresh?}` → `{replay_id}` (core); `smoke: true` (the
   deploy's live smoke) is never counted as a full replay; `start_idx` (#163) starts the stream at
   that moment: earlier moments are never called. They are sent first, untimed (no `video_t`), so the score
   and clock are already there, each followed by the last line stored for it with `history: true`
@@ -127,7 +127,9 @@ Errors: 404 not found, 409 busy or too early, 422 bad input, 503 commentator not
   as it was stored (its own `line_id`, `cached: true`), with no model call, nothing stored, never
   counted as a full replay nor against the hourly starts; a moment with no stored line stays
   silent. Its voice is each line's saved clip (`GET /lines/{line_id}/audio`). Lines are made
-  fresh when the match has none stored, when a fix is newer than them, and for `smoke`. With
+  fresh when the match has none stored, when a fix is newer than them, for `smoke`, and for
+  `fresh: true` with a valid `X-Producer-Token` (checked as the fix route checks it; without one,
+  `fresh` is ignored). The analyst's stored lines between moments are said again the same way. With
   `MAX_LIVE_REPLAYS` replays already making lines, or today's spend past `DAILY_BUDGET_USD`
   (default 50), a replay that would make lines plays the stored ones instead; 429 `{detail}` if
   the match has none. A 429's

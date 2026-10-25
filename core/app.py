@@ -61,6 +61,12 @@ class Deps:
     record: bool = False  # commentate takes `record=`: a checked line sent again, recorded (#399)
 
 
+def producer(sent: str) -> bool:
+    """A producer's request, once the deploy sets PRODUCER_TOKEN; unset (local, tests): open."""
+    token = os.environ.get("PRODUCER_TOKEN", "")
+    return not token or hmac.compare_digest(sent.encode(), token.encode())
+
+
 def with_fixes(commentate, store):
     """`commentate` given the match's stored producer fixes on every call, read then."""
     from agent.commentator import match_fixes
@@ -124,6 +130,7 @@ class ReplayRequest(BaseModel):
     speed: float = Field(10.0, gt=0)
     start_idx: int | None = Field(None, ge=0)  # start at this moment: nothing before it is called
     smoke: bool = False  # the deploy's live smoke (core/smoke.py): not counted as a full replay
+    fresh: bool = False  # made again over stored lines: a producer's only (scripts/precompute.py)
 
 
 class FixRequest(BaseModel):
@@ -220,7 +227,9 @@ def create_app(
         return HTTPException(429, detail, headers={"Retry-After": str(wait)})
 
     @app.post("/replays")
-    async def start_replay(req: ReplayRequest, request: Request):
+    async def start_replay(
+        req: ReplayRequest, request: Request, x_producer_token: str = Header(default="")
+    ):
         d = need_deps()
         try:
             moments = d.load_moments(req.match_id)
@@ -245,9 +254,8 @@ def create_app(
         ]
         # a match already called in full is said again from its stored lines unless a fix is newer
         # than them; the deploy's smoke always makes its lines, so it still exercises the model
-        stored = (
-            None if req.smoke else await asyncio.to_thread(current_lines, store, req.match_id, due)
-        )
+        made = req.smoke or req.fresh and producer(x_producer_token)
+        stored = None if made else await asyncio.to_thread(current_lines, store, req.match_id, due)
         cached = bool(stored) or off_air or guard.busy(len(live))
         # only a replay that makes new lines counts against the client's hourly starts; over them,
         # the stored lines play instead, which cost nothing
@@ -448,8 +456,7 @@ def create_app(
     async def fix_line(line_id: str, req: FixRequest, x_producer_token: str = Header(default="")):
         # a fix trains Mubit and is spoken on later replays (#232): a producer's only, once the
         # deploy sets PRODUCER_TOKEN; unset (local, tests) it is open
-        token = os.environ.get("PRODUCER_TOKEN", "")
-        if token and not hmac.compare_digest(x_producer_token.encode(), token.encode()):
+        if not producer(x_producer_token):
             raise HTTPException(401, "producer token needed")
         d = need_deps()
         from agent.commentator import fix_context
