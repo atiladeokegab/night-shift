@@ -15,4 +15,4 @@ the work is in review and not merged yet. **Not yet** means it isn't done.
 | Keyboard and screen-reader support traced to code | Each keyboard and screen-reader claim, with the code that does it and its test, or marked not tested | #492; [README.md:78](../README.md#L78); [evidence: Keyboard and screen reader](evidence.md#keyboard-and-screen-reader) |
 | The live figures in the README traced to code | The README's numbers are generated from the eval output and the saved `/stats` read, and a test fails if they drift | #472 (`e05efae`); [`tests/test_readme_numbers.py`](../tests/test_readme_numbers.py) |
 | Handle the plain-env `PRODUCER_TOKEN` | Deploy mounts `PRODUCER_TOKEN` from Secret Manager, not as a plain environment variable | Open PR: #487 |
-| A 2-minute demo uploaded as an MP4 or MOV (no YouTube links) | The film is planned at 1:50, recorded on the live URL | Not yet: plan in [`docs/demo.md`](demo.md) |
+| A 2-minute demo uploaded as an MP4 or MOV (no YouTube links) | Plan: a 1:50 cut, to be recorded on the live URL | Not yet: plan in [`docs/demo.md`](demo.md) |

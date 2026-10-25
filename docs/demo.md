@@ -1,9 +1,9 @@
 # The demo
 
-**Touchline: the describer that checks itself. For the match nobody described.** A film of **1:50,
-hard stop 1:58**, under the 2:00 limit. It is recorded on the live URL with the sound on and a narrator's voice laid over the
-screen; the cold open and the Ask shot carry the product's own voice. It shows three things and
-then who buys it: **live commentary that checks itself before air** (a club's weekly highlights with
+**Touchline: the describer that checks itself. For the match nobody described.** Planned cut: **1:50,
+hard stop 1:58**, under the 2:00 limit. Record it on the live URL with the sound on and a narrator's
+voice laid over the screen; the cold open and the Ask shot carry the product's own voice. It shows
+three things and then who buys it: **live commentary that checks itself before air** (a club's weekly highlights with
 **Close your eyes**, a line it fixed itself, a whole match nobody described), **a producer's fix sent
 to training** (the fix, its request id, the example count going up on the "Sent to training" panel,
 the replay saying the fix, then Mubit's console with Score check's version), and **Ask**. It ends on the buyer and what a replay costs. Talk, Follow a player, Teams and the shot
