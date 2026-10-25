@@ -184,7 +184,9 @@ bundled files.
   [`scripts/replay_matches.py`](../scripts/replay_matches.py) and the seeding scripts in
   [`eval/`](../eval).
 - Producer fixes are sent to Mubit as training examples. The Line check task's first adapter version
-  (testing v1) shows 94.6% in Mubit's test and is in testing. The app does not call any adapter:
+  (testing v1) shows 94.6% in Mubit's test and is in testing, as read by hand off Mubit's console
+  at 06:27 UTC on 25 October 2026 and recorded in
+  [`data/mubit_console.json`](../data/mubit_console.json). The app does not call any adapter:
   every line and check is made by the Claude models named above.
 
 ## Deploy and ops
