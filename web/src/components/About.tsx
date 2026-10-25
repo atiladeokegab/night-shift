@@ -1,7 +1,13 @@
+import { useEffect, useState } from 'react'
+import { getStats } from '../api'
+import type { Stats } from '../types'
 import { Nav, type Screen } from './Nav'
 
 // The About page. It claims nothing the README doesn't.
 export function About({ onGo }: { onGo: (screen: Screen) => void }) {
+  const [stats, setStats] = useState<Stats | null>(null)
+  useEffect(() => { getStats().then(setStats, () => setStats(null)) }, []) // no cost figure is better than a stuck page
+  const perMatch = stats?.cost_per_match_usd
   return (
     <div className="page">
       <Nav current="about" onGo={onGo} />
@@ -32,6 +38,13 @@ export function About({ onGo }: { onGo: (screen: Screen) => void }) {
             describer; fixes to the analyst's stat lines are left out. No version has passed
             Mubit's test yet, so we make no claim for it.
           </p>
+          {/* #246: what a match costs to describe, measured live (GET /stats, #174); moved from the home page */}
+          {typeof perMatch === 'number' && (
+            <p>
+              A full replay, mostly highlights, costs ${perMatch.toFixed(2)} on average. A whole match calls every moment, so it
+              costs more.
+            </p>
+          )}
         </div>
         <p className="foot">
           Match data: StatsBomb open data (football), Cricsheet (cricket), NBA play-by-play (basketball) and OpenF1
