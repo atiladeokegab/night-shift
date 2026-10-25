@@ -39,7 +39,7 @@ of that match.
 </tr>
 </table>
 
-[**Try it live**](https://night-shift-5zvig7nbvq-ew.a.run.app) · [**On stage**](#on-stage) · [**What's new**](#whats-new-tonight) · [**How well the check works**](#how-well-the-check-works) · [**Every feature**](docs/features.md) · [**The evidence**](docs/evidence.md) · [**Architecture**](docs/ARCHITECTURE.md)
+[**Try it live**](https://night-shift-5zvig7nbvq-ew.a.run.app) · [**What the demo shows**](#what-the-demo-shows) · [**On stage**](#on-stage) · [**What's new**](#whats-new-tonight) · [**How well the check works**](#how-well-the-check-works) · [**Every feature**](docs/features.md) · [**The evidence**](docs/evidence.md) · [**Architecture**](docs/ARCHITECTURE.md)
 
 </div>
 
@@ -60,9 +60,26 @@ broadcast highlights, each line called at its moment, in four sports.
 
 **For agents and reviewers:** [Architecture](docs/ARCHITECTURE.md) · [Integrations](docs/integrations.md) · [Every feature](docs/features.md) · [Decisions](docs/decisions.md) · [Build log](docs/build-log.md)
 
+## What the demo shows
+
+Touchline is a web app that calls a sports match aloud, line by line, for a fan who can't see it,
+and checks each line's numbers against the match data before it is said. The demo film is a screen
+recording of the live site with title cards, and it shows:
+
+- **Brighton v Bristol City** (WSL) on air: the opening lines arrive, each tagged **Checked**, and
+  **Close your eyes** puts the line itself in large text where the picture was.
+- **A wrong line fixed before anyone heard it.** On Orlando v North Carolina, Denise O'Sullivan's
+  39:39 line carries the **Auto-fixed** tag: its first draft failed the number check, and the retry passed.
+- **The Proof card**: how many calls this match and across all matches passed first time, were
+  auto-fixed or went to a person, and the cost per full replay.
+- **Who it is for**: WSL and NWSL streaming platforms, at about 45 cents a replay to us, voice
+  included ([who pays](#who-pays)).
+
+Every match in the film is a replay of a real, recorded match.
+
 ## On stage
 
-The planned film and the stage run in this order.
+The stage run goes in this order.
 
 1. **A match nobody described, described.** **Brighton v Bristol City** (WSL, 2024) plays with its
    highlights, and Touchline calls each moment aloud. Press **E** to **Close your eyes**: the picture
