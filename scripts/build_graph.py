@@ -124,9 +124,9 @@ def _or_skip(build):
     """`build`, with a malformed upstream record (a missing field, a wrong type) answered None so
     one bad match is skipped and counted. A network error still raises: a gap is never silent."""
 
-    def run(m):
+    def run(*args):
         try:
-            return build(m)
+            return build(*args)
         except (KeyError, IndexError, TypeError, ValueError, AttributeError):
             return None
 
@@ -143,18 +143,20 @@ def _archive(name: str):
     )
     r.raise_for_status()
     with tarfile.open(fileobj=io.BytesIO(r.content), mode="r:xz") as tar:
-        member = next(m for m in tar.getmembers() if m.isfile() and m.name.endswith(".csv"))
-        yield from csv.DictReader(io.TextIOWrapper(tar.extractfile(member), encoding="utf-8"))
+        yield from csv.DictReader(io.TextIOWrapper(feed._csv(tar, name), encoding="utf-8"))
 
 
 def basketball_season(year: int) -> tuple[list[dict], list[dict]]:
     """Regular season and playoffs of the NBA season starting `year`, one fixture per game."""
     season = f"{year}-{str(year + 1)[2:]}"
     meta = {}  # game id -> (date, home abbreviation, away abbreviation)
+    skipped = 0
     for po in ("", "po_"):
         for r in _archive(f"shotdetail_{po}{year}"):
-            d = r["GAME_DATE"]
-            meta[r["GAME_ID"]] = (f"{d[:4]}-{d[4:6]}-{d[6:8]}", r["HTM"], r["VTM"])
+            if (got := _or_skip(_shot_meta)(r)) is None:
+                skipped += 1
+            else:
+                meta[r["GAME_ID"]] = got
     games: dict[str, dict] = {}
     for po in ("", "po_"):
         for r in _archive(f"nbastats_{po}{year}"):
@@ -162,7 +164,10 @@ def basketball_season(year: int) -> tuple[list[dict], list[dict]]:
             if gid not in meta:
                 continue
             g = games.setdefault(gid, {"names": {}, "totals": {}, "score": None})
-            _basketball_row(g, r, meta[gid])
+            if _or_skip(_basketball_row)(g, r, meta[gid]) is None:
+                skipped += 1
+    if skipped:
+        print(f"basketball {season}: skipped {skipped} malformed rows", flush=True)
     fixtures, apps = [], []
     for gid, g in games.items():
         date, home, away = meta[gid]
@@ -203,7 +208,12 @@ def basketball_season(year: int) -> tuple[list[dict], list[dict]]:
     return fixtures, apps
 
 
-def _basketball_row(g: dict, r: dict, meta: tuple) -> None:
+def _shot_meta(r: dict) -> tuple:
+    d = r["GAME_DATE"]
+    return f"{d[:4]}-{d[4:6]}-{d[6:8]}", r["HTM"], r["VTM"]
+
+
+def _basketball_row(g: dict, r: dict, meta: tuple) -> bool:
     _, home, away = meta
     text = r["HOMEDESCRIPTION"] + r["VISITORDESCRIPTION"]
     if r["SCORE"]:
@@ -227,6 +237,7 @@ def _basketball_row(g: dict, r: dict, meta: tuple) -> None:
             who[1]["points"] += 1
         elif kind == "4":
             who[1]["rebounds"] += 1
+    return True
 
 
 def basketball() -> tuple[list[dict], list[dict]]:
@@ -313,21 +324,33 @@ def cricket() -> tuple[list[dict], list[dict]]:
     years = {a for (sport, _), arch in MATCHES.items() if sport == "cricket" for a in arch}
     print(f"cricket: years {sorted(years)}", flush=True)
     archive = feed.cricsheet_zip()
-    fixtures, apps = [], []
+    fixtures, apps, skipped = [], [], 0
     for n in sorted(archive.namelist()):
         if not n.endswith(".json"):
             continue
-        m = json.loads(archive.read(n))
-        if not m["info"].get("dates") or m["info"]["dates"][0][:4] not in years:
+        got = _or_skip(_cricket_file)(archive, n, years)
+        if got is None:
+            skipped += 1
+        if not got:
             continue
-        f, a = cricket_match(m)
+        f, a = got
         mid = n.removesuffix(".json")
         f["mid"] = mid
         for row in a:
             row["mid"] = mid
         fixtures.append(f)
         apps += a
+    if skipped:
+        print(f"cricket: skipped {skipped} malformed matches", flush=True)
     return fixtures, apps
+
+
+def _cricket_file(archive, n: str, years: set) -> tuple | bool:
+    """One Cricsheet file as (fixture, appearances), or False when it is outside the years."""
+    m = json.loads(archive.read(n))
+    if not m["info"].get("dates") or m["info"]["dates"][0][:4] not in years:
+        return False
+    return cricket_match(m)
 
 
 BUILDERS = {"football": football, "basketball": basketball, "cricket": cricket}

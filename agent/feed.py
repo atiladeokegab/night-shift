@@ -73,6 +73,14 @@ def _fetch(url: str, name: str, timeout=TIMEOUT) -> bytes:
     return path.read_bytes()
 
 
+def _csv(tar: tarfile.TarFile, name: str):
+    """The archive's CSV member: a clear error when the download holds none."""
+    member = next((m for m in tar.getmembers() if m.isfile() and m.name.endswith(".csv")), None)
+    if member is None:
+        raise ValueError(f"{name}: no CSV in the archive")
+    return tar.extractfile(member)
+
+
 def _name(obj) -> str:
     return _s(obj.get("name")) if isinstance(obj, dict) else ""
 
@@ -139,7 +147,7 @@ def football_moments(
     shootout = {"home": 0, "away": 0}
     keepers = {}  # event id of a saved shot -> keeper name, from Goal Keeper events
     for ev in events:
-        gk = ev.get("goalkeeper") or {}
+        gk = ev.get("goalkeeper") if isinstance(ev.get("goalkeeper"), dict) else {}
         if _name(ev.get("type")) == "Goal Keeper" and "Saved" in _name(gk.get("type")):
             for rel in ev.get("related_events") or []:
                 keepers[rel] = who(ev.get("player"))
@@ -292,14 +300,20 @@ def cricket_moments(header: dict, match: dict) -> list[dict]:
     max_overs = _num(info.get("overs")) or 20
     moments = []
     for inn_no, inn in enumerate(match.get("innings") or [], start=1):
-        if inn.get("super_over"):
+        if not isinstance(inn, dict) or inn.get("super_over"):
             continue
         team = _s(inn.get("team"))
         target = _num((inn.get("target") or {}).get("runs"))
         runs = wickets = legal = in_over = 0
         this_over = None
         free_hit = False
-        balls = [(o, d) for o in inn.get("overs") or [] for d in o.get("deliveries") or []]
+        balls = [  # a junk over or delivery is skipped, as packs._balls skips it
+            (o, d)
+            for o in inn.get("overs") or []
+            if isinstance(o, dict)
+            for d in o.get("deliveries") or []
+            if isinstance(d, dict)
+        ]
         for n, (over, d) in enumerate(balls):
             over_no = _num(over.get("over")) or 0
             if over_no != this_over:
@@ -392,8 +406,7 @@ def nba_rows(game_id: str) -> list[dict]:
     data = _fetch(NBA_PBP.format(name=name), f"{name}.tar.xz", timeout=timeout)
     want = str(int(game_id))  # the archive drops the leading zeros
     with tarfile.open(fileobj=io.BytesIO(data), mode="r:xz") as tar:
-        member = next(m for m in tar.getmembers() if m.isfile() and m.name.endswith(".csv"))
-        text = io.TextIOWrapper(tar.extractfile(member), encoding="utf-8", newline="")
+        text = io.TextIOWrapper(_csv(tar, name), encoding="utf-8", newline="")
         rows = [r for r in csv.DictReader(text) if r.get("GAME_ID") == want]
     return sorted(rows, key=lambda r: (_int(r.get("PERIOD")), _int(r.get("EVENTNUM"))))
 
