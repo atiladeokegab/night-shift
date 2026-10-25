@@ -32,7 +32,7 @@ test('every mark is on the timeline before the first line, and turns amber as th
   await expect(page.locator('.log li')).toHaveCount(0) // no line yet
 
   await page.getByRole('button', { name: 'Close your eyes' }).click()
-  await expect(page.getByRole('button', { name: 'Close your eyes' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: 'Open your eyes' })).toHaveAttribute('aria-pressed', 'true')
   await expect(marks).toHaveCount(MAP.moments.length)
   await expect(page.locator('.scrub .mk.done')).toHaveCount(0)
 

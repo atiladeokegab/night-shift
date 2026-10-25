@@ -220,7 +220,7 @@ test('Close your eyes covers the picture and leaves the player playing under it 
   const player = (html: string) => html.slice(html.indexOf('<div id="video"'), html.indexOf('<div class="bug"'))
   assert.equal(player(shut).replace(/<div class="eyes"[\s\S]*?<\/div>/, ''), player(open))
   assert.match(shut, /aria-label="Pause"/)
-  assert.match(shut, /aria-pressed="true"[^>]*>[\s\S]*?Close your eyes/)
+  assert.match(shut, /aria-pressed="true"[^>]*>[\s\S]*?Open your eyes/)
   assert.match(open, /aria-pressed="false"[^>]*>[\s\S]*?Close your eyes/)
   // The cover shows the line on screen and keeps the score; the shown line, never a later one (A-6.4).
   assert.match(shut, new RegExp(`<div class="eyes" aria-hidden="true"><p>${EARLY}</p></div>`))
@@ -235,7 +235,7 @@ test('with no video, Close your eyes still covers the page to its line and score
     const shut = videoCard(render({ ...props, closed: true }))
     assert.match(open, /aria-pressed="false"[^>]*aria-keyshortcuts="E"[^>]*>[\s\S]*?Close your eyes/)
     assert.ok(!open.includes('class="eyes"'))
-    assert.match(shut, /aria-pressed="true"[^>]*>[\s\S]*?Close your eyes/)
+    assert.match(shut, /aria-pressed="true"[^>]*>[\s\S]*?Open your eyes/)
     assert.match(shut, new RegExp(`<div class="eyes" aria-hidden="true"><p>${EARLY}</p></div>`))
     assert.match(shut, /class="bug"><div class="scorebar glass"/)
   }
