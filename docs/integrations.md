@@ -67,7 +67,7 @@ replay stream.
 set to Mubit (next section). The app holds no Anthropic key of its own: the key is `MUBIT_API_KEY`.
 
 **When it is missing or fails.** Every line goes through the number check before it is said
-(`core/insight.py:1768` `checked`). A line that contradicts the data, or no reply at all, is replaced
+(`core/insight.py:1781` `checked`). A line that contradicts the data, or no reply at all, is replaced
 by a line built only from the moment's data (`core/fallback.py`), marked `fallback` and queued for
 the producer. An Ask with no usable answer says "No word on that yet" and the data's own line
 (`agent/commentator.py:727`). Offline, `FakeProvider` stands in.

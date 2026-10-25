@@ -296,7 +296,7 @@ unique in this example but is a lookup, not a key.
 | Nothing from later in the match reaches a moment: derived words use only earlier moments, and who has the ball is kept apart | `data/matches.py:81`, `data/matches.py:133`; test `tests/test_feed.py:430` |
 | Pre-match records stop the day before the match; graph reads stop at kick-off, compared in UTC | `agent/packs.py:72`, `tests/test_packs.py:33`, `tests/test_graph_store.py:64`, `tests/test_graph_store.py:261` |
 | The demo matches, and a fixed one in five of all others (by hash), are held out of training and evaluation examples | `agent/feed.py:32`, `agent/feed.py:45`; test `tests/test_feed.py:148` |
-| The number check: a line's numbers are compared with its own moment's data. A line with a wrong number is asked for once more; if that is wrong too, a line built from the moment's data is said instead, and the failed try goes to the producer's review queue | `core/insight.py:1429` `wrong_numbers`, `core/insight.py:1768` `checked`, `core/review.py:1` |
+| The number check: a line's numbers are compared with its own moment's data. A line with a wrong number is asked for once more; if that is wrong too, a line built from the moment's data is said instead, and the failed try goes to the producer's review queue | `core/insight.py:1442` `wrong_numbers`, `core/insight.py:1781` `checked`, `core/review.py:1` |
 | If the graph engine or store fails, the app reads the JSON packs and the page keeps working | `core/graph.py:274`, `core/graph.py:293`; test `tests/test_graph.py:68` |
 | The shipped store is opened from a temporary copy, so a read never writes to the image | `core/graph.py:275` |
 

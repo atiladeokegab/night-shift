@@ -102,7 +102,7 @@ look for (evidence.md lists four). Counting omissions too, precision on the held
 18%, so some right lines are regenerated needlessly. Every failed try goes to the producer's fix
 queue.
 
-**Where.** `core/insight.py:1768` (`checked`), `core/insight.py:1429` (`wrong_numbers`),
+**Where.** `core/insight.py:1781` (`checked`), `core/insight.py:1442` (`wrong_numbers`),
 `core/fallback.py:186`; tests `tests/test_checker_eval.py`, `tests/test_fallback.py:45`.
 
 ## 4. Checks with answer keys from code: Line check and Score check
