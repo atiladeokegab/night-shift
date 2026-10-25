@@ -1,166 +1,97 @@
 # Touchline: every feature
 
-The detail behind the [README](../README.md). Links to code are relative to the repo root.
+Touchline describes a match aloud for fans who can't see it. As each key moment of a real match plays
+(a goal, a wicket, a three), two commentators call it in one short line, read aloud and shown as a
+large caption. Before a moment line is said, a number check holds its score and counts to the match
+data. A producer can fix any line, and each fix is sent to Mubit as a training example.
 
-## What Touchline is
+Every link below opens the live site, <https://night-shift-5zvig7nbvq-ew.a.run.app>. A link with
+`?match=ID&at=N` opens that match at moment N. Code is cited as `path:line` from the repo root, and the
+last column names the test that holds the feature.
 
-**Touchline** describes a match aloud for fans who can't see it. It plays a match's broadcast
-highlights, and as each key moment plays (a goal, a wicket, a three) it calls it in one short line,
-read aloud in a commentator's voice and shown as a large subtitle. It describes key moments, not
-every pass: what happened and who did it, often with the score. Football shots say where on the pitch they came
-from, from the event data's own locations (#172). The page itself works by keyboard and screen
-reader, with every control a 44 px target, checked by axe on the home and live pages
-([`web/e2e/a11y.spec.ts`](../web/e2e/a11y.spec.ts), #170).
+## The best bits
 
-One agent calls every sport. It reads the match's real event data, looks up the score, the player and
-recent play with tools, and never sees anything from later in the match than the moment it is
-calling. A producer corrects any line that's wrong, and the fix goes back through Mubit beside the
-line, as a correction for the commentator's next training.
-
-## What each feature is
-
-| Feature | Status | Proof in the code |
+| | What you get | See it live |
 |---|---|---|
-| [The seven matches](#the-seven-matches) | Live | [`GET /matches`](https://night-shift-5zvig7nbvq-ew.a.run.app/matches), [`agent/feed.py`](../agent/feed.py) |
-| [Two commentators: lead and analyst](#two-commentators-lead-and-analyst) | Live (#130, #142) | [`core/insight.py`](../core/insight.py), [`core/replay.py`](../core/replay.py) |
-| [Ask, by typing](#ask-by-typing-or-by-voice) | Live | [`POST /replays/{id}/ask`](../core/app.py), [`agent/ask.md`](../agent/ask.md) |
-| [Ask, by voice](#ask-by-typing-or-by-voice) | Live (#145) | [`web/src/voice.ts`](../web/src/voice.ts), [`web/src/components/MicButton.tsx`](../web/src/components/MicButton.tsx), [`web/src/voice.test.ts`](../web/src/voice.test.ts) |
-| [Follow a player: shot map](#follow-a-player) | Live | [`GET /replays/{id}/players/{name}/shots`](../core/app.py), [`web/src/components/ShotMap.tsx`](../web/src/components/ShotMap.tsx) |
-| [Follow a player: picker and profile card](#follow-a-player) | Live (#140, #152) | [`GET /replays/{id}/players/{name}/profile`](../core/app.py), [`web/src/components/ProfileCard.tsx`](../web/src/components/ProfileCard.tsx) |
-| [Producer fixes](#producer-fixes) | Live | [`POST /lines/{id}/fix`](../core/app.py), [`tests/test_core_fix.py`](../tests/test_core_fix.py) |
-| [Big model vs ours](#big-model-vs-ours) | Live under the Proof card (#144, #147, #150) | [`data/side_by_side.json`](../data/side_by_side.json), [`eval/side_by_side.py`](../eval/side_by_side.py) |
-| [The Proof panel](#the-proof-panel) | Live | [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats), [`core/stats.py`](../core/stats.py) |
-| Live screen layout: the video in a card, Lines and Proof beside it, playback controls | Live (#132) | [`web/src/components/Live.tsx`](../web/src/components/Live.tsx) |
+| **Spoken commentary, two voices** | A lead calls each moment and an analyst fills the gaps with a stat, both voiced by ElevenLabs, never before the moment reaches the picture | [Argentina v France, moment 59](https://night-shift-5zvig7nbvq-ew.a.run.app/?match=3869685&at=59) |
+| **The number check, and Auto-fixed** | A line whose score or counts don't match the data is retried once; a retry that passes is tagged Auto-fixed, and one that fails again is replaced by a line built from the data | [Kobe's 81, moment 22](https://night-shift-5zvig7nbvq-ew.a.run.app/?match=0020500591&at=22) |
+| **Ask and Talk to the commentator** | Type, speak or hold a conversation; answers use only what has happened so far, so nothing is spoiled | [India v Pakistan, moment 48](https://night-shift-5zvig7nbvq-ew.a.run.app/?match=1298150&at=48) |
+| **Close your eyes** | Press E: the picture goes black and the match goes on as voice and caption, as a blind fan follows it | any match, then E |
+| **The producer's Review queue** | Every line a check flagged, with a Fix button; each fix is stored beside the line and sent to Mubit as a training example | [Review](https://night-shift-5zvig7nbvq-ew.a.run.app/#review) |
+| **Watching again costs nothing** | Lines and voice clips are stored the first time, so a fan's replay of a called match makes no model call | any match on the [home page](https://night-shift-5zvig7nbvq-ew.a.run.app/) |
 
-### The seven matches
+<img src="img/home.png" alt="The Touchline home page at 1440 px: the wordmark, the links Matches, Replays, Review and About, the heading, and the match tiles, each with a Jump to the big moment pill." width="100%">
 
-<img src="img/wall.png" alt="The home page in a dark theme, at 1440 wide. The amber Touchline. wordmark top left; on the right the links Matches (with a green dot, the current page), Replays, Review and About. Under the eyebrow Touchline: the describer that checks itself, the heading Every match deserves to be described, the line Most matches have no audio description. A blind or low-vision fan following one gets no description, a short paragraph on what it does and what a replay costs. Then nine tiles in three columns and three rows, each with a Jump to the big moment pill and the link Tap to hear it called. First the three long-tail matches: Orlando v North Carolina (NWSL · 24 May 2018) and Netherlands v Nepal (Women's T20 World Cup Qualifier · 22 Jan 2026), each marked No audio description that we could find and Whole match, every key moment, over a drawn stadium; then Brighton v Bristol City (Women's Super League · 21 Jan 2024), marked No described broadcast that we could find and Highlights, synced to video. Then the six famous ones, each over a broadcast still and marked Highlights, synced to video: Battle of the Bridge (Chelsea v Tottenham, 2016); Messi v Mbappé (2022 World Cup final); India v Pakistan (T20 World Cup, 2022); Kobe's 81 v Toronto (2006); Jordan's last shot as a Bull (1998 NBA Finals, Game 6); Verstappen, P17 to P1 (2024 São Paulo Grand Prix). Below them, the credits for the match data and the highlights." width="100%">
+## Fan
 
-One match from the long tail and six famous ones, in four sports, each replayed from real event data
-and called by the same commentator with the same prompt. Each plays over its broadcast highlights. A line is never shown or spoken before its moment reaches the picture: the YouTube player's clock gates it
-([`web/src/gate.ts`](../web/src/gate.ts)).
+| Feature | What the fan gets | Live | Code | Test |
+|---|---|---|---|---|
+| Seven matches, four sports | Real event data replayed over broadcast highlights: football (StatsBomb), cricket (Cricsheet), basketball (NBA play-by-play) and F1 (OpenF1) | [home](https://night-shift-5zvig7nbvq-ew.a.run.app/), [`GET /matches`](https://night-shift-5zvig7nbvq-ew.a.run.app/matches) | `core/app.py:216`, `agent/feed.py` | `tests/test_feed.py`, `tests/test_long_tail.py` |
+| Jump to the big moment, deep links | A tile's pill, or `?match=ID&at=N`, opens the match at that moment | [Argentina v France, 59](https://night-shift-5zvig7nbvq-ew.a.run.app/?match=3869685&at=59) | `web/src/App.tsx:192`, `core/app.py:220` | `web/e2e/deeplink.spec.ts:77`, `tests/test_core_jump.py` |
+| Spoken commentary | Each line voiced by ElevenLabs `eleven_v3`, with an audio tag per moment: shouting for a goal, hushed for the build-up | [Kobe's 81](https://night-shift-5zvig7nbvq-ew.a.run.app/?match=0020500591&at=22) | `core/voice.py:160`, `core/voice.py:717` | `tests/test_core_voice.py`, `web/e2e/audio.spec.ts` |
+| Two commentators, Jim and Julian | The lead calls the moment; in the quiet the analyst adds a stat from the pre-match pack and the match so far, and the lead comes back to it | [India v Pakistan](https://night-shift-5zvig7nbvq-ew.a.run.app/?match=1298150&at=48) | `core/voice.py:107`, `core/insight.py:342`, `agent/analyst.md` | `tests/test_two_hander.py`, `tests/test_insight.py` |
+| Never ahead of the picture | A line is released only when the video's clock reaches its moment | any match | `web/src/gate.ts:34` | `web/src/gate.test.ts` |
+| Saved voice clips | Each line's audio is made once, stored, and played from the store after that | any match | `core/store.py:29`, `core/voice.py:717` | `tests/test_core_store.py` |
+| The number check, Auto-fixed | Score, leader, margin and player counts are checked against the data before a moment line is said; one retry, then a line built from the data. A retry that passes carries an Auto-fixed tag, with its reason for a screen reader | [Kobe's 81, 22](https://night-shift-5zvig7nbvq-ew.a.run.app/?match=0020500591&at=22) | `core/insight.py:1768`, `core/insight.py:1429`, `agent/status.py:130`, `core/replay.py:89` | `tests/test_autonomy.py`, `tests/test_fallback.py`, `web/src/live.test.ts:309` |
+| The lower third | For about 5 s over the picture: the clock, the player, the event and the score after it; hidden from screen readers, which hear the line itself | [Argentina v France, 59](https://night-shift-5zvig7nbvq-ew.a.run.app/?match=3869685&at=59) | `web/src/components/LowerThird.tsx:8` | `web/e2e/lower-third.spec.ts` |
+| Timeline moment dots | A mark on the scrub bar for every moment, amber once called | any match | `web/src/components/Controls.tsx:46` | `web/e2e/marks.spec.ts:18` |
+| Ask the commentator | Type a question; the analyst answers from the match so far only, at a gap in the commentary, and the answer gets the same number check | [India v Pakistan](https://night-shift-5zvig7nbvq-ew.a.run.app/?match=1298150&at=48) | `core/app.py:575`, `core/insight.py:2017`, `agent/ask.md` | `tests/test_core_ask.py`, `tests/test_ask_check.py` |
+| Ask by voice, and "Where are we?" | Hold the mic button or the space bar and speak; W asks "Where are we?" from anywhere but a text box | any match | `web/src/components/MicButton.tsx:22`, `web/src/voice.ts` | `web/src/voice.test.ts`, `web/e2e/keyboard.spec.ts:55` |
+| Talk | The Talk button pauses the match and opens a spoken conversation with the commentator, an ElevenLabs agent whose every turn is answered through the same checked Ask path; 12 s of quiet, Resume or Escape picks the match up where it paused | any match, Talk | `web/src/components/Converse.tsx:19`, `core/converse.py:355` | `tests/test_converse.py`, `web/e2e/talk.spec.ts` |
+| Close your eyes | Press E or the eye button: a black cover over the picture with only the line and the score, the player still playing under it | any match, then E | `web/src/components/Live.tsx:138`, `web/src/eyes.ts:2` | `web/src/live.test.ts:215` |
+| Let them watch | Share the tab so the commentators see the picture as well as the data | any match | `web/src/components/Watch.tsx:55`, `core/app.py:527` | `web/e2e/watch.spec.ts:12`, `tests/test_look.py` |
+| Follow a player | Search anyone in the match: their record before tonight and tonight's so far, with their lines marked in the log, read from the SurrealDB graph | [Kobe's 81](https://night-shift-5zvig7nbvq-ew.a.run.app/?match=0020500591&at=22) | `web/src/components/FollowPicker.tsx:12`, `core/app.py:655`, `core/graph.py:201` | `tests/test_follow.py`, `tests/test_graph.py`, `web/src/follow.test.ts` |
+| Teams | Each side's form and head-to-head before the match, from the same graph | any match | `web/src/components/TeamPanel.tsx:39`, `core/teams.py:80` | `tests/test_teams.py`, `web/e2e/teams.spec.ts` |
+| The shot map | A player's shots before tonight and tonight so far, with hit rate by zone, cut at the moment on screen | [Kobe's 81](https://night-shift-5zvig7nbvq-ew.a.run.app/?match=0020500591&at=22) | `web/src/components/ShotMap.tsx:24`, `core/app.py:619` | `tests/test_core_shots.py`, `web/src/shotmap.test.ts` |
+| Choice of voices | Pick the lead's voice per sport, and whether the quiet stretches are described | any match, Voice | `web/src/components/VoiceSheet.tsx:21`, `core/voice.py:167` | `tests/test_core_voice.py` |
+| Accessibility | No serious or critical axe finding at 390 and 1280 px; every control a 44 px target; the whole flow by keyboard; captions and answers in screen-reader live regions | any page | `web/src/components/Caption.tsx:19`, `web/src/components/LineLog.tsx:67` | `web/e2e/a11y.spec.ts:91`, `web/e2e/a11y.spec.ts:131`, `web/e2e/keyboard.spec.ts:103` |
+| Glass UI and branding | The Touchline wordmark and frosted glass cards over the broadcast still, one layout from phone to desktop | [home](https://night-shift-5zvig7nbvq-ew.a.run.app/) | `web/src/App.css`, `web/src/hero.css:59`, `web/src/components/Wall.tsx:23` | `web/e2e/a11y.spec.ts` (390 and 1280 px) |
 
-| Match | Sport and data | What it calls |
-|---|---|---|
-| The long tail: Brighton 3-2 Bristol City, Women's Super League, 2024 | Football, StatsBomb | The five goals: Bristol City come level twice, then Terland's winner in stoppage time |
-| The Battle of the Bridge: Chelsea 2-2 Tottenham, 2016 | Football, StatsBomb | The four goals, Hazard's equaliser that made Leicester champions |
-| Argentina v France, 2022 World Cup final | Football, StatsBomb | Messi's two goals, Di María, Mbappé's three, the shoot-out |
-| India v Pakistan, 2022 T20 World Cup | Cricket, Cricsheet | The wickets, the sixes, Kohli's two sixes off Rauf, the last ball |
-| Michael Jordan's last shot as a Bull, 1998 NBA Finals Game 6 | Basketball, NBA play-by-play | The fourth quarter's baskets, Jordan's steal from Malone, the winning shot, the buzzer |
-| Kobe Bryant's 81 against Toronto, 2006 | Basketball, NBA play-by-play | His baskets through the second half, the record-breaking points, the buzzer |
-| Max Verstappen from 17th to win the 2024 São Paulo Grand Prix | F1, OpenF1 timing | The rain, the safety car, the red flag, Verstappen taking the lead, the flag |
+<img src="img/auto-fixed.png" alt="The Lines card from Kobe's 81, opened at moment 22: Kobe Bryant on the reverse layup, forty-nine points for him, Lakers still trail, Raptors eighty-five, Lakers eighty-one, tagged Lead, From an earlier replay, Checked, Via Mubit and Auto-fixed: its first try failed the number check and its retry passed." width="384">
 
-The booth is two commentators: Jim, the lead, and Julian, the analyst, who call each other by name
-([`core/voice.py`](../core/voice.py) `NAMES`). Lines are voiced by ElevenLabs `eleven_v3` with an audio tag per moment: shouting for a goal or a
-wicket, hushed for the build-up ([`core/voice.py`](../core/voice.py), [docs/voice.md](voice.md)).
+<img src="img/eyes-closed.png" alt="India v Pakistan with Close your eyes on: the picture covered in black with only the line, Kohli strikes again! Another six, and India need sixteen from the last six balls!, and the score bar, IND 144/4, PAK 159/8, over 18.6, need 16 off 6. The button now reads Open your eyes, and the timeline under the picture carries a dot for every moment, amber once called." width="100%">
 
-### Two commentators: lead and analyst
+<img src="img/phone.png" alt="The live page on a 390 px phone during Argentina v France, ARG 3-3 FRA at 122:59: the video card with its timeline dots and controls, the caption Kolo Muani lets fly, half volley from the right! Emiliano Martínez saves! Still Argentina 3, France 3!, then tabs for Follow, Lines, Proof, Teams and Shot map." width="390">
 
-The lead calls each big moment. In the quiet stretches between them, an analyst fills the gap with a
-stat line built only from the pre-match pack and the match so far, in a calmer second voice. The
-two take turns until the next moment (#297): the analyst's stat, the lead coming back to it, then
-the next stat, each line one that ends before the moment ([`core/insight.py`](../core/insight.py)
-`Gaps.line`). Stat lines are stored and reused
-by later replays of the same match.
+## Producer
 
-Since #142 the analyst has its own prompt ([`agent/analyst.md`](../agent/analyst.md)) with the stat
-as the event, and each fact states its period, such as "this season before tonight". Analyst lines
-and the lead's replies run on `claude-sonnet-5-5` with its lowest thinking setting
-(`between_tools`), unrecorded, so they never split the moment lines' Mubit task
-([`agent/commentator.py`](../agent/commentator.py)).
+| Feature | What the producer gets | Live | Code | Test |
+|---|---|---|---|---|
+| The Review queue | Every line the number check or the line check flagged, grouped by match, each with a Fix button | [Review](https://night-shift-5zvig7nbvq-ew.a.run.app/#review) | `web/src/components/Review.tsx:11`, `core/review.py:35`, `core/app.py:670` | `tests/test_core_review.py`, `web/e2e/a11y.spec.ts:117` |
+| Fix a line | Write the corrected line and pick what was wrong; the fix is checked against the data (one it contradicts gets 422), stored beside the original, and later replays say the corrected line | [Review](https://night-shift-5zvig7nbvq-ew.a.run.app/#review) | `web/src/components/FixSheet.tsx:21`, `core/app.py:457` | `tests/test_core_fix.py`, `tests/test_fix_heard.py`, `web/e2e/fix-replay.spec.ts` |
+| Each fix sent to Mubit as a training example | A fix that passes the number check goes back through the line's own Mubit task as a correction, and to the Score check's training; the panel after a fix shows the examples sent | [Review](https://night-shift-5zvig7nbvq-ew.a.run.app/#review) | `agent/commentator.py:403`, `web/src/components/Review.tsx:187` | `tests/test_record_checked.py`, `web/e2e/training.spec.ts:46` |
+| The Proof card and `/stats` | Lines called, cost per line and per replay, first-word latency, the lead and analyst split, fixes recorded, and each check's own counts | [`/stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats) | `web/src/components/ProofPanel.tsx:16`, `core/stats.py`, `core/app.py:680` | `tests/test_core_stats.py`, `web/src/proof.test.ts` |
+| Big model side by side | A larger model's line on six held-out moments, with its latency and cost: the baseline a smaller commentator has to match | any match, under Proof | `web/src/components/SideBySide.tsx:10`, `eval/side_by_side.py` | `tests/test_side_by_side.py`, `web/src/sideBySide.test.ts` |
+| About, with the Mubit flow | How the two commentators work, and a diagram: match data to the lead and the analyst, the number check, ElevenLabs, the store, and a producer's fix to Mubit | About, in the top bar | `web/src/components/About.tsx:72` | `tests/test_readme_claims.py` |
 
-### Ask, by typing or by voice
+<img src="img/review.png" alt="The Review screen, headed Producer queue: 262 lines flagged. Each card gives the moment from the data, what is wrong and which check found it, what Touchline said, and a Fix this line button." width="100%">
 
-<img src="img/ask.png" alt="The live page during Kobe's 81. In the Lines card, an Ask entry: the question How many points does Kobe have so far? in italics, and the answer: Kobe Bryant has 41 points tonight! He just nailed that three from 26 feet to bring the Lakers within ten of Toronto." width="100%">
+<img src="img/about-mubit.png" alt="The flow diagram on the About page: match data to the lead and the analyst; the number check on score, leader and numbers; if wrong, one retry, then a line from the data; ElevenLabs voice and a caption; then stored and reused on replays, and a producer's fix to Mubit's Score check training." width="100%">
 
-A viewer types a question mid-replay. The answer uses only what has happened up to the moment on
-screen, so it never spoils what comes next. It is spoken by the analyst, at a gap in the commentary; the
-question and answer take over the caption, and only a decisive moment cuts the answer off, which
-then offers "Hear it again" ([`core/app.py`](../core/app.py) `ask`, [`agent/ask.md`](../agent/ask.md),
-[`web/src/turns.ts`](../web/src/turns.ts), [`tests/test_core_ask.py`](../tests/test_core_ask.py)). Answers
-go through Mubit unrecorded: they have their own prompt.
+## Engineering
 
-**Talk (#380):** the Talk button pauses the match and the speaking queue and opens a natural
-conversation with the commentator (an ElevenLabs agent: its own turn-taking and interruptions). The
-agent's custom LLM is [`core/converse.py`](../core/converse.py) `POST /converse/v1/chat/completions`,
-which answers each turn through the same checked Ask path (Claude via Mubit, unrecorded), from the
-match cut at the moment the talk began. When the fan goes quiet for 12 s, or presses Resume or Escape,
-the match resumes where it paused. Where it can't start (no mic, no agent, off air) Ask is still there.
-Setup, keyed, once: `ELEVENLABS_API_KEY=... CONVERSE_LLM_SECRET=<random> uv run python
-scripts/converse_agent.py --url https://<service>/converse/v1`, then deploy with `CONVERSE_AGENT_ID`
-and `CONVERSE_LLM_SECRET` set ([`tests/test_converse.py`](../tests/test_converse.py)).
+| Feature | What it does | Code | Test |
+|---|---|---|---|
+| Every model call through Mubit | Commentary runs on Claude, and every model call goes through Mubit, one session per match; no model is called from the browser | `agent/commentator.py:480`, `agent/commentator.py:522` | `tests/test_commentator.py`, `tests/test_mubit_status.py` |
+| One task, four sports | The same system prompt, message template and tools for every sport; the sport goes in the message | `agent/prompt.md`, `agent/tools.json`, `agent/commentator.py:191` | `tests/test_commentator.py` |
+| Never sees the future | The request and its tools see only moments up to the one being called | `agent/commentator.py:222` | `tests/test_core_spine.py` |
+| The line check | A second check reads published lines off the speaking path and sends the fields it calls wrong to the Review queue. Mubit's 'Check one line of 2' task (one of our two line-checking tasks; the console cuts the name short) shows 94.6% for its first version, testing v1, in testing (console read by hand, 25 Oct 06:27 UTC, `data/mubit_console.json`, #560). The app does not call an adapter | `core/replay.py:127`, `agent/linecheck.py:106` | `tests/test_linecheck.py`, `tests/test_linecheck_live.py` |
+| The SurrealDB graph | Players, teams, matches and seasons in SurrealDB's embedded engine, in process; any graph error falls back to the JSON pack, so the page never breaks on it | `core/graph.py:1`, `core/graph.py:201` | `tests/test_graph.py`, `tests/test_graph_reads.py`, `tests/test_graph_store.py` |
+| Stored lines, so replays cost nothing | Lines already said for a match are played from the store; `scripts/precompute.py` calls every match once ahead of time, voice included | `core/guard.py:84`, `scripts/precompute.py:142` | `tests/test_cached_first.py`, `tests/test_precompute.py` |
+| The budget guard | Caps on replays making new lines at once, replay starts and Asks per client an hour, and a daily spend; over a limit a replay plays the lines already stored, with no model call, or the route answers 429 | `core/guard.py:143` | `tests/test_guard.py`, `tests/test_converse_budget.py` |
+| CI | Every PR into `integration` runs four checks: `freeze-gate` (after code freeze only PRs labelled `fix` merge), `make smoke` (ruff, ruff format, the Python suite and an offline replay of each sample), the Docker image build with an import of the app inside it, and the web job (unit tests, lint, build and Playwright) | `.github/workflows/smoke.yml`, `.github/workflows/freeze-gate.yml`, `Makefile:14` | the Python suite in `tests/`, unit tests in `web/src/*.test.ts`, Playwright specs in `web/e2e/` |
 
-**By voice (#145):** hold the mic button, or the space bar, and
-speak; the browser's own speech recognition fills the box and sends it. The answer is held until the
-current line ends and no big moment is due, then spoken
-([`web/src/voice.ts`](../web/src/voice.ts), [`web/src/turns.ts`](../web/src/turns.ts), [`web/src/turns.test.ts`](../web/src/turns.test.ts)).
-Where the browser has no speech recognition, the button is hidden and typing still works.
+## The numbers
 
-### Follow a player
+Read from [`/stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats) at 06:55 UTC on 25 Oct 2026;
+the endpoint itself is always current.
 
-<img src="img/shotmap.png" alt="The shot map sheet for Kobe Bryant: Before tonight 461 of 1036 (44%), Tonight 16 of 26. A half court with grey dots for his shots before tonight, green for made and red rings for missed tonight. Beside it, hit rate by zone: Mid-Range 211 of 490, 43%; Restricted Area 118 of 214, 55%; Above the Break 3 58 of 178, 33%; and the rest." width="100%">
+| | |
+|---|---|
+| Lines called | 10,393 |
+| Moment lines through the number check | 2,519: 2,391 right first time, 63 Auto-fixed by the retry, 65 to a producer |
+| Producer fixes recorded in Mubit | 70 |
+| First word, median | 557 ms |
+| Cost per line | $0.0023 |
 
-Tap the chip for the player in the latest moment: their shots from the season before (from the
-match's pre-match pack) and tonight's so far, with hit rate by zone. It reads only moments up to the
-one on screen ([`core/app.py`](../core/app.py) `shots`, [`core/predict.py`](../core/predict.py),
-[`tests/test_core_shots.py`](../tests/test_core_shots.py)).
-
-Or follow anyone in the match: search for them in the Follow picker, and a profile card shows their
-record before tonight and tonight's so far, while their lines are marked in the log. Like the shot
-map, it reads only moments up to the one on screen ([`core/app.py`](../core/app.py) `players` and
-`profile`, [`core/predict.py`](../core/predict.py),
-[`web/src/components/FollowPicker.tsx`](../web/src/components/FollowPicker.tsx),
-[`web/src/components/ProfileCard.tsx`](../web/src/components/ProfileCard.tsx),
-[`tests/test_follow.py`](../tests/test_follow.py), [`web/src/follow.test.ts`](../web/src/follow.test.ts)).
-
-<img src="img/follow.png" alt="The live page during Kobe's 81, LAK 65-75 RAP, 06:22, Q3, on the live site after #152. On the right, a profile card: Following Kobe Bryant, Los Angeles Lakers, with an Unfollow button; Before tonight 461 of 1036 (44%) in 38 games; Tonight 16 of 26 (62%); and a Shot map · Kobe Bryant chip. Below it, the Lines card with a bar reading Following Kobe Bryant · 2 lines and a Clear button. His two lines, Kobe Bryant from three, assisted by Devean George! at 06:22 and Kobe Bryant with the running jumper, 30 points for Bryant, Lakers trail 53 to 69. at 09:36, are edged in amber and tagged BRYANT; between them, the analyst's line, Before tonight he's made 461 of 1036 shots, 44 percent over 38 games, so thirty points here is a big night above his usual rate. Under the video, the caption marked LEAD repeats the three. The video area says Highlights can't play here, because the browser was headless." width="100%">
-
-### Producer fixes
-
-<img src="img/fix.png" alt="The Fix this line sheet over Kobe's 81. Touchline said: Kobe Bryant with the running jumper from ten feet, he's got thirty points, but Toronto still leads fifty-three to sixty-nine. The producer's corrected line: Running jumper, Kobe Bryant! That is 30 for him, but the Lakers still trail by sixteen, 53 to 69. Then chips for what was wrong, with Tone picked (Wrong fact, Wrong player, Wrong score, Tone, Other), Send fix and Cancel, and the note: Your fix goes back through Mubit and is kept beside the original." width="100%">
-
-A producer corrects a wrong line on the page. The server stores the fix beside the original and sends
-it back through the same Mubit task and session, as a second turn: that is how a correction is built to become
-training signal; `/stats` counts them (`fixes_recorded`). No adapter version trained on them is recorded
-yet ([`core/app.py`](../core/app.py) `fix_line`, [`tests/test_core_fix.py`](../tests/test_core_fix.py)).
-
-### Big model vs ours
-
-The big model's line on six held-out moments (three football, three cricket, matches never used for
-training), recorded through Mubit with recording off, with each line's latency and cost
-([`data/side_by_side.json`](../data/side_by_side.json), [`eval/side_by_side.py`](../eval/side_by_side.py),
-[`tests/test_side_by_side.py`](../tests/test_side_by_side.py)). Until an adapter version passes Mubit's test,
-those lines stand as the baseline ours must match, and the panel says why there is no line of ours:
-Mubit serves an adapter only once a version passes, and only in its console's Try models, never to
-the app by API. The panel
-([`web/src/components/SideBySide.tsx`](../web/src/components/SideBySide.tsx)) sits under the Proof card on
-every live page.
-
-### The Proof panel
-
-The screenshot that stood here (24 Oct, 16:04 UTC) showed a fix threshold and an adapter "Training" that the card no longer shows (#281), so it is removed; the live page shows the current card.
-
-Calls checked, this match and all matches (#204); cost per full replay; live latency, cost per line and lines
-called, split by lead and analyst (#166); the fixes that passed the check, recorded in Mubit as training data, and
-how many have been heard since; Line check's row and its held-out result (#298, #317); and Score check's version,
-examples and held-out score, with the earlier commentary tasks folded away (#321, #363). All from `GET /stats`
-(its `by_speaker` for the split); the console reading under Earlier tasks is dated and read by hand, never live ([`web/src/components/ProofPanel.tsx`](../web/src/components/ProofPanel.tsx),
-[`core/stats.py`](../core/stats.py)).
-
-## The product: where this goes
-
-> **Vision, not what's built.** This weekend's build is the seven replays above. This is the full product.
-
-- **Every streamed match, described aloud.** Leagues, clubs, rights holders and streaming platforms
-  switch it on for the long tail of matches they stream with no describer, in any language or voice:
-  lower-league and grassroots football, the women's game, club and county cricket.
-- **A describer per broadcaster, owned by them.** Each broadcaster gets its own cheap commentator as
-  a Mubit adapter, trained on its own matches, and each producer correction that passes the
-  number check is recorded as training data for it.
-- **Built for fans who can't see the screen.** Audio first, with keyboard and screen reader working
-  throughout (#170, built). Football shots already say where on the pitch they came from, from the
-  event data's own locations (#172).
-- **The fan layer.** Ask by typing or voice, a choice of voices, and Follow a player, on any match.
-- **At scale,** Redis fans each match's lines out to every viewer and caches them across instances,
-  and SurrealDB, already the graph behind Follow a player, takes over every pack
-  ([docs/ARCHITECTURE.md](ARCHITECTURE.md#at-scale-a-plan-not-built)).
+How the checks are measured, and every README figure with its test: [docs/evidence.md](evidence.md).
