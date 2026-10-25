@@ -87,6 +87,7 @@ def run(label: str, case: str, line_id: str | None = None) -> dict:
         "idx": idx,
         "line": line,
         "key": key,
+        "key_judges": "Score check judges only the score's numbers, not who leads",
         "answer": said,
         "label_parsed": scorecheck.parse(said),
         "matches_key": scorecheck.parse(said) == key,
