@@ -88,6 +88,18 @@ h1 { font: 600 clamp(2.6rem, 4.6vw, 3.9rem)/1 var(--display); letter-spacing: -.
 .about { max-width: 720px; display: grid; gap: 20px; font-size: 1.1rem; color: var(--muted); }
 .about p { margin: 0; }
 .about strong { color: var(--fg); font-weight: 500; }
+/* How the two commentators work: a scannable list, then the flow drawn on a glass card, amber on the checks */
+.how { margin-top: 8px; }
+.how h2 { margin: 0; color: var(--fg); font: 600 1.6rem/1.1 var(--display); letter-spacing: -.01em; }
+.how ul { margin: 0; padding-left: 20px; display: grid; gap: 12px; }
+.how a { color: var(--amber); }
+.flow { display: block; width: 100%; max-width: 480px; height: auto; }
+.flow rect { fill: rgba(255, 255, 255, .04); stroke: var(--line-hi); }
+.flow rect.key { stroke: var(--amber); fill: rgba(255, 181, 71, .08); }
+.flow rect.alt { stroke-dasharray: 4 4; }
+.flow text { fill: var(--fg); font: 500 13px var(--body); text-anchor: middle; }
+.flow path { stroke: var(--amber); stroke-width: 1.5; fill: none; marker-end: url(#flow-a); }
+.flow path.tip { fill: var(--amber); stroke: none; marker-end: none; }
 
 /* Live page (#132): a bounded 16:9 video card, the caption card docked under it and the sport bar above it;
    Lines and Proof in a scrollable sidebar. Only the score bug and the ON AIR pill sit on the picture. */
