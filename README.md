@@ -72,8 +72,8 @@ narrated screen recording of the live site, and runs in this order:
    who adds the stats ("Jordan came in at 47% from the field"; "Kukoc from downtown, fed by
    Buechler... Bulls level it up 70 to 70").
 3. **Ask by voice.** The narrator turns on the mic and asks, "Who is the best player on the pitch
-   currently?" The answer comes back in the live commentary ("Kukoc is up to 15 points tonight..."),
-   so the question becomes part of the broadcast.
+   currently?", while the commentary carries on, the analyst's tally included ("Kukoc is up to 15
+   points tonight...").
 4. **Women's sport, which gets little coverage**: **Brighton v Bristol City**, Women's Super League.
 5. **End card**: Touchline, "Live audio description, checked before air", and the live URL.
 
