@@ -106,17 +106,10 @@ def wsl(page: Page, base: str) -> float:
     return start
 
 
-def orlando(page: Page, base: str) -> float:
-    # Opens on the wall, where the tile says "Whole match, every key moment" (#246), then plays it.
-    page.goto(f"{base}/")
-    tile = page.locator("button.tile", has_text="Orlando")
-    tile.wait_for()
-    tile.scroll_into_view_if_needed()
-    page.wait_for_timeout(1500)
-    start = time.time()
-    page.wait_for_timeout(3000)
-    tile.click()
-    ready(page)
+def autofixed(page: Page, base: str) -> float:
+    # Kobe Bryant, 00:43 in Q4: the stored line is a retry that passed, tagged Auto-fixed
+    page.goto(f"{base}/?match=0020500591&at=22")
+    start = ready(page)
     first_line(page)
     page.wait_for_timeout(16_000)
     return start
@@ -188,7 +181,7 @@ def proof(page: Page, base: str) -> float:
 
 SHOTS = {
     "01-wsl": wsl,
-    "02-orlando": orlando,
+    "02-autofixed": autofixed,
     "03-ask": ask,
     "04-fix-queue": fix_queue,
     "05-fix-jordan": fix_jordan,
