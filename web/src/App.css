@@ -1,9 +1,6 @@
-/* The approved redesign (docs/design.md), ported from docs/mockup/index.html. The mockup's state
-   bar is left out; the SVG stand-in for the video is the real YouTube player here. */
+/* Ported from docs/mockup/index.html (docs/design.md); the real YouTube player stands in for its SVG video. The look:
+   a commentary booth at a floodlit night match: pitch-dark ground, floodlight type, hairlines, one radius, amber = called/live. */
 :root {
-  /* Art direction: the commentary booth at a floodlit night match. A near-black ground with the pitch's
-     green-blue in it, floodlight white type, hairline rules, one radius, and one warm accent: broadcast amber,
-     which means called or live. */
   --bg: #060B0B; --panel: #0C1414; --panel-hi: #132020; --fg: #F2F6F4; --muted: rgba(242, 246, 244, .72); --faint: rgba(242, 246, 244, .6);
   --glass: var(--panel); --line: rgba(214, 236, 228, .13); --line-hi: rgba(214, 236, 228, .26);
   --amber: #FFB547; --amber-deep: #F5A524; --on-amber: #1B1203; --r: 6px;
