@@ -1,4 +1,4 @@
-"""Stored and bundled data that a crash or a bad file left malformed must not take a request down."""
+"""Data a crash or a bad file left malformed must not take a request down."""
 
 import json
 import shutil
