@@ -136,10 +136,14 @@ and its test: [the figures](docs/evidence.md#readme-figures).
 
 Every model call goes through Mubit. Training runs and eligible correction examples are recorded;
 Ask and Talk answers are unrecorded, and deployed commentary defaults to recording off. Mubit's console,
-read by hand on 25 October 2026 at 00:14 UTC ([`data/mubit_console.json`](data/mubit_console.json)),
-shows 11 tasks, 8 adapters and 0 serving. The first Score check version scored 33.3% against a 95%
-target, on 12 test cases; the best commentary task scores 58.3%. Every version reads "Not ready yet"
-or is still training, the app cannot call one, and we make no claim that any matches the big model.
+read by hand on 25 October 2026 at 06:27 UTC ([`data/mubit_console.json`](data/mubit_console.json)),
+shows 12 tasks and 9 adapters; the serving count was not read then. Mubit's "Check one line of 2" task
+(one of our two line-checking tasks; the console cuts the name short) shows 94.6% for its first
+version, testing v1, in testing (console read by hand, 25 Oct 2026 06:27 UTC). The app does not call
+an adapter. The earlier read, at 00:14 UTC, showed 11 tasks, 8 adapters and 0 serving. The first
+Score check version scored 33.3% against a 95% target, on 12 test cases; the best commentary task
+scores 58.3%. At 00:14 every version read "Not ready yet" or was still training, and we make no claim
+that any matches the big model.
 Score check, the narrower task above, has 2,161 examples sent to training, 60 of them from producer
 fixes (46 the model already matched, 5 corrected, 9 not corrected); the big model agreed with the
 code's answer key on 74 of 74 held-out lines (live `/stats` `scorecheck`, saved on 24 October 2026 at
