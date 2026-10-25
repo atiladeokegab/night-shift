@@ -299,7 +299,7 @@ The tests are [`tests/test_readme_numbers.py`](../tests/test_readme_numbers.py) 
 
 | Figure | Source | Test |
 |---|---|---|
-| About $0.45 a replay, voice included, over 84 replays | [`eval/live_stats_2026-10-24.json`](../eval/live_stats_2026-10-24.json) `cost_per_match_usd`, `matches_measured` (live `GET /stats`, saved 23:08 UTC, 24 Oct) | N `test_the_readme_live_figures_are_the_saved_stats_read` |
+| About $0.41 a replay, voice included, a running mean over 133 replays | [`eval/live_stats_2026-10-25.json`](../eval/live_stats_2026-10-25.json) `cost_per_match_usd`, `matches_measured` (live `GET /stats`, saved 08:24 UTC, 25 Oct) | N `test_the_readme_live_figures_are_the_saved_stats_read` |
 | 2,161 examples sent to training, 60 from producer fixes | the same file, `scorecheck` | N, same test |
 | 46 matched, 5 corrected, 9 not corrected | the same file, `scorecheck.from_fixes_by_kind` (they add up to the 60) | C `test_the_fixes_breakdown_and_console_counts_are_the_saved_reads` |
 | 74 of 74 held-out lines agree | the same file, `scorecheck` | N `test_the_readme_live_figures_are_the_saved_stats_read` |
@@ -345,9 +345,9 @@ association, with local sponsors, placed a £4,000 audio-description project wit
 years of running it included, at no cost to the club
 ([Level Playing Field](https://www.levelplayingfield.org.uk/news-item/audio-description-commentary-at-wrexham-afc)).
 
-Touchline's own cost, beside those: about $0.45 a replay, voice included, over 84 replays of these
-highlights (live `/stats` `cost_per_match_usd` and `matches_measured`, saved on 24 Oct 2026 at 23:08 UTC
-as [`eval/live_stats_2026-10-24.json`](../eval/live_stats_2026-10-24.json)). It is a cost to run, not a price.
+Touchline's own cost, beside those: about $0.41 a replay, voice included, over 133 replays of these
+highlights (live `/stats` `cost_per_match_usd` and `matches_measured`, saved on 25 Oct 2026 at 08:24 UTC
+as [`eval/live_stats_2026-10-25.json`](../eval/live_stats_2026-10-25.json)). It is a cost to run, not a price.
 
 A model can describe the rest, if it speaks while the moment is still on screen and costs little
 enough to run for every match. The live site's [`/stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats)

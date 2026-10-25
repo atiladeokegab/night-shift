@@ -41,11 +41,11 @@ commentary still plays on the match's own clock.
 | 3 | 0:35.3–1:00.3 | Three cards, word for word from the live run: 30:57, "Elisabeth Terland! Brighton take the lead, one nil!"; the producer's fix, "Elisabeth Terland scores! The Seagulls lead one-nil." ("Call Brighton the Seagulls"); 94:48, before "Elisabeth Terland! Brighton take the lead, 3-2!" and after "Elisabeth Terland! The Seagulls go three-two up with that left-footed half volley!" | "A producer fixes one line. The next lines on this match carry the producer's fix." |
 | 4 | 1:00.3–1:10.3 | Cahill's fix on **Review**: the **Sent to training** panel, "Line as said: wrong", "Fixed text: ok", **Score check examples: 2,161 → 2,163**, "Training run pending" | "The fix also goes to Mubit as training data: two Score check examples." |
 | 5 | 1:10.3–1:30.3 | Mubit's console, the **Score check** task: its examples, then its version and test score | "This is Mubit's console, outside our app: the fix is a Score check example." Then say the console as it is: **training, not serving**. Call a version better only if the console marks it Passed, and never say the app uses it. |
-| 6 | 1:30.3–1:42.3 | The buyer card | "Built for the streaming platforms that carry the WSL and NWSL. It costs about forty-five cents a replay to run, voice included." |
+| 6 | 1:30.3–1:42.3 | The buyer card | "Built for the streaming platforms that carry the WSL and NWSL. It costs about forty-one cents a replay to run, voice included." |
 | 7 | 1:42.3–1:50.3 | Logo, tagline, the live URL | "Touchline. The describer that checks itself." |
 
-The cost is the README's figure, about $0.45 a replay with the voice included, from live `/stats` on
-24 Oct: the mean over full replays of these highlights, not a whole 90 minutes, and never a price
+The cost is the README's figure, about $0.41 a replay with the voice included, from live `/stats` on
+25 Oct: the mean over full replays of these highlights, not a whole 90 minutes, and never a price
 for the buyer.
 
 Only moments 18, 34 and 35 of the Brighton run took up "the Seagulls". The run's other later lines
@@ -89,6 +89,6 @@ video maps (`data/video/`); check them with a stopwatch before going on.
 "the model updated", anything implying the app uses a trained version, or that every later line
 changed because of the fix. Also: "a million matches",
 "lower leagues get none", "the law requires it", "$5 a match", "RNIB standard" or "RNIB approved",
-or any cost other than about $0.45 a replay, voice included. The cost is what a replay costs to run,
+or any cost other than about $0.41 a replay, voice included. The cost is what a replay costs to run,
 never a price for the buyer. Name no streaming platform: "the
 streaming platforms that carry the WSL and NWSL", never a company.

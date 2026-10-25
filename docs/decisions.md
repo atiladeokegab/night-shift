@@ -41,8 +41,8 @@ describer is a match they can't follow.
 109 of the Premier League's 380 games a season; a 2015 survey found 4 of 20 Premier League clubs
 with trained audio describers; US rules exempt live programming; at Wrexham the fans and local
 sponsors raised £4,000 to fund it themselves. At least 2.2 billion people have a vision
-impairment (WHO). Touchline's cost is about $0.45 a replay, voice included, over 84 replays
-(`eval/live_stats_2026-10-24.json`). Repositioned in #206 to #208.
+impairment (WHO). Touchline's cost is about $0.41 a replay, voice included, a running mean over 133 replays
+(`eval/live_stats_2026-10-25.json`). Repositioned in #206 to #208.
 
 **Alternatives rejected.** General commentary for sighted fans: weaker need, and it hides the
 reason every number must be right (a blind listener has no screen to check against).
@@ -222,7 +222,7 @@ money and a cold voice call, and gives a different line each time.
 reaches the moment (#539, #537). The producer token keeps paid generation behind one secret
 (#240); a fix without it gets 401.
 
-**Alternatives rejected.** Fresh lines on every replay: about $0.45 each, and a slow voice on a
+**Alternatives rejected.** Fresh lines on every replay: about $0.41 each, and a slow voice on a
 cold start. Caching in the browser: per viewer, and the key would have to be public.
 
 **Consequences.** A fan hears what the commentator said when the lines were made, not a new call.
