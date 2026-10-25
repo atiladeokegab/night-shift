@@ -2,7 +2,7 @@
 
 A producer's fix becomes a labelled Score check example sent to Mubit; Mubit trains a version of
 that task and tests it against Claude's answers. Every step below points at code, a ledger row, a
-Mubit request id or a console screenshot.
+Mubit request id or a console reading.
 
 ```mermaid
 flowchart LR
@@ -71,18 +71,6 @@ prompts start "You check one line", and the console cuts the name short. Between
 the console gained one task and one adapter, so we don't claim the 94.6% version is the same
 task's v1 as the 33.3% one. Mubit's docs: a version that reaches its target becomes available in
 Try models. 94.6% is just under the 95% target.
-
-![Mubit console overview, 25 Oct 2026](media/mubit-console-1.png)
-
-*Screenshot 1: Mubit console overview, 25 Oct 2026 (`docs/media/mubit-console-1.png`). If no image shows above, the file is missing.*
-
-![Mubit console, the "Check one line of 2" task](media/mubit-console-2.png)
-
-*Screenshot 2: the "Check one line of 2" task: calls and kept examples (`docs/media/mubit-console-2.png`). If no image shows above, the file is missing.*
-
-![Mubit console, testing v1 at 94.6%](media/mubit-console-3.png)
-
-*Screenshot 3: testing v1 at 94.6% against the 95% target (`docs/media/mubit-console-3.png`). If no image shows above, the file is missing.*
 
 ## Held-out run, 25 Oct
 
