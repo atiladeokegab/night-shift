@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/banner.svg" alt="Banner: the word Touchline. in amber over a drawn night stadium with floodlights and a green pitch, the tagline The describer that checks itself, and a red ON AIR pill." width="100%">
+<img src="docs/banner.svg" alt="Banner: the word Touchline. in amber over a drawn night stadium with floodlights and a green pitch, the tagline The describer that checks itself, and an amber ON AIR pill." width="100%">
 
 <sub><b>Touchline: the describer that checks itself.</b> For the match nobody described.</sub>
 
@@ -22,9 +22,22 @@ described broadcast, Touchline calls that match aloud moment by moment, answers 
 about it at any point, and a producer's fix to one line goes with the request for every later line
 of that match.
 
-<img src="docs/media/demo.gif" alt="A 9-second screen recording of the live Touchline page: lines are called one after another and stack in the Lines card as the match goes on, and one of them carries an auto-fixed tag." width="100%">
+<img src="docs/media/demo.gif" alt="An 11-second screen recording of the live Touchline site. It opens on the home page, Every match deserves to be described, with the match cards. Then Lakers v Raptors plays from Kobe Bryant's 80th point: the score bar reads LAK 121-102 RAP at 00:43 in the fourth quarter, the caption card shows the called line, and the line lands at the top of the Lines card tagged Checked, Via Mubit and Auto-fixed. The video area shows the highlight's still image." width="100%">
 
 <sub>Touchline calls match moments as spoken lines. Each line is checked against the match data, and one is marked auto-fixed.</sub>
+
+<table>
+<tr>
+<td width="33%"><img src="docs/img/eyes-closed.png" alt="Close your eyes mode on India v Pakistan: the picture is black and only the called line, Kohli strikes again! Another six, and India need sixteen from the last six balls!, shows large in its place, over the score bar IND 144/4, PAK 159/8, over 18.6." width="100%"></td>
+<td width="33%"><img src="docs/img/about-mubit.png" alt="The About page's flow: match data goes to the lead and the analyst, then the number check on score, leader and numbers; if wrong, one retry, then a line from the data; then ElevenLabs voice and a caption; then stored for replays, and a producer's fix goes to Mubit Score check training." width="100%"></td>
+<td width="33%"><img src="docs/media/phone.png" alt="Touchline on a phone: Lakers v Raptors with the highlight's still image, the score bar LAK 120-102 RAP, the called line about Kobe Bryant's seventy-ninth point, and tabs for Follow, Lines, Proof, Teams and Shot map." width="100%"></td>
+</tr>
+<tr>
+<td align="center"><sub>Close your eyes</sub></td>
+<td align="center"><sub>How a line is made</sub></td>
+<td align="center"><sub>On a phone</sub></td>
+</tr>
+</table>
 
 [**Try it live**](https://night-shift-5zvig7nbvq-ew.a.run.app) · [**On stage**](#on-stage) · [**What's new**](#whats-new-tonight) · [**How well the check works**](#how-well-the-check-works) · [**Every feature**](docs/features.md) · [**The evidence**](docs/evidence.md) · [**Architecture**](docs/ARCHITECTURE.md)
 
@@ -32,6 +45,8 @@ of that match.
 
 What you hear are **replays, as if live**: real matches' event data played back over their
 broadcast highlights, each line called at its moment, in four sports.
+
+**For agents and reviewers:** [Architecture](docs/ARCHITECTURE.md) · [Integrations](docs/integrations.md) · [Every feature](docs/features.md) · [Decisions](docs/decisions.md) · [Build log](docs/build-log.md)
 
 ## On stage
 
