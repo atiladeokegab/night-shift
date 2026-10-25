@@ -60,7 +60,7 @@ export function Wall({ matches, error, onRetry, onOpen, onJump, onGo }: Props) {
             )}
             {/* #246: the pitch the film makes, audio description for blind and low-vision fans */}
             <p className="hero-line">
-              Most matches have no audio description. Touchline calls them aloud, checking the score and key numbers before it speaks.
+              For matches with no audio description, Touchline calls them aloud, checking the score and key numbers before it speaks.
             </p>
             {/* the loading placeholder keeps the height the real button takes, so the page below doesn't jump */}
             {matches === null && !error && (

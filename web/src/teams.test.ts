@@ -91,7 +91,7 @@ test('the home page is the hook and one line; About keeps the Mubit fixes and th
   const about = read('About.tsx')
   for (const said of [
     'Every match deserves to be described.', // #246
-    'Most matches have no audio description. Touchline calls them aloud, checking the score and key numbers before it speaks.',
+    'For matches with no audio description, Touchline calls them aloud, checking the score and key numbers before it speaks.',
     '▶ Hear a match called',
     '<span>Sound on.</span>',
   ]) assert.ok(wall.includes(said), said)
