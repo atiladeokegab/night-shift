@@ -8,7 +8,8 @@ from eval import checker_eval, readme_numbers
 
 ROOT = Path(__file__).resolve().parent.parent
 # the README and side-by-side panel quote the 00:14 reading, kept in the file as `earlier`
-CONSOLE = json.loads((ROOT / "data" / "mubit_console.json").read_text())["earlier"]
+READS = json.loads((ROOT / "data" / "mubit_console.json").read_text())
+CONSOLE = READS["earlier"]
 
 
 def test_the_readme_check_table_is_todays_checker_eval_output():
@@ -31,8 +32,10 @@ def test_the_side_by_side_panel_and_readme_match_the_console_read():
     assert (adapter["adapters"], adapter["best_match_pct"]) == (CONSOLE["adapters"], best)
     text = readme_numbers.README.read_text()
     assert f"{CONSOLE['adapters']} adapters" in text and f"{best}%" in text
-    # no other adapter count or best score anywhere in the README
-    assert set(re.findall(r"(\d+) adapters", text)) == {str(CONSOLE["adapters"])}
+    # every adapter and task count in the README is one of the two console reads (06:27, `earlier`)
+    reads = [READS, CONSOLE]
+    for what in ("adapters", "tasks"):
+        assert set(re.findall(rf"(\d+) {what}\b", text)) == {str(r[what]) for r in reads}, what
     # Score check's adapter: the console cuts its name short ("Check one line of…")
     (sc,) = (t for name, t in CONSOLE["listed"].items() if name.startswith("Check one line"))
     flat = " ".join(text.split())
