@@ -55,7 +55,7 @@ broadcast highlights, each line called at its moment, in four sports.
    Terland's 94:48 winner came out as "The Seagulls go three-two up", where the run before the fix said
    "Brighton take the lead, 3-2!". Three of the six later lines took up "the Seagulls"; the other
    three changed only as any new generation does
-   ([the run](https://github.com/atiladeokegab/night-shift/pull/501)).
+   ([the run](eval/fix_then_later_live_20261024.txt), from [#501](https://github.com/atiladeokegab/night-shift/pull/501)).
 3. **Ask.** Type a question mid-match, such as "Where are we?" in the World Cup final. The answer
    uses only what has happened up to the moment on screen, is checked the same way, and is spoken.
    On a keyed run of 33 questions ([`eval/ask_eval.py`](eval/ask_eval.py), 25 Oct), 32 of 33 answers
@@ -87,14 +87,15 @@ Built at Night Shift: Mubit Hackathon, London, 23 to 25 October 2026. Track: Own
 4. Read the **Proof** card, then check it: `curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/stats`.
 
 **Keyboard and screen reader:** E, T, W, Talk with Escape, focus order, live captions and the Follow
-card, each traced to its code and its test, or marked not tested:
-[the table](docs/evidence.md#keyboard-and-screen-reader).
+card, each traced to its code and its test:
+[the table](docs/evidence.md#keyboard-and-screen-reader). Every figure in this README, its source
+and its test: [the figures](docs/evidence.md#readme-figures).
 
 **Your check-in #2:** each point and where it landed: [docs/feedback.md](docs/feedback.md).
 
 ### What's new tonight
 
-- **A graph of teams and players:** SurrealDB holds the seasons around our matches in football (612 matches), basketball and cricket, and answers only from matches before this one, so nothing later leaks.
+- **A graph of teams and players:** SurrealDB holds the seasons around our matches in football (620 matches), basketball and cricket, and answers only from matches before this one, so nothing later leaks.
 - **Talk:** press **Talk** and the match pauses while you speak with the commentator; each answer goes through Claude via Mubit and the same check as Ask. Escape, or 12 s of silence, resumes.
 - **One speaking queue:** ordinary commentary lines queue; a decisive moment can fade and interrupt
   a spoken answer, and routine lines that have gone stale are dropped.
@@ -218,8 +219,8 @@ The live site's budget guard; `0` turns one off.
 
 | Setting | Default | What it limits |
 |---|---|---|
-| `MAX_LIVE_REPLAYS` | 4 | Replays making new lines at once; past it, stored lines play in browser speech |
-| `REPLAYS_PER_HOUR` | 10 | Replay starts per visitor per hour; then 429 |
+| `MAX_LIVE_REPLAYS` | 4 | Replays making new lines at once; past it, the match's stored lines play with no model call, or 429 if it has none |
+| `REPLAYS_PER_HOUR` | 10 | Replay starts per visitor per hour; past it, stored lines play the same way, or 429 |
 | `ASKS_PER_HOUR` | 20 | Asks per visitor per hour; then 429 |
 | `DAILY_BUDGET_USD` | 50 | Today's model and voice spend (UTC); past it, stored lines only and Ask is off air |
 
