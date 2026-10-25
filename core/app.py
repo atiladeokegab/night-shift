@@ -183,7 +183,7 @@ def create_app(
     app = FastAPI(title="Touchline")
     if not os.environ.get("MUBIT_API_KEY"):
         log.warning("MUBIT_API_KEY unset: Mubit is off, lines use the fallback")
-    graph.start()  # once per process; when it fails, Follow a player reads the packs
+    graph.start_soon()  # once per process; when it fails, Follow a player reads the packs
     store = store or open_store()
     deps = deps or default_deps()
     replays: dict[str, Replay] = {}

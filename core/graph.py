@@ -142,20 +142,38 @@ def load(packs: Path = PACKS, sample: Path = SAMPLE):
 
 def start() -> float | None:
     """Load the graph once per process; the seconds it took, or None when it is off."""
-    global _db
     with _lock:
-        if _db is not None:
-            return 0.0
-        t = time.perf_counter()
+        return _load()
+
+
+def start_soon() -> None:
+    """start() on a thread, so the server answers while the graph loads. The lock is taken here,
+    before the thread runs: every reader from now on waits for the load instead of the packs."""
+    _lock.acquire()
+
+    def run():
         try:
-            _db = load()
-        except Exception as exc:  # no engine, no wheel, bad data: Follow a player reads the JSON
-            log.warning("graph off, Follow a player reads the packs: %s", type(exc).__name__)
-            return None
-        _open_store()
-        took = time.perf_counter() - t
-        log.info("graph loaded in %.2f s", took)
-        return took
+            _load()
+        finally:
+            _lock.release()
+
+    threading.Thread(target=run, name="graph-load", daemon=True).start()
+
+
+def _load() -> float | None:
+    global _db
+    if _db is not None:
+        return 0.0
+    t = time.perf_counter()
+    try:
+        _db = load()
+    except Exception as exc:  # no engine, no wheel, bad data: Follow a player reads the JSON
+        log.warning("graph off, Follow a player reads the packs: %s", type(exc).__name__)
+        return None
+    _open_store()
+    took = time.perf_counter() - t
+    log.info("graph loaded in %.2f s", took)
+    return took
 
 
 def _ready() -> bool:
