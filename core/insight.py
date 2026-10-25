@@ -1411,7 +1411,20 @@ def _wrong_score(text: str, m: dict) -> list[str]:
         if sentence.rstrip().endswith("?"):
             continue
         for start, end, pair in _said_scores(sentence, m):
-            before = _clause_before(sentence, start)
+            # An earlier clause's "not" or "were" does not negate "and Tottenham lead ...".
+            before = re.split(
+                r"\bbut\b(?=[^.!?]*\b(?:leads?|trails?)\b)",
+                _clause_before(sentence, start),
+                flags=re.I,
+            )[-1]
+            if not re.search(
+                r"\b(?:needs?|needed|will|would|could|can|might|must|chasing|hope|hoping|want|wants)\b",
+                before,
+                re.I,
+            ):
+                before = re.split(r"\band\b(?=[^.!?]*\b(?:leads?|trails?)\b)", before, flags=re.I)[
+                    -1
+                ]
             if (
                 NOT_NOW.search(before)
                 # "a one-two", "the 2-1", a tally "by five to one", a change "from 1-0"
@@ -1707,7 +1720,7 @@ SCORE_WORD = r"\d+|nil|zero|one|two|three|four|five|six|seven|eight|nine|ten"
 SCORE_AT = {**{w: i for i, w in enumerate(UNITS[:11])}, "nil": 0}
 # a score said as such: "four-two", "two to one", "two one", "three all", "one apiece"
 SAID_SCORE = re.compile(
-    rf"\b({SCORE_WORD})(?:\s*[-–]\s*|\s+to\s+|\s+)({SCORE_WORD})\b"
+    rf"\b({SCORE_WORD})(?:\s*[-–]\s*|—|\s+to\s+|\s+)({SCORE_WORD})\b"
     rf"|\b({SCORE_WORD})[- ](?:all|apiece|each)\b",
     re.I,
 )
