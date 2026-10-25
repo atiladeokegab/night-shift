@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import './App.css'
-import { listMatches, listVoices, postFix, videoStartAt } from './api'
+import { listMatches, listVoices, postFix, videoMarks, videoStartAt } from './api'
 import { About } from './components/About'
 import type { FixPhase } from './components/FixSheet'
 import { FixSheet } from './components/FixSheet'
@@ -128,6 +128,9 @@ export default function App() {
     setVoiceSheet(false)
     setVideo(embeds(match) ? 'loading' : 'unavailable')
     setCurrent((prev) => ({ match, speed, key: (prev?.key ?? 0) + 1, switching }))
+    const sent = session.current // every mark on the timeline from the start, for this replay only
+    if (match.youtube_id) videoMarks(match.match_id).then((marks) => marks && session.current === sent &&
+      setCurrent((c) => c && { ...c, match: { ...c.match, marks } }))
     setScreen('live')
     // A match with a highlights video holds its commentary for the player (A-6.4@2).
     replay.start(match.match_id, speed, !!match.youtube_id, match.video_start, startIdx)

@@ -218,10 +218,10 @@ def create_app(
         return need_deps().list_matches()
 
     @app.get("/matches/{match_id}/start")
-    def video_start(match_id: str, at: int):
-        """Where the video starts for a replay that jumps to moment `at` (the page's ?at=)."""
-        vmap = need_deps().video_map(match_id, at)
-        return {"video_start": vmap and vmap["start"]}
+    def video_start(match_id: str, at: int | None = None):
+        """Where the video starts (at moment `at`, the page's ?at=), and every mapped moment."""
+        vmap = need_deps().video_map(match_id, at) or {"start": None, "moments": []}
+        return {"video_start": vmap["start"], "marks": vmap["moments"]}  # [{idx, video_t}]
 
     def too_many(wait: int, detail: str) -> HTTPException:
         return HTTPException(429, detail, headers={"Retry-After": str(wait)})

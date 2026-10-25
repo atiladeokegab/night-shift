@@ -170,4 +170,16 @@ def test_the_video_start_for_any_moment_is_the_one_a_jump_there_uses(tmp_path):
     with TestClient(create_app(Store(tmp_path), deps)) as client:
         start = client.get("/matches/3869685/start", params={"at": 45}).json()["video_start"]
         assert start == video_map("3869685", 45)["start"] == 441  # idx 45 at 451.2 s, less 10
-        assert client.get("/matches/nope/start", params={"at": 3}).json() == {"video_start": None}
+        assert client.get("/matches/nope/start", params={"at": 3}).json() == {
+            "video_start": None,
+            "marks": [],
+        }
+
+
+def test_the_start_route_lists_every_mapped_moment_so_the_page_marks_them_at_load(tmp_path):
+    deps = Deps(list_matches, load_moments, recording([]), video_map)
+    with TestClient(create_app(Store(tmp_path), deps)) as client:
+        got = client.get("/matches/3869685/start").json()
+        assert got["marks"] == video_map("3869685")["moments"]  # every {idx, video_t}, in order
+        assert len(got["marks"]) > 1 and set(got["marks"][0]) == {"idx", "video_t"}
+        assert got["video_start"] == video_map("3869685")["start"]  # no ?at=: the whole video
