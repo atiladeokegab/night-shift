@@ -85,17 +85,23 @@ test('the whole matches lead, then the WSL match with its quiet note; the famous
   assert.equal(coverage(m('football', '3869685', 'v')), 'Highlights, synced to video')
 })
 
-test("the home page says #206's name, hook and pitch, and never the claims we can't make", () => {
-  const wall = readFileSync(new URL('./components/Wall.tsx', import.meta.url), 'utf8').replace(/\s+/g, ' ')
+test('the home page is the hook and one line; About keeps the Mubit fixes and the cost, and neither claims what we cannot', () => {
+  const read = (f: string) => readFileSync(new URL(`./components/${f}`, import.meta.url), 'utf8').replace(/\s+/g, ' ')
+  const wall = read('Wall.tsx')
+  const about = read('About.tsx')
   for (const said of [
-    'Touchline: the describer that checks itself',
     'Every match deserves to be described.', // #246
-    'Most matches have no audio description. A blind or low-vision fan following one gets no description.',
-    "Touchline describes the matches a platform streams with nobody describing them. It checks the score, the leader and the key numbers before it speaks, fixes what it can itself, sends the rest to a producer, and each fix that passes the number check is recorded in Mubit as training data for that platform's own describer.",
-    'replays, as if live',
-    'A full replay, mostly highlights, costs', // #257 review: never price a highlights replay as a whole match
+    'Most matches have no audio description. Touchline calls them aloud, checking the score and key numbers before it speaks.',
+    '▶ Hear a match called',
+    '<span>Sound on.</span>',
   ]) assert.ok(wall.includes(said), said)
-  assert.doesNotMatch(wall, /checks every fact|a million matches/i)
+  for (const gone of ['Touchline describes the matches', 'on average', 'Or pick any match']) assert.ok(!wall.includes(gone), gone)
+  for (const said of [
+    'each fix that passes the number check is recorded in Mubit as training data',
+    'as if live',
+    'A full replay, mostly highlights, costs', // #257 review: never price a highlights replay as a whole match
+  ]) assert.ok(about.includes(said), said)
+  for (const page of [wall, about]) assert.doesNotMatch(page, /checks every fact|a million matches/i)
 })
 
 test('the Teams tab is for sports with sides: absent for F1, present for the rest', () => {
