@@ -60,7 +60,9 @@ export function About({ onGo }: { onGo: (screen: Screen) => void }) {
             </li>
             <li>
               <strong>What they see.</strong> The match's event data, the score or standing and the recent play,
-              never anything later than the moment. Neither sees the video.
+              never anything later than the moment. Neither sees the video unless you share the tab with Let
+              them watch: then a short note of what the picture shows goes into the next line, and the frame is
+              never stored.
             </li>
             <li>
               <strong>How they hand over.</strong> They take turns, never one twice in a row, each starting as the
