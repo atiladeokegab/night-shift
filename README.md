@@ -43,6 +43,18 @@ of that match.
 
 </div>
 
+> **The Mubit loop, in four steps** ([the evidence, step by step](docs/mubit.md))
+>
+> 1. A producer fixes a line.
+> 2. The fix is sent to Mubit as a Score check training example: 2,163 sent, 62 from producer
+>    fixes (live `/stats`, 25 Oct 2026 00:24 UTC).
+> 3. Mubit trains and tests a version.
+> 4. Mubit's "Check one line of 2" task (one of our two line-checking tasks; the console cuts the
+>    name short) shows 94.6% for its first version, testing v1, in testing (console read by hand,
+>    25 Oct 2026 06:27 UTC). The app does not call an adapter.
+>
+> Earlier reading: 33.3% for the first Score check version at 00:14 UTC.
+
 What you hear are **replays, as if live**: real matches' event data played back over their
 broadcast highlights, each line called at its moment, in four sports.
 
