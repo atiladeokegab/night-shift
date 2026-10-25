@@ -398,6 +398,9 @@ h1 { font: 600 clamp(2.6rem, 4.6vw, 3.9rem)/1 var(--display); letter-spacing: -.
   .card .art .crests { right: 8%; top: 30%; width: 32%; }
   .card .art .by-label { display: inline; }
   .card .art::after { background: linear-gradient(0deg, #0A0E1A 0%, rgba(10, 14, 26, 0) 50%); }
+  /* eyes closed on a ~200 px picture: the line keeps clear of the score at its foot; the full line is in the card below */
+  .eyes { padding: 12px 5% 60px; }
+  .eyes p { font-size: 1.05rem; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 5; overflow: hidden; }
   .card-body { max-width: none; padding: calc(62.5% - 24px) 22px 22px; }
   .card h2 { font-size: 1.8rem; }
   .meta { margin-top: 4px; padding-top: 8px; }
