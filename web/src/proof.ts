@@ -47,13 +47,15 @@ export function heldoutRow(h: HeldOut | null | undefined): string | null {
 }
 
 // Mubit's console as read by hand (#317), with its source and time, e.g. "Mubit console, 25 Oct 00:14
-// UTC: 11 tasks, 8 adapters, 0 serving; best 58.3% of a 95% target". A dated reading, never live data.
+// UTC: 11 tasks, 8 adapters, 0 serving; best 58.3% of a 95% target, Not ready yet". A dated reading, never live data.
 export function consoleRow(c: ConsoleReading | null | undefined): string | null {
   if (!c) return null
   const day = new Date(c.read_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })
-  const scores = Object.values(c.listed).map((t) => t.quality)
-  const best = scores.length ? `; best ${Math.max(...scores)}% of a ${c.target}% target` : ''
-  return `${c.source}, ${day} ${c.read_at.slice(11, 16)} UTC: ${c.tasks} tasks, ${c.adapters} adapters, ${c.serving} serving${best}`
+  const top = Object.values(c.listed).sort((a, b) => b.quality - a.quality)[0]
+  const target = c.target === null ? '' : ` of a ${c.target}% target`
+  const best = top ? `; best ${top.quality}%${target}, ${top.status}` : ''
+  const serving = c.serving === null ? '' : `, ${c.serving} serving`
+  return `${c.source}, ${day} ${c.read_at.slice(11, 16)} UTC: ${c.tasks} tasks, ${c.adapters} adapters${serving}${best}`
 }
 
 // What a Line check flag does: it never unsays a line (#317).
@@ -121,6 +123,7 @@ export function earlierRows(et: EarlierTasks | undefined): string[] {
   return [
     `Commentary: ${et.adapter.summary}`,
     consoleRow(et.adapter.console),
+    consoleRow(et.adapter.console?.earlier),
     ...others.map(([task, a]) => `${task.replace(/_/g, ' ')}: ${adapterRow(a)}`),
   ].filter((row): row is string => row !== null)
 }

@@ -243,10 +243,11 @@ export interface ConsoleReading {
   read_at: string // ISO, UTC
   tasks: number
   adapters: number
-  serving: number
-  target: number
+  serving: number | null // null where that reading didn't record it
+  target: number | null
   // by task name: no brackets in a `stats` event; test_cases null where the console didn't show it
-  listed: Record<string, { status: string; version: number; quality: number; test_cases: number | null; note?: string }>
+  listed: Record<string, { status: string; version: number; quality: number; test_cases: number | null; calls?: number; kept?: number; note?: string }>
+  earlier?: ConsoleReading // the reading before this one, kept as dated
 }
 
 // One Mubit task's latest adapter record (#209), as the lead read it off Mubit's console; null where it didn't say.
