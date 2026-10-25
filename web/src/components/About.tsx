@@ -16,7 +16,7 @@ export function About({ onGo }: { onGo: (screen: Screen) => void }) {
         <h1>The describer that checks itself.</h1>
         <div className="about">
           <p>
-            <strong>Most matches are streamed with nobody describing them.</strong> Touchline describes them. As each
+            <strong>For matches streamed without audio description, Touchline describes the action.</strong> As each
             key moment plays, it calls it in one short line, read aloud and shown as a large caption, never before the
             moment reaches the picture. The matches here are replays of real matches, as if live.
           </p>
