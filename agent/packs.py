@@ -90,8 +90,7 @@ def nba_shots(name: str) -> list[dict]:
     timeout = httpx.Timeout(120.0, connect=10.0)
     data = feed._fetch(feed.NBA_PBP.format(name=name), f"{name}.tar.xz", timeout=timeout)
     with tarfile.open(fileobj=io.BytesIO(data), mode="r:xz") as tar:
-        member = next(m for m in tar.getmembers() if m.isfile() and m.name.endswith(".csv"))
-        return list(csv.DictReader(io.TextIOWrapper(tar.extractfile(member), encoding="utf-8")))
+        return list(csv.DictReader(io.TextIOWrapper(feed._csv(tar, name), encoding="utf-8")))
 
 
 def _iso(yyyymmdd: str) -> str:
@@ -257,10 +256,11 @@ def phase(over: int) -> str:
 def _balls(match: dict):
     """(innings no, over, delivery) in the feed's order: super overs are not moments."""
     for n, inn in enumerate(match.get("innings") or [], start=1):
-        if not inn.get("super_over"):
+        if isinstance(inn, dict) and not inn.get("super_over"):  # junk skipped as the feed skips it
             for over in inn.get("overs") or []:
-                for d in over.get("deliveries") or []:
-                    yield n, inn.get("team"), feed._num(over.get("over")) or 0, d
+                for d in over.get("deliveries") or [] if isinstance(over, dict) else []:
+                    if isinstance(d, dict):
+                        yield n, inn.get("team"), feed._num(over.get("over")) or 0, d
 
 
 def _batting(p: dict, over: int) -> dict:
