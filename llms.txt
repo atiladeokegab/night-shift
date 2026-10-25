@@ -16,6 +16,7 @@ Python 3.12 (FastAPI, uv) server in `core/` and `agent/`, React page in `web/`, 
 
 - [docs/features.md](docs/features.md): every feature for the fan, the producer and engineering, each with its live link, code and test, plus screenshots and the numbers
 - [docs/evidence.md](docs/evidence.md): the correction loop with real examples, how Mubit is used, how the check was measured, and the source of every README figure
+- [docs/usefulness.md](docs/usefulness.md): why Touchline is useful: primary sources showing the need for described matches, what the product does today for each need, the buyer and cost proposition, and what would prove usefulness beyond the prototype
 - [docs/PRD.md](docs/PRD.md): the requirements (PRD v6); each has an ID such as A-6.4 that the tests checking it name
 - [docs/feedback.md](docs/feedback.md): each point from the judge's second check-in and the PR or file where it landed
 - [docs/build-log.md](docs/build-log.md): how much the team shipped during the event, in what order and how each piece was checked, every number with the command that reproduces it

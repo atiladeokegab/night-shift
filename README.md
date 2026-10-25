@@ -106,6 +106,8 @@ The figures we have, side by side ([the problem](docs/evidence.md#the-problem)):
   [`eval/live_stats_2026-10-24.json`](eval/live_stats_2026-10-24.json): `cost_per_match_usd`,
   `matches_measured`). That is a highlights replay, not a whole 90 minutes.
 
+[Usefulness: primary evidence and capability receipts](docs/usefulness.md)
+
 ## For judges
 
 **Live:** <https://night-shift-5zvig7nbvq-ew.a.run.app> (Cloud Run, real Mubit calls, sound on).
