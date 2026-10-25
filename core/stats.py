@@ -242,6 +242,17 @@ def _linecheck(store) -> dict:
     }
 
 
+def _scorecheck_live(store) -> dict:
+    """Score check asked live on fresh lines: how often it agreed with code's answer key, and
+    which model Mubit says answered (`served_by`), the evidence a served version is used."""
+    rows = store.all("scorechecks")
+    return {
+        "calls": len(rows),
+        "agreed": sum(r.get("code") is not None and r.get("label") == r["code"] for r in rows),
+        "by_served_by": dict(Counter(r.get("served_by") or "unknown" for r in rows)),
+    }
+
+
 def _stats(store) -> dict:
     lines = store.all("lines")
     fixes = store.all("fixes")
@@ -289,6 +300,7 @@ def _stats(store) -> dict:
         "autonomy": _autonomy(calls),
         "autonomy_by_match": {m: _autonomy(c) for m, c in by_match.items()},
         "linecheck": _linecheck(store),
+        "scorecheck_live": _scorecheck_live(store),
         "scorecheck": _scorecheck(store, tasks.pop("score_check", None)),
         # the commentary tasks trained before Score check (#363): kept, never the headline
         "earlier_tasks": {"adapter": _adapter(commentary), "adapters": tasks},
