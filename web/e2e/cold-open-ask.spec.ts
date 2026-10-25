@@ -19,6 +19,8 @@ const cold = {
   sport: 'cricket', match_id: videoMatch.match_id, idx: 0, period: 1, clock: '0.0', type: 'Stat', team: 'India',
   players: {}, outcome: 'cold open welcome', score: { runs: 0, wickets: 0 }, detail: {},
 }
+// the cold open's later facts are timed Stats (core/replay.py): still the cold open, not an event to ask about
+const coldFact = { ...cold, outcome: 'cold open fact', video_t: 5 }
 const wicket = {
   sport: 'cricket', match_id: videoMatch.match_id, idx: 0, period: 1, clock: '1.1', type: 'Wicket', team: 'India',
   players: { out: 'Batter', bowler: 'Bowler' }, outcome: 'Bowled', video_t: 30,
@@ -50,6 +52,7 @@ test('video cold open disables Ask until the same-index mapped event is visible'
     body: [
       ['moment', cold],
       ['line', intro],
+      ['moment', coldFact],
       ['moment', wicket],
       ['line', wicketLine],
     ].map(([type, value]) => `event: ${type}\ndata: ${JSON.stringify(value)}\n\n`).join(''),
@@ -75,6 +78,7 @@ test('video cold open disables Ask until the same-index mapped event is visible'
   await page.waitForTimeout(15_500) // Let the quiet-spell Ask fire while the first mapped moment is still ahead.
   expect(askPosts).toBe(0)
   expect(tokenPosts).toBe(0)
+  await expect(page.locator('#ask-q')).toBeDisabled() // the timed cold-open fact is on screen
   await expect(page.getByRole('button', { name: 'Talk' })).toHaveCount(0)
 
   await page.waitForFunction(() => Boolean((window as unknown as { fakePlayer?: unknown }).fakePlayer))
