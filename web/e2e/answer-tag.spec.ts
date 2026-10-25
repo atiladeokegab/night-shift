@@ -19,13 +19,21 @@ const wicketLine = {
   line_id: 'wicket-line', match_id: match.match_id, moment_idx: 0, video_t: 9, speaker: 'lead',
   text: 'Bowled him first ball!', latency_ms: 1,
 }
+const stat = {
+  ...wicket, type: 'Stat', clock: '1.2', outcome: 'The next delivery is set.', video_t: 10.78,
+}
+const statLine = {
+  line_id: 'stat-line', match_id: match.match_id, moment_idx: 0, video_t: 10.78, speaker: 'analyst',
+  text: 'The next delivery is set.', latency_ms: 1,
+}
 
-test('an answer at duplicate first idx tags the real wicket, not the cold open', async ({ page }) => {
+test('Ask waits for the first mapped event and tags its duplicate idx as the wicket', async ({ page }) => {
   await page.route('https://www.youtube.com/iframe_api', (r) => r.fulfill({ contentType: 'text/javascript', body: FAKE_YT }))
   await page.route(/ytimg\.com|youtube(-nocookie)?\.com\/(?!iframe_api)/, (r) => r.abort())
   await page.route('**/matches', (r) => r.fulfill({ json: [match] }))
   await page.route('**/voices', (r) => r.fulfill({ json: [] }))
   await page.route('**/replays', (r) => r.fulfill({ json: { replay_id: 'answer-tag-replay' } }))
+  let askPosts = 0
   await page.route('**/replays/*/stream', (r) => r.fulfill({
     contentType: 'text/event-stream',
     body: [
@@ -33,6 +41,7 @@ test('an answer at duplicate first idx tags the real wicket, not the cold open',
     ].map(([type, value]) => `event: ${type}\ndata: ${JSON.stringify(value)}\n\n`).join(''),
   }))
   await page.route('**/replays/*/ask', async (r) => {
+    askPosts += 1
     const { question, moment_idx } = r.request().postDataJSON()
     await r.fulfill({ json: { line_id: `answer-${question}`, moment_idx, question, text: 'The wicket has put Pakistan one down.', off_air: true } })
   })
@@ -40,14 +49,10 @@ test('an answer at duplicate first idx tags the real wicket, not the cold open',
   await page.goto('/')
   await page.getByRole('button', { name: /India v Pakistan/ }).click()
   await expect(page.locator('.caption .cap-text')).toContainText('Welcome.')
-
-  // The wicket is already in the received stream, but it is still queued behind the picture.
-  // An Ask at the cold open must keep that visible time rather than borrowing the future event.
-  await page.locator('#ask-q').fill('What is the opening score?')
-  await page.getByRole('button', { name: 'Ask', exact: true }).click()
-  await expect(page.locator('.caption .cap-state')).toBeVisible()
-  await expect(page.locator('.caption .tag')).toHaveText('at Over 0.0')
-  await expect(page.locator('.caption .cap-text')).toContainText('Welcome.', { timeout: 10_000 })
+  await expect(page.locator('#ask-q')).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Ask', exact: true })).toBeDisabled()
+  await expect(page.getByRole('button', { name: 'Where are we?' })).toBeDisabled()
+  expect(askPosts).toBe(0)
 
   await page.waitForFunction(() => Boolean((window as unknown as { fakePlayer?: unknown }).fakePlayer))
   await page.evaluate(() => {
@@ -56,12 +61,13 @@ test('an answer at duplicate first idx tags the real wicket, not the cold open',
   })
   await expect(page.locator('.caption .cap-text')).toContainText('Bowled him first ball!')
   await expect(page.locator('.caption .tag')).toHaveText('Over 1.1 · Wicket')
-  await expect(page.locator('.log li.qa .at')).toContainText('at Over 0.0')
-
+  await expect(page.locator('#ask-q')).toBeEnabled()
   await page.locator('#ask-q').fill('What happened to the batter?')
   await page.getByRole('button', { name: 'Ask', exact: true }).click()
+  await expect.poll(() => askPosts).toBe(1)
   await expect(page.locator('.caption .cap-state')).toBeVisible()
   await expect(page.locator('.caption .tag')).toHaveText('at Over 1.1')
+  await expect(page.locator('.log li.qa .at')).toContainText('at Over 1.1')
 })
 
 test('a delayed answer keeps the moment visible when its Ask began', async ({ page }) => {
@@ -73,7 +79,7 @@ test('a delayed answer keeps the moment visible when its Ask began', async ({ pa
   await page.route('**/replays/*/stream', (r) => r.fulfill({
     contentType: 'text/event-stream',
     body: [
-      ['moment', cold], ['line', intro], ['moment', wicket], ['line', wicketLine],
+      ['moment', cold], ['line', intro], ['moment', wicket], ['line', wicketLine], ['moment', stat], ['line', statLine],
     ].map(([type, value]) => `event: ${type}\ndata: ${JSON.stringify(value)}\n\n`).join(''),
   }))
 
@@ -92,19 +98,29 @@ test('a delayed answer keeps the moment visible when its Ask began', async ({ pa
   await page.getByRole('button', { name: /India v Pakistan/ }).click()
   await expect(page.locator('.caption .cap-text')).toContainText('Welcome.')
   await page.waitForFunction(() => Boolean((window as unknown as { fakePlayer?: unknown }).fakePlayer))
-  await page.locator('#ask-q').fill('What is the opening score?')
-  await page.getByRole('button', { name: 'Ask', exact: true }).click()
-  await requested
-
-  // The response is still held while the player releases the queued same-index wicket.
   await page.evaluate(() => {
     const player = (window as unknown as { fakePlayer: { seekTo(t: number): void } }).fakePlayer
     player.seekTo(9)
   })
-  await expect(page.locator('.log')).toContainText('Bowled him first ball!')
+  await expect(page.locator('.caption .tag')).toHaveText('Over 1.1 · Wicket')
+  await page.locator('#ask-q').fill('What is the opening score?')
+  await page.getByRole('button', { name: 'Ask', exact: true }).click()
+  await requested
+
+  // The response stays held while the picture advances past the asked moment, then rewinds.
+  await page.evaluate(() => {
+    const player = (window as unknown as { fakePlayer: { seekTo(t: number): void } }).fakePlayer
+    player.seekTo(10.78)
+  })
+  await expect(page.locator('.log')).toContainText('The next delivery is set.')
+  await page.evaluate(() => {
+    const player = (window as unknown as { fakePlayer: { seekTo(t: number): void } }).fakePlayer
+    player.seekTo(9)
+  })
+  await expect(page.locator('.caption .tag')).toHaveText('Over 1.1 · Wicket')
   releaseResponse()
 
   await expect(page.locator('.caption .cap-state')).toBeVisible()
-  await expect(page.locator('.caption .tag')).toHaveText('at Over 0.0')
-  await expect(page.locator('.log li.qa .at')).toContainText('at Over 0.0')
+  await expect(page.locator('.caption .tag')).toHaveText('at Over 1.1')
+  await expect(page.locator('.log li.qa .at')).toContainText('at Over 1.1')
 })

@@ -32,6 +32,13 @@ async function openKobe(page: Page, token: { status: number; json?: object }) {
     asked.push(r.request().url())
     return r.fulfill({ status: token.status, json: token.json ?? { detail: 'not configured' } })
   })
+  await page.route('**/matches', async (r) => {
+    const response = await r.fetch()
+    const matches = await response.json()
+    const kobe = matches.find((m: { match_id: string; video_start?: number }) => m.match_id === '0020500591')
+    if (kobe) kobe.video_start = 490.5 // Start at the first mapped event; keep the player-clock test fast.
+    await r.fulfill({ response, json: matches })
+  })
   await page.setViewportSize({ width: 1280, height: 900 })
   await page.goto('/')
   await page.getByRole('button', { name: KOBE }).click()

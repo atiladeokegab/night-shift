@@ -61,7 +61,7 @@ interface Props {
   onNext: (() => void) | null // the wall's next match (A-6.5), when there is more than one
   onVoiceSheet: () => void
   onFix: (line: Line) => void
-  onAsk: (question: string, momentIdx: number) => Promise<void>
+  onAsk: ((question: string, momentIdx: number) => Promise<void>) | null
   mic?: Mic // Mic on (#286): what the page is saying, and the hush for a barge-in
   interrupted?: string[] // answers a decisive moment cut off
   onHear?: (answer: Answer) => void
@@ -344,7 +344,7 @@ export function Live(props: Props) {
                 </TalkBoundary>
               </>
             )} lines={shown.lines} late={replay.late} fixes={replay.fixes} checks={replay.checks} examples={replay.examples} moments={shown.moments} onFix={onFix}
-              answers={replay.answers} interrupted={props.interrupted} onHear={props.onHear} onAsk={moment ? (q) => onAsk(q, moment.idx) : null} shooter={null} onShots={openMap} followed={followed} roster={roster} onUnfollow={() => setFollow(null)} voiced={voiced} mic={props.mic} />
+              answers={replay.answers} interrupted={props.interrupted} onHear={props.onHear} onAsk={moment && onAsk ? (q) => onAsk(q, moment.idx) : null} shooter={null} onShots={openMap} followed={followed} roster={roster} onUnfollow={() => setFollow(null)} voiced={voiced} mic={props.mic} />
           </div>
           <div className="pane" role="tabpanel" id="pane-proof" aria-labelledby="tab-proof" data-on={tab === 'proof'}>
             <ProofPanel live={replay.stats} matchId={match.match_id} fellBack={voice.fellBack} />

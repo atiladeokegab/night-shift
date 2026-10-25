@@ -8,6 +8,18 @@ const KOBE = /^Basketball ?Kobe's 81/
 type Rec = { started: boolean; stopped: boolean; continuous: boolean }
 type Fake = { recs: Rec[]; spoken: string[]; cancels: number; say(text: string, final: boolean): void }
 
+// These tests cover microphone behavior, not video playback; use an explicit no-video match.
+async function noVideoMatch(page: Page) {
+  await page.route('**/matches', async (route) => {
+    const response = await route.fetch()
+    const matches = await response.json()
+    await route.fulfill({
+      response,
+      json: matches.map(({ youtube_id, video_start, peak_video_start, ...match }: Record<string, unknown>) => match),
+    })
+  })
+}
+
 // `available` false: the browser has no speech recognition at all.
 async function fakeMic(page: Page, available: boolean) {
   await page.addInitScript((available) => {
@@ -42,6 +54,7 @@ async function fakeMic(page: Page, available: boolean) {
 
 async function openKobe(page: Page) {
   await page.setViewportSize({ width: 1280, height: 900 })
+  await noVideoMatch(page)
   await page.goto('/')
   await page.getByRole('button', { name: KOBE }).click()
   await expect(page.locator('.caption .cap-text')).toBeVisible({ timeout: 45_000 })

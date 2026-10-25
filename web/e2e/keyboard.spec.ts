@@ -7,6 +7,18 @@ import { expect, test, type Locator, type Page } from '@playwright/test'
 const KOBE = /^Basketball ?Kobe's 81/ // the tile, never its Jump pill
 const ANSWER = 'Kobe has 26 points, Toronto lead by 14.'
 
+// These keyboard checks do not exercise video gating; model an explicitly no-video match.
+async function noVideoMatch(page: Page) {
+  await page.route('**/matches', async (route) => {
+    const response = await route.fetch()
+    const matches = await response.json()
+    await route.fulfill({
+      response,
+      json: matches.map(({ youtube_id, video_start, peak_video_start, ...match }: Record<string, unknown>) => match),
+    })
+  })
+}
+
 async function openLive(page: Page, width = 1280) {
   const asked: string[] = []
   await page.route(/\/replays\/[^/]+\/ask$/, async (r) => {
@@ -23,9 +35,11 @@ async function openLive(page: Page, width = 1280) {
     before: null, tonight: { attempts: 20, made: 11 }, n: 0, small_sample: false, text: '',
   } }))
   await page.setViewportSize({ width, height: 900 })
+  await noVideoMatch(page)
   await page.goto('/')
   await page.getByRole('button', { name: KOBE }).click()
   await expect(page.locator('.caption .cap-text')).toBeVisible({ timeout: 45_000 })
+  await expect(page.locator('#ask-q')).toBeEnabled()
   return asked
 }
 
@@ -87,6 +101,20 @@ for (const width of [390, 1280]) {
 }
 
 test('voice silent: the caption is a live region and an answer is read out in full; voiced again, neither', async ({ page }) => {
+  const moment = {
+    sport: 'basketball', match_id: '0020500591', idx: 0, period: 1, clock: '10:35', type: 'Field goal',
+    team: 'Toronto Raptors', players: { shooter: 'Morris Peterson', assist: 'Mike James' }, outcome: '2 points',
+    score: { home: 2, away: 2 }, detail: { play: "Peterson 17' Jump Shot (2 PTS) (James 1 AST)", player_points: 2, tied: true },
+  }
+  const line = {
+    line_id: 'keyboard-silent-line', match_id: moment.match_id, moment_idx: 0, speaker: 'lead',
+    text: 'Peterson ties the game with a jumper.',
+  }
+  await page.route('**/replays', (r) => r.fulfill({ json: { replay_id: 'keyboard-silent-replay' } }))
+  await page.route('**/replays/keyboard-silent-replay/stream', (r) => r.fulfill({
+    contentType: 'text/event-stream',
+    body: `event: moment\ndata: ${JSON.stringify(moment)}\n\nevent: line\ndata: ${JSON.stringify(line)}\n\n`,
+  }))
   await openLive(page)
   const caption = page.getByRole('region', { name: 'Caption' })
   const announced = page.locator('.lines p.sr-only[aria-live="polite"]')

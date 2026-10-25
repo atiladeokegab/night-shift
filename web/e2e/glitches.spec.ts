@@ -6,7 +6,16 @@ import { FAKE_YT } from './fakeYT'
 
 const sse = (events: [string, unknown][]) => events.map(([e, d]) => `event: ${e}\ndata: ${JSON.stringify(d)}\n\n`).join('')
 
-async function replay(page: Page, events: [string, unknown][]) {
+async function replay(page: Page, events: [string, unknown][], video = false) {
+  await page.route('**/matches', async (r) => {
+    const response = await r.fetch()
+    const matches = await response.json()
+    for (const match of matches) {
+      if (video && match.match_id === '0020500591') match.video_start = 490.5
+      else delete match.youtube_id // These layout checks do not exercise a player clock.
+    }
+    await r.fulfill({ response, json: matches })
+  })
   await page.route('https://www.youtube.com/iframe_api', (r) => r.fulfill({ contentType: 'text/javascript', body: FAKE_YT }))
   await page.route(/ytimg\.com|youtube(-nocookie)?\.com\/(?!iframe_api)/, (r) => r.abort())
   await page.route('**/replays', (r) => r.fulfill({ json: { replay_id: 'glitch-1' } }))
@@ -69,10 +78,11 @@ test('the cricket Follow card keeps its table and Unfollow inside its padding at
 
 test('Talk reads "Connecting" at full strength while its session starts', async ({ page }) => {
   const moment = {
-    sport: 'basketball', match_id: '0020500591', idx: 0, period: 1, clock: '10:35', type: 'Field goal',
-    team: 'Toronto Raptors', players: { shooter: 'Morris Peterson' }, outcome: '2 points', score: { home: 2, away: 2 }, detail: {},
+    sport: 'basketball', match_id: '0020500591', idx: 3, video_t: 490.5, period: 3, clock: '09:36', type: 'Field goal',
+    team: 'Los Angeles Lakers', players: { shooter: 'Kobe Bryant' }, outcome: '2 points', score: { home: 53, away: 69 },
+    detail: { play: "Bryant 10' Running Jump Shot (30 PTS)", player_points: 30 },
   }
-  await replay(page, [['moment', moment]])
+  await replay(page, [['moment', moment]], true)
   await page.route('**/converse/*/*/token*', () => new Promise(() => {})) // the token never comes: Connecting stays
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/')
