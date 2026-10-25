@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/banner.svg" alt="Banner: the word Touchline. in amber over a drawn night stadium with floodlights and a green pitch, the tagline The describer that checks itself, and a red ON AIR pill." width="100%">
+<img src="docs/banner.svg" alt="Banner: the word Touchline. in amber over a drawn night stadium with floodlights and a green pitch, the tagline The describer that checks itself, and an ON AIR pill with an amber dot." width="100%">
 
 <sub><b>Touchline: the describer that checks itself.</b> For the match nobody described.</sub>
 
@@ -22,9 +22,22 @@ described broadcast, Touchline calls that match aloud moment by moment, answers 
 about it at any point, and a producer's fix to one line goes with the request for every later line
 of that match.
 
-<img src="docs/media/demo.gif" alt="A 9-second screen recording of the live Touchline page: lines are called one after another and stack in the Lines card as the match goes on, and one of them carries an auto-fixed tag." width="100%">
+<img src="docs/media/demo.gif" alt="An 11-second screen recording of the live Touchline site. It opens on the home page, Every match deserves to be described, with the match cards. Then Lakers v Raptors plays from Kobe Bryant's 79th point to his 80th: the score bar reads LAK 121-102 RAP at 00:43 in the fourth quarter, the caption card shows the called line, and the line lands at the top of the Lines card tagged Checked, Via Mubit and Auto-fixed. The video area shows the highlight's still image." width="100%">
 
 <sub>Touchline calls match moments as spoken lines. Each line is checked against the match data, and one is marked auto-fixed.</sub>
+
+<table>
+<tr>
+<td width="33%"><img src="docs/img/eyes-closed.png" alt="Close your eyes mode on India v Pakistan: the picture is black and only the called line, Kohli strikes again! Another six, and India need sixteen from the last six balls!, shows large in its place, over the score bar IND 144/4, PAK 159/8, over 18.6." width="100%"></td>
+<td width="33%"><img src="docs/img/about-mubit.png" alt="The About page's flow: match data goes to the lead and the analyst, then the number check on score, leader and numbers; if wrong, one retry, then a line from the data; then ElevenLabs voice and a caption; then stored for replays, and a producer's fix goes to Mubit Score check training." width="100%"></td>
+<td width="33%"><img src="docs/media/phone.png" alt="Touchline on a phone: Lakers v Raptors with the highlight's still image, the score bar LAK 120-102 RAP, the called line about Kobe Bryant's seventy-ninth point, and tabs for Follow, Lines, Proof, Teams and Shot map." width="100%"></td>
+</tr>
+<tr>
+<td align="center"><sub>Close your eyes</sub></td>
+<td align="center"><sub>How a line is made</sub></td>
+<td align="center"><sub>On a phone</sub></td>
+</tr>
+</table>
 
 [**Try it live**](https://night-shift-5zvig7nbvq-ew.a.run.app) · [**On stage**](#on-stage) · [**What's new**](#whats-new-tonight) · [**How well the check works**](#how-well-the-check-works) · [**Every feature**](docs/features.md) · [**The evidence**](docs/evidence.md) · [**Architecture**](docs/ARCHITECTURE.md)
 
@@ -32,6 +45,8 @@ of that match.
 
 What you hear are **replays, as if live**: real matches' event data played back over their
 broadcast highlights, each line called at its moment, in four sports.
+
+**For agents and reviewers:** [Architecture](docs/ARCHITECTURE.md) · [Integrations](docs/integrations.md) · [Every feature](docs/features.md) · [Decisions](docs/decisions.md) · [Build log](docs/build-log.md)
 
 ## On stage
 
@@ -121,10 +136,14 @@ and its test: [the figures](docs/evidence.md#readme-figures).
 
 Every model call goes through Mubit. Training runs and eligible correction examples are recorded;
 Ask and Talk answers are unrecorded, and deployed commentary defaults to recording off. Mubit's console,
-read by hand on 25 October 2026 at 00:14 UTC ([`data/mubit_console.json`](data/mubit_console.json)),
-shows 11 tasks, 8 adapters and 0 serving. The first Score check version scored 33.3% against a 95%
-target, on 12 test cases; the best commentary task scores 58.3%. Every version reads "Not ready yet"
-or is still training, the app cannot call one, and we make no claim that any matches the big model.
+read by hand on 25 October 2026 at 06:27 UTC ([`data/mubit_console.json`](data/mubit_console.json)),
+shows 12 tasks and 9 adapters; the serving count was not read then. Mubit's "Check one line of 2" task
+(one of our two line-checking tasks; the console cuts the name short) shows 94.6% for its first
+version, testing v1, in testing (console read by hand, 25 Oct 2026 06:27 UTC). The app does not call
+an adapter. The earlier read, at 00:14 UTC, showed 11 tasks, 8 adapters and 0 serving. The first
+Score check version scored 33.3% against a 95% target, on 12 test cases; the best commentary task
+scores 58.3%. At 00:14 every version read "Not ready yet" or was still training, and we make no claim
+that any matches the big model.
 Score check, the narrower task above, has 2,161 examples sent to training, 60 of them from producer
 fixes (46 the model already matched, 5 corrected, 9 not corrected); the big model agreed with the
 code's answer key on 74 of 74 held-out lines (live `/stats` `scorecheck`, saved on 24 October 2026 at
@@ -292,7 +311,7 @@ commit names its source.
 - **More sports, then esports**, through the same agent, tools and Mubit task.
 - **Live streams, not just replays**, with the same producer fixes feeding the same training loop.
 
-The longer view: [where this goes](docs/features.md#the-product-where-this-goes).
+The longer view: [where this goes](docs/ARCHITECTURE.md#at-scale-a-plan-not-built).
 
 ## Team
 
