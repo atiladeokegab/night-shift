@@ -67,10 +67,9 @@ def spent(store, day: str) -> float:
     return model + voice
 
 
-def cached_commentator(store, match_id: str):
-    """A commentate that gives each moment's stored line back, marked `cached`, or None for a moment
-    with none and for every stat line: no model call. None: nothing stored."""
-    said = {
+def said_lines(store, match_id: str) -> dict[int, dict]:
+    """The match's stored lead lines by moment, the newest per moment."""
+    return {
         ln["moment_idx"]: ln
         for ln in store.all("lines")
         if ln.get("match_id") == match_id
@@ -79,6 +78,12 @@ def cached_commentator(store, match_id: str):
         and "open" not in ln
         and ln.get("text")
     }
+
+
+def cached_commentator(store, match_id: str, said: dict[int, dict] | None = None):
+    """A commentate that gives each moment's stored line back, marked `cached`, or None for a moment
+    with none and for every stat line: no model call. None: nothing stored."""
+    said = said_lines(store, match_id) if said is None else said
     if not said:
         return None
 
@@ -90,6 +95,30 @@ def cached_commentator(store, match_id: str):
         return {**{k: v for k, v in ln.items() if k != "video_t"}, "cached": True}
 
     return commentate
+
+
+def current_lines(store, match_id: str, due: list[dict]):
+    """`cached_commentator` for a match whose stored lines cover every moment `due` to be called
+    (stat moments aside) and are its newest word, or None: one missing, so the replay makes them
+    all and fills the gap, or a producer's fix newer than its newest line."""
+    said = said_lines(store, match_id)
+    if not said or any(m["idx"] not in said for m in due if m.get("type") != "Stat"):
+        return None
+    lines = [ln for ln in store.all("lines") if ln.get("match_id") == match_id]
+    ids = {ln.get("line_id") for ln in lines}
+    newest = max(ln.get("created_at") or "" for ln in lines)
+    fixed = max(
+        (
+            f.get("created_at") or ""
+            for f in store.all("fixes")
+            if f.get("match_id") == match_id or f.get("line_id") in ids
+        ),
+        default=None,
+    )
+    # a fix stamped in the same second as the newest line still came after it
+    if fixed is not None and fixed >= newest:
+        return None
+    return cached_commentator(store, match_id, said)
 
 
 class SayOnly:

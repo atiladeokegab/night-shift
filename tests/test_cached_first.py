@@ -1,5 +1,5 @@
-"""Cached first: a match's stored lines are said again with no model call, unless a producer's fix is
-newer than them, and every line's ElevenLabs clip is saved once and served again."""
+"""Cached first: a match's stored lines are said again with no model call, unless a producer's
+fix is newer than them, and every line's ElevenLabs clip is saved once and served again."""
 
 import httpx
 

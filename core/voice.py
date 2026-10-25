@@ -459,7 +459,7 @@ class Speaker:
                         self.stability.get(line["line_id"]),
                     )
                     if audio:
-                        await self._spent(line, model, text, clip)
+                        await self._spent(line, model, text, clip, voice, audio)
                         return audio, model
                     if clip.chunks:  # cut off mid-stream: the page has played part of it
                         return None
@@ -477,10 +477,12 @@ class Speaker:
             )
             if not audio:
                 return None
-            await self._spent(line, FALLBACK_MODEL, line["text"], clip)
+            await self._spent(line, FALLBACK_MODEL, line["text"], clip, voice, audio)
             return audio, FALLBACK_MODEL
 
-    async def _spent(self, line: dict, model: str, text: str, clip: Clip) -> None:
+    async def _spent(
+        self, line: dict, model: str, text: str, clip: Clip, voice: dict, audio: bytes
+    ) -> None:
         # shortcut: counts calls that returned audio; a timed-out call ElevenLabs still bills is
         # missed, so voice cost is a floor. Its usage API per request if that gap matters.
         if self.store is not None:
@@ -493,6 +495,12 @@ class Speaker:
             await asyncio.to_thread(
                 self.store.append, "voice", {**said, "model": model, "chars": len(text)}
             )
+            try:  # kept, so a replay of the line plays this clip and never pays for it again
+                await asyncio.to_thread(
+                    self.store.save_clip, line["line_id"], voice["id"], audio, "audio/mpeg"
+                )
+            except Exception as exc:  # the clip is still played; only the saved copy is lost
+                log.warning("clip for %s not saved: %s", line["line_id"], str(exc)[:300])
 
     async def _tts(
         self,
@@ -717,6 +725,10 @@ def voice_router(store, speaker: Speaker) -> APIRouter:
         # the page's pick is the lead's voice; the analyst follows the sport
         if not voice or line.get("speaker") == "analyst":
             chosen = voice_of(line)
+        # made once and saved: served again with no ElevenLabs call, on any instance
+        if saved := await asyncio.to_thread(store.clip, line_id, chosen["id"]):
+            log.info("voice line=%s saved", line_id)
+            return Response(saved[0], media_type=saved[1])
         if not os.environ.get("ELEVENLABS_API_KEY"):
             raise HTTPException(503, "voice not configured")
         started = time.perf_counter()

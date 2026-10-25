@@ -24,14 +24,14 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from core import graph, insight, ledger, predict, review
 from core.converse import converse_router
-from core.guard import OFF_TODAY, Guard, SayOnly, cached_commentator, client_ip
+from core.guard import OFF_TODAY, Guard, SayOnly, cached_commentator, client_ip, current_lines
 from core.look import Looks, Unshared
 from core.predict import shot_points
 from core.replay import OFF_AIR, Replay, run_replay
 from core.stats import stats
 from core.store import open_store
 from core.teams import router as teams_router
-from core.voice import Speaker, voice_of, voice_router
+from core.voice import Speaker, voice_router
 
 log = logging.getLogger("touchline.app")
 REJOIN_S = 10.0  # a replay with no open stream this long is stopped: its lines cost model calls
@@ -194,7 +194,6 @@ def create_app(
     guard = guard or Guard()
     looks = looks or Looks()  # #291: frames sent and the latest screen note, per replay
     live: set[str] = set()  # replay ids generating new lines, at most guard.max_live (#244)
-    said_again: set[str] = set()  # replay ids playing stored lines: no voice is made for them
 
     def need_deps() -> Deps:
         if deps is None:
@@ -238,13 +237,25 @@ def create_app(
         # shortcut: the cap is checked only as a replay starts, so a running replay can overshoot
         # it by about one replay's cost; check per line in run_replay if that ever matters
         off_air = await asyncio.to_thread(guard.off_air, store)
-        cached = off_air or guard.busy(len(live))
+        # a jump starts the video just before its moment (#163), as GET /matches' peak_video_start
+        video = d.video_map(req.match_id) if jump is None else d.video_map(req.match_id, jump)
+        mapped = {m["idx"] for m in video["moments"]} if video else None
+        due = [
+            m for m in moments if m["idx"] >= (jump or 0) and (mapped is None or m["idx"] in mapped)
+        ]
+        # a match already called in full is said again from its stored lines unless a fix is newer
+        # than them; the deploy's smoke always makes its lines, so it still exercises the model
+        stored = (
+            None if req.smoke else await asyncio.to_thread(current_lines, store, req.match_id, due)
+        )
+        cached = bool(stored) or off_air or guard.busy(len(live))
         # only a replay that makes new lines counts against the client's hourly starts; over them,
         # the stored lines play instead, which cost nothing
         capped = 0 if cached else guard.replays.hit(client_ip(request))
         cached = cached or bool(capped)
-        if cached:  # the lines already stored, said again: no model or voice call, nothing stored
-            commentate, speak, correct = cached_commentator(store, req.match_id), None, None
+        if cached:  # the lines already stored, said again: no model call, nothing stored
+            commentate = stored or cached_commentator(store, req.match_id)
+            speak, correct = None, None  # each line's voice is its saved clip, made once on request
             linecheck = None  # cached playback must not make a paid provider call
             if commentate is None and off_air:
                 raise too_many(guard.until_tomorrow(), f"{OFF_TODAY}. Try again tomorrow.")
@@ -264,8 +275,6 @@ def create_app(
         # a cached replay cost nothing: never a match for cost per full replay
         replay = Replay(req.match_id, req.speed, req.smoke or cached)
         replays[replay.id] = replay
-        # a jump starts the video just before its moment (#163), as GET /matches' peak_video_start
-        video = d.video_map(req.match_id) if jump is None else d.video_map(req.match_id, jump)
         said_to = SayOnly(store) if cached else store
         if d.look and not cached and video:  # a frame's note goes in the next line (#291)
             due = {m["idx"]: m["video_t"] for m in video["moments"]}
@@ -285,9 +294,7 @@ def create_app(
                 record,
             )
         )
-        if cached:
-            said_again.add(replay.id)
-        else:
+        if not cached:
             live.add(replay.id)
             task.add_done_callback(lambda _: live.discard(replay.id))
         tasks.add(task)
@@ -366,7 +373,6 @@ def create_app(
             asyncio.get_running_loop().call_later(wait, forget, replay)
         else:
             replays.pop(replay.id, None)
-            said_again.discard(replay.id)
             looks.forget(replay.id)
 
     def viewed(replay_id: str) -> Replay:
@@ -680,27 +686,9 @@ def create_app(
         return FileResponse(Path(__file__).with_name("stage.html"), media_type="text/html")
 
     async def voice_on(request: Request) -> None:
-        """No new voice over the daily cap, nor for a line a cached replay says: 503, and the page
-        uses browser speech."""
+        """No new voice over the daily cap: 503, and the page uses browser speech."""
         if not request.url.path.endswith("/audio"):
             return
-        line_id = request.path_params.get("line_id")
-        line = next(
-            (
-                e["data"]
-                for rid in list(said_again)
-                for e in (replays[rid].events if rid in replays else [])
-                if e["event"] == "line" and e["data"].get("line_id") == line_id
-            ),
-            None,
-        )
-        if line is not None:  # its saved audio is played again; none saved: browser speech
-            pick = request.query_params.get("voice")
-            voice = voice_of(line)["id"] if not pick or line.get("speaker") == "analyst" else pick
-            job = speaker.jobs.get((line_id, voice))
-            if job and job.done() and not job.cancelled() and not job.exception() and job.result():
-                return
-            raise HTTPException(503, "voice off for a replay of stored lines")
         if await asyncio.to_thread(guard.off_air, store):
             raise HTTPException(503, "voice off air for today")
 
