@@ -18,6 +18,7 @@ import { SPORTS, type Answer, type Line, type Match, type Moment, type Sport, ty
 import { QuietSpell, WHERE } from './quiet'
 import { askKey, isRepeat } from './ask'
 import { airAnswer, bigSoon, isBig, isDecisive, type Caption } from './turns'
+import { momentOf } from './moment'
 import { onScreen, useReplay } from './useReplay'
 import { useSpeech } from './useSpeech'
 import { viewOf } from './view'
@@ -63,7 +64,7 @@ export default function App() {
   const presented = useRef<Moment[]>([])
   const sayLine = useCallback(
     (line: Line) => {
-      const m = presented.current.find((x) => x.idx === line.moment_idx)
+      const m = momentOf(presented.current, line)
       speech.say(line, voiceNow.current, isBig(m), isDecisive(m))
     },
     [speech],

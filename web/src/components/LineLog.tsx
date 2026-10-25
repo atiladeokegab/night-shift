@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import { answeredAt, isStale, withAnswers } from '../ask'
 import { names, shortName } from '../follow'
 import { MicButton, MicOn, type Mic } from './MicButton'
-import { clockText } from '../moment'
+import { clockText, momentOf } from '../moment'
 import { WHERE } from '../quiet'
 import { checkText, exampleText } from '../proof'
 import type { Answer, Fix, Line, LineCheck, LineCheckExample, Moment } from '../types'
@@ -88,7 +88,7 @@ export function LineLog({ action, lines, late, fixes, checks = {}, examples = {}
                 </li>
               )
             }
-            const m = moments.find((x) => x.idx === l.moment_idx)
+            const m = momentOf(moments, l)
             const fix = fixes[l.line_id]
             const isLate = late.includes(l.line_id)
             const mine = names(said(l), followed, roster)
