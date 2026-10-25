@@ -21,7 +21,7 @@ line, as a correction for the commentator's next training.
 
 | Feature | Status | Proof in the code |
 |---|---|---|
-| [The nine matches](#the-nine-matches) | Live | [`GET /matches`](https://night-shift-5zvig7nbvq-ew.a.run.app/matches), [`agent/feed.py`](../agent/feed.py) |
+| [The seven matches](#the-seven-matches) | Live | [`GET /matches`](https://night-shift-5zvig7nbvq-ew.a.run.app/matches), [`agent/feed.py`](../agent/feed.py) |
 | [Two commentators: lead and analyst](#two-commentators-lead-and-analyst) | Live (#130, #142) | [`core/insight.py`](../core/insight.py), [`core/replay.py`](../core/replay.py) |
 | [Ask, by typing](#ask-by-typing-or-by-voice) | Live | [`POST /replays/{id}/ask`](../core/app.py), [`agent/ask.md`](../agent/ask.md) |
 | [Ask, by voice](#ask-by-typing-or-by-voice) | Live (#145) | [`web/src/voice.ts`](../web/src/voice.ts), [`web/src/components/MicButton.tsx`](../web/src/components/MicButton.tsx), [`web/src/voice.test.ts`](../web/src/voice.test.ts) |
@@ -32,20 +32,17 @@ line, as a correction for the commentator's next training.
 | [The Proof panel](#the-proof-panel) | Live | [`GET /stats`](https://night-shift-5zvig7nbvq-ew.a.run.app/stats), [`core/stats.py`](../core/stats.py) |
 | Live screen layout: the video in a card, Lines and Proof beside it, playback controls | Live (#132) | [`web/src/components/Live.tsx`](../web/src/components/Live.tsx) |
 
-### The nine matches
+### The seven matches
 
 <img src="img/wall.png" alt="The home page in a dark theme, at 1440 wide. The amber Touchline. wordmark top left; on the right the links Matches (with a green dot, the current page), Replays, Review and About. Under the eyebrow Touchline: the describer that checks itself, the heading Every match deserves to be described, the line Most matches have no audio description. A blind or low-vision fan following one gets no description, a short paragraph on what it does and what a replay costs. Then nine tiles in three columns and three rows, each with a Jump to the big moment pill and the link Tap to hear it called. First the three long-tail matches: Orlando v North Carolina (NWSL · 24 May 2018) and Netherlands v Nepal (Women's T20 World Cup Qualifier · 22 Jan 2026), each marked No audio description that we could find and Whole match, every key moment, over a drawn stadium; then Brighton v Bristol City (Women's Super League · 21 Jan 2024), marked No described broadcast that we could find and Highlights, synced to video. Then the six famous ones, each over a broadcast still and marked Highlights, synced to video: Battle of the Bridge (Chelsea v Tottenham, 2016); Messi v Mbappé (2022 World Cup final); India v Pakistan (T20 World Cup, 2022); Kobe's 81 v Toronto (2006); Jordan's last shot as a Bull (1998 NBA Finals, Game 6); Verstappen, P17 to P1 (2024 São Paulo Grand Prix). Below them, the credits for the match data and the highlights." width="100%">
 
-Three matches from the long tail and six famous ones, in four sports, each replayed from real event data
-and called by the same commentator with the same prompt. The two whole matches have no video; the
-rest play over their broadcast highlights. A line is never shown or spoken before its moment reaches the picture: the YouTube player's clock gates it
+One match from the long tail and six famous ones, in four sports, each replayed from real event data
+and called by the same commentator with the same prompt. Each plays over its broadcast highlights. A line is never shown or spoken before its moment reaches the picture: the YouTube player's clock gates it
 ([`web/src/gate.ts`](../web/src/gate.ts)).
 
 | Match | Sport and data | What it calls |
 |---|---|---|
 | The long tail: Brighton 3-2 Bristol City, Women's Super League, 2024 | Football, StatsBomb | The five goals: Bristol City come level twice, then Terland's winner in stoppage time |
-| Orlando Pride v North Carolina Courage, NWSL 2018 | Football, StatsBomb | The whole match, every key moment from kick-off to full time: the shots, the substitutions, an own goal, Courage winning 4-3 |
-| Netherlands v Nepal, Women's T20 WC Qualifier 2026 | Cricket, Cricsheet | The whole match, every key moment: the wickets, the boundaries, Nepal's chase of 141 to the last ball |
 | The Battle of the Bridge: Chelsea 2-2 Tottenham, 2016 | Football, StatsBomb | The four goals, Hazard's equaliser that made Leicester champions |
 | Argentina v France, 2022 World Cup final | Football, StatsBomb | Messi's two goals, Di María, Mbappé's three, the shoot-out |
 | India v Pakistan, 2022 T20 World Cup | Cricket, Cricsheet | The wickets, the sixes, Kohli's two sixes off Rauf, the last ball |
@@ -152,7 +149,7 @@ examples and held-out score, with the earlier commentary tasks folded away (#321
 
 ## The product: where this goes
 
-> **Vision, not what's built.** This weekend's build is the nine replays above. This is the full product.
+> **Vision, not what's built.** This weekend's build is the seven replays above. This is the full product.
 
 - **Every streamed match, described aloud.** Leagues, clubs, rights holders and streaming platforms
   switch it on for the long tail of matches they stream with no describer, in any language or voice:

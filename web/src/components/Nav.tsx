@@ -10,6 +10,20 @@ interface Props {
   children?: ReactNode // the live page's match bar, between the wordmark and the links (#153)
 }
 
+// The mark: the touchline breaks into sound bars. On a pixel grid; public/favicon.svg is the same shape, shorter line.
+function Mark() {
+  return (
+    <svg className="mark" viewBox="0 0 24 16" aria-hidden="true" focusable="false">
+      <rect x="0" y="7" width="13" height="2" fill="currentColor" />
+      <g className="bars">
+        <rect x="15" y="5" width="2" height="6" />
+        <rect x="18" y="2" width="2" height="12" />
+        <rect x="21" y="4" width="2" height="8" />
+      </g>
+    </svg>
+  )
+}
+
 // The top nav (docs/design.md): "Touchline." left; "Matches" (green dot), "Replays", "Review", "About" right.
 export function Nav({ current, onGo, children }: Props) {
   const link = (screen: Screen, label: string, dot = false) => (
@@ -21,7 +35,10 @@ export function Nav({ current, onGo, children }: Props) {
   return (
     <header className="nav">
       <div className="brand">
-        <button className="wordmark" aria-label="Touchline, home" onClick={() => onGo('wall')}>Touchline.</button>
+        <button className="wordmark lockup" aria-label="Touchline, home" onClick={() => onGo('wall')}>
+          <Mark />
+          <span className="name">Touchline</span>
+        </button>
         {isDemo && <span className="badge">Demo data</span>}
       </div>
       {children}

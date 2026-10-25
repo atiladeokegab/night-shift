@@ -151,19 +151,19 @@ Function names first, since line numbers drift; a test keeps every link below on
   [`live_check`, `agent/linecheck.py:106`](agent/linecheck.py#L106) runs
   [`check`, `:88`](agent/linecheck.py#L88), which calls Mubit at [`:94`](agent/linecheck.py#L94).
 - **Producer fix (#245):** `POST /lines/{line_id}/fix`,
-  [`fix_line`, `core/app.py:441`](core/app.py#L441), calls
-  [`correct`, `agent/commentator.py:403`](agent/commentator.py#L403) at [`core/app.py:476`](core/app.py#L476).
+  [`fix_line`, `core/app.py:456`](core/app.py#L456), calls
+  [`correct`, `agent/commentator.py:403`](agent/commentator.py#L403) at [`core/app.py:490`](core/app.py#L490).
   The fix goes to Mubit as the next turn of the line's own call; the recorded send, on
   `correction_provider`, is [`agent/commentator.py:447`](agent/commentator.py#L447), and its Mubit
-  request id is stored with the fix at [`core/app.py:490`](core/app.py#L490). Later lines of the
-  match carry the fixes, at most five ([`core/app.py:72`](core/app.py#L72)).
+  request id is stored with the fix at [`core/app.py:504`](core/app.py#L504). Later lines of the
+  match carry the fixes, at most five ([`core/app.py:78`](core/app.py#L78)).
 - **Fix to Score check training:** the fix route starts `score_teach` at
-  [`core/app.py:507`](core/app.py#L507) (defined at [`:321`](core/app.py#L321)); it calls
+  [`core/app.py:521`](core/app.py#L521) (defined at [`:337`](core/app.py#L337)); it calls
   [`send_fix`, `eval/seed_scorecheck.py:129`](eval/seed_scorecheck.py#L129), which labels each
   example with [`teach`, `agent/scorecheck.py:83`](agent/scorecheck.py#L83) and sends it with
   [`send`, `eval/seed_scorecheck.py:82`](eval/seed_scorecheck.py#L82). Each example sent is stored in
   `scorecheck_examples` at [`eval/seed_scorecheck.py:143`](eval/seed_scorecheck.py#L143).
-- **Ledger:** `GET /ledger` at [`core/app.py:661`](core/app.py#L661) returns
+- **Ledger:** `GET /ledger` at [`core/app.py:675`](core/app.py#L675) returns
   [`ledger`, `core/ledger.py:43`](core/ledger.py#L43): every example sent to Score check, with its
   Mubit session and request id.
 

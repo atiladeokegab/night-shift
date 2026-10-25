@@ -24,13 +24,18 @@ class FakeBlob:
             raise PreconditionFailed()
         return text
 
-    def upload_from_string(self, text, if_generation_match=None):
+    def download_as_bytes(self):
+        return self.objects[self.name][0]
+
+    def upload_from_string(self, text, if_generation_match=None, content_type=None):
         self.objects.calls.append("upload")
+        self.content_type = content_type
         gen = self.objects.get(self.name, ("", 0))[1]
         if if_generation_match is not None and if_generation_match != gen:
             raise PreconditionFailed()
         self.objects[self.name] = (text, gen + 1)
         self.generation = gen + 1  # the real client loads the new generation from the response
+        self.objects.types[self.name] = content_type
 
 
 class Objects(dict):
@@ -43,6 +48,7 @@ class FakeBucket:
     def __init__(self):
         self.objects = Objects()
         self.objects.calls = []
+        self.objects.types = {}
 
     def blob(self, name):
         return FakeBlob(self.objects, name)
@@ -51,7 +57,9 @@ class FakeBucket:
         self.objects.calls.append("metadata")
         if name not in self.objects:
             return None
-        return FakeBlob(self.objects, name, self.objects[name][1])
+        blob = FakeBlob(self.objects, name, self.objects[name][1])
+        blob.content_type = self.objects.types.get(name)
+        return blob
 
 
 class FakeClient:
