@@ -110,3 +110,17 @@ def test_a_fix_needs_the_producer_token_once_the_deploy_sets_one(tmp_path, monke
         assert right.status_code == 200 and len(store.all("fixes")) == 1
         monkeypatch.delenv("PRODUCER_TOKEN")  # unset: local and tests, the check is off
         assert c.post("/lines/w/fix", json=body).status_code == 200
+
+
+def test_a_cached_replay_says_the_stored_fix_line_so_its_audio_is_found(tmp_path):
+    # prod: Brighton's cached replays made a new id for a fixed moment each time, never stored,
+    # so /lines/{id}/audio was 404
+    from core.guard import SayOnly
+
+    store = Store(tmp_path)
+    stored(store, "w", WRONG)
+    store.append("fixes", {"line_id": "w", "corrected_text": RIGHT})
+    first, _ = replay(store)  # makes and stores the fixed line
+    again, _ = replay(SayOnly(store))  # a cached replay stores nothing
+    assert again[4]["line_id"] == first[4]["line_id"]
+    assert again[4]["line_id"] in {ln["line_id"] for ln in store.all("lines")}

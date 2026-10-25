@@ -264,6 +264,11 @@ async def run_replay(
         # a producer's fix is heard on the next replay (#232): the newest one for each moment
         idx_of = {ln["line_id"]: ln.get("moment_idx") for ln in own}
         heard = {idx_of[f["line_id"]]: f for f in fixed.values() if f["line_id"] in idx_of}
+        # a fix already said keeps its stored id: a cached replay stores nothing, and its audio is
+        # found by that id
+        said_fix = {
+            (ln.get("fix_id"), ln.get("text")): ln["line_id"] for ln in own if ln.get("fixed")
+        }
         try:
             from data.matches import match_header
 
@@ -338,7 +343,8 @@ async def run_replay(
                 if review.UNSAID not in w
             ]:
                 line = {
-                    "line_id": uuid.uuid4().hex,
+                    "line_id": said_fix.get((fix["line_id"], fix["corrected_text"]))
+                    or uuid.uuid4().hex,
                     "match_id": replay.match_id,
                     "moment_idx": moment["idx"],
                     "sport": moment.get("sport"),

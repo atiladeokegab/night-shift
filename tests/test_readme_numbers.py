@@ -60,7 +60,7 @@ CALLS = {
     ("agent/commentator.py", 874): "msg.model",
     ("agent/commentator.py", 334): "def commentate(",
     ("agent/commentator.py", 751): "def _call(",
-    ("core/replay.py", 361): "if linecheck and passed",
+    ("core/replay.py", 367): "if linecheck and passed",
     ("agent/linecheck.py", 106): "def live_check(",
     ("agent/linecheck.py", 88): "def check(",
     ("agent/linecheck.py", 94): "provider.call(",

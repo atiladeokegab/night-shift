@@ -147,7 +147,7 @@ Function names first, since line numbers drift; a test keeps every link below on
   A moment's line is [`commentate`, `:334`](agent/commentator.py#L334), through
   [`_call`, `:751`](agent/commentator.py#L751).
 - **Line check on each line:** the replay starts a second opinion on every line that passed the
-  number check, [`core/replay.py:361-363`](core/replay.py#L361);
+  number check, [`core/replay.py:361-363`](core/replay.py#L367);
   [`live_check`, `agent/linecheck.py:106`](agent/linecheck.py#L106) runs
   [`check`, `:88`](agent/linecheck.py#L88), which calls Mubit at [`:94`](agent/linecheck.py#L94).
 - **Producer fix (#245):** `POST /lines/{line_id}/fix`,
