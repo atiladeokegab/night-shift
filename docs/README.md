@@ -34,6 +34,7 @@ curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/stats        # the live Proo
 | [feedback.md](feedback.md) | Each point from the judge's second check-in and the PR or file where it landed | judge |
 | [integrations.md](integrations.md) | Every outside service, library and data source: its role, entry point, environment variable names, what happens when it fails, its test, and how to run with no keys | judge, developer, agent |
 | [stack.md](stack.md) | Each technology choice and why: FastAPI, JSON-lines store, SSE, Claude models, ElevenLabs | developer |
+| [usefulness.md](usefulness.md) | Why Touchline is useful: primary sources showing the need for described matches, what the product does today for each need, the buyer and cost proposition, and what would prove usefulness beyond the prototype | judge, agent |
 | [voice.md](voice.md) | The commentator's voice: ElevenLabs models, audio tags, timing, voices per role and sport | fan, developer |
 
 ## Images and pages
