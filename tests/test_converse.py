@@ -383,3 +383,62 @@ def test_a_final_round_sentence_is_checked_against_the_tools_outputs():
     tool = {"text": text, "tool_calls": [{"output": "Reds 7, Blues 0"}]}
     with_tool = converse.checked(tool, "Who scored?", MOMENTS[:2], [])
     assert not given and with_tool
+
+
+class CountingClient(SlowClient):
+    """SlowClient that counts the stream events the worker has read."""
+
+    def __init__(self, pieces):
+        super().__init__(pieces)
+        self.read = 0
+
+    def __iter__(self):
+        for event in super().__iter__():
+            self.read += 1
+            yield event
+
+
+REST = [(0.05, "Player1 ran on. ")] * 10  # half a second more of the model writing
+
+
+def after_speaking(client):
+    """What speak() said, and how many events the worker had read a second later."""
+
+    async def run():
+        said = await sentences(SimpleNamespace(client=client, call=None))
+        await asyncio.sleep(1)
+        return said, client.read
+
+    return asyncio.run(run())
+
+
+def test_a_failed_sentence_stops_the_model_writing_the_rest():
+    client = CountingClient([(0, "Player1 scored for the Reds. "), (0, "It made it 9-0. ")] + REST)
+    said, read = after_speaking(client)
+    assert said == ["Player1 scored for the Reds."] and read < 4
+
+
+def test_a_failed_first_sentence_falls_back_without_waiting_for_the_rest(monkeypatch):
+    monkeypatch.setattr(converse.commentator, "unrecorded_provider", FakeProvider)
+    client = CountingClient([(0, "The Reds lead 9-0. ")] + REST)
+    start = time.monotonic()
+    said = asyncio.run(sentences(SimpleNamespace(client=client, call=None)))
+    took, read = time.monotonic() - start, client.read
+    assert len(said) == 1 and "9-0" not in said[0] and took < 0.4 and read < 4
+
+
+class PreToolClient(ToolClient):
+    """A first round that writes a sentence before it asks for a tool."""
+
+    def __iter__(self):
+        if self.tool:
+            yield SimpleNamespace(type="text", text="Reds 7, Blues 0. ")
+        yield from super().__iter__()
+
+
+def test_text_before_a_tool_call_needs_numbers_the_tools_output_cannot_vouch_for(monkeypatch):
+    # Ask says only the final round; Talk may say earlier text, but only what the match data
+    # alone supports: a tool's output can widen the numbers allowed, never narrow them
+    monkeypatch.setattr(converse.commentator, "unrecorded_provider", FakeProvider)
+    said = asyncio.run(sentences(SimpleNamespace(client=PreToolClient(), call=None)))
+    assert "Reds 7, Blues 0." not in said
