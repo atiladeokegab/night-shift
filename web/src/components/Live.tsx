@@ -190,8 +190,8 @@ export function Live(props: Props) {
   const line = caption?.kind === 'line' ? live.find((l) => said(l) === caption.text) : undefined
   const answer = caption?.kind === 'answer' ? replay.answers.find((a) => a.text === caption.text) : undefined
   const tagged = (line ? momentOf(shown.moments, line) : shown.moments.find((m) => m.idx === answer?.moment_idx)) ?? (caption?.kind === 'line' ? undefined : moment)
-  const marks = [...replay.moments, ...replay.queuedMoments].filter((m) => m.video_t !== undefined)
-    .map((m) => ({ t: m.video_t!, done: m.video_t! <= replay.now }))
+  const marks = (match.marks ?? [...replay.moments, ...replay.queuedMoments].filter((m) => m.video_t !== undefined))
+    .map((m) => ({ t: m.video_t!, done: m.video_t! <= replay.now })) // all at load; amber once the picture reaches it
   const canPlay = !!transport && video === 'ok' && !busy
   const noVideo = !gated || blocked || video === 'unavailable'
   const covered = closed // with no picture too: the page blacks out to its line and score (#338)

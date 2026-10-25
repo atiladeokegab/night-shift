@@ -1,5 +1,5 @@
 // The only module that talks to the match server (docs/CONTRACT.md, 'HTTP'):
-// GET /matches, GET /matches/{id}/start?at=, POST /replays {match_id, speed} -> {replay_id},
+// GET /matches, GET /matches/{id}/start[?at=] (and its marks), POST /replays {match_id, speed} -> {replay_id},
 // GET /replays/{id}/stream (SSE: moment, line, stats per moment; error; end last),
 // GET /stats, GET /voices, POST /lines/{id}/fix, GET /lines/{id}, POST /replays/{id}/ask, POST /replays/{id}/seen, POST /replays/{id}/look, GET /replays/{id}/players, .../players/{name}/shots and .../profile and GET /lines/{id}/audio?voice=<id>
 // (ElevenLabs; 503 when the voice isn't configured).
@@ -57,6 +57,13 @@ export async function videoStartAt(matchId: string, at: number): Promise<number 
   if (isDemo) return null
   const res = await fetch(`/matches/${encodeURIComponent(matchId)}/start?at=${at}`)
   return res.ok ? ((await res.json()) as { video_start: number | null }).video_start : null
+}
+
+// Every mapped moment's video time, so the timeline marks them all at load; null without a server answer.
+export async function videoMarks(matchId: string): Promise<Match['marks'] | null> {
+  if (isDemo) return null
+  const res = await fetch(`/matches/${encodeURIComponent(matchId)}/start`).catch(() => null)
+  return res?.ok ? ((await res.json()) as { marks: Match['marks'] }).marks : null
 }
 
 // Follows a replay's stream from the start; a late or reconnected subscriber gets every event again,

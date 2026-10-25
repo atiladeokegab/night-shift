@@ -21,6 +21,7 @@ export interface Match {
   embed?: boolean // false: the owner blocks embedding, so a poster and a YouTube link instead
   peak_idx?: number // "Jump to the big moment" (#163) starts the replay at this moment
   peak_video_start?: number // and the video at this second
+  marks?: { idx: number; video_t: number }[] // every mapped moment, from GET /matches/{id}/start: the timeline's marks at load
 }
 
 // Football and basketball: {home, away}; cricket: runs and wickets; f1: the lap and the top five.
