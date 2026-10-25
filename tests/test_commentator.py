@@ -164,7 +164,9 @@ def test_server_seam_on_the_bundled_samples(monkeypatch):
     monkeypatch.delenv("MUBIT_API_KEY", raising=False)
     monkeypatch.setattr(commentator, "_provider", None)
     samples = list_matches()
-    assert {(m["sport"], m["match_id"]) for m in samples} == {d for d in feed.DEMO if d[1] not in HIDDEN}
+    assert {(m["sport"], m["match_id"]) for m in samples} == {
+        d for d in feed.DEMO if d[1] not in HIDDEN
+    }
     assert all(m["sample"] for m in samples)
     for m in samples:
         moments = load_moments(m["match_id"])
