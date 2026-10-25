@@ -20,7 +20,7 @@ numbers in each line against the match data before it goes on air.**
 **Why a fan comes back every match day:** for a blind or low-vision fan whose team's match has no
 described broadcast, Touchline calls that match aloud moment by moment, answers their questions
 about it at any point, and a producer's fix to one line goes with the request for every later line
-of that match.
+of that match (each request carries the latest five fixes).
 
 <img src="docs/media/demo.gif" alt="An 11-second screen recording of the live Touchline site. It opens on the home page, Every match deserves to be described, with the match cards. Then Lakers v Raptors plays from Kobe Bryant's 79th point to his 80th: the score bar reads LAK 121-102 RAP at 00:43 in the fourth quarter, the caption card shows the called line, and the line lands at the top of the Lines card tagged Checked, Via Mubit and Auto-fixed. The video area shows the highlight's still image." width="100%">
 
@@ -43,6 +43,17 @@ of that match.
 
 </div>
 
+**New here? Welcome.** Read [what the demo shows](#what-the-demo-shows), then [try it live](https://night-shift-5zvig7nbvq-ew.a.run.app) with
+the sound on. Where to find the proof:
+
+| To | Go to |
+|---|---|
+| See it working | [The live site](https://night-shift-5zvig7nbvq-ew.a.run.app) · [What the demo shows](#what-the-demo-shows) · [The 60-second path](#the-60-second-path) |
+| Check a claim | [The evidence](docs/evidence.md) · [Every README figure, its source and its test](docs/evidence.md#readme-figures) |
+| See how well it works | [How well the check works](#how-well-the-check-works) ([`eval/checker_eval.py`](eval/checker_eval.py)) · [The Ask eval](eval/ask_eval_keyed_20261025.txt) ([`eval/ask_eval.py`](eval/ask_eval.py)) |
+| See what it does | [Every feature](docs/features.md), with its code and tests |
+| See how it's built | [Architecture](docs/ARCHITECTURE.md) · [Integrations](docs/integrations.md) · [Where Mubit is called](#where-mubit-is-called) · [Decisions](docs/decisions.md) · [Build log](docs/build-log.md) |
+
 > **The Mubit loop, in four steps** ([the evidence, step by step](docs/mubit.md))
 >
 > 1. A producer fixes a line.
@@ -57,8 +68,6 @@ of that match.
 
 What you hear are **replays, as if live**: real matches' event data played back over their
 broadcast highlights, each line called at its moment, in four sports.
-
-**For agents and reviewers:** [Architecture](docs/ARCHITECTURE.md) · [Integrations](docs/integrations.md) · [Every feature](docs/features.md) · [Decisions](docs/decisions.md) · [Build log](docs/build-log.md)
 
 ## What the demo shows
 
@@ -100,7 +109,8 @@ The stage run goes in this order.
 3. **A producer's fix, and the next lines on this match carry it.** At 30:57 Touchline said
    "Elisabeth Terland! Brighton take the lead, one nil!". A producer fixed it to "Elisabeth Terland
    scores! The Seagulls lead one-nil." ("Call Brighton the Seagulls"), and the fix goes with the request
-   for every later line of that match. At 94:48 the line went from "Elisabeth Terland! Brighton take
+   for every later line of that match (each request carries the latest five).
+   At 94:48 the line went from "Elisabeth Terland! Brighton take
    the lead, 3-2!" before the fix to "Elisabeth Terland! The Seagulls go three-two up with that
    left-footed half volley!" after it. Moments 18, 34 and 35 took up "the Seagulls"; the other three
    later lines changed only as any new generation does. Made once on live by
