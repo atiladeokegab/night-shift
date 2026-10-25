@@ -2,7 +2,7 @@
 
 How Touchline is built, from the code. Every claim points at a file (`path:line` where it helps) or
 a test. The diagrams are drawn by [`architecture/c4.py`](architecture/c4.py); run it again after a
-change (command at the end).
+change (see [Diagrams](#diagrams)).
 
 ## Read this first
 
@@ -236,10 +236,16 @@ second viewing free. To reach thousands of matches and viewers:
 - **Mubit stays the only way to the model.** Moving lines to a trained adapter would be a change to
   the provider, made only once the adapter's test results justify it.
 
-## Redraw the diagrams
+## Diagrams
+
+The four C4 PNGs in [`architecture/`](architecture) are generated, not drawn by hand:
+[`architecture/c4.py`](architecture/c4.py) builds each level with Graphviz. To regenerate them
+after a change to the code they describe, from the repo root:
 
 ```bash
 uv run --with graphviz==0.20.3 python docs/architecture/c4.py
 ```
 
-Needs Graphviz's `dot`. It writes the four PNGs above beside the script.
+Needs Graphviz's `dot` on `PATH`. It overwrites `c4_context.png`, `c4_container.png`,
+`c4_component.png` and `c4_code.png` beside the script. The `graphviz` package is fetched for that
+run only; it is not a project dependency.
