@@ -30,7 +30,7 @@ curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/stats        # the live Proo
 | [design.md](design.md) | The page's design spec: look, layout, components, flow, states and copy (as of PRD v2) | developer |
 | [evidence.md](evidence.md) | The correction loop with real examples, how Mubit is used, how the check was measured, keyboard and screen reader support, and the source of every README figure | judge, agent |
 | [expo.md](expo.md) | The live demo on the deployed site, step by step in the film's order | judge |
-| [features.md](features.md) | Every feature with its code and tests, and where the product goes next | judge, fan, developer |
+| [features.md](features.md) | Every feature for the fan, the producer and engineering, each with its live link, code and test, plus screenshots and the numbers | judge, fan, developer |
 | [feedback.md](feedback.md) | Each point from the judge's second check-in and the PR or file where it landed | judge |
 | [integrations.md](integrations.md) | Every outside service, library and data source: its role, entry point, environment variable names, what happens when it fails, its test, and how to run with no keys | judge, developer, agent |
 | [stack.md](stack.md) | Each technology choice and why: FastAPI, JSON-lines store, SSE, Claude models, ElevenLabs | developer |
@@ -46,11 +46,17 @@ curl -s https://night-shift-5zvig7nbvq-ew.a.run.app/stats        # the live Proo
 | [architecture/c4_container.png](architecture/c4_container.png) | C4 level 2: the Cloud Run service, its store and the build | judge, developer, agent |
 | [architecture/c4_component.png](architecture/c4_component.png) | C4 level 3: the replay pipeline's components, from moments to the number check, voice, Line check, fix, Ask and stats | developer, agent |
 | [architecture/c4_code.png](architecture/c4_code.png) | C4 level 4: the classes and functions one replayed line passes through | developer, agent |
+| [img/about-mubit.png](img/about-mubit.png) | Screenshot: the About page's flow diagram, from match data through the number check, retry and voice to a producer's fix going to Mubit's Score check training | judge |
 | [img/ask.png](img/ask.png) | Screenshot: an Ask question and its answer during Kobe's 81 | judge, fan |
+| [img/auto-fixed.png](img/auto-fixed.png) | Screenshot, cropped to the Lines card: a Kobe's 81 line tagged Auto-fixed, whose first try failed the number check and whose retry was said | judge |
+| [img/eyes-closed.png](img/eyes-closed.png) | Screenshot: India v Pakistan with Close your eyes on, the picture black with only the line and the score bar | judge, fan |
 | [img/fix.png](img/fix.png) | Screenshot: the producer's Fix this line sheet | judge, fan |
 | [img/follow.png](img/follow.png) | Screenshot: following a player on the live page | judge, fan |
+| [img/home.png](img/home.png) | Screenshot: the home page at 1440 px with the match tiles | judge, fan |
 | [img/live.png](img/live.png) | Screenshot: the live match page | judge, fan |
+| [img/phone.png](img/phone.png) | Screenshot: the live page on a 390 px phone during Argentina v France | judge, fan |
 | [img/prs-per-hour.svg](img/prs-per-hour.svg) | Chart for the build log: merged pull requests per hour, UTC | judge |
+| [img/review.png](img/review.png) | Screenshot: the producer's Review queue of flagged lines, each with a Fix this line button | judge |
 | [img/shotmap.png](img/shotmap.png) | Screenshot: a player's shot map sheet | judge, fan |
 | [img/side-by-side.png](img/side-by-side.png) | Screenshot from earlier in the event: the big model's recorded lines beside a commentator version still in training | judge |
 | [img/wall.png](img/wall.png) | Screenshot: the home page's wall of matches | judge, fan |
