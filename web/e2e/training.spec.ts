@@ -80,6 +80,17 @@ test('a fix that sends one Score check example shows it as soon as its receipt i
   await expect(panel).not.toContainText(/NaN|undefined|Line as said/)
 })
 
+// A held-out match's fix (live, #411's check on Brighton v Bristol City) sends nothing, and the panel says why.
+test('a fix on a held-out match says it is held out, never "already sent"', async ({ page }) => {
+  await mock(page, (r) => r.fulfill({ json: { ...item, fix, scorecheck_examples: [], scorecheck_receipts: [{ ...receipt(0), held_out: true }] } }))
+  await sendFix(page)
+
+  const panel = page.locator('.training')
+  await expect(panel.getByRole('heading')).toHaveText('Not sent to training: this match is held out')
+  await expect(panel).toContainText('This match is held out of training, so the eval that scores the model stays fair')
+  await expect(panel).not.toContainText('already sent')
+})
+
 // Review blocker 1: the save never waits on /stats. Held open, the fix is still posted and saved.
 test('a stalled /stats never holds the fix: it is posted and the panel opens', async ({ page }) => {
   const state = await mock(page, (r) => r.fulfill({ json: { ...item, fix, scorecheck_examples: [], scorecheck_receipts: [] } }),

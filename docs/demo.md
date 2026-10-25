@@ -1,13 +1,13 @@
 # The demo
 
-**Touchline: the describer that checks itself. For the match nobody described.** A film of **1:50,
-hard stop 1:58**, under the 2:00 limit. It is recorded on the live URL with the sound on and a
-narrator's voice laid over the screen. It runs in the same order as the README's
+**Touchline: the describer that checks itself. For the match nobody described.** Planned cut: **1:50,
+hard stop 1:58**, under the 2:00 limit. Record it on the live URL with the sound on and a narrator's
+voice laid over the screen. It runs in the same order as the README's
 [On stage](../README.md#on-stage): a match described with the **Proof** card, a wrong line caught
 before air, a producer's fix that the next lines on that match carry, the fix sent to Score check
 training, Mubit's console, then who buys it. Ask, Talk, Follow a player, Teams and the shot map stay
 in the product but are not in the film. Anything shown outside our product, such as Mubit's
-console, is said aloud as such.
+console, is said aloud as such. Time the finished cut before submitting.
 
 Videos embed where YouTube allows it; otherwise the tile says so and links to YouTube, and the
 commentary still plays on the match's own clock.

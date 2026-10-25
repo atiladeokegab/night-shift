@@ -35,7 +35,7 @@ broadcast highlights, each line called at its moment, in four sports.
 
 ## On stage
 
-The film and the stage run in this order.
+The planned film and the stage run in this order.
 
 1. **A match nobody described, described.** **Brighton v Bristol City** (WSL, 2024) plays with its
    highlights, and Touchline calls each moment aloud. Press **E** to **Close your eyes**: the picture
@@ -49,7 +49,8 @@ The film and the stage run in this order.
    queue. On stage it is Denise O'Sullivan's shot at 39:39 in **Orlando v North Carolina** (NWSL,
    2018), a match with no video at all, tagged Auto-fixed. Another catch: in Jordan's last game as a Bull the model wrote "Chicago Bulls take the lead,
    85-86!" when Utah led 86-85; the check's reason was "Chicago Bulls do not lead", so that line was
-   never said.
+   never said. (Score check, the Mubit task in step 4, judges only the score's numbers, not
+   who leads: its key for this line is ok, since 85 and 86 are the score.)
 3. **A producer's fix, and the next lines on this match carry it.** At 30:57 Touchline said
    "Elisabeth Terland! Brighton take the lead, one nil!". A producer fixed it to "Elisabeth Terland
    scores! The Seagulls lead one-nil." ("Call Brighton the Seagulls"), and the fix goes with the request
@@ -149,19 +150,19 @@ Function names first, since line numbers drift; a test keeps every link below on
   [`live_check`, `agent/linecheck.py:106`](agent/linecheck.py#L106) runs
   [`check`, `:88`](agent/linecheck.py#L88), which calls Mubit at [`:94`](agent/linecheck.py#L94).
 - **Producer fix (#245):** `POST /lines/{line_id}/fix`,
-  [`fix_line`, `core/app.py:434`](core/app.py#L434), calls
-  [`correct`, `agent/commentator.py:403`](agent/commentator.py#L403) at [`core/app.py:460`](core/app.py#L460).
+  [`fix_line`, `core/app.py:437`](core/app.py#L437), calls
+  [`correct`, `agent/commentator.py:403`](agent/commentator.py#L403) at [`core/app.py:463`](core/app.py#L463).
   The fix goes to Mubit as the next turn of the line's own call; the recorded send, on
   `correction_provider`, is [`agent/commentator.py:447`](agent/commentator.py#L447), and its Mubit
-  request id is stored with the fix at [`core/app.py:473`](core/app.py#L473). Later lines of the
+  request id is stored with the fix at [`core/app.py:476`](core/app.py#L476). Later lines of the
   match carry the fixes, at most five ([`core/app.py:70`](core/app.py#L70)).
 - **Fix to Score check training:** the fix route starts `score_teach` at
-  [`core/app.py:490`](core/app.py#L490) (defined at [`:319`](core/app.py#L319)); it calls
+  [`core/app.py:493`](core/app.py#L493) (defined at [`:319`](core/app.py#L319)); it calls
   [`send_fix`, `eval/seed_scorecheck.py:129`](eval/seed_scorecheck.py#L129), which labels each
   example with [`teach`, `agent/scorecheck.py:83`](agent/scorecheck.py#L83) and sends it with
   [`send`, `eval/seed_scorecheck.py:82`](eval/seed_scorecheck.py#L82). Each example sent is stored in
   `scorecheck_examples` at [`eval/seed_scorecheck.py:143`](eval/seed_scorecheck.py#L143).
-- **Ledger:** `GET /ledger` at [`core/app.py:644`](core/app.py#L644) returns
+- **Ledger:** `GET /ledger` at [`core/app.py:647`](core/app.py#L647) returns
   [`ledger`, `core/ledger.py:43`](core/ledger.py#L43): every example sent to Score check, with its
   Mubit session and request id.
 
@@ -200,7 +201,10 @@ lines were picked and labelled, and what the check still misses: [the evidence](
   the audio clip takes longer (`by_speaker.lead.audio_first_ms_p50` on `/stats`).
 - **No adapter serves.** Mubit serves one only in its console, once a version passes its test.
 - **A fix is locked only where `PRODUCER_TOKEN` is set**; a fix that contradicts the data gets a 422
-  either way and never reaches Mubit ([`core/app.py`](core/app.py) `fix_line`).
+  either way and never reaches Mubit ([`core/app.py`](core/app.py) `fix_line`). On Cloud Run,
+  [`scripts/deploy.sh`](scripts/deploy.sh) mounts it from the Secret Manager secret `producer-token`
+  (latest version, checked ENABLED before the build), never as a plain env var; a `PRODUCER_TOKEN` in
+  the deploy's own environment is ignored.
 - **One instance, and every viewer starts their own replay** ([`scripts/deploy.sh`](scripts/deploy.sh),
   [`core/replay.py`](core/replay.py)).
 - **Cricket has no ball timestamps** in Cricsheet, so a ball counts as 30 seconds.

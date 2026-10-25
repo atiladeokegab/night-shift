@@ -319,6 +319,7 @@ def create_app(
     async def score_teach(line: dict, corrected: str, fix_uid: str) -> None:
         """A fix as Score check examples (#321): the line as said and the producer's text. Its
         receipt, written when the send ends, says how many went and whether a call failed (#400)."""
+        from eval.linecheck import HELD_OUT
         from eval.seed_scorecheck import send_fix
 
         tried: list[dict | None] = []
@@ -340,6 +341,8 @@ def create_app(
             "line_id": line["line_id"],
             "sent": len(rows),
             "failed": failed,
+            "held_out": line.get("match_id")
+            in HELD_OUT,  # never sent: kept out to keep the eval fair
         }
         await asyncio.to_thread(store.append, "scorecheck_receipts", {**receipt, "created_at": at})
 

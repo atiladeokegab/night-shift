@@ -169,5 +169,5 @@ test('the panel shows the latest Score check adapter version, else that the trai
 
 test("the training panel's heading claims a send only once the fix's own receipt says so (#400)", () => {
   assert.equal(trainingHeading('sent'), 'Sent to training')
-  for (const s of ['pending', 'none', 'failed', 'unknown'] as const) assert.doesNotMatch(trainingHeading(s), /^Sent/)
+  for (const s of ['pending', 'none', 'held_out', 'failed', 'unknown'] as const) assert.doesNotMatch(trainingHeading(s), /^Sent/)
 })

@@ -22,6 +22,30 @@ test('a line a jump brought from an earlier replay is shown but never spoken, no
   assert.equal(speaks({ line_id: 'a' }, ['a']), false)
 })
 
+// Lakers v Raptors at speed 4 (24 Oct): Kobe's first basket and the analyst's stat after it were presented in one
+// render, and only the newest (the stat) was spoken, so the big call was never heard.
+test('two lines presented together are both handed on, oldest first, and the big call takes the air', () => {
+  const open = { line_id: 'open', speaker: 'lead' as const }
+  const kobe = { line_id: 'kobe', speaker: 'lead' as const, big: true }
+  const stat = { line_id: 'stat', speaker: 'analyst' as const, fill: true }
+  const seen = new Set(['open'])
+  const batch = fresh([stat, kobe, open], seen, [])
+  assert.deepEqual(batch.map((l) => l.line_id), ['kobe', 'stat'])
+
+  const floor = new Floor<Turn & { line_id: string }>()
+  const heard = [open, ...batch].filter((l) => floor.take(l, 0)).map((l) => l.line_id)
+  assert.deepEqual(heard, ['open', 'kobe']) // the call cuts in on the routine open; a fill never waits, so the stat goes
+  assert.equal(floor.cut, null) // the stat cut nothing
+})
+
+test('nothing is handed on twice, and a new replay starts from none', () => {
+  const seen = new Set<string>()
+  assert.deepEqual(fresh([{ line_id: 'a' }], seen, []).map((l) => l.line_id), ['a'])
+  assert.deepEqual(fresh([{ line_id: 'a' }], seen, []), [])
+  seen.clear() // what useReplay does when a new replay empties the lines
+  assert.deepEqual(fresh([{ line_id: 'a' }], seen, []).map((l) => l.line_id), ['a'])
+})
+
 // build-233: the idx 3 Field goal call and its analyst fill landed in one render; only the newest was said.
 test('two lines presented in one render are both handed on, oldest first, and a fill never costs the call', () => {
   const call = { line_id: 'call' }

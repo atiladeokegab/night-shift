@@ -38,8 +38,11 @@ export function withAnswers(lines: Line[], answers: Answer[]): LogItem[] {
 
 // An answer is about the moment it was asked at: "at 104:30", and stale once a later key moment is on
 // screen, so it never reads as now after the match moved on. `moments` are the ones the picture reached.
-export const answeredAt = (a: Pick<Answer, 'moment_idx'>, moments: Moment[]): string | null => {
-  const m = moments.find((x) => x.idx === a.moment_idx)
+export const answeredAt = (a: Pick<Answer, 'moment_idx' | 'asked_moment'>, moments: Moment[]): string | null => {
+  if (a.asked_moment) return `at ${clockText(a.asked_moment)}`
+  // A cold-open Stat and the first mapped event can share an idx. `moments` are already the
+  // moments the picture has reached, in replay order, so use the latest visible one at that idx.
+  const m = moments.filter((x) => x.idx === a.moment_idx).at(-1)
   return m ? `at ${clockText(m)}` : null
 }
 export const isStale = (a: Pick<Answer, 'moment_idx'>, moments: Pick<Moment, 'idx'>[]): boolean =>

@@ -170,7 +170,7 @@ export async function followTraining(fix: Fix, seen: (state: TrainingState, xs: 
     const xs: ScoreCheckExample[] = (line?.scorecheck_examples ?? []).filter((x: ScoreCheckExample) => x.fix_uid === fix.fix_uid)
     const got: ScoreCheckReceipt | undefined = (line?.scorecheck_receipts ?? []).find((r: ScoreCheckReceipt) => r.fix_uid === fix.fix_uid)
     if (got) {
-      const state = got.sent > 0 ? 'sent' : got.failed ? 'failed' : 'none'
+      const state = got.sent > 0 ? 'sent' : got.failed ? 'failed' : got.held_out ? 'held_out' : 'none'
       seen(state, xs)
       return state
     }

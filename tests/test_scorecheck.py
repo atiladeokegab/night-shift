@@ -155,10 +155,41 @@ def test_a_fix_sends_the_line_and_the_fixed_text_as_score_check_examples(tmp_pat
     # fix's receipt says how many went: the second sent none (each example goes once ever)
     assert ids[0] != ids[1] and [r["fix_uid"] for r in rows] == [ids[0], ids[0]]
     assert line["scorecheck_examples"] == rows
-    assert [(r["fix_uid"], r["sent"], r["failed"]) for r in line["scorecheck_receipts"]] == [
-        (ids[0], 2, False),
-        (ids[1], 0, False),
+    assert [
+        (r["fix_uid"], r["sent"], r["failed"], r["held_out"]) for r in line["scorecheck_receipts"]
+    ] == [
+        (ids[0], 2, False, False),
+        (ids[1], 0, False, False),
     ]
+
+
+def test_a_fix_on_a_held_out_match_gets_a_held_out_receipt(tmp_path):
+    """The WSL match never trains: its fix sends nothing, and its receipt says why."""
+    fake = Says('{"score":"ok"}')
+    store = Store(tmp_path)
+    deps = Deps(
+        list_matches,
+        load_moments,
+        lambda m, history: None,
+        correct=lambda line, text, reason="": {"mubit_request_id": "fix-1", "reply_passed": True},
+        score_teach=lambda line, sent: scorecheck.teach(line, sent, provider=fake),
+    )
+    said = "Harrison strikes the post! Brighton still lead one-nil."
+    held = {"line_id": "h", "match_id": "3913122", "moment_idx": 15, "text": said}
+    with TestClient(create_app(store=store, deps=deps)) as client:
+        store.append("lines", held)
+        fixed = "Harrison strikes the post! Still one-nil to Brighton."
+        got = client.post("/lines/h/fix", json={"corrected_text": fixed})
+        assert got.status_code == 200, got.text
+        for _ in range(200):
+            if store.all("scorecheck_receipts"):
+                break
+            time.sleep(0.02)
+    assert "3913122" in HELD_OUT
+    [receipt] = store.all("scorecheck_receipts")
+    assert receipt["fix_uid"] == got.json()["fix_uid"]
+    assert (receipt["sent"], receipt["failed"], receipt["held_out"]) == (0, False, True)
+    assert store.all("scorecheck_examples") == [] and not fake.requests
 
 
 def test_a_failed_score_check_send_gets_a_failed_receipt(tmp_path):
