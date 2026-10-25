@@ -1,0 +1,44 @@
+/* The home hero and its match rail (Wall.tsx). App.css and index.css own the rest of the look. */
+
+/* Full bleed out of .wrap; the copy lines up with .wrap's content edge */
+.hero {
+  position: relative; isolation: isolate; overflow: hidden; background: #000;
+  margin: 0 calc(50% - 50vw); /* starts below .wrap's top padding, clear of the nav's 44 px targets */
+  min-height: min(640px, 78svh);
+  padding: 72px max(var(--gut), calc(50vw - 620px + var(--gut))) 96px;
+  display: flex; align-items: flex-end;
+}
+.hero-still { position: absolute; inset: 0; z-index: -2; pointer-events: none; width: 100%; height: 100%; object-fit: cover; object-position: 70% 30%; }
+/* the black vignette from the left, then a fade into the page below */
+.hero::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    linear-gradient(90deg, #000 0%, rgba(0, 0, 0, .92) 30%, rgba(0, 0, 0, .55) 58%, rgba(0, 0, 0, .15) 85%),
+    linear-gradient(0deg, var(--bg) 0%, rgba(6, 8, 15, 0) 32%); }
+.hero-copy { max-width: 620px; display: grid; gap: 18px; }
+
+.hero-title { margin: 0; font: 700 clamp(3rem, 7.2vw, 6rem)/.92 'Barlow Condensed', var(--display);
+  text-transform: uppercase; letter-spacing: .005em; text-wrap: balance; }
+
+.hero-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 0; color: var(--fg); font: 600 .95rem/1.3 var(--body); }
+.hero-badge { border: 1px solid rgba(246, 244, 239, .55); border-radius: 999px; padding: 4px 11px; font: 500 .8rem/1.2 var(--body); }
+
+.hero-line { margin: 0; max-width: 52ch; font-size: 1.1rem; line-height: 1.5; color: rgba(246, 244, 239, .88); }
+
+.hero .hero-go { margin: 6px 0 0; gap: 12px 14px; color: rgba(246, 244, 239, .75); }
+.hero .hero-go .btn { border-radius: 999px; }
+.hero-go .hero-ghost { background: rgba(255, 255, 255, .08); color: var(--fg); border: 1px solid rgba(246, 244, 239, .55); backdrop-filter: blur(6px); }
+.hero-go .hero-ghost:hover { border-color: var(--amber); color: var(--amber); }
+
+/* The picker: a numbered rail of cards that scrolls sideways, overlapping the hero's foot */
+.rail { margin-top: -56px; position: relative; z-index: 1; }
+.rail .wall { display: flex; overflow-x: auto; gap: 16px; margin: 0 calc(-1 * var(--gut)) 32px; padding: 6px var(--gut) 14px;
+  scroll-snap-type: x proximity; scroll-padding-inline: var(--gut); counter-reset: card; }
+.rail .wall > :is(.tile-wrap, .tile) { flex: 0 0 min(400px, 86vw); scroll-snap-align: start; }
+.rail .tile-wrap { counter-increment: card; }
+.rail .tile-wrap::before { content: counter(card, decimal-leading-zero); position: absolute; right: 18px; bottom: 14px; z-index: 1; pointer-events: none; /* clear of the label and the Jump pill up top */
+  font: 700 2rem/1 'Barlow Condensed', var(--display); color: rgba(246, 244, 239, .7); text-shadow: 0 1px 8px rgba(0, 0, 0, .9); }
+
+@media (max-width: 760px) {
+  .hero { min-height: 0; padding-top: 48px; padding-bottom: 80px; }
+  .hero::before { background: linear-gradient(0deg, var(--bg) 0%, rgba(0, 0, 0, .78) 45%, rgba(0, 0, 0, .55) 100%); }
+}
