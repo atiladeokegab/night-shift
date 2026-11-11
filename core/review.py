@@ -10,6 +10,7 @@ import weakref
 
 from core import insight
 
+SCORE_WRONG = "Score check (Mubit): score may be wrong"  # its live "wrong" (core/replay.py)
 UNSAID = "the milestone is unsaid"  # leaving a milestone out is not a wrong number: not queued
 
 # Each stored line's entry (or None), keyed by the whole record: a line never changes once
@@ -21,7 +22,7 @@ _checked: dict[str, dict | None] = {}
 # the one CPU for 57 s, 24 Oct)
 _queued: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()  # store: (stamps, queue)
 _queued_lock = threading.Lock()
-READS = ("lines", "fixes", "linechecks")
+READS = ("lines", "fixes", "linechecks", "scorechecks")
 
 
 def _key(line: dict) -> tuple:
@@ -50,11 +51,14 @@ def _queue(store, deps) -> list[dict]:
     fixes = {f["line_id"]: f.get("created_at") or "" for f in store.all("fixes")}
     fixed = {_key(ln) for ln in lines if ln["line_id"] in fixes}
     # Line check's flags on lines the number check passed (#298): queued for the producer too
-    flags = {
+    flags: dict[str, list[str]] = {
         c["line_id"]: [f"Checker model: {f.replace('_', ' ')} may be wrong" for f in c["wrong"]]
         for c in store.all("linechecks")
         if c.get("wrong")
     }
+    for c in store.all("scorechecks"):  # Score check's, asked live (core/replay.py)
+        if c.get("label") == "wrong":
+            flags.setdefault(c["line_id"], []).append(SCORE_WRONG)
     matches: dict = {}  # filled only when a line is new to the cache
 
     def check(line):
