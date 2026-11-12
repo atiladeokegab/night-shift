@@ -7,6 +7,7 @@ Rebuild with: uv run python -m data.matches
 from __future__ import annotations
 
 import json
+import logging
 import math
 import re
 from pathlib import Path
@@ -33,6 +34,9 @@ PEAKS = {
 }
 # Off the match picker; their files stay for the tests, and a direct replay still works.
 HIDDEN = {"7457", "1515217"}
+# what list_matches() reads from every header; home and away only where a sport has sides
+HEADER = ("match_id", "sport", "competition", "stage")
+log = logging.getLogger("touchline.matches")
 
 
 def _path(match_id: str) -> Path:
@@ -55,7 +59,14 @@ def title(h: dict) -> str:
 def list_matches() -> list[dict]:
     out = []
     for path in sorted(SAMPLE.glob("*.json")):
-        h = json.loads(path.read_text(encoding="utf-8"))["header"]
+        try:
+            h = json.loads(path.read_text(encoding="utf-8"))["header"]
+            h = h if all(isinstance(h.get(k), str) for k in HEADER) else None
+        except (ValueError, KeyError, TypeError, AttributeError):
+            h = None
+        if h is None:  # one bad file must not empty the picker
+            log.warning("matches: skipped %s: no valid header", path.name)
+            continue
         if h["match_id"] in HIDDEN:
             continue
         match = {"match_id": h["match_id"], "sport": h["sport"], "title": title(h), "sample": True}

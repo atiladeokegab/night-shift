@@ -3,11 +3,14 @@ data/); cloud mode (MODE=cloud) keeps the same files as GCS objects and refuses 
 STORE_URL=gs://bucket/prefix."""
 
 import json
+import logging
 import os
 import re
 import threading
 import time
 from pathlib import Path
+
+log = logging.getLogger("touchline.store")
 
 KINDS = (
     "lines",
@@ -33,6 +36,20 @@ def clip_name(line_id: str, voice_id: str) -> str:
     return f"clips/{line_id}.{voice_id}"
 
 
+def _row(text: str) -> dict | None:
+    """One stored row, or None for a blank or torn one: it is skipped, never a failed read."""
+    if not text.strip():
+        return None
+    try:
+        row = json.loads(text)
+    except ValueError:
+        row = None
+    if not isinstance(row, dict):
+        log.warning("store: skipped a malformed row: %r", text[:80])
+        return None
+    return row
+
+
 class Store:
     def __init__(self, root: Path | str):
         self.root = Path(root)
@@ -56,16 +73,20 @@ class Store:
             return path.read_text() if path.exists() else ""
 
     def _write(self, kind: str, text: str) -> None:
-        # newline="": the bytes written are the row's on every OS, as append's size check expects
-        with (self.root / f"{kind}.jsonl").open("a", newline="") as f:
-            f.write(text)
+        # bytes: the bytes written are the row's on every OS, as append's size check expects
+        with (self.root / f"{kind}.jsonl").open("a+b") as f:
+            f.seek(0, os.SEEK_END)
+            if f.tell():  # a row torn by a killed process: start ours on a line of its own
+                f.seek(-1, os.SEEK_END)
+                text = ("" if f.read(1) == b"\n" else "\n") + text
+            f.write(text.encode())
 
     def all(self, kind: str) -> list[dict]:
         stamp = self._stamp(kind)  # before the read: a write after it only costs a fetch
         cached = self._cache.get(kind)
         if not cached or cached[0] != stamp:
             cached = self._cache[kind] = (stamp, self._read(kind))
-        return [json.loads(row) for row in cached[1].splitlines() if row.strip()]
+        return [r for r in map(_row, cached[1].splitlines()) if r is not None]
 
     def append(self, kind: str, record: dict) -> dict:
         if kind not in KINDS:
