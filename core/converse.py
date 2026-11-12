@@ -336,7 +336,7 @@ def converse_router(*, need_deps, viewed, asked_so_far, guard, store, env=os.env
             )
         try:
             url = await signed_url(agent, key)
-        except (httpx.HTTPError, KeyError) as exc:
+        except (httpx.HTTPError, KeyError, ValueError, TypeError) as exc:  # unreadable body too
             fail("signed url", exc)
             raise HTTPException(502, "conversation could not start") from exc
         now = time.monotonic()
