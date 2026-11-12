@@ -9,11 +9,14 @@ import '@fontsource/inter/500.css'
 import '@fontsource/inter/600.css'
 import './index.css'
 import App from './App.tsx'
+import { Boundary } from './components/Boundary.tsx'
 import './brand.css' // the header lockup, after App.css
 import './components/LowerThird.css' // here, not in the component: live.test.ts renders it in node
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <Boundary>
+      <App />
+    </Boundary>
   </StrictMode>,
 )
