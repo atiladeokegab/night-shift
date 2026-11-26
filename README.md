@@ -49,7 +49,7 @@ The keyed Ask run records one wrong answer and zero refusals. A separate saved l
 
 ## Installation
 
-You need Git, Make, Python 3.12, [uv](https://docs.astral.sh/uv/) and Node.js 22 or later for the web build.
+You need Git, Make, Python 3.12, [uv](https://docs.astral.sh/uv/) and Node.js 22.12 or later for the web build.
 
 ```sh
 git clone https://github.com/atiladeokegab/night-shift.git
